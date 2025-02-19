@@ -296,6 +296,7 @@ contract SparkEthereum_20250220Test is SparkTestBase {
         assertApproxEqAbs(arbSUsds.balanceOf(Arbitrum.PSM3),      susdsDepositShares, 1);                // $10m
 
         chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
 
         // --- Step 2: Mint and bridge 10m USDC to Arbitrum ---
 
@@ -312,6 +313,7 @@ contract SparkEthereum_20250220Test is SparkTestBase {
         vm.stopPrank();
 
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
 
         assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
         assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      usdcSeed);
@@ -358,6 +360,7 @@ contract SparkEthereum_20250220Test is SparkTestBase {
         assertEq(IERC20(Arbitrum.USDC).balanceOf(Arbitrum.ALM_PROXY), 0);
 
         chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
 
         uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
 
