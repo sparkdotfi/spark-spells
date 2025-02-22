@@ -303,9 +303,6 @@ contract SparkEthereum_20250220Test is SparkTestBase {
         uint256 usdcAmount = 10_000_000e6;
         uint256 usdcSeed   = 1e6;
 
-        // Prevent MemoryOOG
-        _clearLogs();
-
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
         mainnetController.swapUSDSToUSDC(usdcAmount);
