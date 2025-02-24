@@ -426,7 +426,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     DataTypes.ReserveData memory afterReserve,
     int256 amountRepaid,
     uint256 timeSinceLastUpdate
-  ) internal {
+  ) internal pure {
     assertEq(afterReserve.configuration.data, beforeReserve.configuration.data);
 
     assertApproxEqAbs(
@@ -1236,7 +1236,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     revert('RESERVE_CONFIG_NOT_FOUND');
   }
 
-  function _logReserveConfig(ReserveConfig memory config) internal view {
+  function _logReserveConfig(ReserveConfig memory config) internal pure {
     console.log('Symbol ', config.symbol);
     console.log('Underlying address ', config.underlying);
     console.log('AToken address ', config.aToken);

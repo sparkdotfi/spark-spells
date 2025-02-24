@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import './ProtocolV3TestBase.sol';
 
+import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
+
 import { Address } from './libraries/Address.sol';
 
 import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/contracts/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
@@ -14,7 +16,8 @@ import { IncentivizedERC20 }                     from 'sparklend-v1-core/contrac
 import { ReserveConfiguration }                  from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { WadRayMath }                            from "sparklend-v1-core/contracts/protocol/libraries/math/WadRayMath.sol";
 
-import { Base } from 'spark-address-registry/Base.sol';
+import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
+import { Base }     from 'spark-address-registry/Base.sol';
 
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
@@ -23,13 +26,18 @@ import { MarketParamsLib }                               from 'lib/metamorpho/li
 
 import { IExecutor } from 'lib/spark-gov-relay/src/interfaces/IExecutor.sol';
 
-import { IRateLimits } from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBridgeTesting.sol";
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
+import { ArbitrumBridgeTesting } from "xchain-helpers/testing/bridges/ArbitrumBridgeTesting.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
 import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
+import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import { ChainIdUtils, ChainId } from "./libraries/ChainId.sol";
 import { SparkPayloadEthereum }  from "./SparkPayloadEthereum.sol";
@@ -49,6 +57,14 @@ interface IExecutable {
     function execute() external;
 }
 
+struct SparkLiquidityLayerContext {
+    address     controller;
+    IALMProxy   proxy;
+    IRateLimits rateLimits;
+    address     relayer;
+    address     freezer;
+}
+
 abstract contract SpellRunner is Test {
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
@@ -56,7 +72,8 @@ abstract contract SpellRunner is Test {
     enum BridgeType {
         OPTIMISM,
         CCTP,
-        GNOSIS
+        GNOSIS,
+        ARBITRUM
     }
 
     struct ChainSpellMetadata{
@@ -86,15 +103,32 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev to be called in setUp
-    function setupDomains(uint256 mainnetForkBlock, uint256 baseForkBlock, uint256 gnosisForkBlock) internal {
-        chainSpellMetadata[ChainIdUtils.Ethereum()].domain = getChain("mainnet").createFork(mainnetForkBlock);
-        chainSpellMetadata[ChainIdUtils.Base()].domain     = getChain("base").createFork(baseForkBlock);
-        chainSpellMetadata[ChainIdUtils.Gnosis()].domain   = getChain("gnosis_chain").createFork(gnosisForkBlock);
+    function setupDomains(uint256 mainnetForkBlock, uint256 baseForkBlock, uint256 gnosisForkBlock, uint256 arbitrumOneForkBlock) internal {
+        chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(mainnetForkBlock);
+        chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(baseForkBlock);
+        chainSpellMetadata[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(gnosisForkBlock);
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(arbitrumOneForkBlock);
 
-        chainSpellMetadata[ChainIdUtils.Ethereum()].executor = IExecutor(Ethereum.SPARK_PROXY);
-        chainSpellMetadata[ChainIdUtils.Base()].executor     = IExecutor(Base.SPARK_EXECUTOR);
-        chainSpellMetadata[ChainIdUtils.Gnosis()].executor   = IExecutor(Gnosis.AMB_EXECUTOR);
+        chainSpellMetadata[ChainIdUtils.Ethereum()].executor    = IExecutor(Ethereum.SPARK_PROXY);
+        chainSpellMetadata[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
+        chainSpellMetadata[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
 
+        // Arbitrum One
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
+            ArbitrumBridgeTesting.createNativeBridge(
+                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
+                chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain
+        ));
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridgeTypes.push(BridgeType.ARBITRUM);
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
+            CCTPBridgeTesting.createCircleBridge(
+                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
+                chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain
+        ));
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridgeTypes.push(BridgeType.CCTP);
+
+        // Base
         chainSpellMetadata[ChainIdUtils.Base()].bridges.push(
             OptimismBridgeTesting.createNativeBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
@@ -108,6 +142,7 @@ abstract contract SpellRunner is Test {
         ));
         chainSpellMetadata[ChainIdUtils.Base()].bridgeTypes.push(BridgeType.CCTP);
 
+        // Gnosis
         chainSpellMetadata[ChainIdUtils.Gnosis()].bridges.push(
             AMBBridgeTesting.createGnosisBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
@@ -121,6 +156,7 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Ethereum());
         allChains.push(ChainIdUtils.Base());
         allChains.push(ChainIdUtils.Gnosis());
+        allChains.push(ChainIdUtils.ArbitrumOne());
     }
 
     function spellIdentifier(ChainId chainId) private view returns(string memory){
@@ -174,6 +210,8 @@ abstract contract SpellRunner is Test {
             CCTPBridgeTesting.relayMessagesToSource(bridge, false);
         } else if (bridgeType == BridgeType.GNOSIS) {
             AMBBridgeTesting.relayMessagesToDestination(bridge, false);
+        } else if (bridgeType == BridgeType.ARBITRUM) {
+            ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
         }
     }
 
@@ -215,6 +253,8 @@ abstract contract SpellRunner is Test {
             return spell.PAYLOAD_BASE();
         } else if (chainId == ChainIdUtils.Gnosis()) {
             return spell.PAYLOAD_GNOSIS();
+        } else if (chainId == ChainIdUtils.ArbitrumOne()) {
+            return spell.PAYLOAD_ARBITRUM();
         } else {
             revert("Unsupported chainId");
         }
@@ -233,6 +273,20 @@ abstract contract SpellRunner is Test {
         ));
         require(success, "FAILED TO EXECUTE PAYLOAD");
     }
+
+    function _clearLogs() internal {
+        RecordedLogs.clearLogs();
+
+        // Need to also reset all bridge indicies
+        for (uint256 i = 0; i < allChains.length; i++) {
+            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
+            for (uint256 j = 0; j < chainSpellMetadata[chainId].bridges.length ; j++){
+                chainSpellMetadata[chainId].bridges[j].lastSourceLogIndex = 0;
+                chainSpellMetadata[chainId].bridges[j].lastDestinationLogIndex = 0;
+            }
+        }
+    }
+
 }
 
 /// @dev assertions that make sense to run on every chain where a spark spell
@@ -248,6 +302,10 @@ abstract contract CommonSpellAssertions is SpellRunner {
 
     function test_GNOSIS_PayloadBytecodeMatches() public {
         _assertPayloadBytecodeMatches(ChainIdUtils.Gnosis());
+    }
+
+    function test_ARBITRUM_ONE_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
     }
 
     function _assertPayloadBytecodeMatches(ChainId chainId) private onChain(chainId) {
@@ -575,11 +633,11 @@ abstract contract SparkEthereumTests is SparklendTests {
         }
     }
 
-    function _assertFrozen(address asset, bool frozen) internal {
+    function _assertFrozen(address asset, bool frozen) internal view {
         assertEq(pool.getConfiguration(asset).getFrozen(), frozen);
     }
 
-    function _assertPaused(address asset, bool paused) internal {
+    function _assertPaused(address asset, bool paused) internal view {
         assertEq(pool.getConfiguration(asset).getPaused(), paused);
     }
 
@@ -712,28 +770,28 @@ abstract contract SparkEthereumTests is SparklendTests {
         }
     }
 
-    function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal {
+    function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
         assertEq(_max,              max);
         assertEq(_gap,              gap);
         assertEq(_increaseCooldown, increaseCooldown);
     }
 
-    function _assertBorrowCapConfigNotSet(address asset) internal {
+    function _assertBorrowCapConfigNotSet(address asset) internal view {
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
         assertEq(_max,              0);
         assertEq(_gap,              0);
         assertEq(_increaseCooldown, 0);
     }
 
-    function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal {
+    function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
         assertEq(_max,              max);
         assertEq(_gap,              gap);
         assertEq(_increaseCooldown, increaseCooldown);
     }
 
-    function _assertSupplyCapConfigNotSet(address asset) internal {
+    function _assertSupplyCapConfigNotSet(address asset) internal view {
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
         assertEq(_max,              0);
         assertEq(_gap,              0);
@@ -746,7 +804,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         uint256             _currentCap,
         bool                _hasPending,
         uint256             _pendingCap
-    ) internal {
+    ) internal view {
         Id id = MarketParamsLib.id(_config);
         assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
         PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
@@ -764,7 +822,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         MarketParams memory _config,
         uint256             _currentCap,
         uint256             _pendingCap
-    ) internal {
+    ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
     }
 
@@ -772,36 +830,59 @@ abstract contract SparkEthereumTests is SparklendTests {
         address             _vault,
         MarketParams memory _config,
         uint256             _currentCap
-    ) internal {
+    ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
-abstract contract AdvancedLiquidityManagementTests is SpellRunner {
+abstract contract SparkLiquidityLayerTests is SpellRunner {
 
-    function _getRateLimitData(bytes32 key) internal view returns(IRateLimits.RateLimitData memory rateLimit) {
+    function _getSparkLiquidityLayerContext() internal view returns(SparkLiquidityLayerContext memory ctx) {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-        IRateLimits rateLimitsContract;
-        if(currentChain == ChainIdUtils.Ethereum()) rateLimitsContract = IRateLimits(Ethereum.ALM_RATE_LIMITS);
-        else if(currentChain == ChainIdUtils.Base()) rateLimitsContract = IRateLimits(Base.ALM_RATE_LIMITS);
-        else require(false, "ALM/executing on unknown chain");
-
-        return rateLimitsContract.getRateLimitData(key);
+        if (currentChain == ChainIdUtils.Ethereum()) {
+            ctx = SparkLiquidityLayerContext(
+                Ethereum.ALM_CONTROLLER,
+                IALMProxy(Ethereum.ALM_PROXY),
+                IRateLimits(Ethereum.ALM_RATE_LIMITS),
+                Ethereum.ALM_RELAYER,
+                Ethereum.ALM_FREEZER
+            );
+        } else if (currentChain == ChainIdUtils.Base()) {
+            ctx = SparkLiquidityLayerContext(
+                Base.ALM_CONTROLLER,
+                IALMProxy(Base.ALM_PROXY),
+                IRateLimits(Base.ALM_RATE_LIMITS),
+                Base.ALM_RELAYER,
+                Base.ALM_FREEZER
+            );
+        } else if (currentChain == ChainIdUtils.ArbitrumOne()) {
+            ctx = SparkLiquidityLayerContext(
+                Arbitrum.ALM_CONTROLLER,
+                IALMProxy(Arbitrum.ALM_PROXY),
+                IRateLimits(Arbitrum.ALM_RATE_LIMITS),
+                Arbitrum.ALM_RELAYER,
+                Arbitrum.ALM_FREEZER
+            );
+        } else {
+            revert("SLL/executing on unknown chain");
+        }
     }
 
    function _assertRateLimit(
        bytes32 key,
        uint256 maxAmount,
        uint256 slope
-    ) internal {
-        _assertRateLimit(key, maxAmount, slope, maxAmount, block.timestamp);
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        assertEq(rateLimit.maxAmount, maxAmount);
+        assertEq(rateLimit.slope,     slope);
     }
 
    function _assertUnlimitedRateLimit(
        bytes32 key
-    ) internal {
-        IRateLimits.RateLimitData memory rateLimit = _getRateLimitData(key);
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
         assertEq(rateLimit.maxAmount, type(uint256).max);
         assertEq(rateLimit.slope,     0);
     }
@@ -812,16 +893,81 @@ abstract contract AdvancedLiquidityManagementTests is SpellRunner {
        uint256 slope,
        uint256 lastAmount,
        uint256 lastUpdated
-    ) internal {
-        IRateLimits.RateLimitData memory rateLimit = _getRateLimitData(key);
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
         assertEq(rateLimit.maxAmount,   maxAmount);
         assertEq(rateLimit.slope,       slope);
         assertEq(rateLimit.lastAmount,  lastAmount);
         assertEq(rateLimit.lastUpdated, lastUpdated);
     }
+
+    function _assertERC4626Onboarding(
+        address vault,
+        uint256 expectedDepositAmount,
+        uint256 depositMax,
+        uint256 depositSlope
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        bool unlimitedDeposit = depositMax == type(uint256).max;
+
+        // Note: ERC4626 signature is the same for mainnet and foreign
+        deal(IERC4626(vault).asset(), address(ctx.proxy), expectedDepositAmount);
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
+            vault
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(ctx.controller).LIMIT_4626_WITHDRAW(),
+            vault
+        );
+
+        vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
+
+        executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey, depositMax, depositSlope);
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        if (!unlimitedDeposit) {
+            vm.prank(ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            MainnetController(ctx.controller).depositERC4626(vault, depositMax + 1);
+        }
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        vm.prank(ctx.relayer);
+        MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        vm.prank(ctx.relayer);
+        MainnetController(ctx.controller).withdrawERC4626(vault, expectedDepositAmount / 2);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        if (!unlimitedDeposit) {
+            // Do some sanity checks on the slope
+            // This is to catch things like forgetting to divide to a per-second time, etc
+
+            // We assume it takes at least 1 day to recharge to max
+            uint256 dailySlope = depositSlope * 1 days;
+            assertLe(dailySlope, depositMax);
+
+            // It shouldn't take more than 30 days to recharge to max
+            uint256 monthlySlope = depositSlope * 30 days;
+            assertGe(monthlySlope, depositMax);
+        }
+    }
+
 }
 
 /// @dev convenience contract meant to be the single point of entry for all
 /// spell-specifictest contracts
-abstract contract SparkTestBase is AdvancedLiquidityManagementTests, SparkEthereumTests, CommonSpellAssertions {
+abstract contract SparkTestBase is SparkLiquidityLayerTests, SparkEthereumTests, CommonSpellAssertions {
 }

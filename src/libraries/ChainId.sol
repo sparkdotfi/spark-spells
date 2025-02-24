@@ -20,6 +20,7 @@ library ChainIdUtils {
         if (id == 1) return ChainId.wrap(id);
         else if (id == 100) return ChainId.wrap(id);
         else if (id == 8453) return ChainId.wrap(id);
+        else if (id == 42161) return ChainId.wrap(id);
         require(false, "ChainIdUtils/invalid-chain-id");
     }
 
@@ -27,6 +28,7 @@ library ChainIdUtils {
         if (ChainId.unwrap(id) == 1) return "Ethereum";
         else if (ChainId.unwrap(id) == 100) return "Gnosis";
         else if (ChainId.unwrap(id) == 8453) return "Base";
+        else if (ChainId.unwrap(id) == 42161) return "ArbitrumOne";
         require(false, "ChainIdUtils/invalid-chain-id");
     }
 
@@ -40,5 +42,9 @@ library ChainIdUtils {
 
     function Base() internal pure returns (ChainId) {
         return ChainId.wrap(8453);
+    }
+
+    function ArbitrumOne() internal pure returns (ChainId) {
+        return ChainId.wrap(42161);
     }
 }

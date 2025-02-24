@@ -11,7 +11,7 @@ optimizer = true
 ffi = true
 evm_version = "cancun"
 
-# 2x the default to accomodate E2E tests
-gas_limit = 2147483648
+# Very large gas limit for big tests
+gas_limit = "18446744073709551615"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

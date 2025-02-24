@@ -6,9 +6,9 @@ import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
 
 import { IAToken } from "aave-v3-origin/src/core/contracts/interfaces/IAToken.sol";
 
-import { IMetaMorpho, Id }       from "metamorpho/interfaces/IMetaMorpho.sol";
-import { IMorpho, MarketParams } from "morpho-blue/src/interfaces/IMorpho.sol";
-import { MarketParamsLib }       from "morpho-blue/src/libraries/MarketParamsLib.sol";
+import { IMetaMorpho, Id } from "metamorpho/interfaces/IMetaMorpho.sol";
+import { MarketParams }    from "morpho-blue/src/interfaces/IMorpho.sol";
+import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
 import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
@@ -28,6 +28,107 @@ library SparkLiquidityLayerHelpers {
     bytes32 private constant LIMIT_USDS_TO_USDC   = keccak256("LIMIT_USDS_TO_USDC");
     bytes32 private constant LIMIT_USDC_TO_CCTP   = keccak256("LIMIT_USDC_TO_CCTP");
     bytes32 private constant LIMIT_USDC_TO_DOMAIN = keccak256("LIMIT_USDC_TO_DOMAIN");
+    bytes32 private constant LIMIT_PSM_DEPOSIT    = keccak256("LIMIT_PSM_DEPOSIT");
+    bytes32 private constant LIMIT_PSM_WITHDRAW   = keccak256("LIMIT_PSM_WITHDRAW");
+
+    /**
+     * @notice Activate the bare minimum for Spark Liquidity Layer
+     * @dev Sets PSM and CCTP rate limits.
+     */
+    function activateSparkLiquidityLayer(
+        address rateLimits,
+        address usdc,
+        address usds,
+        address susds,
+        RateLimitData memory usdcDeposit,
+        RateLimitData memory usdcWithdraw,
+        RateLimitData memory cctpEthereumDeposit
+    ) internal {
+        // PSM USDC
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                LIMIT_PSM_DEPOSIT,
+                usdc
+            ),
+            rateLimits,
+            usdcDeposit,
+            "psmUsdcDepositLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                LIMIT_PSM_WITHDRAW,
+                usdc
+            ),
+            rateLimits,
+            usdcWithdraw,
+            "psmUsdcWithdrawLimit",
+            6
+        );
+
+        // PSM USDS
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                LIMIT_PSM_DEPOSIT,
+                usds
+            ),
+            rateLimits,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "psmUsdsDepositLimit",
+            18
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                LIMIT_PSM_WITHDRAW,
+                usds
+            ),
+            rateLimits,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "psmUsdsWithdrawLimit",
+            18
+        );
+
+        // PSM sUSDS
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                LIMIT_PSM_DEPOSIT,
+                susds
+            ),
+            rateLimits,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "psmSusdsDepositLimit",
+            18
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                LIMIT_PSM_WITHDRAW,
+                susds
+            ),
+            rateLimits,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "psmSusdsWithdrawLimit",
+            18
+        );
+
+        // CCTP
+        RateLimitHelpers.setRateLimitData(
+            LIMIT_USDC_TO_CCTP,
+            rateLimits,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "usdcToCctpLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeDomainKey(
+                LIMIT_USDC_TO_DOMAIN,
+                0  // Ethereum domain id (https://developers.circle.com/stablecoins/evm-smart-contracts)
+            ),
+            rateLimits,
+            cctpEthereumDeposit,
+            "usdcToCctpEthereumLimit",
+            6
+        );
+    }
 
     /**
      * @notice Onboard an Aave token

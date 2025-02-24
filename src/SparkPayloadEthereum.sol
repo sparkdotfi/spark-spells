@@ -3,14 +3,16 @@ pragma solidity ^0.8.0;
 
 import './AaveV3PayloadBase.sol';
 
+import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
 
 import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
 
-import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
 import { AMBForwarder }      from "xchain-helpers/forwarders/AMBForwarder.sol";
+import { ArbitrumForwarder } from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
+import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
 
 import { SparkLiquidityLayerHelpers } from './libraries/SparkLiquidityLayerHelpers.sol';
 
@@ -23,12 +25,23 @@ abstract contract SparkPayloadEthereum is
 {
 
     // These need to be immutable (delegatecall) and can only be set in constructor
+    address public immutable PAYLOAD_ARBITRUM;
     address public immutable PAYLOAD_BASE;
     address public immutable PAYLOAD_GNOSIS;
 
     function execute() public override {
         super.execute();
 
+        if (PAYLOAD_ARBITRUM != address(0)) {
+            ArbitrumForwarder.sendMessageL1toL2({
+                l1CrossDomain: ArbitrumForwarder.L1_CROSS_DOMAIN_ARBITRUM_ONE,
+                target:        Arbitrum.SPARK_RECEIVER,
+                message:       _encodePayloadQueue(PAYLOAD_ARBITRUM),
+                gasLimit:      1_000_000,
+                maxFeePerGas:  50e9,
+                baseFee:       block.basefee
+            });
+        }
         if (PAYLOAD_BASE != address(0)) {
             OptimismForwarder.sendMessageL1toL2({
                 l1CrossDomain: OptimismForwarder.L1_CROSS_DOMAIN_BASE,
