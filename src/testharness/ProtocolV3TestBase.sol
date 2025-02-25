@@ -25,7 +25,7 @@ import { SafeERC20 } from 'erc20-helpers/SafeERC20.sol';
 
 import { ICapAutomator }  from 'sparklend-cap-automator/interfaces/ICapAutomator.sol';
 
-import { ProxyHelpers }   from './libraries/ProxyHelpers.sol';
+import { ProxyHelpers }   from '../libraries/ProxyHelpers.sol';
 import { CommonTestBase } from './CommonTestBase.sol';
 
 interface IProxyLike {
