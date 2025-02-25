@@ -19,7 +19,7 @@ import { IPSM3 } from 'spark-psm/src/interfaces/IPSM3.sol';
 import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
-import { SparkTestBase } from 'src/testharness/SparkTestBase.sol';
+import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
 interface DssAutoLineLike {
