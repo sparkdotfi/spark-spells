@@ -12,12 +12,12 @@ import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol
  * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
  * Vote:   TODO
  */
-contract SparkBase_20250220 is SparkPayloadBase {
+contract SparkBase_20250306 is SparkPayloadBase {
 
     address internal constant CBBTC_USDC_ORACLE  = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
 
     function execute() external {
-         MarketParams memory usdcCBBTC = MarketParams({
+        MarketParams memory usdcCBBTC = MarketParams({
             loanToken:       Base.USDC,
             collateralToken: Base.CBBTC,
             oracle:          CBBTC_USDC_ORACLE,
@@ -27,8 +27,11 @@ contract SparkBase_20250220 is SparkPayloadBase {
 
         IMetaMorpho(Base.MORPHO_VAULT_SUSDC).submitCap(
             usdcCBBTC,
-            100_000_000e6
+            500_000_000e6
         );
+        // IMetaMorpho(Base.MORPHO_VAULT_SUSDC).acceptCap(
+        //     usdcCBBTC
+        // );
     }
 
 }

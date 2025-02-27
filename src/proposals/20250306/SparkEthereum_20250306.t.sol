@@ -3,13 +3,19 @@ pragma solidity ^0.8.10;
 
 import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
 
+import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import 'src/test-harness/SparkTestBase.sol';
 
+import { ChainIdUtils } from 'src/libraries/ChainId.sol';
+
+import { IMetaMorpho, IMorpho, MarketAllocation, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
 contract SparkEthereum_20250306Test is SparkEthereumTests {
 
     address internal constant AGGOR_BTCUSD_ORACLE = 0x4219aA1A99f3fe90C2ACB97fCbc1204f6485B537;
+    address internal constant CBBTC_USDC_ORACLE   = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
 
     constructor() {
         id = '20250306';
@@ -134,6 +140,24 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
         cbBtcConfig.eModeCategory = 3;
 
         _validateReserveConfig(cbBtcConfig, allConfigsAfter);
+    }
+
+    function test_BASE_MorphoConfiguration() public onChain(ChainIdUtils.Base()) {
+        IMetaMorpho susdc = IMetaMorpho(Base.MORPHO_VAULT_SUSDC);
+
+        MarketParams memory usdcCBBTC = MarketParams({
+            loanToken:       Base.USDC,
+            collateralToken: Base.CBBTC,
+            oracle:          CBBTC_USDC_ORACLE,
+            irm:             Base.MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
+
+        _assertMorphoCap(address(susdc), usdcCBBTC, 100_000_000e6);
+
+        executeAllPayloadsAndBridges();
+
+        _assertMorphoCap(address(susdc), usdcCBBTC, 500_000_000e6);
     }
 
 }
