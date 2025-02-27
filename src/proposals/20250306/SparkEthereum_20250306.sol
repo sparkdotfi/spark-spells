@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
+
 import { IAaveV3ConfigEngine as IEngine } from '../../interfaces/IAaveV3ConfigEngine.sol';
+import { ICapAutomator }                  from '../../interfaces/ICapAutomator.sol';
 
 import { SparkPayloadEthereum, Rates, EngineFlags } from "../../SparkPayloadEthereum.sol";
 
@@ -50,7 +53,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             liqThreshold:          70_00,
             liqBonus:              8_00,
             reserveFactor:         15_00,
-            supplyCap:             0,
+            supplyCap:             250,
             borrowCap:             0,
             debtCeiling:           0,
             liqProtocolFee:        10_00,
@@ -82,15 +85,31 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             liqThreshold:          70_00,
             liqBonus:              8_00,
             reserveFactor:         20_00,
-            supplyCap:             0,
-            borrowCap:             0,
+            supplyCap:             125,
+            borrowCap:             25,
             debtCeiling:           0,
             liqProtocolFee:        10_00,
             eModeCategory:         0
         });
 
-
         return listings;
+    }
+
+    function _postExecute() internal override {
+        // Seed the new LBTC pool
+        IERC20(Ethereum.LBTC).approve(address(LISTING_ENGINE.POOL()), 0.0001e8);
+        LISTING_ENGINE.POOL().supply(Ethereum.LBTC, 0.0001e8, address(this), 0);
+
+        // Seed the new tBTC pool
+        IERC20(Ethereum.TBTC).approve(address(LISTING_ENGINE.POOL()), 0.0001e18);
+        LISTING_ENGINE.POOL().supply(Ethereum.TBTC, 0.0001e18, address(this), 0);
+
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.LBTC, max: 2500, gap: 250, increaseCooldown: 12 hours });
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.TBTC, max: 500, gap: 125, increaseCooldown: 12 hours });
+        capAutomator.setBorrowCapConfig({ asset: Ethereum.TBTC, max: 250, gap: 25,  increaseCooldown: 12 hours });
     }
 
 }

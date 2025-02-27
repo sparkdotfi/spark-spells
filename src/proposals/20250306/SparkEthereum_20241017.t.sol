@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { console } from "forge-std/console.sol";
+
+
+import { Ethereum }               from 'spark-address-registry/Ethereum.sol';
 
 import 'src/test-harness/SparkTestBase.sol';
-
-import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
 
 contract SparkEthereum_20250306Test is SparkEthereumTests {
 
@@ -27,39 +28,12 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
         });
 
         deployPayloads();
+
+        deal(Ethereum.LBTC, Ethereum.SPARK_PROXY, 0.0001e8);
+        deal(Ethereum.TBTC, Ethereum.SPARK_PROXY, 0.0001e18);
     }
 
     function test_ETHEREUM_sparkLend_collateralOnboardingLbtcAndTbtc() public {
-
-        address poolAddressesProvider = _getPoolAddressesProviderRegistry().getAddressesProvidersList()[0];
-
-        loadPoolContext(poolAddressesProvider);
-
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
-
-        assertEq(allConfigsBefore.length, 13);
-
-        // _assertSupplyCapConfig({
-        //     asset:            SUSDS,
-        //     max:              0,
-        //     gap:              0,
-        //     increaseCooldown: 0
-        // });
-
-        // _assertBorrowCapConfig({
-        //     asset:            SUSDS,
-        //     max:              0,
-        //     gap:              0,
-        //     increaseCooldown: 0
-        // });
-
-        executeAllPayloadsAndBridges();
-
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
-
-        assertEq(allConfigsAfter.length, 15);
-
-        // TODO: Reorder to follow forum post
         // TODO: Change emode
 
         CollateralOnboardingTestParams memory lbtcConfigParams = CollateralOnboardingTestParams({
@@ -85,10 +59,10 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             liquidationBonus:     108_00,
             reserveFactor:        15_00,
             // Supply caps
-            supplyCap:    0,
-            supplyCapMax: 0,
-            supplyCapGap: 0,
-            supplyCapTtl: 0,
+            supplyCap:    250,
+            supplyCapMax: 2500,
+            supplyCapGap: 250,
+            supplyCapTtl: 12 hours,
             // Borrow caps
             borrowCap:    0,
             borrowCapMax: 0,
@@ -103,9 +77,9 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
 
         CollateralOnboardingTestParams memory tbtcConfigParams = CollateralOnboardingTestParams({
             // General
-            symbol:       'TBTC',
+            symbol:       'tBTC',
             tokenAddress:  Ethereum.TBTC,
-            tokenDecimals: 8,
+            tokenDecimals: 18,
             oracleAddress: AGGOR_BTCUSD_ORACLE,
             // IRM Params
             optimalUsageRatio:      0.60e27,
@@ -124,15 +98,15 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             liquidationBonus:     108_00,
             reserveFactor:        20_00,
             // Supply caps
-            supplyCap:    0,
-            supplyCapMax: 0,
-            supplyCapGap: 0,
-            supplyCapTtl: 0,
+            supplyCap:    125,
+            supplyCapMax: 500,
+            supplyCapGap: 125,
+            supplyCapTtl: 12 hours,
             // Borrow caps
-            borrowCap:    0,
-            borrowCapMax: 0,
-            borrowCapGap: 0,
-            borrowCapTtl: 0,
+            borrowCap:    25,
+            borrowCapMax: 250,
+            borrowCapGap: 25,
+            borrowCapTtl: 12 hours,
             // Isolation  and emode configurations
             isolationMode:            false,
             isolationModeDebtCeiling: 0,
@@ -140,125 +114,11 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             emodeCategory:            0  // TODO: Change
         });
 
-        _testCollateralOnboarding(allConfigsAfter, lbtcConfigParams);
-        _testCollateralOnboarding(allConfigsAfter, tbtcConfigParams);
+        CollateralOnboardingTestParams[] memory newCollaterals = new CollateralOnboardingTestParams[](2);
+        newCollaterals[0] = lbtcConfigParams;
+        newCollaterals[1] = tbtcConfigParams;
 
-
-        // _assertSupplyCapConfig({
-        //     asset:            SUSDS,
-        //     max:              500_000_000,
-        //     gap:              50_000_000,
-        //     increaseCooldown: 12 hours
-        // });
-
-        // _assertBorrowCapConfig({
-        //     asset:            SUSDS,
-        //     max:              0,
-        //     gap:              0,
-        //     increaseCooldown: 0
-        // });
-
-        // // The sUSDS price feed does not have a decimals() function so we validate manually
-        // IAaveOracle oracle = IAaveOracle(poolAddressesProvider.getPriceOracle());
-
-        // require(
-        //     oracle.getSourceOfAsset(SUSDS) == SUSDS_PRICE_FEED,
-        //     '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE'
-        // );
-    }
-
-    struct CollateralOnboardingTestParams {
-        // General
-        string  symbol;
-        address tokenAddress;
-        uint256 tokenDecimals;
-        address oracleAddress;
-        // IRM Params
-        uint256 optimalUsageRatio;
-        uint256 baseVariableBorrowRate;
-        uint256 variableRateSlope1;
-        uint256 variableRateSlope2;
-        // Borrowing configuration
-        bool borrowEnabled;
-        bool stableBorrowEnabled;
-        bool isolationBorrowEnabled;
-        bool siloedBorrowEnabled;
-        bool flashloanEnabled;
-        // Reserve configuration
-        uint256 ltv;
-        uint256 liquidationThreshold;
-        uint256 liquidationBonus;
-        uint256 reserveFactor;
-        // Supply and borrow caps
-        uint256 supplyCap;
-        uint256 supplyCapMax;
-        uint256 supplyCapGap;
-        uint256 supplyCapTtl;
-        uint256 borrowCap;
-        uint256 borrowCapMax;
-        uint256 borrowCapGap;
-        uint256 borrowCapTtl;
-        // Isolation  and emode configurations
-        bool    isolationMode;
-        uint256 isolationModeDebtCeiling;
-        uint256 liquidationProtocolFee;
-        uint256 emodeCategory;
-    }
-
-    function _testCollateralOnboarding(
-        ReserveConfig[]  memory allReserveConfigs,
-        CollateralOnboardingTestParams memory params
-    )
-        internal view
-    {
-        // TODO: Refactor this
-        address poolAddressesProvider = _getPoolAddressesProviderRegistry().getAddressesProvidersList()[0];
-
-        address irm = _findReserveConfigBySymbol(allReserveConfigs, params.symbol).interestRateStrategy;
-
-        ReserveConfig memory lbtcConfig = ReserveConfig({
-            symbol:                   params.symbol,
-            underlying:               params.tokenAddress,
-            aToken:                   address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            variableDebtToken:        address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            stableDebtToken:          address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            decimals:                 params.tokenDecimals,
-            ltv:                      params.ltv,
-            liquidationThreshold:     params.liquidationThreshold,
-            liquidationBonus:         params.liquidationBonus,
-            liquidationProtocolFee:   params.liquidationProtocolFee,
-            reserveFactor:            params.reserveFactor,
-            usageAsCollateralEnabled: true,
-            borrowingEnabled:         params.borrowEnabled,
-            interestRateStrategy:     irm,
-            stableBorrowRateEnabled:  false,
-            isPaused:                 false,
-            isActive:                 true,
-            isFrozen:                 false,
-            isSiloed:                 params.siloedBorrowEnabled,
-            isBorrowableInIsolation:  params.isolationBorrowEnabled,
-            isFlashloanable:          params.flashloanEnabled,
-            supplyCap:                params.supplyCap,  // TODO: Fix
-            borrowCap:                params.borrowCap,
-            debtCeiling:              params.isolationModeDebtCeiling,
-            eModeCategory:            params.emodeCategory
-        });
-
-        InterestStrategyValues memory lbtcIrmParams = InterestStrategyValues({
-            addressesProvider:             address(poolAddressesProvider),
-            optimalUsageRatio:             params.optimalUsageRatio,
-            optimalStableToTotalDebtRatio: 0,
-            baseStableBorrowRate:          params.variableRateSlope1,
-            stableRateSlope1:              0,
-            stableRateSlope2:              0,
-            baseVariableBorrowRate:        params.baseVariableBorrowRate,
-            variableRateSlope1:            params.variableRateSlope1,
-            variableRateSlope2:            params.variableRateSlope2
-        });
-
-        _validateReserveConfig(lbtcConfig, allReserveConfigs);
-
-        _validateInterestRateStrategy(irm, irm, lbtcIrmParams);
+        _testCollateralOnboardings(newCollaterals);
     }
 
 }

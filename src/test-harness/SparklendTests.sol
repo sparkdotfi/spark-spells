@@ -164,7 +164,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _runOraclesTests(ChainId chainId) private onChain(chainId) {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
-        
+
         _validateOracles();
 
         executeAllPayloadsAndBridges();
@@ -183,14 +183,16 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _assertAllReservesSeeded(ChainId chainId) private onChain(chainId) {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
-        
+
         executeAllPayloadsAndBridges();
 
         address[] memory reserves = pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
             IERC20 aToken = IERC20(pool.getReserveData(reserves[i]).aTokenAddress);
-            require(aToken.totalSupply() >= 1e6, 'RESERVE_NOT_SEEDED');
+            // Convert value to USD in 1e6 precision
+            uint256 poolValue = aToken.totalSupply() * priceOracle.getAssetPrice(reserves[i]) * 1e6 / aToken.decimals() / 1e8;
+            require(poolValue >= 1e6, 'RESERVE_NOT_SEEDED');
         }
     }
 
@@ -213,4 +215,5 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         registry = chainSpellMetadata[currentChain].sparklendPooAddressProviderRegistry;
         require(address(registry) != address(0), "Sparklend/executing on unknown chain");
     }
+
 }
