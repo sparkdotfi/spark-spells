@@ -39,8 +39,6 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
     }
 
     function test_ETHEREUM_sparkLend_collateralOnboardingLbtcAndTbtc() public {
-        // TODO: Change emode
-
         CollateralOnboardingTestParams memory lbtcConfigParams = CollateralOnboardingTestParams({
             // General
             symbol:       'LBTC',

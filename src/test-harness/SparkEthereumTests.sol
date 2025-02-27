@@ -94,8 +94,8 @@ abstract contract SparkEthereumTests is SparklendTests {
             ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
             address payload = chainSpellMetadata[chainId].payload;
-            if (payload != address(0)) {
-                // A payload is defined for this domain
+            if (payload != address(0) && !chainSpellMetadata[chainId].notPreDeployed) {
+                // A payload is defined for this domain and was not deployed as part of test setup
                 // We verify the mainnet spell defines this payload correctly
                 address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
                 assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
