@@ -31,10 +31,10 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             assetSymbol: 'LBTC',
             priceFeed:   AGGOR_BTCUSD_ORACLE,
             rateStrategyParams:                Rates.RateStrategyParams({
-                optimalUsageRatio:             45_00,
-                baseVariableBorrowRate:        5_00,
-                variableRateSlope1:            15_00,
-                variableRateSlope2:            300_00,
+                optimalUsageRatio:             _bpsToRay(45_00),
+                baseVariableBorrowRate:        _bpsToRay(5_00),
+                variableRateSlope1:            _bpsToRay(15_00),
+                variableRateSlope2:            _bpsToRay(300_00),
                 stableRateSlope1:              0,   // TODO: Revisit
                 stableRateSlope2:              0,
                 baseStableRateOffset:          0,
@@ -58,15 +58,15 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
         });
 
         // TODO: Add cap automator
-        listings[0] = IEngine.Listing({
+        listings[1] = IEngine.Listing({
             asset:       Ethereum.TBTC,
             assetSymbol: 'TBTC',
             priceFeed:   AGGOR_BTCUSD_ORACLE,
             rateStrategyParams:                Rates.RateStrategyParams({
-                optimalUsageRatio:             60_00,
+                optimalUsageRatio:             _bpsToRay(60_00),
                 baseVariableBorrowRate:        0,
-                variableRateSlope1:            4_00,
-                variableRateSlope2:            300_00,
+                variableRateSlope1:            _bpsToRay(4_00),
+                variableRateSlope2:            _bpsToRay(300_00),
                 stableRateSlope1:              0,  // TODO: Revisit
                 stableRateSlope2:              0,
                 baseStableRateOffset:          0,

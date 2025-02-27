@@ -3,69 +3,31 @@ pragma solidity ^0.8.25;
 
 import { SparkPayloadBase, Base } from "../../SparkPayloadBase.sol";
 
-import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { ForeignController }               from "spark-alm-controller/src/ForeignController.sol";
+import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 /**
- * @title  Feb 20, 2025 Spark Base Proposal
- * @notice Spark Liquidity Layer: Increase PSM Rate Limits
+ * @title  March 06, 2025 Spark Base Proposal
+ * @notice Update cbBTC Morpho supply cap
  * @author Phoenix Labs
- * Forum:  https://forum.sky.money/t/feb-20-2025-proposed-changes-to-spark-for-upcoming-spell/25951
- * Vote:   https://vote.makerdao.com/polling/QmUEJbje#poll-detail
+ * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
+ * Vote:   TODO
  */
 contract SparkBase_20250220 is SparkPayloadBase {
 
-    function execute() external { 
-        // PSM USDC
-        RateLimitHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                ForeignController(Base.ALM_CONTROLLER).LIMIT_PSM_DEPOSIT(),
-                Base.USDC
-            ),
-            Base.ALM_RATE_LIMITS,
-            RateLimitData({
-                maxAmount : 50_000_000e6,
-                slope     : 50_000_000e6 / uint256(1 days)
-            }),
-            "psmUsdcDepositLimit",
-            6
-        );
-        RateLimitHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                ForeignController(Base.ALM_CONTROLLER).LIMIT_PSM_WITHDRAW(),
-                Base.USDC
-            ),
-            Base.ALM_RATE_LIMITS,
-            RateLimitData({
-                maxAmount : 50_000_000e6,
-                slope     : 50_000_000e6 / uint256(1 days)
-            }),
-            "psmUsdcWithdrawLimit",
-            6
-        );
+    address internal constant CBBTC_USDC_ORACLE  = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
 
-        // PSM USDS
-        RateLimitHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                ForeignController(Base.ALM_CONTROLLER).LIMIT_PSM_DEPOSIT(),
-                Base.USDS
-            ),
-            Base.ALM_RATE_LIMITS,
-            RateLimitHelpers.unlimitedRateLimit(),
-            "psmUsdsDepositLimit",
-            18
-        );
+    function execute() external {
+         MarketParams memory usdcCBBTC = MarketParams({
+            loanToken:       Base.USDC,
+            collateralToken: Base.CBBTC,
+            oracle:          CBBTC_USDC_ORACLE,
+            irm:             Base.MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
 
-        // PSM sUSDS
-        RateLimitHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                ForeignController(Base.ALM_CONTROLLER).LIMIT_PSM_DEPOSIT(),
-                Base.SUSDS
-            ),
-            Base.ALM_RATE_LIMITS,
-            RateLimitHelpers.unlimitedRateLimit(),
-            "psmSusdsDepositLimit",
-            18
+        IMetaMorpho(Base.MORPHO_VAULT_SUSDC).submitCap(
+            usdcCBBTC,
+            100_000_000e6
         );
     }
 
