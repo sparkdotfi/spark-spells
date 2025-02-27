@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { console } from "forge-std/console.sol";
+import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
 
-
-import { Ethereum }               from 'spark-address-registry/Ethereum.sol';
+import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import 'src/test-harness/SparkTestBase.sol';
 
@@ -72,7 +71,7 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             isolationMode:            false,
             isolationModeDebtCeiling: 0,
             liquidationProtocolFee:   10_00,
-            emodeCategory:            0  // TODO: Change
+            emodeCategory:            3
         });
 
         CollateralOnboardingTestParams memory tbtcConfigParams = CollateralOnboardingTestParams({
@@ -119,6 +118,22 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
         newCollaterals[1] = tbtcConfigParams;
 
         _testCollateralOnboardings(newCollaterals);
+    }
+
+    function test_ETHEREUM_cbBtcEmode() public {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig   memory cbBtcConfig      = _findReserveConfigBySymbol(allConfigsBefore, 'cbBTC');
+
+        assertEq(cbBtcConfig.eModeCategory, 0);
+
+        executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        cbBtcConfig.eModeCategory = 3;
+
+        _validateReserveConfig(cbBtcConfig, allConfigsAfter);
     }
 
 }

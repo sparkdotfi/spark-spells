@@ -25,6 +25,19 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
         // PAYLOAD_BASE = 0x1e59bBDbd97DDa3E72a65061ecEFEF428F5EFB9a;
     }
 
+    function _preExecute()
+        internal override
+    {
+        LISTING_ENGINE.POOL_CONFIGURATOR().setEModeCategory({
+            categoryId: 3,
+            ltv: 85_00,
+            liquidationThreshold: 90_00,
+            liquidationBonus: 102_00,
+            oracle: AGGOR_BTCUSD_ORACLE,
+            label: 'BTC'
+        });
+    }
+
     function newListings() public pure override returns (IEngine.Listing[] memory) {
         IEngine.Listing[] memory listings = new IEngine.Listing[](2);
 
@@ -57,7 +70,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             borrowCap:             0,
             debtCeiling:           0,
             liqProtocolFee:        10_00,
-            eModeCategory:         0
+            eModeCategory:         3
         });
 
         // TODO: Add cap automator
@@ -93,6 +106,22 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
         });
 
         return listings;
+    }
+
+    function collateralsUpdates()
+        public pure override returns (IEngine.CollateralUpdate[] memory collateralUpdates)
+    {
+        collateralUpdates = new IEngine.CollateralUpdate[](1);
+
+        collateralUpdates[0] = IEngine.CollateralUpdate({
+            asset:          Ethereum.CBBTC,
+            ltv:            EngineFlags.KEEP_CURRENT,
+            liqThreshold:   EngineFlags.KEEP_CURRENT,
+            liqBonus:       EngineFlags.KEEP_CURRENT,
+            debtCeiling:    EngineFlags.KEEP_CURRENT,
+            liqProtocolFee: EngineFlags.KEEP_CURRENT,
+            eModeCategory:  3
+        });
     }
 
     function _postExecute() internal override {
