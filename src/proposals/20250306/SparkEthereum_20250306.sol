@@ -22,26 +22,23 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
     address internal constant AGGOR_BTCUSD_ORACLE = 0x4219aA1A99f3fe90C2ACB97fCbc1204f6485B537;
 
     constructor() {
-        // PAYLOAD_BASE = 0x1e59bBDbd97DDa3E72a65061ecEFEF428F5EFB9a;
+        // PAYLOAD_BASE = 0x;
     }
 
-    function _preExecute()
-        internal override
-    {
+    function _preExecute() internal override {
         LISTING_ENGINE.POOL_CONFIGURATOR().setEModeCategory({
-            categoryId: 3,
-            ltv: 85_00,
+            categoryId:           3,
+            ltv:                  85_00,
             liquidationThreshold: 90_00,
-            liquidationBonus: 102_00,
-            oracle: AGGOR_BTCUSD_ORACLE,
-            label: 'BTC'
+            liquidationBonus:     102_00,
+            oracle:               AGGOR_BTCUSD_ORACLE,
+            label:                'BTC'
         });
     }
 
     function newListings() public pure override returns (IEngine.Listing[] memory) {
         IEngine.Listing[] memory listings = new IEngine.Listing[](2);
 
-        // TODO: Add cap automator
         listings[0] = IEngine.Listing({
             asset:       Ethereum.LBTC,
             assetSymbol: 'LBTC',
@@ -73,7 +70,6 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             eModeCategory:         3
         });
 
-        // TODO: Add cap automator
         listings[1] = IEngine.Listing({
             asset:       Ethereum.TBTC,
             assetSymbol: 'TBTC',

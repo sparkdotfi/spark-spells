@@ -14,7 +14,7 @@ import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol
  */
 contract SparkBase_20250306 is SparkPayloadBase {
 
-    address internal constant CBBTC_USDC_ORACLE  = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
+    address internal constant CBBTC_USDC_ORACLE = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
 
     function execute() external {
         MarketParams memory usdcCBBTC = MarketParams({
@@ -29,9 +29,6 @@ contract SparkBase_20250306 is SparkPayloadBase {
             usdcCBBTC,
             500_000_000e6
         );
-        // IMetaMorpho(Base.MORPHO_VAULT_SUSDC).acceptCap(
-        //     usdcCBBTC
-        // );
     }
 
 }
