@@ -157,6 +157,12 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
 
         executeAllPayloadsAndBridges();
 
+        _assertMorphoCap(address(susdc), usdcCBBTC, 100_000_000e6, 500_000_000e6);
+
+        skip(1 days);
+
+        IMetaMorpho(Base.MORPHO_VAULT_SUSDC).acceptCap(usdcCBBTC);
+
         _assertMorphoCap(address(susdc), usdcCBBTC, 500_000_000e6);
     }
 
