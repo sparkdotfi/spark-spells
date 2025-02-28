@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { SparkPayloadBase, Base } from "../../SparkPayloadBase.sol";
-
 import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
+
+import { SparkPayloadBase, Base } from "../../SparkPayloadBase.sol";
 
 /**
  * @title  March 06, 2025 Spark Base Proposal

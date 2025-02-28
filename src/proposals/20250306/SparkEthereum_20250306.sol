@@ -3,16 +3,17 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
+import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+
 import { IAaveV3ConfigEngine as IEngine } from '../../interfaces/IAaveV3ConfigEngine.sol';
-import { ICapAutomator }                  from '../../interfaces/ICapAutomator.sol';
 
 import { SparkPayloadEthereum, Rates, EngineFlags } from "../../SparkPayloadEthereum.sol";
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-
 /**
  * @title  March 06, 2025 Spark Ethereum Proposal
- * @notice SparkLend: Onboard LBTC, tBTC
+ * @notice SparkLend: Onboard LBTC, tBTC, create new BTC emode with LBTC and cbBTC
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
  * Vote:   TODO
@@ -48,7 +49,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
                 baseVariableBorrowRate:        _bpsToRay(5_00),
                 variableRateSlope1:            _bpsToRay(15_00),
                 variableRateSlope2:            _bpsToRay(300_00),
-                stableRateSlope1:              0,   // TODO: Revisit
+                stableRateSlope1:              0,
                 stableRateSlope2:              0,
                 baseStableRateOffset:          0,
                 stableRateExcessOffset:        0,
@@ -79,7 +80,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
                 baseVariableBorrowRate:        0,
                 variableRateSlope1:            _bpsToRay(4_00),
                 variableRateSlope2:            _bpsToRay(300_00),
-                stableRateSlope1:              0,  // TODO: Revisit
+                stableRateSlope1:              0,
                 stableRateSlope2:              0,
                 baseStableRateOffset:          0,
                 stableRateExcessOffset:        0,

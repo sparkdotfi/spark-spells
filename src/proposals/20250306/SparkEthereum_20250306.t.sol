@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
-
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+
+import { IMetaMorpho, IMorpho, MarketAllocation, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
 
 import 'src/test-harness/SparkTestBase.sol';
 
 import { ChainIdUtils } from 'src/libraries/ChainId.sol';
-
-import { IMetaMorpho, IMorpho, MarketAllocation, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 contract SparkEthereum_20250306Test is SparkEthereumTests {
 
@@ -34,6 +34,7 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
 
         deployPayloads();
 
+        // TODO: Remove these after transferring assets
         deal(Ethereum.LBTC, Ethereum.SPARK_PROXY, 0.0001e8);
         deal(Ethereum.TBTC, Ethereum.SPARK_PROXY, 0.0001e18);
     }
@@ -114,7 +115,7 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             isolationMode:            false,
             isolationModeDebtCeiling: 0,
             liquidationProtocolFee:   10_00,
-            emodeCategory:            0  // TODO: Change
+            emodeCategory:            0
         });
 
         CollateralOnboardingTestParams[] memory newCollaterals = new CollateralOnboardingTestParams[](2);
