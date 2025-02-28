@@ -32,7 +32,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             ltv:                  85_00,
             liquidationThreshold: 90_00,
             liquidationBonus:     102_00,
-            oracle:               AGGOR_BTCUSD_ORACLE,
+            oracle:               address(0),  // No oracle override
             label:                'BTC'
         });
     }
@@ -73,7 +73,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
 
         listings[1] = IEngine.Listing({
             asset:       Ethereum.TBTC,
-            assetSymbol: 'TBTC',
+            assetSymbol: 'tBTC',
             priceFeed:   AGGOR_BTCUSD_ORACLE,
             rateStrategyParams:                Rates.RateStrategyParams({
                 optimalUsageRatio:             _bpsToRay(60_00),
