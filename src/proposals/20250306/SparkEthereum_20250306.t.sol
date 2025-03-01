@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { IMetaMorpho, IMorpho, MarketAllocation, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
 
