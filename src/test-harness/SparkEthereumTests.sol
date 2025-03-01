@@ -94,8 +94,8 @@ abstract contract SparkEthereumTests is SparklendTests {
             ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
             address payload = chainSpellMetadata[chainId].payload;
-            if (payload != address(0) && !chainSpellMetadata[chainId].notPreDeployed) {
-                // A payload is defined for this domain and was not deployed as part of test setup
+            if (payload != address(0)) {
+                // A payload is defined for this domain
                 // We verify the mainnet spell defines this payload correctly
                 address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
                 assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
@@ -321,12 +321,12 @@ abstract contract SparkEthereumTests is SparklendTests {
     /*** Internal testing helper funcitons                                                                         ****/
     /******************************************************************************************************************/
 
-    struct CollateralOnboardingTestParams {
+    struct SparkLendAssetOnboardingParams {
         // General
         string  symbol;
         address tokenAddress;
-        uint256 tokenDecimals;
         address oracleAddress;
+        bool    collateralEnabled;
         // IRM Params
         uint256 optimalUsageRatio;
         uint256 baseVariableBorrowRate;
@@ -352,14 +352,14 @@ abstract contract SparkEthereumTests is SparklendTests {
         uint48 borrowCapMax;
         uint48 borrowCapGap;
         uint48 borrowCapTtl;
-        // Isolation  and emode configurations
+        // Isolation and emode configurations
         bool    isolationMode;
         uint256 isolationModeDebtCeiling;
         uint256 liquidationProtocolFee;
         uint256 emodeCategory;
     }
 
-    function _testCollateralOnboardings(CollateralOnboardingTestParams[] memory collaterals) internal{
+    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal{
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
@@ -373,13 +373,13 @@ abstract contract SparkEthereumTests is SparklendTests {
         assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
 
         for (uint256 i = 0; i < collaterals.length; i++) {
-            _testCollateralOnboarding(allConfigsAfter, collaterals[i]);
+            _testAssetOnboarding(allConfigsAfter, collaterals[i]);
         }
     }
 
-    function _testCollateralOnboarding(
+    function _testAssetOnboarding(
         ReserveConfig[] memory allReserveConfigs,
-        CollateralOnboardingTestParams memory params
+        SparkLendAssetOnboardingParams memory params
     )
         internal view
     {
@@ -389,19 +389,19 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         address irm = _findReserveConfigBySymbol(allReserveConfigs, params.symbol).interestRateStrategy;
 
-        ReserveConfig memory lbtcConfig = ReserveConfig({
+        ReserveConfig memory reserveConfig = ReserveConfig({
             symbol:                   params.symbol,
             underlying:               params.tokenAddress,
             aToken:                   address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
             variableDebtToken:        address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
             stableDebtToken:          address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            decimals:                 params.tokenDecimals,
+            decimals:                 IERC20(params.tokenAddress).decimals(),
             ltv:                      params.ltv,
             liquidationThreshold:     params.liquidationThreshold,
             liquidationBonus:         params.liquidationBonus,
             liquidationProtocolFee:   params.liquidationProtocolFee,
             reserveFactor:            params.reserveFactor,
-            usageAsCollateralEnabled: true,
+            usageAsCollateralEnabled: params.collateralEnabled,
             borrowingEnabled:         params.borrowEnabled,
             interestRateStrategy:     irm,
             stableBorrowRateEnabled:  false,
@@ -411,13 +411,13 @@ abstract contract SparkEthereumTests is SparklendTests {
             isSiloed:                 params.siloedBorrowEnabled,
             isBorrowableInIsolation:  params.isolationBorrowEnabled,
             isFlashloanable:          params.flashloanEnabled,
-            supplyCap:                params.supplyCap,  // TODO: Fix
+            supplyCap:                params.supplyCap,
             borrowCap:                params.borrowCap,
             debtCeiling:              params.isolationModeDebtCeiling,
             eModeCategory:            params.emodeCategory
         });
 
-        InterestStrategyValues memory lbtcIrmParams = InterestStrategyValues({
+        InterestStrategyValues memory irmParams = InterestStrategyValues({
             addressesProvider:             address(poolAddressesProvider),
             optimalUsageRatio:             params.optimalUsageRatio,
             optimalStableToTotalDebtRatio: 0,
@@ -429,9 +429,9 @@ abstract contract SparkEthereumTests is SparklendTests {
             variableRateSlope2:            params.variableRateSlope2
         });
 
-        _validateReserveConfig(lbtcConfig, allReserveConfigs);
+        _validateReserveConfig(reserveConfig, allReserveConfigs);
 
-        _validateInterestRateStrategy(irm, irm, lbtcIrmParams);
+        _validateInterestRateStrategy(irm, irm, irmParams);
 
         _assertSupplyCapConfig({
             asset:            params.tokenAddress,

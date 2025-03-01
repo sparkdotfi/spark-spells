@@ -22,12 +22,10 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
     }
 
     function setUp() public {
-        vm.createSelectFork(getChain('mainnet').rpcUrl, 21930000);  // Feb 26, 2024
-
-        // Feb 26, 2025
+        // March 1, 2025
         setupDomains({
-            mainnetForkBlock:     21930000,
-            baseForkBlock:        26348524,
+            mainnetForkBlock:     21950000,
+            baseForkBlock:        27020000,
             gnosisForkBlock:      38037888,  // Not used
             arbitrumOneForkBlock: 307093406  // Not used
         });
@@ -40,12 +38,12 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
     }
 
     function test_ETHEREUM_sparkLend_collateralOnboardingLbtcAndTbtc() public {
-        CollateralOnboardingTestParams memory lbtcConfigParams = CollateralOnboardingTestParams({
+        SparkLendAssetOnboardingParams memory lbtcParams = SparkLendAssetOnboardingParams({
             // General
-            symbol:       'LBTC',
-            tokenAddress:  Ethereum.LBTC,
-            tokenDecimals: 8,
-            oracleAddress: AGGOR_BTCUSD_ORACLE,
+            symbol:            'LBTC',
+            tokenAddress:      Ethereum.LBTC,
+            oracleAddress:     AGGOR_BTCUSD_ORACLE,
+            collateralEnabled: true,
             // IRM Params
             optimalUsageRatio:      0.45e27,
             baseVariableBorrowRate: 0.05e27,
@@ -79,12 +77,12 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             emodeCategory:            3
         });
 
-        CollateralOnboardingTestParams memory tbtcConfigParams = CollateralOnboardingTestParams({
+        SparkLendAssetOnboardingParams memory tbtcParams = SparkLendAssetOnboardingParams({
             // General
-            symbol:       'tBTC',
-            tokenAddress:  Ethereum.TBTC,
-            tokenDecimals: 18,
-            oracleAddress: AGGOR_BTCUSD_ORACLE,
+            symbol:           'tBTC',
+            tokenAddress:      Ethereum.TBTC,
+            oracleAddress:     AGGOR_BTCUSD_ORACLE,
+            collateralEnabled: true,
             // IRM Params
             optimalUsageRatio:      0.60e27,
             baseVariableBorrowRate: 0,
@@ -118,11 +116,11 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
             emodeCategory:            0
         });
 
-        CollateralOnboardingTestParams[] memory newCollaterals = new CollateralOnboardingTestParams[](2);
-        newCollaterals[0] = lbtcConfigParams;
-        newCollaterals[1] = tbtcConfigParams;
+        SparkLendAssetOnboardingParams[] memory newAssets = new SparkLendAssetOnboardingParams[](2);
+        newAssets[0] = lbtcParams;
+        newAssets[1] = tbtcParams;
 
-        _testCollateralOnboardings(newCollaterals);
+        _testAssetOnboardings(newAssets);
     }
 
     function test_ETHEREUM_cbBtcEmode() public {

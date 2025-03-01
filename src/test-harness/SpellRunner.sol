@@ -50,7 +50,6 @@ abstract contract SpellRunner is Test {
       BridgeType[]                   bridgeTypes;
       // @notice coupled to SparklendTests, zero on chains where sparklend is not present
       IPoolAddressesProviderRegistry sparklendPooAddressProviderRegistry;
-      bool                           notPreDeployed;
     }
 
     mapping(ChainId chainId => ChainSpellMetadata chainSpellMetadata) internal chainSpellMetadata;
@@ -138,7 +137,6 @@ abstract contract SpellRunner is Test {
             string memory identifier = spellIdentifier(chainId);
             try vm.getCode(identifier) {
                 chainSpellMetadata[chainId].payload = deployPayload(chainId);
-                chainSpellMetadata[chainId].notPreDeployed = true;  // Check payload match testing
             } catch {
                 console.log("skipping spell deployment for network: ", chainId.toDomainString());
             }
