@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
+import { DataTypes } from "sparklend-v1-core/contracts/protocol/libraries/types/DataTypes.sol";
+
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
@@ -22,7 +24,7 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
     }
 
     function setUp() public {
-        // March 1, 2025
+        // March 3, 2025
         setupDomains({
             mainnetForkBlock:     21966742,
             baseForkBlock:        27110171,
@@ -31,6 +33,28 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
         });
 
         deployPayloads();
+    }
+
+    function test_ETHEREUM_sparkLend_emodeUpdate() public {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        DataTypes.EModeCategory memory eModeBefore = pool.getEModeCategoryData(3);
+
+        assertEq(eModeBefore.ltv,                  0);
+        assertEq(eModeBefore.liquidationThreshold, 0);
+        assertEq(eModeBefore.liquidationBonus,     0);
+        assertEq(eModeBefore.priceSource,          address(0));
+        assertEq(eModeBefore.label,                '');
+
+        executeAllPayloadsAndBridges();
+
+        DataTypes.EModeCategory memory eModeAfter = pool.getEModeCategoryData(3);
+
+        assertEq(eModeAfter.ltv,                  85_00);
+        assertEq(eModeAfter.liquidationThreshold, 90_00);
+        assertEq(eModeAfter.liquidationBonus,     102_00);
+        assertEq(eModeAfter.priceSource,          address(0));
+        assertEq(eModeAfter.label,                'BTC');
     }
 
     function test_ETHEREUM_sparkLend_collateralOnboardingLbtcAndTbtc() public {
@@ -119,7 +143,7 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
         _testAssetOnboardings(newAssets);
     }
 
-    function test_ETHEREUM_cbBtcEmode() public {
+    function test_ETHEREUM_sparkLend_cbBtcEmode() public {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
@@ -135,7 +159,7 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
         _validateReserveConfig(cbBtcConfig, allConfigsAfter);
     }
 
-    function test_BASE_MorphoConfiguration() public onChain(ChainIdUtils.Base()) {
+    function test_BASE_morphoConfiguration() public onChain(ChainIdUtils.Base()) {
         IMetaMorpho susdc = IMetaMorpho(Base.MORPHO_VAULT_SUSDC);
 
         MarketParams memory usdcCBBTC = MarketParams({
