@@ -24,7 +24,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
     address internal constant AGGOR_BTCUSD_ORACLE = 0x4219aA1A99f3fe90C2ACB97fCbc1204f6485B537;
 
     constructor() {
-        // PAYLOAD_BASE = 0x;
+        PAYLOAD_BASE = 0xAFaFC068B62195B60B53d05803A6a91687B61e44;
     }
 
     function _preExecute() internal override {
