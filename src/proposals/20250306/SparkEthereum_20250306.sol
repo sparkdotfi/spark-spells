@@ -16,7 +16,8 @@ import { SparkPayloadEthereum, Rates, EngineFlags } from "../../SparkPayloadEthe
  * @notice SparkLend: Onboard LBTC, tBTC, create new BTC emode with LBTC and cbBTC
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
- * Vote:   TODO
+ * Vote:   https://vote.makerdao.com/polling/QmfM4SBB
+ *         https://vote.makerdao.com/polling/QmbDzZ3F
  */
 contract SparkEthereum_20250306 is SparkPayloadEthereum {
 
