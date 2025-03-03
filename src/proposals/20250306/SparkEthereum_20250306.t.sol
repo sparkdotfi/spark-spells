@@ -24,17 +24,13 @@ contract SparkEthereum_20250306Test is SparkEthereumTests {
     function setUp() public {
         // March 1, 2025
         setupDomains({
-            mainnetForkBlock:     21950000,
-            baseForkBlock:        27020000,
+            mainnetForkBlock:     21966742,
+            baseForkBlock:        27110171,
             gnosisForkBlock:      38037888,  // Not used
             arbitrumOneForkBlock: 307093406  // Not used
         });
 
         deployPayloads();
-
-        // TODO: Remove these after transferring assets
-        deal(Ethereum.LBTC, Ethereum.SPARK_PROXY, 0.0001e8);
-        deal(Ethereum.TBTC, Ethereum.SPARK_PROXY, 0.0001e18);
     }
 
     function test_ETHEREUM_sparkLend_collateralOnboardingLbtcAndTbtc() public {
