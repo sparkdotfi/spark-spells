@@ -14,7 +14,7 @@ import 'src/test-harness/SparkTestBase.sol';
 
 import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 
-contract SparkEthereum_20250306Test is SparkEthereumTests, CommonSpellAssertions {
+contract SparkEthereum_20250306Test is SparkTestBase {
 
     address internal constant AGGOR_BTCUSD_ORACLE = 0x4219aA1A99f3fe90C2ACB97fCbc1204f6485B537;
     address internal constant CBBTC_USDC_ORACLE   = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
