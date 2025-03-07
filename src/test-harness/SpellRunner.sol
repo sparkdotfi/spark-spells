@@ -205,7 +205,7 @@ abstract contract SpellRunner is Test {
                     console.log("simulating execution payload for network: ", chainId.toDomainString());
                 }
             }
-            
+
         }
     }
 

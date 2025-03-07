@@ -160,7 +160,7 @@ contract SparkEthereum_20241017Test is SparkEthereumTestBase {
                 variableRateSlope2:            3e27
             })
         );
-        
+
         _assertSupplyCapConfig({
             asset:            SUSDS,
             max:              500_000_000,
@@ -218,7 +218,7 @@ contract SparkEthereum_20241017Test is SparkEthereumTestBase {
 
         _assertMorphoCap(ptUsde26Dec, 100_000_000e18);
         _assertMorphoCap(ptUsde27Mar, 100_000_000e18);
-        
+
         // Commented because of an open issue with Foundry with the evm version
         // https://github.com/foundry-rs/foundry/issues/6228
         // NOTE: Can run this test individually after commenting out these assertions with forge t --mt testMorphoVaults -vvv --evm-version cancun
