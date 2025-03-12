@@ -12,19 +12,28 @@ import { IAaveV3ConfigEngine as IEngine } from '../../interfaces/IAaveV3ConfigEn
 import { SparkPayloadEthereum, Rates, EngineFlags } from "../../SparkPayloadEthereum.sol";
 
 /**
- * @title  March 06, 2025 Spark Ethereum Proposal
- * @notice SparkLend: Onboard LBTC, tBTC, create new BTC emode with LBTC and cbBTC
+ * @title  March 20, 2025 Spark Ethereum Proposal
+ * @notice SparkLend: Onboard LBTC, tBTC, ezETH, rsETH, create new BTC emode with LBTC and cbBTC
+ *         Morpho: Onboard May eUSDe PT, July USDe PT
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
+ *         https://forum.sky.money/t/march-20-2025-proposed-changes-to-spark-for-upcoming-spell/26113
  * Vote:   https://vote.makerdao.com/polling/QmfM4SBB
  *         https://vote.makerdao.com/polling/QmbDzZ3F
+ *         https://vote.makerdao.com/polling/QmTj3BSu
+ *         https://vote.makerdao.com/polling/QmPkA2GP
  */
-contract SparkEthereum_20250306 is SparkPayloadEthereum {
+contract SparkEthereum_20250320 is SparkPayloadEthereum {
 
     address internal constant AGGOR_BTCUSD_ORACLE = 0x4219aA1A99f3fe90C2ACB97fCbc1204f6485B537;
 
+    address internal constant EZETH_ORACLE = 0x52E85eB49e07dF74c8A9466D2164b4C4cA60014A;
+    address internal constant RSETH_ORACLE = 0x70942D6b580741CF50A7906f4100063EE037b8eb;
+
     constructor() {
-        PAYLOAD_BASE = 0xAFaFC068B62195B60B53d05803A6a91687B61e44;
+        // TODO
+        PAYLOAD_BASE     = address(0);
+        PAYLOAD_ARBITRUM = address(0);
     }
 
     function _preExecute() internal override {
@@ -39,7 +48,7 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
     }
 
     function newListings() public pure override returns (IEngine.Listing[] memory) {
-        IEngine.Listing[] memory listings = new IEngine.Listing[](2);
+        IEngine.Listing[] memory listings = new IEngine.Listing[](4);
 
         listings[0] = IEngine.Listing({
             asset:       Ethereum.LBTC,
@@ -103,6 +112,68 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
             eModeCategory:         0
         });
 
+        listings[2] = IEngine.Listing({
+            asset:       Ethereum.EZETH,
+            assetSymbol: 'ezETH',
+            priceFeed:   EZETH_ORACLE,
+            rateStrategyParams:                Rates.RateStrategyParams({
+                optimalUsageRatio:             _bpsToRay(45_00),
+                baseVariableBorrowRate:        _bpsToRay(5_00),
+                variableRateSlope1:            _bpsToRay(15_00),
+                variableRateSlope2:            _bpsToRay(300_00),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseStableRateOffset:          0,
+                stableRateExcessOffset:        0,
+                optimalStableToTotalDebtRatio: 0
+            }),
+            enabledToBorrow:       EngineFlags.DISABLED,
+            stableRateModeEnabled: EngineFlags.DISABLED,
+            borrowableInIsolation: EngineFlags.DISABLED,
+            withSiloedBorrowing:   EngineFlags.DISABLED,
+            flashloanable:         EngineFlags.DISABLED,
+            ltv:                   72_00,
+            liqThreshold:          73_00,
+            liqBonus:              10_00,
+            reserveFactor:         15_00,
+            supplyCap:             2_000,
+            borrowCap:             0,
+            debtCeiling:           0,
+            liqProtocolFee:        10_00,
+            eModeCategory:         0
+        });
+
+        listings[3] = IEngine.Listing({
+            asset:       Ethereum.RSETH,
+            assetSymbol: 'rsETH',
+            priceFeed:   RSETH_ORACLE,
+            rateStrategyParams:                Rates.RateStrategyParams({
+                optimalUsageRatio:             _bpsToRay(45_00),
+                baseVariableBorrowRate:        _bpsToRay(5_00),
+                variableRateSlope1:            _bpsToRay(15_00),
+                variableRateSlope2:            _bpsToRay(300_00),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseStableRateOffset:          0,
+                stableRateExcessOffset:        0,
+                optimalStableToTotalDebtRatio: 0
+            }),
+            enabledToBorrow:       EngineFlags.DISABLED,
+            stableRateModeEnabled: EngineFlags.DISABLED,
+            borrowableInIsolation: EngineFlags.DISABLED,
+            withSiloedBorrowing:   EngineFlags.DISABLED,
+            flashloanable:         EngineFlags.DISABLED,
+            ltv:                   72_00,
+            liqThreshold:          73_00,
+            liqBonus:              10_00,
+            reserveFactor:         15_00,
+            supplyCap:             2_000,
+            borrowCap:             0,
+            debtCeiling:           0,
+            liqProtocolFee:        10_00,
+            eModeCategory:         0
+        });
+
         return listings;
     }
 
@@ -131,12 +202,24 @@ contract SparkEthereum_20250306 is SparkPayloadEthereum {
         IERC20(Ethereum.TBTC).approve(address(LISTING_ENGINE.POOL()), 0.0001e18);
         LISTING_ENGINE.POOL().supply(Ethereum.TBTC, 0.0001e18, address(this), 0);
 
+        // Seed the new ezETH pool
+        IERC20(Ethereum.EZETH).approve(address(LISTING_ENGINE.POOL()), 0.0001e18);
+        LISTING_ENGINE.POOL().supply(Ethereum.EZETH, 0.0001e18, address(this), 0);
+
+        // Seed the new rsETH pool
+        IERC20(Ethereum.RSETH).approve(address(LISTING_ENGINE.POOL()), 0.0001e18);
+        LISTING_ENGINE.POOL().supply(Ethereum.RSETH, 0.0001e18, address(this), 0);
+
         ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
 
         capAutomator.setSupplyCapConfig({ asset: Ethereum.LBTC, max: 2500, gap: 250, increaseCooldown: 12 hours });
 
         capAutomator.setSupplyCapConfig({ asset: Ethereum.TBTC, max: 500, gap: 125, increaseCooldown: 12 hours });
         capAutomator.setBorrowCapConfig({ asset: Ethereum.TBTC, max: 250, gap: 25,  increaseCooldown: 12 hours });
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.EZETH, max: 20_000, gap: 2_000, increaseCooldown: 12 hours });
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.RSETH, max: 20_000, gap: 2_000, increaseCooldown: 12 hours });
     }
 
 }

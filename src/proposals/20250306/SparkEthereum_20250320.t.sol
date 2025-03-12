@@ -14,26 +14,28 @@ import 'src/test-harness/SparkTestBase.sol';
 
 import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 
-contract SparkEthereum_20250306Test is SparkTestBase {
+contract SparkEthereum_20250320Test is SparkTestBase {
 
     address internal constant AGGOR_BTCUSD_ORACLE = 0x4219aA1A99f3fe90C2ACB97fCbc1204f6485B537;
     address internal constant CBBTC_USDC_ORACLE   = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
 
+    address internal constant EZETH_ORACLE = 0x52E85eB49e07dF74c8A9466D2164b4C4cA60014A;
+    address internal constant RSETH_ORACLE = 0x70942D6b580741CF50A7906f4100063EE037b8eb;
+
     constructor() {
-        id = '20250306';
+        id = '20250320';
     }
 
     function setUp() public {
-        // March 3, 2025
+        // March 12, 2025
         setupDomains({
-            mainnetForkBlock:     21968744,
-            baseForkBlock:        27122000,
+            mainnetForkBlock:     22031539,
+            baseForkBlock:        27499543,
             gnosisForkBlock:      38037888,  // Not used
-            arbitrumOneForkBlock: 307093406  // Not used
+            arbitrumOneForkBlock: 314934161
         });
-
-        chainSpellMetadata[ChainIdUtils.Ethereum()].payload = 0xBeA5FA2bFC4F6a0b6060Eb8EC23F25db8259cEE0;
-        chainSpellMetadata[ChainIdUtils.Base()].payload     = 0xAFaFC068B62195B60B53d05803A6a91687B61e44;
+        
+        deployPayloads();
     }
 
     function test_ETHEREUM_sparkLend_emodeUpdate() public {
@@ -58,7 +60,7 @@ contract SparkEthereum_20250306Test is SparkTestBase {
         assertEq(eModeAfter.label,                'BTC');
     }
 
-    function test_ETHEREUM_sparkLend_collateralOnboardingLbtcAndTbtc() public {
+    function test_ETHEREUM_sparkLend_collateralOnboarding() public {
         SparkLendAssetOnboardingParams memory lbtcParams = SparkLendAssetOnboardingParams({
             // General
             symbol:            'LBTC',
@@ -137,9 +139,89 @@ contract SparkEthereum_20250306Test is SparkTestBase {
             emodeCategory:            0
         });
 
-        SparkLendAssetOnboardingParams[] memory newAssets = new SparkLendAssetOnboardingParams[](2);
+        SparkLendAssetOnboardingParams memory ezethParams = SparkLendAssetOnboardingParams({
+            // General
+            symbol:           'ezETH',
+            tokenAddress:      Ethereum.EZETH,
+            oracleAddress:     EZETH_ORACLE,
+            collateralEnabled: true,
+            // IRM Params
+            optimalUsageRatio:      0.45e27,
+            baseVariableBorrowRate: 0.05e27,
+            variableRateSlope1:     0.15e27,
+            variableRateSlope2:     3e27,
+            // Borrowing configuration
+            borrowEnabled:          false,
+            stableBorrowEnabled:    false,
+            isolationBorrowEnabled: false,
+            siloedBorrowEnabled:    false,
+            flashloanEnabled:       false,
+            // Reserve configuration
+            ltv:                  72_00,
+            liquidationThreshold: 73_00,
+            liquidationBonus:     110_00,
+            reserveFactor:        15_00,
+            // Supply caps
+            supplyCap:    2_000,
+            supplyCapMax: 20_000,
+            supplyCapGap: 2_000,
+            supplyCapTtl: 12 hours,
+            // Borrow caps
+            borrowCap:    0,
+            borrowCapMax: 0,
+            borrowCapGap: 0,
+            borrowCapTtl: 0,
+            // Isolation  and emode configurations
+            isolationMode:            false,
+            isolationModeDebtCeiling: 0,
+            liquidationProtocolFee:   10_00,
+            emodeCategory:            0
+        });
+
+        SparkLendAssetOnboardingParams memory rsethParams = SparkLendAssetOnboardingParams({
+            // General
+            symbol:           'rsETH',
+            tokenAddress:      Ethereum.RSETH,
+            oracleAddress:     RSETH_ORACLE,
+            collateralEnabled: true,
+            // IRM Params
+            optimalUsageRatio:      0.45e27,
+            baseVariableBorrowRate: 0.05e27,
+            variableRateSlope1:     0.15e27,
+            variableRateSlope2:     3e27,
+            // Borrowing configuration
+            borrowEnabled:          false,
+            stableBorrowEnabled:    false,
+            isolationBorrowEnabled: false,
+            siloedBorrowEnabled:    false,
+            flashloanEnabled:       false,
+            // Reserve configuration
+            ltv:                  72_00,
+            liquidationThreshold: 73_00,
+            liquidationBonus:     110_00,
+            reserveFactor:        15_00,
+            // Supply caps
+            supplyCap:    2_000,
+            supplyCapMax: 20_000,
+            supplyCapGap: 2_000,
+            supplyCapTtl: 12 hours,
+            // Borrow caps
+            borrowCap:    0,
+            borrowCapMax: 0,
+            borrowCapGap: 0,
+            borrowCapTtl: 0,
+            // Isolation  and emode configurations
+            isolationMode:            false,
+            isolationModeDebtCeiling: 0,
+            liquidationProtocolFee:   10_00,
+            emodeCategory:            0
+        });
+
+        SparkLendAssetOnboardingParams[] memory newAssets = new SparkLendAssetOnboardingParams[](4);
         newAssets[0] = lbtcParams;
         newAssets[1] = tbtcParams;
+        newAssets[2] = ezethParams;
+        newAssets[3] = rsethParams;
 
         _testAssetOnboardings(newAssets);
     }
