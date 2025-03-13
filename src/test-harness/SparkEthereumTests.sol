@@ -454,4 +454,27 @@ abstract contract SparkEthereumTests is SparklendTests {
             '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE'
         );
     }
+
+    function _testMorphoCapUpdate(
+        address vault,
+        MarketParams memory config,
+        uint256 currentCap,
+        uint256 newCap
+    )
+        internal
+    {
+        _assertMorphoCap(vault, config, currentCap);
+
+        executeAllPayloadsAndBridges();
+
+        _assertMorphoCap(vault, config, currentCap, newCap);
+
+        assertEq(IMetaMorpho(vault).timelock(), 1 days);
+        skip(1 days);
+
+        IMetaMorpho(vault).acceptCap(config);
+
+        _assertMorphoCap(vault, config, newCap);
+    }
+
 }

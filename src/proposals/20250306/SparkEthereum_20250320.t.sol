@@ -22,6 +22,11 @@ contract SparkEthereum_20250320Test is SparkTestBase {
     address internal constant EZETH_ORACLE = 0x52E85eB49e07dF74c8A9466D2164b4C4cA60014A;
     address internal constant RSETH_ORACLE = 0x70942D6b580741CF50A7906f4100063EE037b8eb;
 
+    address internal constant PT_EUSDE_29MAY2025            = 0x50D2C7992b802Eef16c04FeADAB310f31866a545;
+    address internal constant PT_EUSDE_29MAY2025_PRICE_FEED = 0x39a695Eb6d0C01F6977521E5E79EA8bc232b506a;
+    address internal constant PT_USDE_31JUL2025             = 0x917459337CaAC939D41d7493B3999f571D20D667;
+    address internal constant PT_USDE_31JUL2025_PRICE_FEED  = 0xFCaE69BEF9B6c96D89D58664d8aeA84BddCe2E5c;
+
     constructor() {
         id = '20250320';
     }
@@ -240,6 +245,36 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         cbBtcConfig.eModeCategory = 3;
 
         _validateReserveConfig(cbBtcConfig, allConfigsAfter);
+    }
+
+    function test_ETHEREUM_morpho_PTEUSDE29MAY2025Onboarding() public {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_DAI_1,
+            config: MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_EUSDE_29MAY2025,
+                oracle:          PT_EUSDE_29MAY2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 0,
+            newCap:     300_000_000e18
+        });
+    }
+
+    function test_ETHEREUM_morpho_PTUSDE31JUL2025Onboarding() public {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_DAI_1,
+            config: MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_USDE_31JUL2025,
+                oracle:          PT_USDE_31JUL2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 0,
+            newCap:     200_000_000e18
+        });
     }
 
     function test_BASE_morphoConfiguration() public onChain(ChainIdUtils.Base()) {
