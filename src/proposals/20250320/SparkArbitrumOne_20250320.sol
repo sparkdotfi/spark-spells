@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import { SparkPayloadArbitrumOne, Arbitrum } from "../../SparkPayloadArbitrumOne.sol";
 
 /**
- * @title  March 20, 2025 Spark Base Proposal
+ * @title  March 20, 2025 Spark Arbitrum Proposal
  * @notice Onboard Aave USDC
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/march-20-2025-proposed-changes-to-spark-for-upcoming-spell/26113
