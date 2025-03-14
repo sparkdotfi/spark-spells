@@ -15,8 +15,6 @@ contract SparkArbitrumOne_20250320 is SparkPayloadArbitrumOne {
 
     function execute() external {
         _onboardAaveToken(Arbitrum.ATOKEN_USDC, 30_000_000e6, 15_000_000e6 / uint256(1 days));
-        // TODO need actual address
-        //_onboardERC4626Vault(Arbitrum.FLUID_SUSDS, 10_000_000e18, 5_000_000e18 / uint256(1 days));
     }
 
 }

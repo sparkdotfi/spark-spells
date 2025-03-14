@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
+import 'src/test-harness/SparkTestBase.sol';
+
+import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
+
 import { DataTypes } from "sparklend-v1-core/contracts/protocol/libraries/types/DataTypes.sol";
 
+import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { ForeignController } from 'spark-alm-controller/src/ForeignController.sol';
+import { RateLimitHelpers }  from 'spark-alm-controller/src/RateLimitHelpers.sol';
+import { IRateLimits }       from 'spark-alm-controller/src/interfaces/IRateLimits.sol';
 
 import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
-
-import 'src/test-harness/SparkTestBase.sol';
-
-import { ChainIdUtils } from 'src/libraries/ChainId.sol';
+import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
 contract SparkEthereum_20250320Test is SparkTestBase {
 
@@ -43,7 +49,7 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         deployPayloads();
     }
 
-    function test_ETHEREUM_sparkLend_emodeUpdate() public {
+    function test_ETHEREUM_sparkLend_emodeUpdate() public onChain(ChainIdUtils.Ethereum()) {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         DataTypes.EModeCategory memory eModeBefore = pool.getEModeCategoryData(3);
@@ -65,7 +71,7 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         assertEq(eModeAfter.label,                'BTC');
     }
 
-    function test_ETHEREUM_sparkLend_collateralOnboarding() public {
+    function test_ETHEREUM_sparkLend_collateralOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         SparkLendAssetOnboardingParams memory lbtcParams = SparkLendAssetOnboardingParams({
             // General
             symbol:            'LBTC',
@@ -231,7 +237,7 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         _testAssetOnboardings(newAssets);
     }
 
-    function test_ETHEREUM_sparkLend_cbBtcEmode() public {
+    function test_ETHEREUM_sparkLend_cbBtcEmode() public onChain(ChainIdUtils.Ethereum()) {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
@@ -247,7 +253,7 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         _validateReserveConfig(cbBtcConfig, allConfigsAfter);
     }
 
-    function test_ETHEREUM_morpho_PTEUSDE29MAY2025Onboarding() public {
+    function test_ETHEREUM_morpho_PTEUSDE29MAY2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: Ethereum.MORPHO_VAULT_DAI_1,
             config: MarketParams({
@@ -262,7 +268,7 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         });
     }
 
-    function test_ETHEREUM_morpho_PTUSDE31JUL2025Onboarding() public {
+    function test_ETHEREUM_morpho_PTUSDE31JUL2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: Ethereum.MORPHO_VAULT_DAI_1,
             config: MarketParams({
@@ -277,28 +283,98 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         });
     }
 
-    function test_BASE_morphoConfiguration() public onChain(ChainIdUtils.Base()) {
-        IMetaMorpho susdc = IMetaMorpho(Base.MORPHO_VAULT_SUSDC);
-
-        MarketParams memory usdcCBBTC = MarketParams({
-            loanToken:       Base.USDC,
-            collateralToken: Base.CBBTC,
-            oracle:          CBBTC_USDC_ORACLE,
-            irm:             Base.MORPHO_DEFAULT_IRM,
-            lltv:            0.86e18
+    function test_BASE_morpho_CBBTCSupplyCap() public onChain(ChainIdUtils.Base()) {
+        _testMorphoCapUpdate({
+            vault: Base.MORPHO_VAULT_SUSDC,
+            config: MarketParams({
+                loanToken:       Base.USDC,
+                collateralToken: Base.CBBTC,
+                oracle:          CBBTC_USDC_ORACLE,
+                irm:             Base.MORPHO_DEFAULT_IRM,
+                lltv:            0.86e18
+            }),
+            currentCap: 100_000_000e6,
+            newCap:     500_000_000e6
         });
+    }
 
-        _assertMorphoCap(address(susdc), usdcCBBTC, 100_000_000e6);
+    function test_ARBITRUM_AaveOnboardingIntegration() public onChain(ChainIdUtils.ArbitrumOne()) {
+        executeAllPayloadsAndBridges();
+
+        ForeignController controller = ForeignController(Arbitrum.ALM_CONTROLLER);
+        
+        IERC20 usdc  = IERC20(Arbitrum.USDC);
+        IERC20 ausdc = IERC20(Arbitrum.ATOKEN_USDC);
+
+        // Use a realistic numbers to check the rate limits
+        uint256 usdcAmount = 5_000_000e6;
+
+        deal(Arbitrum.USDC, Arbitrum.ALM_PROXY, usdcAmount);
+
+        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),  usdcAmount);
+        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+
+        vm.startPrank(Arbitrum.ALM_RELAYER);
+
+        controller.depositAave(Arbitrum.ATOKEN_USDC, usdcAmount);
+
+        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),  0);
+        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
+
+        controller.withdrawAave(Arbitrum.ATOKEN_USDC, usdcAmount);
+
+        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),  usdcAmount);
+        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+    }
+
+    function test_ARBITRUM_AaveRateLimits() public onChain(ChainIdUtils.ArbitrumOne()) {
+        ForeignController controller = ForeignController(Arbitrum.ALM_CONTROLLER);
+        IRateLimits rateLimits       = IRateLimits(Arbitrum.ALM_RATE_LIMITS);
+        
+        IERC20 usdc  = IERC20(Arbitrum.USDC);
+        IERC20 ausdc = IERC20(Arbitrum.ATOKEN_USDC);
+
+        bytes32 usdcDepositKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_AAVE_DEPOSIT(),
+            address(ausdc)
+        );
+        bytes32 usdcWithdrawKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_AAVE_WITHDRAW(),
+            address(ausdc)
+        );
+
+        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
+        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
 
         executeAllPayloadsAndBridges();
 
-        _assertMorphoCap(address(susdc), usdcCBBTC, 100_000_000e6, 500_000_000e6);
+        deal(Arbitrum.USDC, Arbitrum.ALM_PROXY, 30_000_000e6);
 
-        skip(1 days);
+        vm.startPrank(Arbitrum.ALM_RELAYER);
 
-        IMetaMorpho(Base.MORPHO_VAULT_SUSDC).acceptCap(usdcCBBTC);
+        // USDC
 
-        _assertMorphoCap(address(susdc), usdcCBBTC, 500_000_000e6);
+        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 30_000_000e6);
+        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),             30_000_000e6);
+        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY),            0);
+
+        controller.depositAave(address(ausdc), 30_000_000e6);
+
+        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
+        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),             0);
+        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY),            30_000_000e6 + 1);  // Rounding
+
+        assertEq(rateLimits.getCurrentRateLimit(usdcWithdrawKey), type(uint256).max);
+
+        // Confirm proper recharge rate
+        skip(1 hours);
+
+        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 15_000_000e6 / uint256(1 days) * 1 hours);
+
+        // All limits should be reset in 2 days + 1 (rounding)
+        skip(47 hours + 1);
+
+        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 30_000_000e6);
     }
 
 }
