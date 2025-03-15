@@ -33,17 +33,22 @@ contract SparkEthereum_20250320Test is SparkTestBase {
     address internal constant PT_USDE_31JUL2025             = 0x917459337CaAC939D41d7493B3999f571D20D667;
     address internal constant PT_USDE_31JUL2025_PRICE_FEED  = 0xFCaE69BEF9B6c96D89D58664d8aeA84BddCe2E5c;
 
+    address internal constant DAI_IRM_OLD  = 0xd957978711F705358dbE34B37D381a76E1555E28;
+    address internal constant DAI_IRM_NEW  = 0x5a7E7a32331189a794ac33Fec76C0A1dD3dDCF9c;
+    address internal constant USDS_IRM_OLD = 0x2DB2f1eE78b4e0ad5AaF44969E2E8f563437f34C;
+    address internal constant USDS_IRM_NEW = 0xD94BA511284d2c56F59a687C3338441d33304E07;
+
     constructor() {
         id = '20250320';
     }
 
     function setUp() public {
-        // March 12, 2025
+        // March 15, 2025
         setupDomains({
-            mainnetForkBlock:     22031539,
-            baseForkBlock:        27499543,
+            mainnetForkBlock:     22052377,
+            baseForkBlock:        27626774,
             gnosisForkBlock:      38037888,  // Not used
-            arbitrumOneForkBlock: 314934161
+            arbitrumOneForkBlock: 315947947
         });
         
         deployPayloads();
@@ -253,6 +258,34 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         _validateReserveConfig(cbBtcConfig, allConfigsAfter);
     }
 
+    function test_ETHEREUM_sparkLend_daiIRMUpdate() public onChain(ChainIdUtils.Ethereum()) {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        _testRateTargetBaseIRMUpdate({
+            symbol:      'DAI',
+            oldIRM:      DAI_IRM_OLD,
+            newIRM:      DAI_IRM_NEW,
+            oldSpread:   0.0025e27,
+            newSpread:   0.005e27,
+            oldBaseRate: 0.065474799224266183398928000e27,
+            newBaseRate: 0.067974799224266183398928000e27
+        });
+    }
+
+    function test_ETHEREUM_sparkLend_usdsIRMUpdate() public onChain(ChainIdUtils.Ethereum()) {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        _testRateTargetBaseIRMUpdate({
+            symbol:      'USDS',
+            oldIRM:      USDS_IRM_OLD,
+            newIRM:      USDS_IRM_NEW,
+            oldSpread:   0.0025e27,
+            newSpread:   0.005e27,
+            oldBaseRate: 0.065474799224266183398928000e27,
+            newBaseRate: 0.067974799224266183398928000e27
+        });
+    }
+
     function test_ETHEREUM_morpho_PTEUSDE29MAY2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: Ethereum.MORPHO_VAULT_DAI_1,
@@ -362,7 +395,8 @@ contract SparkEthereum_20250320Test is SparkTestBase {
 
         assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
         assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),             0);
-        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY),            30_000_000e6 + 1);  // Rounding
+
+        assertApproxEqAbs(ausdc.balanceOf(Arbitrum.ALM_PROXY), 30_000_000e6, 1);
 
         assertEq(rateLimits.getCurrentRateLimit(usdcWithdrawKey), type(uint256).max);
 

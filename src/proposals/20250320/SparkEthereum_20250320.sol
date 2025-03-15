@@ -16,10 +16,12 @@ import { SparkPayloadEthereum, Rates, EngineFlags } from "../../SparkPayloadEthe
 /**
  * @title  March 20, 2025 Spark Ethereum Proposal
  * @notice SparkLend: Onboard LBTC, tBTC, ezETH, rsETH, create new BTC emode with LBTC and cbBTC
+ *                    Update DAI/USDS IRMs to 50bps spread (No poll required)
  *         Morpho: Onboard May eUSDe PT, July USDe PT
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
  *         https://forum.sky.money/t/march-20-2025-proposed-changes-to-spark-for-upcoming-spell/26113
+ *         https://forum.sky.money/t/mar-20-2025-stability-scope-parameter-changes-24/26129
  * Vote:   https://vote.makerdao.com/polling/QmfM4SBB
  *         https://vote.makerdao.com/polling/QmbDzZ3F
  *         https://vote.makerdao.com/polling/QmTj3BSu
@@ -36,6 +38,9 @@ contract SparkEthereum_20250320 is SparkPayloadEthereum {
     address internal constant PT_EUSDE_29MAY2025_PRICE_FEED = 0x39a695Eb6d0C01F6977521E5E79EA8bc232b506a;
     address internal constant PT_USDE_31JUL2025             = 0x917459337CaAC939D41d7493B3999f571D20D667;
     address internal constant PT_USDE_31JUL2025_PRICE_FEED  = 0xFCaE69BEF9B6c96D89D58664d8aeA84BddCe2E5c;
+
+    address internal constant DAI_IRM  = 0x5a7E7a32331189a794ac33Fec76C0A1dD3dDCF9c;
+    address internal constant USDS_IRM = 0xD94BA511284d2c56F59a687C3338441d33304E07;
 
     constructor() {
         // TODO
@@ -250,6 +255,16 @@ contract SparkEthereum_20250320 is SparkPayloadEthereum {
                 lltv:            0.915e18
             }),
             200_000_000e18
+        );
+
+        // Update DAI/USDS IRMs to 50bps spread
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(
+            Ethereum.DAI,
+            DAI_IRM
+        );
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(
+            Ethereum.USDS,
+            USDS_IRM
         );
     }
 

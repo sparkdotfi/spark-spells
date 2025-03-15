@@ -28,6 +28,8 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     bool internal disableE2E;
 
     /// @notice local to market currently under test
+    IPoolAddressesProvider         internal poolAddressesProvider;
+    /// @notice local to market currently under test
     IACLManager                    internal aclManager;
     /// @notice local to market currently under test
     IPool                          internal pool;
@@ -37,7 +39,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     IAaveOracle                    internal priceOracle;
 
     function loadPoolContext(address poolProvider) internal {
-        IPoolAddressesProvider poolAddressesProvider = IPoolAddressesProvider(poolProvider);
+        poolAddressesProvider = IPoolAddressesProvider(poolProvider);
         pool                  = IPool(poolAddressesProvider.getPool());
         poolConfigurator      = IPoolConfigurator(poolAddressesProvider.getPoolConfigurator());
         aclManager            = IACLManager(poolAddressesProvider.getACLManager());

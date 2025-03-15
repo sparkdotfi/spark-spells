@@ -23,6 +23,8 @@ import { MarketParamsLib }                               from 'morpho-blue/src/l
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
+import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/contracts/interfaces/IDefaultInterestRateStrategy.sol';
+
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
@@ -39,6 +41,11 @@ interface IAuthority {
 
 interface IExecutable {
     function execute() external;
+}
+
+interface IRateTargetBaseIRM {
+    function RATE_SOURCE() external view returns (address);
+    function getBaseVariableBorrowRateSpread() external view returns (uint256);
 }
 
 /// @dev assertions specific to mainnet
@@ -475,6 +482,53 @@ abstract contract SparkEthereumTests is SparklendTests {
         IMetaMorpho(vault).acceptCap(config);
 
         _assertMorphoCap(vault, config, newCap);
+    }
+
+    function _testRateTargetBaseIRMUpdate(
+        string memory symbol,
+        address       oldIRM,
+        address       newIRM,
+        uint256       oldSpread,
+        uint256       newSpread,
+        uint256       oldBaseRate,
+        uint256       newBaseRate
+    )
+        internal
+    {
+        // Rate source should be the same
+        assertEq(IRateTargetBaseIRM(newIRM).RATE_SOURCE(), IRateTargetBaseIRM(oldIRM).RATE_SOURCE());
+
+        // Check spreads
+        assertEq(IRateTargetBaseIRM(oldIRM).getBaseVariableBorrowRateSpread(), oldSpread);
+        assertEq(IRateTargetBaseIRM(newIRM).getBaseVariableBorrowRateSpread(), newSpread);
+
+        // Check change in base variable borrow rate
+        assertEq(IDefaultInterestRateStrategy(oldIRM).getBaseVariableBorrowRate(), oldBaseRate);
+        assertEq(IDefaultInterestRateStrategy(newIRM).getBaseVariableBorrowRate(), newBaseRate);
+
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', pool), symbol);
+
+        assertEq(configBefore.interestRateStrategy, oldIRM);
+
+        executeAllPayloadsAndBridges();
+
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', pool), symbol);
+
+        _validateInterestRateStrategy(
+            configAfter.interestRateStrategy,
+            newIRM,
+            InterestStrategyValues({
+                addressesProvider:             address(poolAddressesProvider),
+                optimalUsageRatio:             1e27,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope1(),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        newBaseRate,
+                variableRateSlope1:            IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope1(),
+                variableRateSlope2:            IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope2()
+            })
+        );
     }
 
 }
