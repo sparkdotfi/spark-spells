@@ -20,6 +20,7 @@ import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFre
 
 import { IMetaMorpho, MarketParams, PendingUint192, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
 import { MarketParamsLib }                               from 'morpho-blue/src/libraries/MarketParamsLib.sol';
+import { IMorphoChainlinkOracleV2 }                      from 'morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
@@ -46,6 +47,11 @@ interface IExecutable {
 interface IRateTargetBaseIRM {
     function RATE_SOURCE() external view returns (address);
     function getBaseVariableBorrowRateSpread() external view returns (uint256);
+}
+
+interface IPendleLinearDiscountOracle {
+    function PT() external view returns (address);
+    function baseDiscountPerYear() external view returns (uint256);
 }
 
 /// @dev assertions specific to mainnet
@@ -485,38 +491,38 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _testMorphoPendlePTOracleConfig(
+        address pt,
         address oracle,
+        uint256 discount,
         uint256 currentPrice
     )
         internal
     {
-        uint256 ptSUSDE29MAY2025Price = IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price();
+        IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
 
-        assertEq(ptSUSDE29MAY2025Price, 0.903243903792491122e36);
+        assertEq(address(_oracle.BASE_FEED_2()),          address(0));
+        assertEq(address(_oracle.BASE_VAULT()),           address(0));
+        assertEq(_oracle.BASE_VAULT_CONVERSION_SAMPLE(),  1);
+        assertEq(address(_oracle.QUOTE_FEED_1()),         address(0));
+        assertEq(address(_oracle.QUOTE_FEED_2()),         address(0));
+        assertEq(address(_oracle.QUOTE_VAULT()),          address(0));
+        assertEq(_oracle.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
+        assertEq(_oracle.SCALE_FACTOR(),                  1e18);
+        assertEq(_oracle.price(),                         currentPrice);
+        assertLe(_oracle.price(),                         1e36);
 
-        uint256 timeSkip = 60 days;
-        skip(timeSkip);
+        IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
 
-        uint256 newPTSUSDE29MAY2025Price = IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price();
+        assertEq(baseFeed.PT(),                  pt);
+        assertEq(baseFeed.baseDiscountPerYear(), discount);
 
-        // Price for both feeds increases over time
-        assertGt(newPTSUSDE29MAY2025Price, ptSUSDE29MAY2025Price);
-
-        uint256 ptSUSDE29MAY2025YearlyPriceIncrease = (newPTSUSDE29MAY2025Price - ptSUSDE29MAY2025Price) * 365 days / (timeSkip);
-
-        // Calculated yield should equal the expected one
-        assertApproxEqAbs(ptSUSDE29MAY2025YearlyPriceIncrease / 1e18, PT_SUSDE_29MAY2025_YIELD, 4);
-
-        assertLt(IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price(), 1e36);
-
-        // Prices on maturity should be 1e36
-        vm.warp(IPendlePT(PT_SUSDE_29MAY2025).expiry());
-        assertEq(IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price(), 1e36);
-
+        uint256 snapshot = vm.snapshot();
         skip(365 days);
+        assertEq(_oracle.price(), 1e36);
+        vm.revertTo(snapshot);
 
-        // Prices should remain to be 1e36
-        assertEq(IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price(), 1e36);
+        // TODO confirm morpho oracle was deployed from official factory
+        // TODO add a bytecode check to the pendle oracle
     }
 
     function _testRateTargetBaseIRMUpdate(

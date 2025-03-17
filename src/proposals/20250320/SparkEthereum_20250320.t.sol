@@ -301,6 +301,12 @@ contract SparkEthereum_20250320Test is SparkTestBase {
             currentCap: 0,
             newCap:     300_000_000e18
         });
+        _testMorphoPendlePTOracleConfig({
+            pt:           PT_EUSDE_29MAY2025,
+            oracle:       PT_EUSDE_29MAY2025_PRICE_FEED,
+            discount:     0.2e18,
+            currentPrice: 0.960818791222729579e36
+        });
     }
 
     function test_ETHEREUM_morpho_PTUSDE31JUL2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
@@ -315,6 +321,12 @@ contract SparkEthereum_20250320Test is SparkTestBase {
             }),
             currentCap: 0,
             newCap:     200_000_000e18
+        });
+        _testMorphoPendlePTOracleConfig({
+            pt:           PT_USDE_31JUL2025,
+            oracle:       PT_USDE_31JUL2025_PRICE_FEED,
+            discount:     0.2e18,
+            currentPrice: 0.9262982432775241e36
         });
     }
 
