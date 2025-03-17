@@ -191,10 +191,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         address[] memory reserves = pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            IERC20 aToken = IERC20(pool.getReserveData(reserves[i]).aTokenAddress);
-            // Convert value to USD in 1e6 precision
-            uint256 poolValue = aToken.totalSupply() * priceOracle.getAssetPrice(reserves[i]) * 1e6 / aToken.decimals() / 1e8;
-            require(poolValue >= 1e6, 'RESERVE_NOT_SEEDED');
+            require(IERC20(pool.getReserveData(reserves[i]).aTokenAddress).totalSupply() >= 1e4, 'RESERVE_NOT_SEEDED');
         }
     }
 
