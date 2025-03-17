@@ -43,9 +43,8 @@ contract SparkEthereum_20250320 is SparkPayloadEthereum {
     address internal constant USDS_IRM = 0xD94BA511284d2c56F59a687C3338441d33304E07;
 
     constructor() {
-        // TODO
-        PAYLOAD_BASE     = address(0);
-        PAYLOAD_ARBITRUM = address(0);
+        PAYLOAD_BASE     = 0x356f19Cb575CF40c7ff33A5117F9a9264C23f6e8;
+        PAYLOAD_ARBITRUM = 0x1d54A093b8FDdFcc6fBB411d9Af31D96e034B3D5;
     }
 
     function _preExecute() internal override {
