@@ -484,6 +484,41 @@ abstract contract SparkEthereumTests is SparklendTests {
         _assertMorphoCap(vault, config, newCap);
     }
 
+    function _testMorphoPendlePTOracleConfig(
+        address oracle,
+        uint256 currentPrice
+    )
+        internal
+    {
+        uint256 ptSUSDE29MAY2025Price = IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price();
+
+        assertEq(ptSUSDE29MAY2025Price, 0.903243903792491122e36);
+
+        uint256 timeSkip = 60 days;
+        skip(timeSkip);
+
+        uint256 newPTSUSDE29MAY2025Price = IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price();
+
+        // Price for both feeds increases over time
+        assertGt(newPTSUSDE29MAY2025Price, ptSUSDE29MAY2025Price);
+
+        uint256 ptSUSDE29MAY2025YearlyPriceIncrease = (newPTSUSDE29MAY2025Price - ptSUSDE29MAY2025Price) * 365 days / (timeSkip);
+
+        // Calculated yield should equal the expected one
+        assertApproxEqAbs(ptSUSDE29MAY2025YearlyPriceIncrease / 1e18, PT_SUSDE_29MAY2025_YIELD, 4);
+
+        assertLt(IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price(), 1e36);
+
+        // Prices on maturity should be 1e36
+        vm.warp(IPendlePT(PT_SUSDE_29MAY2025).expiry());
+        assertEq(IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price(), 1e36);
+
+        skip(365 days);
+
+        // Prices should remain to be 1e36
+        assertEq(IMorphoChainlinkOracle(PT_SUSDE_29MAY2025_PRICE_FEED).price(), 1e36);
+    }
+
     function _testRateTargetBaseIRMUpdate(
         string memory symbol,
         address       oldIRM,
