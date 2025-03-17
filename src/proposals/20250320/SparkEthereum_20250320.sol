@@ -26,6 +26,8 @@ import { SparkPayloadEthereum, Rates, EngineFlags } from "../../SparkPayloadEthe
  *         https://vote.makerdao.com/polling/QmbDzZ3F
  *         https://vote.makerdao.com/polling/QmTj3BSu
  *         https://vote.makerdao.com/polling/QmPkA2GP
+ *         https://vote.makerdao.com/polling/QmXvuNAv
+ *         https://vote.makerdao.com/polling/QmXrHgdj
  */
 contract SparkEthereum_20250320 is SparkPayloadEthereum {
 
