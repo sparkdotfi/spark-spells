@@ -345,84 +345,13 @@ contract SparkEthereum_20250320Test is SparkTestBase {
         });
     }
 
-    function test_ARBITRUM_AaveOnboardingIntegration() public onChain(ChainIdUtils.ArbitrumOne()) {
-        executeAllPayloadsAndBridges();
-
-        ForeignController controller = ForeignController(Arbitrum.ALM_CONTROLLER);
-        
-        IERC20 usdc  = IERC20(Arbitrum.USDC);
-        IERC20 ausdc = IERC20(Arbitrum.ATOKEN_USDC);
-
-        // Use a realistic numbers to check the rate limits
-        uint256 usdcAmount = 5_000_000e6;
-
-        deal(Arbitrum.USDC, Arbitrum.ALM_PROXY, usdcAmount);
-
-        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),  usdcAmount);
-        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY), 0);
-
-        vm.startPrank(Arbitrum.ALM_RELAYER);
-
-        controller.depositAave(Arbitrum.ATOKEN_USDC, usdcAmount);
-
-        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),  0);
-        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
-
-        controller.withdrawAave(Arbitrum.ATOKEN_USDC, usdcAmount);
-
-        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),  usdcAmount);
-        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY), 0);
-    }
-
-    function test_ARBITRUM_AaveRateLimits() public onChain(ChainIdUtils.ArbitrumOne()) {
-        ForeignController controller = ForeignController(Arbitrum.ALM_CONTROLLER);
-        IRateLimits rateLimits       = IRateLimits(Arbitrum.ALM_RATE_LIMITS);
-        
-        IERC20 usdc  = IERC20(Arbitrum.USDC);
-        IERC20 ausdc = IERC20(Arbitrum.ATOKEN_USDC);
-
-        bytes32 usdcDepositKey = RateLimitHelpers.makeAssetKey(
-            controller.LIMIT_AAVE_DEPOSIT(),
-            address(ausdc)
-        );
-        bytes32 usdcWithdrawKey = RateLimitHelpers.makeAssetKey(
-            controller.LIMIT_AAVE_WITHDRAW(),
-            address(ausdc)
-        );
-
-        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
-        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
-
-        executeAllPayloadsAndBridges();
-
-        deal(Arbitrum.USDC, Arbitrum.ALM_PROXY, 30_000_000e6);
-
-        vm.startPrank(Arbitrum.ALM_RELAYER);
-
-        // USDC
-
-        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 30_000_000e6);
-        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),             30_000_000e6);
-        assertEq(ausdc.balanceOf(Arbitrum.ALM_PROXY),            0);
-
-        controller.depositAave(address(ausdc), 30_000_000e6);
-
-        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 0);
-        assertEq(usdc.balanceOf(Arbitrum.ALM_PROXY),             0);
-
-        assertApproxEqAbs(ausdc.balanceOf(Arbitrum.ALM_PROXY), 30_000_000e6, 1);
-
-        assertEq(rateLimits.getCurrentRateLimit(usdcWithdrawKey), type(uint256).max);
-
-        // Confirm proper recharge rate
-        skip(1 hours);
-
-        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 15_000_000e6 / uint256(1 days) * 1 hours);
-
-        // All limits should be reset in 2 days + 1 (rounding)
-        skip(47 hours + 1);
-
-        assertEq(rateLimits.getCurrentRateLimit(usdcDepositKey), 30_000_000e6);
+    function test_ARBITRUM_AaveOnboarding() public onChain(ChainIdUtils.ArbitrumOne()) {
+        _testAaveOnboarding({
+            atoken:                 Arbitrum.ATOKEN_USDC,
+            expectedDepositAmount:  5_000_000e6,
+            depositMax:             30_000_000e6,
+            depositSlope:           15_000_000e6 / uint256(1 days)
+        });
     }
 
 }

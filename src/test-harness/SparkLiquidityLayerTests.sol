@@ -14,6 +14,8 @@ import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimi
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
+import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
+
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
@@ -92,7 +94,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(rateLimit.lastUpdated, lastUpdated);
     }
 
-    function _assertERC4626Onboarding(
+    function _testERC4626Onboarding(
         address vault,
         uint256 expectedDepositAmount,
         uint256 depositMax,
@@ -111,6 +113,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             MainnetController(ctx.controller).LIMIT_4626_WITHDRAW(),
             vault
         );
+
+        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
 
         vm.prank(ctx.relayer);
         vm.expectRevert("RateLimits/zero-maxAmount");
@@ -138,6 +143,73 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(ctx.relayer);
         MainnetController(ctx.controller).withdrawERC4626(vault, expectedDepositAmount / 2);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        if (!unlimitedDeposit) {
+            // Do some sanity checks on the slope
+            // This is to catch things like forgetting to divide to a per-second time, etc
+
+            // We assume it takes at least 1 day to recharge to max
+            uint256 dailySlope = depositSlope * 1 days;
+            assertLe(dailySlope, depositMax);
+
+            // It shouldn't take more than 30 days to recharge to max
+            uint256 monthlySlope = depositSlope * 30 days;
+            assertGe(monthlySlope, depositMax);
+        }
+    }
+
+    function _testAaveOnboarding(
+        address atoken,
+        uint256 expectedDepositAmount,
+        uint256 depositMax,
+        uint256 depositSlope
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        bool unlimitedDeposit = depositMax == type(uint256).max;
+
+        // Note: Aave signature is the same for mainnet and foreign
+        deal(IAToken(atoken).UNDERLYING_ASSET_ADDRESS(), address(ctx.proxy), expectedDepositAmount);
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(ctx.controller).LIMIT_AAVE_DEPOSIT(),
+            atoken
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(ctx.controller).LIMIT_AAVE_WITHDRAW(),
+            atoken
+        );
+
+        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+
+        vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        MainnetController(ctx.controller).depositAave(atoken, expectedDepositAmount);
+
+        executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey, depositMax, depositSlope);
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        if (!unlimitedDeposit) {
+            vm.prank(ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            MainnetController(ctx.controller).depositAave(atoken, depositMax + 1);
+        }
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        vm.prank(ctx.relayer);
+        MainnetController(ctx.controller).depositAave(atoken, expectedDepositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        vm.prank(ctx.relayer);
+        MainnetController(ctx.controller).withdrawAave(atoken, expectedDepositAmount / 2);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
