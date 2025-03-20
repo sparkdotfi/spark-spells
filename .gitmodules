@@ -34,3 +34,6 @@
 [submodule "lib/spark-alm-controller"]
 	path = lib/spark-alm-controller
 	url = https://github.com/marsfoundation/spark-alm-controller
+[submodule "lib/morpho-blue-oracles"]
+	path = lib/morpho-blue-oracles
+	url = https://github.com/morpho-org/morpho-blue-oracles

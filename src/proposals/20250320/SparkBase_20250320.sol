@@ -6,13 +6,13 @@ import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol
 import { SparkPayloadBase, Base } from "../../SparkPayloadBase.sol";
 
 /**
- * @title  March 06, 2025 Spark Base Proposal
+ * @title  March 20, 2025 Spark Base Proposal
  * @notice Update cbBTC Morpho supply cap
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/march-6-2025-proposed-changes-to-spark-for-upcoming-spell/26036
  * Vote:   https://vote.makerdao.com/polling/QmQrGdQz
  */
-contract SparkBase_20250306 is SparkPayloadBase {
+contract SparkBase_20250320 is SparkPayloadBase {
 
     address internal constant CBBTC_USDC_ORACLE = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
 

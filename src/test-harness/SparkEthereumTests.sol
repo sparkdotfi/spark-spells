@@ -20,8 +20,11 @@ import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFre
 
 import { IMetaMorpho, MarketParams, PendingUint192, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
 import { MarketParamsLib }                               from 'morpho-blue/src/libraries/MarketParamsLib.sol';
+import { IMorphoChainlinkOracleV2 }                      from 'morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+
+import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/contracts/interfaces/IDefaultInterestRateStrategy.sol';
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
@@ -39,6 +42,16 @@ interface IAuthority {
 
 interface IExecutable {
     function execute() external;
+}
+
+interface IRateTargetBaseIRM {
+    function RATE_SOURCE() external view returns (address);
+    function getBaseVariableBorrowRateSpread() external view returns (uint256);
+}
+
+interface IPendleLinearDiscountOracle {
+    function PT() external view returns (address);
+    function baseDiscountPerYear() external view returns (uint256);
 }
 
 /// @dev assertions specific to mainnet
@@ -454,4 +467,109 @@ abstract contract SparkEthereumTests is SparklendTests {
             '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE'
         );
     }
+
+    function _testMorphoCapUpdate(
+        address vault,
+        MarketParams memory config,
+        uint256 currentCap,
+        uint256 newCap
+    )
+        internal
+    {
+        _assertMorphoCap(vault, config, currentCap);
+
+        executeAllPayloadsAndBridges();
+
+        _assertMorphoCap(vault, config, currentCap, newCap);
+
+        assertEq(IMetaMorpho(vault).timelock(), 1 days);
+        skip(1 days);
+
+        IMetaMorpho(vault).acceptCap(config);
+
+        _assertMorphoCap(vault, config, newCap);
+    }
+
+    function _testMorphoPendlePTOracleConfig(
+        address pt,
+        address oracle,
+        uint256 discount,
+        uint256 currentPrice
+    )
+        internal
+    {
+        IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
+
+        assertEq(address(_oracle.BASE_FEED_2()),          address(0));
+        assertEq(address(_oracle.BASE_VAULT()),           address(0));
+        assertEq(_oracle.BASE_VAULT_CONVERSION_SAMPLE(),  1);
+        assertEq(address(_oracle.QUOTE_FEED_1()),         address(0));
+        assertEq(address(_oracle.QUOTE_FEED_2()),         address(0));
+        assertEq(address(_oracle.QUOTE_VAULT()),          address(0));
+        assertEq(_oracle.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
+        assertEq(_oracle.SCALE_FACTOR(),                  1e18);
+        assertEq(_oracle.price(),                         currentPrice);
+        assertLe(_oracle.price(),                         1e36);
+
+        IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
+
+        assertEq(baseFeed.PT(),                  pt);
+        assertEq(baseFeed.baseDiscountPerYear(), discount);
+
+        uint256 snapshot = vm.snapshot();
+        skip(365 days);
+        assertEq(_oracle.price(), 1e36);
+        vm.revertTo(snapshot);
+
+        // TODO confirm morpho oracle was deployed from official factory
+        // TODO add a bytecode check to the pendle oracle
+    }
+
+    function _testRateTargetBaseIRMUpdate(
+        string memory symbol,
+        address       oldIRM,
+        address       newIRM,
+        uint256       oldSpread,
+        uint256       newSpread,
+        uint256       oldBaseRate,
+        uint256       newBaseRate
+    )
+        internal
+    {
+        // Rate source should be the same
+        assertEq(IRateTargetBaseIRM(newIRM).RATE_SOURCE(), IRateTargetBaseIRM(oldIRM).RATE_SOURCE());
+
+        // Check spreads
+        assertEq(IRateTargetBaseIRM(oldIRM).getBaseVariableBorrowRateSpread(), oldSpread);
+        assertEq(IRateTargetBaseIRM(newIRM).getBaseVariableBorrowRateSpread(), newSpread);
+
+        // Check change in base variable borrow rate
+        assertEq(IDefaultInterestRateStrategy(oldIRM).getBaseVariableBorrowRate(), oldBaseRate);
+        assertEq(IDefaultInterestRateStrategy(newIRM).getBaseVariableBorrowRate(), newBaseRate);
+
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', pool), symbol);
+
+        assertEq(configBefore.interestRateStrategy, oldIRM);
+
+        executeAllPayloadsAndBridges();
+
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', pool), symbol);
+
+        _validateInterestRateStrategy(
+            configAfter.interestRateStrategy,
+            newIRM,
+            InterestStrategyValues({
+                addressesProvider:             address(poolAddressesProvider),
+                optimalUsageRatio:             1e27,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope1(),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        newBaseRate,
+                variableRateSlope1:            IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope1(),
+                variableRateSlope2:            IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope2()
+            })
+        );
+    }
+
 }
