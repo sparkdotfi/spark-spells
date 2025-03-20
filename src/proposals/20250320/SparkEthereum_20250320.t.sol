@@ -347,7 +347,7 @@ contract SparkEthereum_20250320Test is SparkTestBase {
 
     function test_ARBITRUM_AaveOnboarding() public onChain(ChainIdUtils.ArbitrumOne()) {
         _testAaveOnboarding({
-            atoken:                 Arbitrum.ATOKEN_USDC,
+            aToken:                 Arbitrum.ATOKEN_USDC,
             expectedDepositAmount:  5_000_000e6,
             depositMax:             30_000_000e6,
             depositSlope:           15_000_000e6 / uint256(1 days)

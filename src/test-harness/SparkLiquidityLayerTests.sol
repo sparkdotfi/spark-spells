@@ -161,55 +161,54 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
+    // TODO: Add balance assertions to all helper functions
     function _testAaveOnboarding(
-        address atoken,
+        address aToken,
         uint256 expectedDepositAmount,
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController controller = MainnetController(ctx.controller);
+
         bool unlimitedDeposit = depositMax == type(uint256).max;
 
         // Note: Aave signature is the same for mainnet and foreign
-        deal(IAToken(atoken).UNDERLYING_ASSET_ADDRESS(), address(ctx.proxy), expectedDepositAmount);
-        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(ctx.controller).LIMIT_AAVE_DEPOSIT(),
-            atoken
-        );
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(ctx.controller).LIMIT_AAVE_WITHDRAW(),
-            atoken
-        );
+        deal(IAToken(aToken).UNDERLYING_ASSET_ADDRESS(), address(ctx.proxy), expectedDepositAmount);
 
-        _assertRateLimit(depositKey, 0, 0);
+        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
+
+        _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
         vm.prank(ctx.relayer);
         vm.expectRevert("RateLimits/zero-maxAmount");
-        MainnetController(ctx.controller).depositAave(atoken, expectedDepositAmount);
+        controller.depositAave(aToken, expectedDepositAmount);
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(depositKey, depositMax, depositSlope);
+        _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
         if (!unlimitedDeposit) {
             vm.prank(ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
-            MainnetController(ctx.controller).depositAave(atoken, depositMax + 1);
+            controller.depositAave(aToken, depositMax + 1);
         }
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         vm.prank(ctx.relayer);
-        MainnetController(ctx.controller).depositAave(atoken, expectedDepositAmount);
+        controller.depositAave(aToken, expectedDepositAmount);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         vm.prank(ctx.relayer);
-        MainnetController(ctx.controller).withdrawAave(atoken, expectedDepositAmount / 2);
+        controller.withdrawAave(aToken, expectedDepositAmount / 2);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
