@@ -316,4 +316,11 @@ library SparkLiquidityLayerHelpers {
             6
         );
     }
+
+    function addrToBytes32(
+        address addr
+    ) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
+    }
+
 }

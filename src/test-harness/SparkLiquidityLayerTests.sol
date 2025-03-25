@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
-import { Address } from '../libraries/Address.sol';
+import { Address }                    from '../libraries/Address.sol';
+import { SparkLiquidityLayerHelpers } from '../libraries/SparkLiquidityLayerHelpers.sol';
 
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
@@ -13,6 +14,8 @@ import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+
+import { CCTPForwarder } from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 
 import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
 
@@ -224,6 +227,45 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // It shouldn't take more than 30 days to recharge to max
             uint256 monthlySlope = depositSlope * 30 days;
             assertGe(monthlySlope, depositMax);
+        }
+    }
+
+    function _testControllerUpgrade(
+        address oldController,
+        address newController
+    ) internal {
+        ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        // Note the functions used are interchangable with mainnet and foreign controllers
+        MainnetController controller = MainnetController(newController);
+
+        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), oldController),           true);
+        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), newController),           false);
+        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), oldController), true);
+        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), newController), false);
+        assertEq(controller.hasRole(controller.RELAYER(), ctx.relayer),              false);
+        assertEq(controller.hasRole(controller.FREEZER(), ctx.freezer),              false);
+        if (currentChain == ChainIdUtils.Ethereum()) {
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
+        } else {
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
+        }
+
+        executeAllPayloadsAndBridges();
+
+        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), oldController),           false);
+        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), newController),           true);
+        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), oldController), false);
+        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), newController), true);
+        assertEq(controller.hasRole(controller.RELAYER(), ctx.relayer),              true);
+        assertEq(controller.hasRole(controller.FREEZER(), ctx.freezer),              true);
+        if (currentChain == ChainIdUtils.Ethereum()) {
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SparkLiquidityLayerHelpers.addrToBytes32(Base.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SparkLiquidityLayerHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
+        } else {
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SparkLiquidityLayerHelpers.addrToBytes32(Ethereum.ALM_PROXY));
         }
     }
 
