@@ -3,6 +3,8 @@ pragma solidity ^0.8.25;
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+
 import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
@@ -50,6 +52,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
         _onboardSuperstateUSTB();
         _onboardCentrifugeJTRSY();
         _onboardMapleSyrupUSDC();
+
+        _updateSparkLendUSDC();
     }
 
     function _onboardBlackrockBUIDL() private {
@@ -140,6 +144,27 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
             Ethereum.ALM_RATE_LIMITS,
             RateLimitHelpers.unlimitedRateLimit(),
             "syrupUSDCRedeemLimit",
+            6
+        );
+    }
+
+    function _updateSparkLendUSDC() private {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.USDC, max: 1_000_000_000, gap: 150_000_000, increaseCooldown: 12 hours });
+        capAutomator.setBorrowCapConfig({ asset: Ethereum.USDC, max: 950_000_000,   gap: 50_000_000,  increaseCooldown: 12 hours });
+
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
+                Ethereum.USDC_ATOKEN
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 100_000_000e6,
+                slope     : 50_000_000e6 / uint256(1 days)
+            }),
+            "usdcDepositLimit",
             6
         );
     }

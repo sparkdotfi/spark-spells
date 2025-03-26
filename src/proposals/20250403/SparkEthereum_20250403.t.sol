@@ -354,4 +354,23 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         }
     }
 
+    function test_ETHEREUM_sparkLend_usdcUpdates() public onChain(ChainIdUtils.Ethereum()) {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        bytes32 usdcDepositKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
+            Ethereum.USDC_ATOKEN
+        );
+
+        _assertSupplyCapConfig(Ethereum.USDC, 0, 0, 0);
+        _assertBorrowCapConfig(Ethereum.USDC, 57_000_000, 6_000_000, 12 hours);
+        _assertRateLimit(usdcDepositKey, 20_000_000e6, 10_000_000e6 / uint256(1 days));
+
+        executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.USDC, 1_000_000_000, 150_000_000, 12 hours);
+        _assertBorrowCapConfig(Ethereum.USDC, 950_000_000, 50_000_000, 12 hours);
+        _assertRateLimit(usdcDepositKey, 100_000_000e6, 50_000_000e6 / uint256(1 days));
+    }
+
 }
