@@ -27,6 +27,10 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
     address internal constant OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant NEW_ALM_CONTROLLER = 0xF51164FE5B0DC7aFB9192E1b806ae18A8813Ae8c;
 
+    address internal constant BUIDL         = 0x6a9DA2D710BB9B700acde7Cb81F10F1fF8C89041;
+    address internal constant BUIDL_DEPOSIT = address(1);  // TODO
+    address internal constant BUIDL_REDEEM  = address(1);  // TODO
+
     address internal constant JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
 
     address internal constant SYRUP_USDC = 0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b;
@@ -42,9 +46,38 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
             NEW_ALM_CONTROLLER
         );
 
+        _onboardBlackrockBUIDL();
         _onboardSuperstateUSTB();
         _onboardCentrifugeJTRSY();
         _onboardMapleSyrupUSDC();
+    }
+
+    function _onboardBlackrockBUIDL() private {
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                BUIDL_DEPOSIT
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 500_000_000e6,
+                slope     : 100_000_000e6 / uint256(1 days)
+            }),
+            "buidlMintLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                BUIDL,
+                BUIDL_REDEEM
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "buidlBurnLimit",
+            6
+        );
     }
 
     function _onboardSuperstateUSTB() private {

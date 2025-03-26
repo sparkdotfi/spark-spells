@@ -75,6 +75,10 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xF51164FE5B0DC7aFB9192E1b806ae18A8813Ae8c;
 
+    address internal constant BUIDL         = 0x6a9DA2D710BB9B700acde7Cb81F10F1fF8C89041;
+    address internal constant BUIDL_DEPOSIT = address(1);  // TODO
+    address internal constant BUIDL_REDEEM  = address(1);  // TODO
+
     address constant CENTRIFUGE_JTSRY_VAULT        = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
     address constant CENTRIFUGE_JTSRY_TOKEN        = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
     uint64  constant CENTRIFUGE_JTREASURY_POOL_ID  = 4139607887;
@@ -106,6 +110,40 @@ contract SparkEthereum_20250403Test is SparkTestBase {
             oldController: ETHEREUM_OLD_ALM_CONTROLLER,
             newController: ETHEREUM_NEW_ALM_CONTROLLER
         });
+    }
+
+    function test_ETHEREUM_blackrockBUIDLOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        executeAllPayloadsAndBridges();
+
+        IERC20 usdc  = IERC20(Ethereum.USDC);
+        IERC20 buidl = IERC20(BUIDL);
+
+        // USDS -> USDC limits are 50m, go a bit below in case some is in use
+        uint256 mintAmount = 40_000_000e6;
+        vm.startPrank(ctx.relayer);
+        controller.mintUSDS(mintAmount * 1e12);
+        controller.swapUSDSToUSDC(mintAmount);
+
+        assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
+        assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
+
+        controller.transferAsset(address(usdc), BUIDL_DEPOSIT, mintAmount);
+        vm.stopPrank();
+
+        // Emulate BUIDL deposit
+        deal(BUIDL, address(ctx.proxy), mintAmount);
+
+        assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
+        assertEq(buidl.balanceOf(address(ctx.proxy)), mintAmount);
+
+        vm.prank(ctx.relayer);
+        controller.transferAsset(address(buidl), BUIDL_REDEEM, mintAmount);
+
+        assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
+        assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
     }
 
     function test_ETHEREUM_superstateUSTBOnboarding() public onChain(ChainIdUtils.Ethereum()) {
