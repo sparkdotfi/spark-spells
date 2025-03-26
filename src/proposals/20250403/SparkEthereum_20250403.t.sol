@@ -54,7 +54,11 @@ interface IInvestmentManager {
         uint128 assets,
         uint128 shares
     ) external;
-        
+}
+
+interface ISuperstateToken is IERC20 {
+    function calculateSuperstateTokenOut(uint256, address)
+        external view returns (uint256, uint256, uint256);
 }
 
 interface IMapleTokenExtended is IERC4626 {
@@ -96,7 +100,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     function setUp() public {
         // March 25, 2025
         setupDomains({
-            mainnetForkBlock:     22131867,
+            mainnetForkBlock:     22132630,
             baseForkBlock:        28060210,
             gnosisForkBlock:      38037888,  // Not used
             arbitrumOneForkBlock: 319402704
@@ -152,8 +156,8 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        IERC20 usdc = IERC20(Ethereum.USDC);
-        IERC20 ustb = IERC20(Ethereum.USTB);
+        IERC20 usdc           = IERC20(Ethereum.USDC);
+        ISuperstateToken ustb = ISuperstateToken(Ethereum.USTB);
 
         // USDS -> USDC limits are 50m, go a bit below in case some is in use
         uint256 mintAmount = 40_000_000e6;
@@ -164,17 +168,19 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(usdc.balanceOf(address(ctx.proxy)), mintAmount);
         assertEq(ustb.balanceOf(address(ctx.proxy)), 0);
 
+        (uint256 ustbShares,,) = ustb.calculateSuperstateTokenOut(mintAmount, address(usdc));
+
         controller.subscribeSuperstate(mintAmount);
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(address(ctx.proxy)), 0);
-        assertEq(ustb.balanceOf(address(ctx.proxy)), mintAmount);
+        assertEq(ustb.balanceOf(address(ctx.proxy)), ustbShares);
 
         vm.prank(ctx.relayer);
-        controller.redeemSuperstate(mintAmount);
+        controller.redeemSuperstate(ustbShares / 10);
 
-        assertEq(usdc.balanceOf(address(ctx.proxy)), mintAmount);
-        assertEq(ustb.balanceOf(address(ctx.proxy)), 0);
+        assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount / 10, 10);
+        assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 9 / 10, 1);
     }
 
     function test_ETHEREUM_centrifugeJTRSYOnboarding() public onChain(ChainIdUtils.Ethereum()) {
