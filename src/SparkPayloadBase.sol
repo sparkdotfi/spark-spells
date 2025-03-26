@@ -3,6 +3,9 @@ pragma solidity ^0.8.0;
 
 import { Base } from 'spark-address-registry/Base.sol';
 
+import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
+import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
+
 import { SparkLiquidityLayerHelpers } from './libraries/SparkLiquidityLayerHelpers.sol';
 
 /**
@@ -10,6 +13,32 @@ import { SparkLiquidityLayerHelpers } from './libraries/SparkLiquidityLayerHelpe
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadBase {
+    
+    function _upgradeController(
+        address oldController,
+        address newController
+    ) internal {
+        SparkLiquidityLayerHelpers.upgradeForeignController(
+            ControllerInstance({
+                almProxy:    Base.ALM_PROXY,
+                controller:  newController,
+                rateLimits:  Base.ALM_RATE_LIMITS
+            }),
+            ForeignControllerInit.ConfigAddressParams({
+                freezer:       Base.ALM_FREEZER,
+                relayer:       Base.ALM_RELAYER,
+                oldController: oldController
+            }),
+            ForeignControllerInit.CheckAddressParams({
+                admin : Base.SPARK_EXECUTOR,
+                psm   : Base.PSM3,
+                cctp  : Base.CCTP_TOKEN_MESSENGER,
+                usdc  : Base.USDC,
+                susds : Base.SUSDS,
+                usds  : Base.USDS
+            })
+        );
+    }
 
     function _onboardAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
         SparkLiquidityLayerHelpers.onboardAaveToken(

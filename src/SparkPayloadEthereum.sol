@@ -12,13 +12,7 @@ import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
 
 import { AMBForwarder }      from "xchain-helpers/forwarders/AMBForwarder.sol";
 import { ArbitrumForwarder } from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
-import { CCTPForwarder }     from "xchain-helpers/forwarders/CCTPForwarder.sol";
 import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
-
-import { ControllerInstance }              from "spark-alm-controller/deploy/ControllerInstance.sol";
-import { MainnetControllerInit }           from "spark-alm-controller/deploy/MainnetControllerInit.sol";
-import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkLiquidityLayerHelpers } from './libraries/SparkLiquidityLayerHelpers.sol';
 
@@ -95,39 +89,10 @@ abstract contract SparkPayloadEthereum is
         address oldController,
         address newController
     ) internal {
-        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](2);
-        mintRecipients[0] = MainnetControllerInit.MintRecipient({
-            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
-            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Base.ALM_PROXY)
-        });
-        mintRecipients[1] = MainnetControllerInit.MintRecipient({
-            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE,
-            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Arbitrum.ALM_PROXY)
-        });
-
-        MainnetControllerInit.upgradeController({
-            controllerInst: ControllerInstance({
-                almProxy   : Ethereum.ALM_PROXY,
-                controller : newController,
-                rateLimits : Ethereum.ALM_RATE_LIMITS
-            }),
-            configAddresses: MainnetControllerInit.ConfigAddressParams({
-                freezer       : Ethereum.ALM_FREEZER,
-                relayer       : Ethereum.ALM_RELAYER,
-                oldController : oldController
-            }),
-            checkAddresses: MainnetControllerInit.CheckAddressParams({
-                admin      : Ethereum.SPARK_PROXY,
-                proxy      : Ethereum.ALM_PROXY,
-                rateLimits : Ethereum.ALM_RATE_LIMITS,
-                vault      : Ethereum.ALLOCATOR_VAULT,
-                psm        : Ethereum.PSM,
-                daiUsds    : Ethereum.DAI_USDS,
-                cctp       : Ethereum.CCTP_TOKEN_MESSENGER
-            }),
-            mintRecipients: mintRecipients
-        });
-        // TODO add gov-ops relayer
+        SparkLiquidityLayerHelpers.upgradeMainnetController(
+            oldController,
+            newController
+        );
     }
 
     function _onboardAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {

@@ -4,13 +4,22 @@ pragma solidity ^0.8.0;
 import { IERC20 }   from 'forge-std/interfaces/IERC20.sol';
 import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
 
+import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
+import { Base }     from 'spark-address-registry/Base.sol';
+import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+
 import { IAToken } from "aave-v3-origin/src/core/contracts/interfaces/IAToken.sol";
 
 import { IMetaMorpho, Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 import { MarketParams }    from "morpho-blue/src/interfaces/IMorpho.sol";
 import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
+import { ControllerInstance }              from "spark-alm-controller/deploy/ControllerInstance.sol";
+import { MainnetControllerInit }           from "spark-alm-controller/deploy/MainnetControllerInit.sol";
+import { ForeignControllerInit }           from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
+
+import { CCTPForwarder }from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 /**
  * @notice Helper functions for Spark Liquidity Layer
@@ -321,6 +330,65 @@ library SparkLiquidityLayerHelpers {
         address addr
     ) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+    
+    function upgradeMainnetController(
+        address oldController,
+        address newController
+    ) internal {
+        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](2);
+        mintRecipients[0] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
+            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Base.ALM_PROXY)
+        });
+        mintRecipients[1] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE,
+            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Arbitrum.ALM_PROXY)
+        });
+
+        MainnetControllerInit.upgradeController({
+            controllerInst: ControllerInstance({
+                almProxy   : Ethereum.ALM_PROXY,
+                controller : newController,
+                rateLimits : Ethereum.ALM_RATE_LIMITS
+            }),
+            configAddresses: MainnetControllerInit.ConfigAddressParams({
+                freezer       : Ethereum.ALM_FREEZER,
+                relayer       : Ethereum.ALM_RELAYER,
+                oldController : oldController
+            }),
+            checkAddresses: MainnetControllerInit.CheckAddressParams({
+                admin      : Ethereum.SPARK_PROXY,
+                proxy      : Ethereum.ALM_PROXY,
+                rateLimits : Ethereum.ALM_RATE_LIMITS,
+                vault      : Ethereum.ALLOCATOR_VAULT,
+                psm        : Ethereum.PSM,
+                daiUsds    : Ethereum.DAI_USDS,
+                cctp       : Ethereum.CCTP_TOKEN_MESSENGER
+            }),
+            mintRecipients: mintRecipients
+        });
+        // TODO add gov-ops relayer
+    }
+    
+    function upgradeForeignController(
+        ControllerInstance memory controllerInst,
+        ForeignControllerInit.ConfigAddressParams memory configAddresses,
+        ForeignControllerInit.CheckAddressParams memory checkAddresses
+    ) internal {
+        ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
+        mintRecipients[0] = ForeignControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
+            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Ethereum.ALM_PROXY)
+        });
+
+        ForeignControllerInit.upgradeController({
+            controllerInst: controllerInst,
+            configAddresses: configAddresses,
+            checkAddresses: checkAddresses,
+            mintRecipients: mintRecipients
+        });
+        // TODO add gov-ops relayer
     }
 
 }
