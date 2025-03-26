@@ -29,6 +29,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
 
     address internal constant JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
 
+    address internal constant SYRUP_USDC = 0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b;
+
     constructor() {
         PAYLOAD_ARBITRUM = address(0);  // TODO
         PAYLOAD_BASE     = address(0);  // TODO
@@ -42,6 +44,7 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
 
         _onboardSuperstateUSTB();
         _onboardCentrifugeJTRSY();
+        _onboardMapleSyrupUSDC();
     }
 
     function _onboardSuperstateUSTB() private {
@@ -86,6 +89,24 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
             Ethereum.ALM_RATE_LIMITS,
             RateLimitHelpers.unlimitedRateLimit(),
             "jtrsyBurnLimit",
+            6
+        );
+    }
+
+    function _onboardMapleSyrupUSDC() private {
+        _onboardERC4626Vault({
+            vault:        SYRUP_USDC,
+            depositMax:   25_000_000e6,
+            depositSlope: 5_000_000e6 / uint256(1 days)
+        });
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_MAPLE_REDEEM(),
+                SYRUP_USDC
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "syrupUSDCRedeemLimit",
             6
         );
     }
