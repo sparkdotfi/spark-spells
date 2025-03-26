@@ -3,6 +3,9 @@ pragma solidity ^0.8.25;
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
+import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
+
 import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 /**
@@ -24,6 +27,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
     address internal constant OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant NEW_ALM_CONTROLLER = 0xF51164FE5B0DC7aFB9192E1b806ae18A8813Ae8c;
 
+    address internal constant JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
+
     constructor() {
         PAYLOAD_ARBITRUM = address(0);  // TODO
         PAYLOAD_BASE     = address(0);  // TODO
@@ -33,6 +38,55 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
         _upgradeController(
             OLD_ALM_CONTROLLER,
             NEW_ALM_CONTROLLER
+        );
+
+        _onboardSuperstateUSTB();
+        _onboardCentrifugeJTRSY();
+    }
+
+    function _onboardSuperstateUSTB() private {
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(NEW_ALM_CONTROLLER).LIMIT_SUPERSTATE_SUBSCRIBE(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 300_000_000e6,
+                slope     : 100_000_000e6 / uint256(1 days)
+            }),
+            "ustbMintLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(NEW_ALM_CONTROLLER).LIMIT_SUPERSTATE_REDEEM(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "ustbBurnLimit",
+            6
+        );
+    }
+
+    function _onboardCentrifugeJTRSY() private {
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
+                JTRSY_VAULT
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 200_000_000e6,
+                slope     : 100_000_000e6 / uint256(1 days)
+            }),
+            "jtrsyMintLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_7540_REDEEM(),
+                JTRSY_VAULT
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "jtrsyBurnLimit",
+            6
         );
     }
 
