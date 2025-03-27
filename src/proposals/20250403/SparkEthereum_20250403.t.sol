@@ -109,8 +109,8 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         
         deployPayloads();
 
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x8839aC188064542331D4E7f6112aab7b71ac706F;
-        chainSpellMetadata[ChainIdUtils.Base()].payload        = 0xf3e842AFe529e4E241B4aE15033163E3F4C46ce0;
+        //chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x8839aC188064542331D4E7f6112aab7b71ac706F;
+        //chainSpellMetadata[ChainIdUtils.Base()].payload        = 0xf3e842AFe529e4E241B4aE15033163E3F4C46ce0;
         //chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = ;
     }
 

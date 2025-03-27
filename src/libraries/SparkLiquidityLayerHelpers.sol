@@ -17,6 +17,8 @@ import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 import { ControllerInstance }              from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { MainnetControllerInit }           from "spark-alm-controller/deploy/MainnetControllerInit.sol";
 import { ForeignControllerInit }           from "spark-alm-controller/deploy/ForeignControllerInit.sol";
+import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
+import { ForeignController }               from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { CCTPForwarder }from "xchain-helpers/forwarders/CCTPForwarder.sol";
@@ -28,6 +30,9 @@ library SparkLiquidityLayerHelpers {
 
     // This is the same on all chains
     address private constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+
+    // This is the same on all chains
+    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
     bytes32 private constant LIMIT_4626_DEPOSIT   = keccak256("LIMIT_4626_DEPOSIT");
     bytes32 private constant LIMIT_4626_WITHDRAW  = keccak256("LIMIT_4626_WITHDRAW");
@@ -368,7 +373,7 @@ library SparkLiquidityLayerHelpers {
             }),
             mintRecipients: mintRecipients
         });
-        // TODO add gov-ops relayer
+        MainnetController(newController).grantRole(MainnetController(newController).RELAYER(), ALM_RELAYER_BACKUP);
     }
     
     function upgradeForeignController(
@@ -388,7 +393,7 @@ library SparkLiquidityLayerHelpers {
             checkAddresses: checkAddresses,
             mintRecipients: mintRecipients
         });
-        // TODO add gov-ops relayer
+        ForeignController(controllerInst.controller).grantRole(ForeignController(controllerInst.controller).RELAYER(), ALM_RELAYER_BACKUP);
     }
 
 }

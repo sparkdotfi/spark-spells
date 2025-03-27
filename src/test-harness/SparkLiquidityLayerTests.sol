@@ -34,6 +34,8 @@ struct SparkLiquidityLayerContext {
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
+    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
+
     function _getSparkLiquidityLayerContext() internal view returns(SparkLiquidityLayerContext memory ctx) {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
         if (currentChain == ChainIdUtils.Ethereum()) {
@@ -245,6 +247,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), oldController), true);
         assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), newController), false);
         assertEq(controller.hasRole(controller.RELAYER(), ctx.relayer),              false);
+        assertEq(controller.hasRole(controller.RELAYER(), ALM_RELAYER_BACKUP),       false);
         assertEq(controller.hasRole(controller.FREEZER(), ctx.freezer),              false);
         if (currentChain == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
@@ -260,6 +263,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), oldController), false);
         assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), newController), true);
         assertEq(controller.hasRole(controller.RELAYER(), ctx.relayer),              true);
+        assertEq(controller.hasRole(controller.RELAYER(), ALM_RELAYER_BACKUP),       true);
         assertEq(controller.hasRole(controller.FREEZER(), ctx.freezer),              true);
         if (currentChain == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SparkLiquidityLayerHelpers.addrToBytes32(Base.ALM_PROXY));
