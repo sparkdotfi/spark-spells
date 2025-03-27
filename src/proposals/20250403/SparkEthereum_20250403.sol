@@ -44,8 +44,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
     address internal constant SYRUP_USDC = 0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b;
 
     constructor() {
-        PAYLOAD_ARBITRUM = address(0);  // TODO
-        PAYLOAD_BASE     = address(0);  // TODO
+        PAYLOAD_ARBITRUM = 0x8839aC188064542331D4E7f6112aab7b71ac706F;
+        PAYLOAD_BASE     = 0xf3e842AFe529e4E241B4aE15033163E3F4C46ce0;
     }
 
     function _postExecute() internal override {

@@ -6,18 +6,13 @@ import 'src/test-harness/SparkTestBase.sol';
 import { IERC20 }   from 'forge-std/interfaces/IERC20.sol';
 import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
 
-import { DataTypes } from "sparklend-v1-core/contracts/protocol/libraries/types/DataTypes.sol";
-
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
-import { ForeignController } from 'spark-alm-controller/src/ForeignController.sol';
 import { RateLimitHelpers }  from 'spark-alm-controller/src/RateLimitHelpers.sol';
-import { IRateLimits }       from 'spark-alm-controller/src/interfaces/IRateLimits.sol';
 
-import { ReserveConfig } from "src/test-harness/ProtocolV3TestBase.sol";
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
 import { SparkLiquidityLayerContext } from "../../test-harness/SparkLiquidityLayerTests.sol";
@@ -104,15 +99,19 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     }
 
     function setUp() public {
-        // March 25, 2025
+        // March 27, 2025
         setupDomains({
             mainnetForkBlock:     22138004,
-            baseForkBlock:        28143096,
+            baseForkBlock:        28144796,
             gnosisForkBlock:      38037888,  // Not used
-            arbitrumOneForkBlock: 320065046
+            arbitrumOneForkBlock: 320078656
         });
         
         deployPayloads();
+
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x8839aC188064542331D4E7f6112aab7b71ac706F;
+        chainSpellMetadata[ChainIdUtils.Base()].payload        = 0xf3e842AFe529e4E241B4aE15033163E3F4C46ce0;
+        //chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = ;
     }
 
     function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
