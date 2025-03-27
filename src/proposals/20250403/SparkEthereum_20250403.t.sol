@@ -378,7 +378,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         bytes32 usdcDepositKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
+            MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
             Ethereum.USDC_ATOKEN
         );
 
@@ -391,6 +391,29 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         _assertSupplyCapConfig(Ethereum.USDC, 1_000_000_000, 150_000_000, 12 hours);
         _assertBorrowCapConfig(Ethereum.USDC, 950_000_000, 50_000_000, 12 hours);
         _assertRateLimit(usdcDepositKey, 100_000_000e6, 50_000_000e6 / uint256(1 days));
+    }
+
+    function test_ETHEREUM_sllCoreRateLimitIncrease() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usdsMintKey       = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).LIMIT_USDS_MINT();
+        bytes32 swapUSDSToUSDCKey = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).LIMIT_USDS_TO_USDC();
+        
+        _assertRateLimit(usdsMintKey,       50_000_000e18, 50_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapUSDSToUSDCKey, 50_000_000e6,  50_000_000e6 / uint256(1 days));
+
+        executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usdsMintKey,       200_000_000e18, 200_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapUSDSToUSDCKey, 200_000_000e6,  200_000_000e6 / uint256(1 days));
+    }
+
+    function test_ETHEREUM_sparkLend_rsethUpdates() public onChain(ChainIdUtils.Ethereum()) {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        _assertSupplyCapConfig(Ethereum.RSETH, 20_000, 2_000, 12 hours);
+
+        executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.RSETH, 40_000, 4_000, 12 hours);
     }
 
 }

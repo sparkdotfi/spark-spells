@@ -13,17 +13,22 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 /**
  * @title  April 3, 2025 Spark Ethereum Proposal
  * @notice Spark Liquidity Layer: Upgrade ALM Controller
-                                  Onboard BUIDL-I, USTB, JTRSY, syrupUSDC
+ *                                Onboard BUIDL-I, USTB, JTRSY, syrupUSDC
  *                                Increase USDC rate limit for SparkLend
+ *                                Increase Core Rate Limits
  *         SparkLend: Increase USDC Supply/Borrow Caps
+ *                    Increase rsETH Supply Caps
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/april-3-2025-proposed-changes-to-spark-for-upcoming-spell/26155
+ *         TODO
  * Vote:   https://vote.makerdao.com/polling/QmSwQ6Wc
  *         https://vote.makerdao.com/polling/QmTE29em
  *         https://vote.makerdao.com/polling/QmehvjH9
  *         https://vote.makerdao.com/polling/QmSytTo4
  *         https://vote.makerdao.com/polling/QmZGQhkG
  *         https://vote.makerdao.com/polling/QmWQCbns
+ *         TODO
+ *         TODO
  */
 contract SparkEthereum_20250403 is SparkPayloadEthereum {
 
@@ -55,6 +60,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
         _onboardMapleSyrupUSDC();
 
         _updateSparkLendUSDC();
+        _increaseCoreRateLimits();  // TODO forum post
+        _rsETHCapsUpdate();  // TODO forum post
     }
 
     function _onboardBlackrockBUIDL() private {
@@ -168,6 +175,35 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
             "usdcDepositLimit",
             6
         );
+    }
+
+    function _increaseCoreRateLimits() private {
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(NEW_ALM_CONTROLLER).LIMIT_USDS_MINT(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 200_000_000e18,
+                slope     : 200_000_000e18 / uint256(1 days)
+            }),
+            "usdsMintLimit",
+            18
+        );
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(NEW_ALM_CONTROLLER).LIMIT_USDS_TO_USDC(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 200_000_000e6,
+                slope     : 200_000_000e6 / uint256(1 days)
+            }),
+            "swapUSDSToUSDCLimit",
+            6
+        );
+    }
+
+    function _rsETHCapsUpdate() private {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.RSETH, max: 40_000, gap: 4_000, increaseCooldown: 12 hours });
     }
 
 }
