@@ -12,7 +12,8 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  April 3, 2025 Spark Ethereum Proposal
- * @notice Spark Liquidity Layer: Onboard BUIDL-I, USTB, JTRSY, syrupUSDC
+ * @notice Spark Liquidity Layer: Upgrade ALM Controller
+                                  Onboard BUIDL-I, USTB, JTRSY, syrupUSDC
  *                                Increase USDC rate limit for SparkLend
  *         SparkLend: Increase USDC Supply/Borrow Caps
  * @author Phoenix Labs

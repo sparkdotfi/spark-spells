@@ -78,6 +78,12 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xF51164FE5B0DC7aFB9192E1b806ae18A8813Ae8c;
+    
+    address internal constant BASE_OLD_ALM_CONTROLLER     = Base.ALM_CONTROLLER;
+    address internal constant BASE_NEW_ALM_CONTROLLER     = 0xB94378b5347a3E199AF3575719F67A708a5D8b9B;
+
+    address internal constant ARBITRUM_OLD_ALM_CONTROLLER = Arbitrum.ALM_CONTROLLER;
+    address internal constant ARBITRUM_NEW_ALM_CONTROLLER = 0x98f567464e91e9B4831d3509024b7868f9F79ee1;
 
     address internal constant BUIDL         = 0x6a9DA2D710BB9B700acde7Cb81F10F1fF8C89041;
     address internal constant BUIDL_DEPOSIT = address(1);  // TODO
@@ -100,10 +106,10 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     function setUp() public {
         // March 25, 2025
         setupDomains({
-            mainnetForkBlock:     22132630,
-            baseForkBlock:        28060210,
+            mainnetForkBlock:     22138004,
+            baseForkBlock:        28143096,
             gnosisForkBlock:      38037888,  // Not used
-            arbitrumOneForkBlock: 319402704
+            arbitrumOneForkBlock: 320065046
         });
         
         deployPayloads();
@@ -113,6 +119,20 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         _testControllerUpgrade({
             oldController: ETHEREUM_OLD_ALM_CONTROLLER,
             newController: ETHEREUM_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
+        _testControllerUpgrade({
+            oldController: BASE_OLD_ALM_CONTROLLER,
+            newController: BASE_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_ARBITRUM_controllerUpgrade() public onChain(ChainIdUtils.ArbitrumOne()) {
+        _testControllerUpgrade({
+            oldController: ARBITRUM_OLD_ALM_CONTROLLER,
+            newController: ARBITRUM_NEW_ALM_CONTROLLER
         });
     }
 
