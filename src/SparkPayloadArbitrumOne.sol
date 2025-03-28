@@ -6,7 +6,7 @@ import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 
-import { SparkLiquidityLayerHelpers } from './libraries/SparkLiquidityLayerHelpers.sol';
+import { SLLHelpers } from './libraries/SLLHelpers.sol';
 
 /**
  * @dev Base smart contract for Arbitrum One.
@@ -18,7 +18,7 @@ abstract contract SparkPayloadArbitrumOne {
         address oldController,
         address newController
     ) internal {
-        SparkLiquidityLayerHelpers.upgradeForeignController(
+        SLLHelpers.upgradeForeignController(
             ControllerInstance({
                 almProxy:    Arbitrum.ALM_PROXY,
                 controller:  newController,
@@ -41,7 +41,7 @@ abstract contract SparkPayloadArbitrumOne {
     }
 
     function _onboardAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
-        SparkLiquidityLayerHelpers.onboardAaveToken(
+        SLLHelpers.onboardAaveToken(
             Arbitrum.ALM_RATE_LIMITS,
             token,
             depositMax,
@@ -50,7 +50,7 @@ abstract contract SparkPayloadArbitrumOne {
     }
 
     function _onboardERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
-        SparkLiquidityLayerHelpers.onboardERC4626Vault(
+        SLLHelpers.onboardERC4626Vault(
             Arbitrum.ALM_RATE_LIMITS,
             vault,
             depositMax,
@@ -59,7 +59,7 @@ abstract contract SparkPayloadArbitrumOne {
     }
 
     function _activateMorphoVault(address vault) internal {
-        SparkLiquidityLayerHelpers.activateMorphoVault(
+        SLLHelpers.activateMorphoVault(
             vault,
             Arbitrum.ALM_RELAYER
         );

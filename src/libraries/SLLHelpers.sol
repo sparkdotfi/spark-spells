@@ -26,7 +26,7 @@ import { CCTPForwarder }from "xchain-helpers/forwarders/CCTPForwarder.sol";
 /**
  * @notice Helper functions for Spark Liquidity Layer
  */
-library SparkLiquidityLayerHelpers {
+library SLLHelpers {
 
     // This is the same on all chains
     address private constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
@@ -331,9 +331,7 @@ library SparkLiquidityLayerHelpers {
         );
     }
 
-    function addrToBytes32(
-        address addr
-    ) internal pure returns (bytes32) {
+    function addrToBytes32(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
     }
     
@@ -344,11 +342,11 @@ library SparkLiquidityLayerHelpers {
         MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](2);
         mintRecipients[0] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
-            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Base.ALM_PROXY)
+            mintRecipient : addrToBytes32(Base.ALM_PROXY)
         });
         mintRecipients[1] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE,
-            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Arbitrum.ALM_PROXY)
+            mintRecipient : addrToBytes32(Arbitrum.ALM_PROXY)
         });
 
         MainnetControllerInit.upgradeController({
@@ -384,7 +382,7 @@ library SparkLiquidityLayerHelpers {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
         mintRecipients[0] = ForeignControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
-            mintRecipient : SparkLiquidityLayerHelpers.addrToBytes32(Ethereum.ALM_PROXY)
+            mintRecipient : addrToBytes32(Ethereum.ALM_PROXY)
         });
 
         ForeignControllerInit.upgradeController({

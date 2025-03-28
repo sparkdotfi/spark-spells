@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
-import { Address }                    from '../libraries/Address.sol';
-import { SparkLiquidityLayerHelpers } from '../libraries/SparkLiquidityLayerHelpers.sol';
+import { Address }    from '../libraries/Address.sol';
+import { SLLHelpers } from '../libraries/SLLHelpers.sol';
 
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
@@ -232,44 +232,52 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _testControllerUpgrade(
-        address oldController,
-        address newController
-    ) internal {
+    function _testControllerUpgrade(address oldController, address newController) internal {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
+
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         // Note the functions used are interchangable with mainnet and foreign controllers
         MainnetController controller = MainnetController(newController);
 
-        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), oldController),           true);
-        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), newController),           false);
-        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), oldController), true);
-        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), newController), false);
-        assertEq(controller.hasRole(controller.RELAYER(), ctx.relayer),              false);
-        assertEq(controller.hasRole(controller.RELAYER(), ALM_RELAYER_BACKUP),       false);
-        assertEq(controller.hasRole(controller.FREEZER(), ctx.freezer),              false);
+        bytes32 CONTROLLER = ctx.proxy.CONTROLLER();
+        bytes32 RELAYER    = controller.RELAYER();
+        bytes32 FREEZER    = controller.FREEZER();
+
+        assertEq(ctx.proxy.hasRole(CONTROLLER, oldController), true);
+        assertEq(ctx.proxy.hasRole(CONTROLLER, newController), false);
+
+        assertEq(ctx.rateLimits.hasRole(CONTROLLER, oldController), true);
+        assertEq(ctx.rateLimits.hasRole(CONTROLLER, newController), false);
+
+        assertEq(controller.hasRole(RELAYER, ctx.relayer),        false);
+        assertEq(controller.hasRole(RELAYER, ALM_RELAYER_BACKUP), false);
+        assertEq(controller.hasRole(FREEZER, ctx.freezer),        false);
+
         if (currentChain == ChainIdUtils.Ethereum()) {
-            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
-            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(address(0)));
         } else {
-            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SparkLiquidityLayerHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
         }
 
         executeAllPayloadsAndBridges();
 
-        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), oldController),           false);
-        assertEq(ctx.proxy.hasRole(ctx.proxy.CONTROLLER(), newController),           true);
-        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), oldController), false);
-        assertEq(ctx.rateLimits.hasRole(ctx.rateLimits.CONTROLLER(), newController), true);
-        assertEq(controller.hasRole(controller.RELAYER(), ctx.relayer),              true);
-        assertEq(controller.hasRole(controller.RELAYER(), ALM_RELAYER_BACKUP),       true);
-        assertEq(controller.hasRole(controller.FREEZER(), ctx.freezer),              true);
+        assertEq(ctx.proxy.hasRole(CONTROLLER, oldController), false);
+        assertEq(ctx.proxy.hasRole(CONTROLLER, newController), true);
+
+        assertEq(ctx.rateLimits.hasRole(CONTROLLER, oldController), false);
+        assertEq(ctx.rateLimits.hasRole(CONTROLLER, newController), true);
+
+        assertEq(controller.hasRole(RELAYER, ctx.relayer),        true);
+        assertEq(controller.hasRole(RELAYER, ALM_RELAYER_BACKUP), true);
+        assertEq(controller.hasRole(FREEZER, ctx.freezer),        true);
+
         if (currentChain == ChainIdUtils.Ethereum()) {
-            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SparkLiquidityLayerHelpers.addrToBytes32(Base.ALM_PROXY));
-            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SparkLiquidityLayerHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(Base.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
         } else {
-            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SparkLiquidityLayerHelpers.addrToBytes32(Ethereum.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
         }
     }
 

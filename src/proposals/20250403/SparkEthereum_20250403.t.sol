@@ -198,8 +198,8 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         vm.prank(ctx.relayer);
         controller.redeemSuperstate(ustbShares / 10);
 
-        assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount / 10, 10);
-        assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 9 / 10, 1);
+        assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/10, 10);
+        assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 9/10, 1);
     }
 
     function test_ETHEREUM_centrifugeJTRSYOnboarding() public onChain(ChainIdUtils.Ethereum()) {
