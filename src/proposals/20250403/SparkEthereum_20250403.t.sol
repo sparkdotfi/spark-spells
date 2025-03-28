@@ -84,10 +84,10 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     address internal constant BUIDL_DEPOSIT = address(1);  // TODO
     address internal constant BUIDL_REDEEM  = address(1);  // TODO
 
-    address constant CENTRIFUGE_JTSRY_VAULT        = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
-    address constant CENTRIFUGE_JTSRY_TOKEN        = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
-    uint64  constant CENTRIFUGE_JTREASURY_POOL_ID  = 4139607887;
-    bytes16 constant CENTRIFUGE_JTSRY_TRANCHE_ID   = 0x97aa65f23e7be09fcd62d0554d2e9273;
+    address constant CENTRIFUGE_JTRSY_VAULT        = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
+    address constant CENTRIFUGE_JTRSY_TOKEN        = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
+    uint64  constant CENTRIFUGE_JTRSY_POOL_ID      = 4139607887;
+    bytes16 constant CENTRIFUGE_JTRSY_TRANCHE_ID   = 0x97aa65f23e7be09fcd62d0554d2e9273;
     uint128 constant CENTRIFUGE_USDC_ASSET_ID      = 242333941209166991950178742833476896417;
     address constant CENTRIFUGE_ROOT               = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
     address constant CENTRIFUGE_INVESTMENT_MANAGER = 0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9;
@@ -137,15 +137,33 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
     function test_ETHEREUM_blackrockBUIDLOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
+        bytes32 depositKey = RateLimitHelpers.makeAssetDestinationKey(
+            controller.LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            BUIDL_DEPOSIT
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetDestinationKey(
+            controller.LIMIT_ASSET_TRANSFER(),
+            BUIDL,
+            BUIDL_REDEEM
+        );
+
+        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+
         executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey, 500_000_000e6, 100_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
         IERC20 usdc  = IERC20(Ethereum.USDC);
         IERC20 buidl = IERC20(BUIDL);
 
-        // USDS -> USDC limits are 50m, go a bit below in case some is in use
-        uint256 mintAmount = 40_000_000e6;
+        // USDS -> USDC limits are 200m, go a bit below in case some is in use
+        uint256 mintAmount = 190_000_000e6;
         vm.startPrank(ctx.relayer);
         controller.mintUSDS(mintAmount * 1e12);
         controller.swapUSDSToUSDC(mintAmount);
@@ -171,15 +189,25 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
     function test_ETHEREUM_superstateUSTBOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
+        bytes32 depositKey = controller.LIMIT_SUPERSTATE_SUBSCRIBE();
+        bytes32 withdrawKey = controller.LIMIT_SUPERSTATE_REDEEM();
+
+        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+
         executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey, 300_000_000e6, 100_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
         IERC20 usdc           = IERC20(Ethereum.USDC);
         ISuperstateToken ustb = ISuperstateToken(Ethereum.USTB);
 
-        // USDS -> USDC limits are 50m, go a bit below in case some is in use
-        uint256 mintAmount = 40_000_000e6;
+        // USDS -> USDC limits are 200m, go a bit below in case some is in use
+        uint256 mintAmount = 190_000_000e6;
         vm.startPrank(ctx.relayer);
         controller.mintUSDS(mintAmount * 1e12);
         controller.swapUSDSToUSDC(mintAmount);
@@ -195,24 +223,41 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(usdc.balanceOf(address(ctx.proxy)), 0);
         assertEq(ustb.balanceOf(address(ctx.proxy)), ustbShares);
 
+        // Doing a smaller redeem because there is not necessarily enough liquidity
         vm.prank(ctx.relayer);
-        controller.redeemSuperstate(ustbShares / 10);
+        controller.redeemSuperstate(ustbShares / 100);
 
-        assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/10, 10);
-        assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 9/10, 1);
+        assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/100, 100);
+        assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 99/100, 1);
     }
 
     function test_ETHEREUM_centrifugeJTRSYOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_7540_DEPOSIT(),
+            CENTRIFUGE_JTRSY_VAULT
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_7540_REDEEM(),
+            CENTRIFUGE_JTRSY_VAULT
+        );
+
+        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
 
         executeAllPayloadsAndBridges();
 
-        IERC20 usdc  = IERC20(Ethereum.USDC);
-        IERC20 jtrsy = IERC20(CENTRIFUGE_JTSRY_TOKEN);
+        _assertRateLimit(depositKey, 200_000_000e6, 100_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        // USDS -> USDC limits are 50m, go a bit below in case some is in use
-        uint256 mintAmount = 40_000_000e6;
+        IERC20 usdc  = IERC20(Ethereum.USDC);
+        IERC20 jtrsy = IERC20(CENTRIFUGE_JTRSY_TOKEN);
+
+        // USDS -> USDC limits are 200m, go a bit below in case some is in use
+        uint256 mintAmount = 190_000_000e6;
         vm.startPrank(ctx.relayer);
         controller.mintUSDS(mintAmount * 1e12);
         controller.swapUSDSToUSDC(mintAmount);
@@ -220,7 +265,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
 
-        controller.requestDepositERC7540(CENTRIFUGE_JTSRY_VAULT, mintAmount);
+        controller.requestDepositERC7540(CENTRIFUGE_JTRSY_VAULT, mintAmount);
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
@@ -232,13 +277,13 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
 
         vm.prank(ctx.relayer);
-        controller.claimDepositERC7540(CENTRIFUGE_JTSRY_VAULT);
+        controller.claimDepositERC7540(CENTRIFUGE_JTRSY_VAULT);
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), mintAmount / 2);
 
         vm.prank(ctx.relayer);
-        controller.requestRedeemERC7540(CENTRIFUGE_JTSRY_VAULT, mintAmount / 2);
+        controller.requestRedeemERC7540(CENTRIFUGE_JTRSY_VAULT, mintAmount / 2);
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
@@ -249,7 +294,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
 
         vm.prank(ctx.relayer);
-        controller.claimRedeemERC7540(CENTRIFUGE_JTSRY_VAULT);
+        controller.claimRedeemERC7540(CENTRIFUGE_JTRSY_VAULT);
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
@@ -262,8 +307,8 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         // Fulfill request at price 2.0
         vm.prank(CENTRIFUGE_ROOT);
         IInvestmentManager(CENTRIFUGE_INVESTMENT_MANAGER).fulfillDepositRequest(
-            CENTRIFUGE_JTREASURY_POOL_ID,
-            CENTRIFUGE_JTSRY_TRANCHE_ID,
+            CENTRIFUGE_JTRSY_POOL_ID,
+            CENTRIFUGE_JTRSY_TRANCHE_ID,
             address(ctx.proxy),
             CENTRIFUGE_USDC_ASSET_ID,
             _amountUsdc,
@@ -278,8 +323,8 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         // Fulfill request at price 2.0
         vm.prank(CENTRIFUGE_ROOT);
         IInvestmentManager(CENTRIFUGE_INVESTMENT_MANAGER).fulfillRedeemRequest(
-            CENTRIFUGE_JTREASURY_POOL_ID,
-            CENTRIFUGE_JTSRY_TRANCHE_ID,
+            CENTRIFUGE_JTRSY_POOL_ID,
+            CENTRIFUGE_JTRSY_TRANCHE_ID,
             address(ctx.proxy),
             CENTRIFUGE_USDC_ASSET_ID,
             _amountJtrsy * 2,

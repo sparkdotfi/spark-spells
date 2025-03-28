@@ -97,6 +97,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(rateLimit.slope,       slope);
         assertEq(rateLimit.lastAmount,  lastAmount);
         assertEq(rateLimit.lastUpdated, lastUpdated);
+        
+        if (maxAmount != 0 && maxAmount != type(uint256).max) {
+            // Do some sanity checks on the slope
+            // This is to catch things like forgetting to divide to a per-second time, etc
+
+            // We assume it takes at least 1 day to recharge to max
+            uint256 dailySlope = slope * 1 days;
+            assertLe(dailySlope, maxAmount);
+
+            // It shouldn't take more than 30 days to recharge to max
+            uint256 monthlySlope = slope * 30 days;
+            assertGe(monthlySlope, maxAmount);
+        }
     }
 
     function _testERC4626Onboarding(
@@ -151,19 +164,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        if (!unlimitedDeposit) {
-            // Do some sanity checks on the slope
-            // This is to catch things like forgetting to divide to a per-second time, etc
-
-            // We assume it takes at least 1 day to recharge to max
-            uint256 dailySlope = depositSlope * 1 days;
-            assertLe(dailySlope, depositMax);
-
-            // It shouldn't take more than 30 days to recharge to max
-            uint256 monthlySlope = depositSlope * 30 days;
-            assertGe(monthlySlope, depositMax);
-        }
     }
 
     // TODO: Add balance assertions to all helper functions
@@ -217,19 +217,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        if (!unlimitedDeposit) {
-            // Do some sanity checks on the slope
-            // This is to catch things like forgetting to divide to a per-second time, etc
-
-            // We assume it takes at least 1 day to recharge to max
-            uint256 dailySlope = depositSlope * 1 days;
-            assertLe(dailySlope, depositMax);
-
-            // It shouldn't take more than 30 days to recharge to max
-            uint256 monthlySlope = depositSlope * 30 days;
-            assertGe(monthlySlope, depositMax);
-        }
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
