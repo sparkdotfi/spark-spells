@@ -36,8 +36,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
     address internal constant NEW_ALM_CONTROLLER = 0xF51164FE5B0DC7aFB9192E1b806ae18A8813Ae8c;
 
     address internal constant BUIDL         = 0x6a9DA2D710BB9B700acde7Cb81F10F1fF8C89041;
-    address internal constant BUIDL_DEPOSIT = address(1);  // TODO
-    address internal constant BUIDL_REDEEM  = address(1);  // TODO
+    address internal constant BUIDL_DEPOSIT = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
+    address internal constant BUIDL_REDEEM  = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
 
     address internal constant JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
 

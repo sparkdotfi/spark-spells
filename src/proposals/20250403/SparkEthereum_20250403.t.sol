@@ -69,6 +69,10 @@ interface IPoolManagerLike {
     function poolDelegate() external view returns (address);
 }
 
+interface IBuidlLike is IERC20 {
+    function issueTokens(address to, uint256 amount) external;
+}
+
 contract SparkEthereum_20250403Test is SparkTestBase {
 
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
@@ -81,8 +85,9 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     address internal constant ARBITRUM_NEW_ALM_CONTROLLER = 0x98f567464e91e9B4831d3509024b7868f9F79ee1;
 
     address internal constant BUIDL         = 0x6a9DA2D710BB9B700acde7Cb81F10F1fF8C89041;
-    address internal constant BUIDL_DEPOSIT = address(1);  // TODO
-    address internal constant BUIDL_REDEEM  = address(1);  // TODO
+    address internal constant BUIDL_DEPOSIT = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
+    address internal constant BUIDL_REDEEM  = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
+    address internal constant BUIDL_ADMIN   = 0xe01605f6b6dC593b7d2917F4a0940db2A625b09e;
 
     address constant CENTRIFUGE_JTRSY_VAULT        = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
     address constant CENTRIFUGE_JTRSY_TOKEN        = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
@@ -99,9 +104,9 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     }
 
     function setUp() public {
-        // March 27, 2025
+        // March 28, 2025
         setupDomains({
-            mainnetForkBlock:     22138004,
+            mainnetForkBlock:     22147801,
             baseForkBlock:        28144796,
             gnosisForkBlock:      38037888,  // Not used
             arbitrumOneForkBlock: 320078656
@@ -175,7 +180,9 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         vm.stopPrank();
 
         // Emulate BUIDL deposit
-        deal(BUIDL, address(ctx.proxy), mintAmount);
+        vm.startPrank(BUIDL_ADMIN);
+        IBuidlLike(BUIDL).issueTokens(address(ctx.proxy), mintAmount);
+        vm.stopPrank();
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(buidl.balanceOf(address(ctx.proxy)), mintAmount);
@@ -183,7 +190,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         vm.prank(ctx.relayer);
         controller.transferAsset(address(buidl), BUIDL_REDEEM, mintAmount);
 
-        assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
+        assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
     }
 
