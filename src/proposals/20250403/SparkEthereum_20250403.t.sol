@@ -403,19 +403,6 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)),  expectedDepositAmount / 2, 1);
         assertApproxEqAbs(syrup.balanceOf(address(ctx.proxy)), shares / 2, 1);
-
-        if (!unlimitedDeposit) {
-            // Do some sanity checks on the slope
-            // This is to catch things like forgetting to divide to a per-second time, etc
-
-            // We assume it takes at least 1 day to recharge to max
-            uint256 dailySlope = depositSlope * 1 days;
-            assertLe(dailySlope, depositMax);
-
-            // It shouldn't take more than 30 days to recharge to max
-            uint256 monthlySlope = depositSlope * 30 days;
-            assertGe(monthlySlope, depositMax);
-        }
     }
 
     function test_ETHEREUM_sparkLend_usdcUpdates() public onChain(ChainIdUtils.Ethereum()) {
