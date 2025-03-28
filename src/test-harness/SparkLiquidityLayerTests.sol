@@ -73,16 +73,26 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
        uint256 slope
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
-        assertEq(rateLimit.maxAmount, maxAmount);
-        assertEq(rateLimit.slope,     slope);
+        _assertRateLimit(
+            key,
+            maxAmount,
+            slope,
+            rateLimit.lastAmount,
+            rateLimit.lastUpdated
+        );
     }
 
    function _assertUnlimitedRateLimit(
        bytes32 key
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
-        assertEq(rateLimit.maxAmount, type(uint256).max);
-        assertEq(rateLimit.slope,     0);
+        _assertRateLimit(
+            key,
+            type(uint256).max,
+            0,
+            rateLimit.lastAmount,
+            rateLimit.lastUpdated
+        );
     }
 
    function _assertRateLimit(
@@ -104,11 +114,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             // We assume it takes at least 1 day to recharge to max
             uint256 dailySlope = slope * 1 days;
-            assertLe(dailySlope, maxAmount);
+            assertLe(dailySlope, maxAmount, "slope range sanity check failed");
 
             // It shouldn't take more than 30 days to recharge to max
             uint256 monthlySlope = slope * 30 days;
-            assertGe(monthlySlope, maxAmount);
+            assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
     }
 
