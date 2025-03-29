@@ -386,7 +386,6 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         
         // Slightly modify code from _testERC4626Onboarding due to async redemption
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        bool unlimitedDeposit = depositMax == type(uint256).max;
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
             MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
             vault
@@ -415,11 +414,9 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         _assertRateLimit(depositKey, depositMax, depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        if (!unlimitedDeposit) {
-            vm.prank(ctx.relayer);
-            vm.expectRevert("RateLimits/rate-limit-exceeded");
-            MainnetController(ctx.controller).depositERC4626(vault, depositMax + 1);
-        }
+        vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(ctx.controller).depositERC4626(vault, depositMax + 1);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
@@ -430,7 +427,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         uint256 shares = MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
         assertGt(shares, 0);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
         assertEq(usdc.balanceOf(address(ctx.proxy)),              0);
         assertEq(syrup.balanceOf(address(ctx.proxy)),             shares);
