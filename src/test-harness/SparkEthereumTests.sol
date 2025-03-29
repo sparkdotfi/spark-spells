@@ -480,14 +480,21 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         executeAllPayloadsAndBridges();
 
-        _assertMorphoCap(vault, config, currentCap, newCap);
+        if (newCap > currentCap) {
+            // Increases are timelocked
+            _assertMorphoCap(vault, config, currentCap, newCap);
 
-        assertEq(IMetaMorpho(vault).timelock(), 1 days);
-        skip(1 days);
+            assertEq(IMetaMorpho(vault).timelock(), 1 days);
+            skip(1 days);
 
-        IMetaMorpho(vault).acceptCap(config);
+            IMetaMorpho(vault).acceptCap(config);
 
-        _assertMorphoCap(vault, config, newCap);
+            _assertMorphoCap(vault, config, newCap);
+        } else {
+            // Decreases are immediate
+            _assertMorphoCap(vault, config, newCap);
+        }
+
     }
 
     function _testMorphoPendlePTOracleConfig(

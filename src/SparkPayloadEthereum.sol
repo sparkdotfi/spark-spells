@@ -14,7 +14,7 @@ import { AMBForwarder }      from "xchain-helpers/forwarders/AMBForwarder.sol";
 import { ArbitrumForwarder } from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
 import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
 
-import { SparkLiquidityLayerHelpers } from './libraries/SparkLiquidityLayerHelpers.sol';
+import { SLLHelpers } from './libraries/SLLHelpers.sol';
 
 /**
  * @dev Base smart contract for Ethereum.
@@ -84,9 +84,16 @@ abstract contract SparkPayloadEthereum is
             withDelegatecalls
         ));
     }
+    
+    function _upgradeController(address oldController, address newController) internal {
+        SLLHelpers.upgradeMainnetController(
+            oldController,
+            newController
+        );
+    }
 
     function _onboardAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
-        SparkLiquidityLayerHelpers.onboardAaveToken(
+        SLLHelpers.onboardAaveToken(
             Ethereum.ALM_RATE_LIMITS,
             token,
             depositMax,
@@ -95,7 +102,7 @@ abstract contract SparkPayloadEthereum is
     }
 
     function _onboardERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
-        SparkLiquidityLayerHelpers.onboardERC4626Vault(
+        SLLHelpers.onboardERC4626Vault(
             Ethereum.ALM_RATE_LIMITS,
             vault,
             depositMax,
