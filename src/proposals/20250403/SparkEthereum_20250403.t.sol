@@ -165,7 +165,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
             BUIDL_REDEEM
         );
 
-        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
         executeAllPayloadsAndBridges();
@@ -185,8 +185,12 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
         assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
 
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 500_000_000e6);
+
         controller.transferAsset(address(usdc), BUIDL_DEPOSIT, mintAmount);
         vm.stopPrank();
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 500_000_000e6 - mintAmount);
 
         // Emulate BUIDL deposit
         vm.startPrank(BUIDL_ADMIN);
@@ -219,8 +223,8 @@ contract SparkEthereum_20250403Test is SparkTestBase {
             address(ustb)
         );
 
-        _assertRateLimit(depositKey, 0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
+        _assertRateLimit(depositKey,        0, 0);
+        _assertRateLimit(withdrawKey,       0, 0);
         _assertRateLimit(offchainRedeemKey, 0, 0);
 
         executeAllPayloadsAndBridges();
@@ -238,10 +242,14 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(usdc.balanceOf(address(ctx.proxy)), mintAmount);
         assertEq(ustb.balanceOf(address(ctx.proxy)), 0);
 
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 300_000_000e6);
+
         (uint256 ustbShares,,) = ustb.calculateSuperstateTokenOut(mintAmount, address(usdc));
 
         controller.subscribeSuperstate(mintAmount);
         vm.stopPrank();
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 300_000_000e6 - mintAmount);
 
         assertEq(usdc.balanceOf(address(ctx.proxy)), 0);
         assertEq(ustb.balanceOf(address(ctx.proxy)), ustbShares);
@@ -277,7 +285,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
             CENTRIFUGE_JTRSY_VAULT
         );
 
-        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
         executeAllPayloadsAndBridges();
@@ -297,8 +305,12 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
 
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 200_000_000e6);
+
         controller.requestDepositERC7540(CENTRIFUGE_JTRSY_VAULT, mintAmount);
         vm.stopPrank();
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 200_000_000e6 - mintAmount);
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(jtrsy.balanceOf(address(ctx.proxy)), 0);
@@ -384,7 +396,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
             vault
         );
 
-        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
         vm.prank(ctx.relayer);
