@@ -199,19 +199,26 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
-        bytes32 depositKey = controller.LIMIT_SUPERSTATE_SUBSCRIBE();
-        bytes32 withdrawKey = controller.LIMIT_SUPERSTATE_REDEEM();
+        IERC20 usdc           = IERC20(Ethereum.USDC);
+        ISuperstateToken ustb = ISuperstateToken(Ethereum.USTB);
+
+        bytes32 depositKey        = controller.LIMIT_SUPERSTATE_SUBSCRIBE();
+        bytes32 withdrawKey       = controller.LIMIT_SUPERSTATE_REDEEM();
+        bytes32 offchainRedeemKey = RateLimitHelpers.makeAssetDestinationKey(
+            controller.LIMIT_ASSET_TRANSFER(),
+            address(ustb),
+            address(ustb)
+        );
 
         _assertRateLimit(depositKey, 0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
+        _assertRateLimit(offchainRedeemKey, 0, 0);
 
         executeAllPayloadsAndBridges();
 
         _assertRateLimit(depositKey, 300_000_000e6, 100_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        IERC20 usdc           = IERC20(Ethereum.USDC);
-        ISuperstateToken ustb = ISuperstateToken(Ethereum.USTB);
+        _assertRateLimit(offchainRedeemKey, type(uint256).max, 0);
 
         // USDS -> USDC limits are 200m, go a bit below in case some is in use
         uint256 mintAmount = 190_000_000e6;
@@ -236,6 +243,15 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/100, 100);
         assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 99/100, 1);
+
+        // You can always burn the whole amount by doing it offchain
+        uint256 ustbBalance = ustb.balanceOf(address(ctx.proxy));
+        vm.prank(ctx.relayer);
+        controller.transferAsset(address(ustb), address(ustb), ustbBalance);
+
+        // USDC will come back async
+        assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/100, 100);
+        assertEq(ustb.balanceOf(address(ctx.proxy)), 0);
     }
 
     function test_ETHEREUM_centrifugeJTRSYOnboarding() public onChain(ChainIdUtils.Ethereum()) {

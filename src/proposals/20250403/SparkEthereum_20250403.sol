@@ -103,11 +103,24 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
             "ustbMintLimit",
             6
         );
+        // Instant liquidity redemption
         RateLimitHelpers.setRateLimitData(
             MainnetController(NEW_ALM_CONTROLLER).LIMIT_SUPERSTATE_REDEEM(),
             Ethereum.ALM_RATE_LIMITS,
             RateLimitHelpers.unlimitedRateLimit(),
             "ustbBurnLimit",
+            6
+        );
+        // Offchain redemption
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USTB,
+                Ethereum.USTB
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "ustbOffchainBurnLimit",
             6
         );
     }
