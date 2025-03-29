@@ -427,7 +427,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         uint256 shares = MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
         assertGt(shares, 0);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
         assertEq(usdc.balanceOf(address(ctx.proxy)),              0);
         assertEq(syrup.balanceOf(address(ctx.proxy)),             shares);
