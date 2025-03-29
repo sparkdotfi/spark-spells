@@ -335,10 +335,7 @@ library SLLHelpers {
         return bytes32(uint256(uint160(addr)));
     }
     
-    function upgradeMainnetController(
-        address oldController,
-        address newController
-    ) internal {
+    function upgradeMainnetController(address oldController, address newController) internal {
         MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](2);
         mintRecipients[0] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,

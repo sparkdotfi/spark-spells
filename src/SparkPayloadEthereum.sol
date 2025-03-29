@@ -85,10 +85,7 @@ abstract contract SparkPayloadEthereum is
         ));
     }
     
-    function _upgradeController(
-        address oldController,
-        address newController
-    ) internal {
+    function _upgradeController(address oldController, address newController) internal {
         SLLHelpers.upgradeMainnetController(
             oldController,
             newController

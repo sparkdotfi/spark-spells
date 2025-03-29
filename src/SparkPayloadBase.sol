@@ -14,10 +14,7 @@ import { SLLHelpers } from './libraries/SLLHelpers.sol';
  */
 abstract contract SparkPayloadBase {
     
-    function _upgradeController(
-        address oldController,
-        address newController
-    ) internal {
+    function _upgradeController(address oldController, address newController) internal {
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
                 almProxy:    Base.ALM_PROXY,
