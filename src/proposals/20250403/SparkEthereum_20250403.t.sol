@@ -6,6 +6,8 @@ import 'src/test-harness/SparkTestBase.sol';
 import { IERC20 }   from 'forge-std/interfaces/IERC20.sol';
 import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
 
+import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -98,6 +100,13 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     address constant CENTRIFUGE_INVESTMENT_MANAGER = 0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9;
 
     address internal constant SYRUP_USDC = 0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b;
+
+    address internal constant PT_USDE_27MAR2025_PRICE_FEED  = 0xA8ccE51046d760291f77eC1EB98147A75730Dcd5;
+    address internal constant PT_USDE_27MAR2025             = 0x8A47b431A7D947c6a3ED6E42d501803615a97EAa;
+    address internal constant PT_SUSDE_27MAR2025_PRICE_FEED = 0x38d130cEe60CDa080A3b3aC94C79c34B6Fc919A7;
+    address internal constant PT_SUSDE_27MAR2025            = 0xE00bd3Df25fb187d6ABBB620b3dfd19839947b81;
+    address internal constant PT_SUSDE_29MAY2025_PRICE_FEED = 0xE84f7e0a890e5e57d0beEa2c8716dDf0c9846B4A;
+    address internal constant PT_SUSDE_29MAY2025            = 0xb7de5dFCb74d25c2f21841fbd6230355C50d9308;
 
     constructor() {
         id = '20250403';
@@ -467,7 +476,52 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        _assertSupplyCapConfig(Ethereum.RSETH, 40_000, 4_000, 12 hours);
+        _assertSupplyCapConfig(Ethereum.RSETH, 40_000, 5_000, 12 hours);
+    }
+
+    function test_ETHEREUM_morpho_PTUSDE27MAR2025Offboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_DAI_1,
+            config: MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_USDE_27MAR2025,
+                oracle:          PT_USDE_27MAR2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 100_000_000e18,
+            newCap:     0
+        });
+    }
+
+    function test_ETHEREUM_morpho_PTSUSDE27MAR2025Offboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_DAI_1,
+            config: MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_SUSDE_27MAR2025,
+                oracle:          PT_SUSDE_27MAR2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 500_000_000e18,
+            newCap:     0
+        });
+    }
+
+    function test_ETHEREUM_morpho_PTSUSDE29MAY2025CapIncrease() public onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_DAI_1,
+            config: MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_SUSDE_29MAY2025,
+                oracle:          PT_SUSDE_29MAY2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 200_000_000e18,
+            newCap:     400_000_000e18
+        });
     }
 
 }
