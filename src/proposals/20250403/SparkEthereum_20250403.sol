@@ -56,8 +56,8 @@ contract SparkEthereum_20250403 is SparkPayloadEthereum {
     address internal constant PT_SUSDE_29MAY2025            = 0xb7de5dFCb74d25c2f21841fbd6230355C50d9308;
 
     constructor() {
-        PAYLOAD_ARBITRUM = address(0);  // TODO
-        PAYLOAD_BASE     = address(0);  // TODO
+        PAYLOAD_ARBITRUM = 0x545eeEc8Ca599085cE86ada51eb8c0c35Af1e9d6;
+        PAYLOAD_BASE     = 0x43d32D791C35D34d28fa8c33cfB8ca3c6AE0d02d;
     }
 
     function _postExecute() internal override {
