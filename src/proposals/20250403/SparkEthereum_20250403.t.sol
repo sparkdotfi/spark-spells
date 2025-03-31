@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { console } from "forge-std/console.sol";
-
 import 'src/test-harness/SparkTestBase.sol';
 
 import { IERC20 }   from 'forge-std/interfaces/IERC20.sol';
@@ -125,13 +123,12 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         deployPayloads();
 
-        console.log("SETUP");
-
         //chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x8839aC188064542331D4E7f6112aab7b71ac706F;
         //chainSpellMetadata[ChainIdUtils.Base()].payload        = 0xf3e842AFe529e4E241B4aE15033163E3F4C46ce0;
         //chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = ;
     }
 
+    // Overriding because of upgrade
     function _getLatestControllers() internal pure override returns (address, address, address) {
         return (
             ETHEREUM_NEW_ALM_CONTROLLER,
