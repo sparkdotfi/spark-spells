@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
+import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
-
-import { Address }    from '../libraries/Address.sol';
-import { SLLHelpers } from '../libraries/SLLHelpers.sol';
 
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
@@ -12,16 +10,25 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { CCTPForwarder } from 'xchain-helpers/forwarders/CCTPForwarder.sol';
-
 import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
 
+import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
+import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
+
+import { Address }               from '../libraries/Address.sol';
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
+import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
 
 import { SpellRunner } from "./SpellRunner.sol";
+
+interface IPSMLike {
+    function shares(address account) external view returns (uint256);
+    function convertToAssetValue(uint256 shares) external view returns (uint256);
+}
 
 struct SparkLiquidityLayerContext {
     address     controller;
@@ -34,7 +41,13 @@ struct SparkLiquidityLayerContext {
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
+    using DomainHelpers for Domain;
+
     address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
+
+    /**********************************************************************************************/
+    /*** State loading helpers                                                                  ***/
+    /**********************************************************************************************/
 
     function _getSparkLiquidityLayerContext() internal view returns(SparkLiquidityLayerContext memory ctx) {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
@@ -67,7 +80,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-   function _assertRateLimit(
+    // Needs to be overridden the test contract for upgrades
+    function _getLatestControllers() internal pure virtual returns (address, address, address) {
+        return (
+            Ethereum.ALM_CONTROLLER,
+            Base.ALM_CONTROLLER,
+            Arbitrum.ALM_CONTROLLER
+        );
+    }
+
+    /**********************************************************************************************/
+    /*** Assertion helpers                                                                      ***/
+    /**********************************************************************************************/
+
+    function _assertRateLimit(
        bytes32 key,
        uint256 maxAmount,
        uint256 slope
@@ -107,7 +133,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(rateLimit.slope,       slope);
         assertEq(rateLimit.lastAmount,  lastAmount);
         assertEq(rateLimit.lastUpdated, lastUpdated);
-        
+
         if (maxAmount != 0 && maxAmount != type(uint256).max) {
             // Do some sanity checks on the slope
             // This is to catch things like forgetting to divide to a per-second time, etc
@@ -121,6 +147,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
     }
+
+    /**********************************************************************************************/
+    /*** Standardized testing helpers                                                           ***/
+    /**********************************************************************************************/
 
     function _testERC4626Onboarding(
         address vault,
@@ -276,6 +306,107 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
         }
+    }
+
+    function _testE2ESparkLiquidityLayerCrossChainSetup(
+        MainnetController mainnetController,
+        ForeignController arbController,
+        ForeignController baseController
+    )
+        internal onChain(ChainIdUtils.Ethereum())
+    {
+        IERC20 arbUsdc = IERC20(Arbitrum.USDC);
+        IERC20 usdc    = IERC20(Ethereum.USDC);
+
+        // chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 usdcAlmProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
+
+        // --- Step 1: Mint and bridge 10m USDC to Arbitrum ---
+
+        uint256 usdcAmount = 10_000_000e6;
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.mintUSDS(usdcAmount * 1e12);
+        mainnetController.swapUSDSToUSDC(usdcAmount);
+        mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        vm.stopPrank();
+
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+
+        uint256 arbUsdcPsmBalance = arbUsdc.balanceOf(Arbitrum.PSM3);
+
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+        assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
+
+        _relayMessageOverBridges();
+        // _clearLogs();
+
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
+        assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
+
+        // --- Step 2: Deposit 10m USDC into PSM3 ---
+
+        vm.prank(Arbitrum.ALM_RELAYER);
+        arbController.depositPSM(Arbitrum.USDC, usdcAmount);
+
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+        assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance + usdcAmount);
+
+        // --- Step 3: Withdraw all assets from PSM3 ---
+
+        vm.prank(Arbitrum.ALM_RELAYER);
+        arbController.withdrawPSM(Arbitrum.USDC, usdcAmount);
+
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
+        assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
+
+        // --- Step 4: Bridge USDC back to mainnet
+
+        vm.prank(Arbitrum.ALM_RELAYER);
+        arbController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+
+        chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), usdcAlmProxyBalance);
+
+        _relayMessageOverBridges();
+
+        // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), usdcAlmProxyBalance + usdcAmount);
+
+        // vm.startPrank(Ethereum.ALM_RELAYER);
+        // mainnetController.swapUSDCToUSDS(usdcAmount);
+        // mainnetController.burnUSDS(usdcAmount * 1e12);
+        // vm.stopPrank();
+    }
+
+    /**********************************************************************************************/
+    /*** E2E tests to be run on every spell                                                     ***/
+    /**********************************************************************************************/
+
+    function test_E2E_sparkLiquidityLayerCrossChainSetup() public{
+        // _testE2ESparkLiquidityLayerCrossChainSetup(
+        //     MainnetController(Ethereum.ALM_CONTROLLER),
+        //     ForeignController(Arbitrum.ALM_CONTROLLER),
+        //     ForeignController(Base.ALM_CONTROLLER)
+        // );
+
+        executeAllPayloadsAndBridges();
+
+        // Load the latest controllers (will return the same values if not overridden)
+        (
+            address updatedMainnetController,
+            address updatedArbController,
+            address updatedBaseController
+        ) = _getLatestControllers();
+
+        _testE2ESparkLiquidityLayerCrossChainSetup(
+            MainnetController(updatedMainnetController),
+            ForeignController(updatedArbController),
+            ForeignController(updatedBaseController)
+        );
     }
 
 }
