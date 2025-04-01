@@ -311,7 +311,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _testE2ESLLArbitrumSetup(
+    function _testE2ESparkLiquidityLayerArbitrum(
         MainnetController mainnetController,
         ForeignController arbController
     )
@@ -387,7 +387,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
     }
 
-    function _testE2ESLLBaseSetup(
+    function _testE2ESparkLiquidityLayerBase(
         MainnetController mainnetController,
         ForeignController baseController
     )
@@ -417,8 +417,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance);
 
-        // _relayMessageOverBridges();
-        CCTPBridgeTesting.relayMessagesToDestination(chainSpellMetadata[ChainIdUtils.Base()].bridges[1], true);
+        _relayMessageOverBridges();
 
         assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance + usdcAmount);
         assertEq(baseUsdc.balanceOf(Base.PSM3),      baseUsdcPsmBalance);
@@ -450,45 +449,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
-        // _relayMessageOverBridges();
-        CCTPBridgeTesting.relayMessagesToSource(chainSpellMetadata[ChainIdUtils.Base()].bridges[1], true);
+        _relayMessageOverBridges();
 
-        // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 
-        // // --- Step 6: Swap USDC to USDS and burn ---
+        // --- Step 6: Swap USDC to USDS and burn ---
 
-        // vm.startPrank(Ethereum.ALM_RELAYER);
-        // mainnetController.swapUSDCToUSDS(usdcAmount);
-        // mainnetController.burnUSDS(usdcAmount * 1e12);
-        // vm.stopPrank();
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.swapUSDCToUSDS(usdcAmount);
+        mainnetController.burnUSDS(usdcAmount * 1e12);
+        vm.stopPrank();
 
-        // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
-    }
-
-    function _testE2ESparkLiquidityLayerCrossChainSetup(
-        MainnetController mainnetController,
-        ForeignController arbController,
-        ForeignController baseController
-    )
-        internal onChain(ChainIdUtils.Ethereum())
-    {
-        uint256 id = vm.snapshotState();
-
-        _testE2ESLLArbitrumSetup(mainnetController, arbController);
-        vm.revertToState(id);
-
-        _testE2ESLLBaseSetup(mainnetController, baseController);
-        vm.revertToState(id);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
     }
 
     /**********************************************************************************************/
     /*** E2E tests to be run on every spell                                                     ***/
     /**********************************************************************************************/
 
-    function test_E2E_sparkLiquidityLayerArbitrumCrossChainSetup() public{
-        _testE2ESLLArbitrumSetup(
+    function test_E2E_sparkLiquidityLayerCrossChainSetup() public{
+        _testE2ESparkLiquidityLayerArbitrum(
             MainnetController(Ethereum.ALM_CONTROLLER),
             ForeignController(Arbitrum.ALM_CONTROLLER)
+        );
+
+        _testE2ESparkLiquidityLayerBase(
+            MainnetController(Ethereum.ALM_CONTROLLER),
+            ForeignController(Base.ALM_CONTROLLER)
         );
 
         executeAllPayloadsAndBridges();
@@ -497,33 +484,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         (
             address updatedMainnetController,
             address updatedArbController,
+            address updatedBaseController
         ) = _getLatestControllers();
 
-        _testE2ESLLArbitrumSetup(
+        _testE2ESparkLiquidityLayerArbitrum(
             MainnetController(updatedMainnetController),
             ForeignController(updatedArbController)
         );
-    }
 
-    function test_E2E_sparkLiquidityLayerBaseCrossChainSetup() public{
-        _testE2ESLLBaseSetup(
-            MainnetController(Ethereum.ALM_CONTROLLER),
-            ForeignController(Base.ALM_CONTROLLER)
+        _testE2ESparkLiquidityLayerBase(
+            MainnetController(updatedMainnetController),
+            ForeignController(updatedBaseController)
         );
-
-        // executeAllPayloadsAndBridges();
-
-        // // Load the latest controllers (will return the same values if not overridden)
-        // (
-        //     address updatedMainnetController,
-        //     ,
-        //     address updatedBaseController
-        // ) = _getLatestControllers();
-
-        // _testE2ESLLBaseSetup(
-        //     MainnetController(updatedMainnetController),
-        //     ForeignController(updatedBaseController)
-        // );
     }
 
 }
