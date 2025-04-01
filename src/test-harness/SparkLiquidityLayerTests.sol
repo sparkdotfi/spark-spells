@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
+import { console } from "forge-std/console.sol";
+
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
@@ -309,23 +311,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _testE2ESparkLiquidityLayerCrossChainSetup(
+    function _testE2ESLLArbitrumSetup(
         MainnetController mainnetController,
-        ForeignController arbController,
-        ForeignController baseController
+        ForeignController arbController
     )
         internal onChain(ChainIdUtils.Ethereum())
     {
-        IERC20 arbUsdc = IERC20(Arbitrum.USDC);
-        IERC20 usdc    = IERC20(Ethereum.USDC);
+        IERC20 arbUsdc  = IERC20(Arbitrum.USDC);
+        IERC20 usdc     = IERC20(Ethereum.USDC);
 
-        // chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
-        uint256 usdcAlmProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
+        // --- Step 1: Mint and bridge 1m USDC to Arbitrum ---
 
-        // --- Step 1: Mint and bridge 10m USDC to Arbitrum ---
-
-        uint256 usdcAmount = 10_000_000e6;
+        uint256 usdcAmount = 1_000_000e6;
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
@@ -333,21 +332,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
         vm.stopPrank();
 
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain.selectFork();
 
-        uint256 arbUsdcPsmBalance = arbUsdc.balanceOf(Arbitrum.PSM3);
+        uint256 arbUsdcProxyBalance = arbUsdc.balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbUsdcPsmBalance   = arbUsdc.balanceOf(Arbitrum.PSM3);
 
-        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
-        assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), arbUsdcProxyBalance);
 
-        // _relayMessageOverBridges();
+        _relayMessageOverBridges();
 
-        CCTPBridgeTesting.relayMessagesToDestination(
-            chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges[1],
-            true
-        );
-
-        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), arbUsdcProxyBalance + usdcAmount);
         assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
 
         // --- Step 2: Deposit 10m USDC into PSM3 ---
@@ -355,7 +351,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(Arbitrum.ALM_RELAYER);
         arbController.depositPSM(Arbitrum.USDC, usdcAmount);
 
-        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), arbUsdcProxyBalance);
         assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance + usdcAmount);
 
         // --- Step 3: Withdraw all assets from PSM3 ---
@@ -363,7 +359,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(Arbitrum.ALM_RELAYER);
         arbController.withdrawPSM(Arbitrum.USDC, usdcAmount);
 
-        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), arbUsdcProxyBalance + usdcAmount);
         assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
 
         // --- Step 4: Bridge USDC back to mainnet
@@ -371,37 +367,129 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(Arbitrum.ALM_RELAYER);
         arbController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
+        assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), arbUsdcProxyBalance);
 
         chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), usdcAlmProxyBalance);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+
+        _relayMessageOverBridges();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+
+        // --- Step 5: Swap USDC to USDS and burn ---
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.swapUSDCToUSDS(usdcAmount);
+        mainnetController.burnUSDS(usdcAmount * 1e12);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+    }
+
+    function _testE2ESLLBaseSetup(
+        MainnetController mainnetController,
+        ForeignController baseController
+    )
+        internal onChain(ChainIdUtils.Ethereum())
+    {
+        IERC20 baseUsdc = IERC20(Base.USDC);
+        IERC20 usdc     = IERC20(Ethereum.USDC);
+
+        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
+
+        // --- Step 1: Mint and bridge 1m USDC to Base ---
+
+        uint256 usdcAmount = 1_000_000e6;
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.mintUSDS(usdcAmount * 1e12);
+        mainnetController.swapUSDSToUSDC(usdcAmount);
+        mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+
+        chainSpellMetadata[ChainIdUtils.Base()].domain.selectFork();
+
+        uint256 baseUsdcProxyBalance = baseUsdc.balanceOf(Base.ALM_PROXY);
+        uint256 baseUsdcPsmBalance   = baseUsdc.balanceOf(Base.PSM3);
+
+        assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance);
 
         // _relayMessageOverBridges();
+        CCTPBridgeTesting.relayMessagesToDestination(chainSpellMetadata[ChainIdUtils.Base()].bridges[1], true);
 
-        CCTPBridgeTesting.relayMessagesToSource(
-            chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges[1],
-            true
-        );
+        assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance + usdcAmount);
+        assertEq(baseUsdc.balanceOf(Base.PSM3),      baseUsdcPsmBalance);
 
-        // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), usdcAlmProxyBalance + usdcAmount);
+        // --- Step 3: Deposit USDC into PSM3 ---
+
+        vm.prank(Base.ALM_RELAYER);
+        baseController.depositPSM(Base.USDC, usdcAmount);
+
+        assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance);
+        assertEq(baseUsdc.balanceOf(Base.PSM3),      baseUsdcPsmBalance + usdcAmount);
+
+        // --- Step 4: Withdraw all assets from PSM3 ---
+
+        vm.prank(Base.ALM_RELAYER);
+        baseController.withdrawPSM(Base.USDC, usdcAmount);
+
+        assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance + usdcAmount);
+        assertEq(baseUsdc.balanceOf(Base.PSM3),      baseUsdcPsmBalance);
+
+        // --- Step 5: Bridge USDC back to mainnet ---
+
+        vm.prank(Base.ALM_RELAYER);
+        baseController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        assertEq(baseUsdc.balanceOf(Base.ALM_PROXY), baseUsdcProxyBalance);
+
+        chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+
+        // _relayMessageOverBridges();
+        CCTPBridgeTesting.relayMessagesToSource(chainSpellMetadata[ChainIdUtils.Base()].bridges[1], true);
+
+        // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+
+        // // --- Step 6: Swap USDC to USDS and burn ---
 
         // vm.startPrank(Ethereum.ALM_RELAYER);
         // mainnetController.swapUSDCToUSDS(usdcAmount);
         // mainnetController.burnUSDS(usdcAmount * 1e12);
         // vm.stopPrank();
+
+        // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+    }
+
+    function _testE2ESparkLiquidityLayerCrossChainSetup(
+        MainnetController mainnetController,
+        ForeignController arbController,
+        ForeignController baseController
+    )
+        internal onChain(ChainIdUtils.Ethereum())
+    {
+        uint256 id = vm.snapshotState();
+
+        _testE2ESLLArbitrumSetup(mainnetController, arbController);
+        vm.revertToState(id);
+
+        _testE2ESLLBaseSetup(mainnetController, baseController);
+        vm.revertToState(id);
     }
 
     /**********************************************************************************************/
     /*** E2E tests to be run on every spell                                                     ***/
     /**********************************************************************************************/
 
-    function test_E2E_sparkLiquidityLayerCrossChainSetup() public{
-        // _testE2ESparkLiquidityLayerCrossChainSetup(
-        //     MainnetController(Ethereum.ALM_CONTROLLER),
-        //     ForeignController(Arbitrum.ALM_CONTROLLER),
-        //     ForeignController(Base.ALM_CONTROLLER)
-        // );
+    function test_E2E_sparkLiquidityLayerArbitrumCrossChainSetup() public{
+        _testE2ESLLArbitrumSetup(
+            MainnetController(Ethereum.ALM_CONTROLLER),
+            ForeignController(Arbitrum.ALM_CONTROLLER)
+        );
 
         executeAllPayloadsAndBridges();
 
@@ -409,14 +497,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         (
             address updatedMainnetController,
             address updatedArbController,
-            address updatedBaseController
         ) = _getLatestControllers();
 
-        _testE2ESparkLiquidityLayerCrossChainSetup(
+        _testE2ESLLArbitrumSetup(
             MainnetController(updatedMainnetController),
-            ForeignController(updatedArbController),
-            ForeignController(updatedBaseController)
+            ForeignController(updatedArbController)
         );
+    }
+
+    function test_E2E_sparkLiquidityLayerBaseCrossChainSetup() public{
+        _testE2ESLLBaseSetup(
+            MainnetController(Ethereum.ALM_CONTROLLER),
+            ForeignController(Base.ALM_CONTROLLER)
+        );
+
+        // executeAllPayloadsAndBridges();
+
+        // // Load the latest controllers (will return the same values if not overridden)
+        // (
+        //     address updatedMainnetController,
+        //     ,
+        //     address updatedBaseController
+        // ) = _getLatestControllers();
+
+        // _testE2ESLLBaseSetup(
+        //     MainnetController(updatedMainnetController),
+        //     ForeignController(updatedBaseController)
+        // );
     }
 
 }
