@@ -16,6 +16,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
 
+import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
 import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
@@ -339,8 +340,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), 0);
         assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
 
-        _relayMessageOverBridges();
-        // _clearLogs();
+        // _relayMessageOverBridges();
+
+        CCTPBridgeTesting.relayMessagesToDestination(
+            chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges[1],
+            true
+        );
 
         assertEq(arbUsdc.balanceOf(Arbitrum.ALM_PROXY), usdcAmount);
         assertEq(arbUsdc.balanceOf(Arbitrum.PSM3),      arbUsdcPsmBalance);
@@ -372,7 +377,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), usdcAlmProxyBalance);
 
-        _relayMessageOverBridges();
+        // _relayMessageOverBridges();
+
+        CCTPBridgeTesting.relayMessagesToSource(
+            chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges[1],
+            true
+        );
 
         // assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), usdcAlmProxyBalance + usdcAmount);
 
