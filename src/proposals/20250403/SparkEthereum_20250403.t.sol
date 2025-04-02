@@ -115,11 +115,13 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     function setUp() public {
         // March 28, 2025
         setupDomains({
-            mainnetForkBlock:     22177076,
-            baseForkBlock:        28377597,
+            mainnetForkBlock:     22169117,
+            baseForkBlock:        28374079,
             gnosisForkBlock:      38037888,  // Not used
-            arbitrumOneForkBlock: 321939172
+            arbitrumOneForkBlock: 321564756
         });
+
+        deployPayloads();
 
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x545eeEc8Ca599085cE86ada51eb8c0c35Af1e9d6;
         chainSpellMetadata[ChainIdUtils.Base()].payload        = 0x43d32D791C35D34d28fa8c33cfB8ca3c6AE0d02d;
