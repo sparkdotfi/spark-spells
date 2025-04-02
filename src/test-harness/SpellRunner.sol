@@ -38,7 +38,7 @@ abstract contract SpellRunner is Test {
         ARBITRUM
     }
 
-    struct ChainSpellMetadata{
+    struct ChainSpellMetadata {
       address                        payload;
       IExecutor                      executor;
       Domain                         domain;
@@ -75,6 +75,8 @@ abstract contract SpellRunner is Test {
         chainSpellMetadata[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
         chainSpellMetadata[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
+
+        console.log("--- setupDomains");
 
         // Arbitrum One
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
@@ -119,6 +121,9 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Base());
         allChains.push(ChainIdUtils.Gnosis());
         allChains.push(ChainIdUtils.ArbitrumOne());
+
+        console.log("arb num bridges ", chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.length);
+        console.log("base num bridges", chainSpellMetadata[ChainIdUtils.Base()].bridges.length);
     }
 
     function spellIdentifier(ChainId chainId) private view returns(string memory){
