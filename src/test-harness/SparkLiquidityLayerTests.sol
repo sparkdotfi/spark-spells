@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import { console } from "forge-std/console.sol";
-
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
@@ -29,8 +27,8 @@ import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
 import { SpellRunner } from "./SpellRunner.sol";
 
 interface IPSMLike {
-    function shares(address account) external view returns (uint256);
     function convertToAssetValue(uint256 shares) external view returns (uint256);
+    function shares(address account) external view returns (uint256);
 }
 
 struct SparkLiquidityLayerContext {
