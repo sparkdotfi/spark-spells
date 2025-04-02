@@ -79,7 +79,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xF51164FE5B0DC7aFB9192E1b806ae18A8813Ae8c;
-    
+
     address internal constant BASE_OLD_ALM_CONTROLLER     = Base.ALM_CONTROLLER;
     address internal constant BASE_NEW_ALM_CONTROLLER     = 0xB94378b5347a3E199AF3575719F67A708a5D8b9B;
 
@@ -116,14 +116,25 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         // March 28, 2025
         setupDomains({
             mainnetForkBlock:     22169117,
-            baseForkBlock:        28330800,
+            baseForkBlock:        28374079,
             gnosisForkBlock:      38037888,  // Not used
             arbitrumOneForkBlock: 321564756
         });
 
+        deployPayloads();
+
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x545eeEc8Ca599085cE86ada51eb8c0c35Af1e9d6;
         chainSpellMetadata[ChainIdUtils.Base()].payload        = 0x43d32D791C35D34d28fa8c33cfB8ca3c6AE0d02d;
         chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = 0x6B34C0E12C84338f494efFbf49534745DDE2F24b;
+    }
+
+    // Overriding because of upgrade
+    function _getLatestControllers() internal pure override returns (address, address, address) {
+        return (
+            ETHEREUM_NEW_ALM_CONTROLLER,
+            ARBITRUM_NEW_ALM_CONTROLLER,
+            BASE_NEW_ALM_CONTROLLER
+        );
     }
 
     function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
@@ -271,7 +282,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
     function test_ETHEREUM_centrifugeJTRSYOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        
+
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
@@ -381,7 +392,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         uint256 depositSlope          = 5_000_000e6 / uint256(1 days);
         IERC20 usdc                   = IERC20(Ethereum.USDC);
         IMapleTokenExtended syrup     = IMapleTokenExtended(vault);
-        
+
         // Slightly modify code from _testERC4626Onboarding due to async redemption
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
@@ -435,7 +446,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertApproxEqAbs(syrup.balanceOf(address(ctx.proxy)), shares / 2, 1);
-        
+
         IWithdrawalManagerLike withdrawManager = IPoolManagerLike(syrup.manager()).withdrawalManager();
         vm.prank(IPoolManagerLike(syrup.manager()).poolDelegate());
         withdrawManager.processRedemptions(shares / 2);
@@ -466,7 +477,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
     function test_ETHEREUM_sllCoreRateLimitIncrease() public onChain(ChainIdUtils.Ethereum()) {
         bytes32 usdsMintKey       = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).LIMIT_USDS_MINT();
         bytes32 swapUSDSToUSDCKey = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).LIMIT_USDS_TO_USDC();
-        
+
         _assertRateLimit(usdsMintKey,       50_000_000e18, 50_000_000e18 / uint256(1 days));
         _assertRateLimit(swapUSDSToUSDCKey, 50_000_000e6,  50_000_000e6 / uint256(1 days));
 

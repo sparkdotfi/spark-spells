@@ -38,7 +38,7 @@ abstract contract SpellRunner is Test {
         ARBITRUM
     }
 
-    struct ChainSpellMetadata{
+    struct ChainSpellMetadata {
       address                        payload;
       IExecutor                      executor;
       Domain                         domain;
@@ -121,7 +121,7 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.ArbitrumOne());
     }
 
-    function spellIdentifier(ChainId chainId) private view returns(string memory){
+    function spellIdentifier(ChainId chainId) private view returns(string memory) {
         string memory slug            = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
         string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
         return identifier;
@@ -222,7 +222,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()){
+    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
         address payloadAddress = chainSpellMetadata[ChainIdUtils.Ethereum()].payload;
         IExecutor executor     = chainSpellMetadata[ChainIdUtils.Ethereum()].executor;
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
