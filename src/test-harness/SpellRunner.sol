@@ -76,8 +76,6 @@ abstract contract SpellRunner is Test {
         chainSpellMetadata[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
 
-        console.log("--- setupDomains");
-
         // Arbitrum One
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
             ArbitrumBridgeTesting.createNativeBridge(
@@ -121,12 +119,9 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Base());
         allChains.push(ChainIdUtils.Gnosis());
         allChains.push(ChainIdUtils.ArbitrumOne());
-
-        console.log("arb num bridges ", chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.length);
-        console.log("base num bridges", chainSpellMetadata[ChainIdUtils.Base()].bridges.length);
     }
 
-    function spellIdentifier(ChainId chainId) private view returns(string memory){
+    function spellIdentifier(ChainId chainId) private view returns(string memory) {
         string memory slug            = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
         string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
         return identifier;
@@ -227,7 +222,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()){
+    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
         address payloadAddress = chainSpellMetadata[ChainIdUtils.Ethereum()].payload;
         IExecutor executor     = chainSpellMetadata[ChainIdUtils.Ethereum()].executor;
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");

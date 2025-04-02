@@ -16,7 +16,6 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
 
-import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
 import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
@@ -25,11 +24,6 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
 
 import { SpellRunner } from "./SpellRunner.sol";
-
-interface IPSMLike {
-    function convertToAssetValue(uint256 shares) external view returns (uint256);
-    function shares(address account) external view returns (uint256);
-}
 
 struct SparkLiquidityLayerContext {
     address     controller;
