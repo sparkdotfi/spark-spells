@@ -179,7 +179,7 @@ contract SparkEthereum_20250403Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(depositKey, 500_000_000e6, 100_000_000e6 / uint256(1 days));
+        _assertRateLimit(depositKey,  500_000_000e6,     100_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
         IERC20 usdc  = IERC20(Ethereum.USDC);
@@ -191,13 +191,21 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         controller.mintUSDS(mintAmount * 1e12);
         controller.swapUSDSToUSDC(mintAmount);
 
-        assertEq(usdc.balanceOf(address(ctx.proxy)),  mintAmount);
-        assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
+        uint256 buidlDepositBalance = usdc.balanceOf(BUIDL_DEPOSIT);
+        uint256 buidlRedeemBalance  = buidl.balanceOf(BUIDL_REDEEM);
+
+        assertEq(usdc.balanceOf(address(ctx.proxy)), mintAmount);
+        assertEq(usdc.balanceOf(BUIDL_DEPOSIT),      buidlDepositBalance);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 500_000_000e6);
 
         controller.transferAsset(address(usdc), BUIDL_DEPOSIT, mintAmount);
         vm.stopPrank();
+
+        assertEq(usdc.balanceOf(address(ctx.proxy)), 0);
+        assertEq(usdc.balanceOf(BUIDL_DEPOSIT),      buidlDepositBalance + mintAmount);
+
+        assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), 500_000_000e6 - mintAmount);
 
@@ -206,14 +214,14 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         IBuidlLike(BUIDL).issueTokens(address(ctx.proxy), mintAmount);
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(buidl.balanceOf(address(ctx.proxy)), mintAmount);
+        assertEq(buidl.balanceOf(BUIDL_REDEEM),       buidlRedeemBalance);
 
         vm.prank(ctx.relayer);
         controller.transferAsset(address(buidl), BUIDL_REDEEM, mintAmount);
 
-        assertEq(usdc.balanceOf(address(ctx.proxy)),  0);
         assertEq(buidl.balanceOf(address(ctx.proxy)), 0);
+        assertEq(buidl.balanceOf(BUIDL_REDEEM),       buidlRedeemBalance + mintAmount);
     }
 
     function test_ETHEREUM_superstateUSTBOnboarding() public onChain(ChainIdUtils.Ethereum()) {
@@ -270,10 +278,15 @@ contract SparkEthereum_20250403Test is SparkTestBase {
         assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/100, 100);
         assertApproxEqAbs(ustb.balanceOf(address(ctx.proxy)), ustbShares * 99/100, 1);
 
+        uint256 totalSupply = ustb.totalSupply();
+
         // You can always burn the whole amount by doing it offchain
         uint256 ustbBalance = ustb.balanceOf(address(ctx.proxy));
         vm.prank(ctx.relayer);
         controller.transferAsset(address(ustb), address(ustb), ustbBalance);
+
+        // Transfering to token contract burns the amount
+        assertEq(ustb.totalSupply(), totalSupply - ustbBalance);
 
         // USDC will come back async
         assertApproxEqAbs(usdc.balanceOf(address(ctx.proxy)), mintAmount * 1/100, 100);
