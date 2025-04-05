@@ -332,8 +332,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // --- Step 1: Mint and bridge 10m USDC to Base ---
 
-        // TODO: Fix "Nonce already used" error when using 10_000_000e6
-        uint256 usdcAmount = 1_000_000e6;
+        uint256 usdcAmount = 10_000_000e6;
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
