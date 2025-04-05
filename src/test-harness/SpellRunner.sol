@@ -113,11 +113,6 @@ abstract contract SpellRunner is Test {
     function setupDomains(string memory date) internal {
         setupBlocksFromDate(date);
 
-        //chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(mainnetForkBlock);
-        //chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(gnosisForkBlock);
-        //chainSpellMetadata[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(gnosisForkBlock);
-        //chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(arbitrumOneForkBlock);
-
         chainSpellMetadata[ChainIdUtils.Ethereum()].executor    = IExecutor(Ethereum.SPARK_PROXY);
         chainSpellMetadata[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
         chainSpellMetadata[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
