@@ -64,12 +64,54 @@ abstract contract SpellRunner is Test {
         chainSpellMetadata[currentChain].domain.selectFork();
     }
 
+    /// @dev maximum 3 chains in 1 query
+    function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
+        string memory networks = "";
+        for (uint256 i = 0; i < chains.length; i++) {
+            if (i == 0) {
+                networks = string(abi.encodePacked("networks=", chains[i]));
+            } else {
+                networks = string(abi.encodePacked(networks, "&networks=", chains[i]));
+            }
+        }
+        
+        string[] memory inputs = new string[](8);
+        inputs[0] = "curl";
+        inputs[1] = "-s";
+        inputs[2] = "--request";
+        inputs[3] = "GET";
+        inputs[4] = "--url";
+        inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
+        inputs[6] = "--header";
+        inputs[7] = "accept: application/json";
+
+        string memory response = string(vm.ffi(inputs));
+        blocks = new uint256[](chains.length);
+        for (uint256 i = 0; i < chains.length; i++) {
+            blocks[i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
+        }
+    }
+
+    function setupBlocksFromDate(string memory date) internal {
+        string[] memory chains = new string[](3);
+        chains[0] = "eth-mainnet";
+        chains[1] = "base-mainnet";
+        chains[2] = "arb-mainnet";
+        uint256[] memory blocks = getBlocksFromDate(date, chains);
+
+        console.log("Mainnet block: ", blocks[0]);
+        console.log("Base block: ", blocks[1]);
+        console.log("Arbitrum block: ", blocks[2]);
+
+        chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
+        chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
+        chainSpellMetadata[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
+    }
+
     /// @dev to be called in setUp
-    function setupDomains(uint256 mainnetForkBlock, uint256 baseForkBlock, uint256 gnosisForkBlock, uint256 arbitrumOneForkBlock) internal {
-        chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(mainnetForkBlock);
-        chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(baseForkBlock);
-        chainSpellMetadata[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(gnosisForkBlock);
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(arbitrumOneForkBlock);
+    function setupDomains(string memory date) internal {
+        setupBlocksFromDate(date);
 
         chainSpellMetadata[ChainIdUtils.Ethereum()].executor    = IExecutor(Ethereum.SPARK_PROXY);
         chainSpellMetadata[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
