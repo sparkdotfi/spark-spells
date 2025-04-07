@@ -97,15 +97,15 @@ abstract contract SpellRunner is Test {
         chains[0] = "eth-mainnet";
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
-        uint256[] memory blocks1 = getBlocksFromDate(date, chains);
+        uint256[] memory blocks = getBlocksFromDate(date, chains);
 
-        console.log("Mainnet block: ", blocks1[0]);
-        console.log("Base block: ", blocks1[1]);
-        console.log("Arbitrum block: ", blocks1[2]);
+        console.log("Mainnet block: ", blocks[0]);
+        console.log("Base block: ", blocks[1]);
+        console.log("Arbitrum block: ", blocks[2]);
 
-        chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks1[0]);
-        chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks1[1]);
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks1[2]);
+        chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
+        chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainSpellMetadata[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
     }
 
