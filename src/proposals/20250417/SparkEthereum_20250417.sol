@@ -33,8 +33,8 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
     address internal constant OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant NEW_ALM_CONTROLLER = 0xF8Dff673b555a225e149218C5005FC88f4a13870;
 
-    address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = address(0);  // TODO
-    address internal constant PT_SUSDE_31JUL2025            = address(0);  // TODO
+    address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = 0x78804d5290F250A8066145D16A99bd3ea920b732;
+    address internal constant PT_SUSDE_31JUL2025            = 0x3b3fB9C57858EF816833dC91565EFcd85D96f634;
 
     constructor() {
         PAYLOAD_ARBITRUM = address(0);  // TODO

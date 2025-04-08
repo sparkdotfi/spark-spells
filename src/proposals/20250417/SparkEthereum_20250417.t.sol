@@ -19,13 +19,15 @@ import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
 import { SparkLiquidityLayerContext } from "../../test-harness/SparkLiquidityLayerTests.sol";
 
+import { ReserveConfig } from '../../test-harness/ProtocolV3TestBase.sol';
+
 contract SparkEthereum_20250417Test is SparkTestBase {
 
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xF8Dff673b555a225e149218C5005FC88f4a13870;
 
-    address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = address(0);  // TODO
-    address internal constant PT_SUSDE_31JUL2025            = address(0);  // TODO
+    address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = 0x78804d5290F250A8066145D16A99bd3ea920b732;
+    address internal constant PT_SUSDE_31JUL2025            = 0x3b3fB9C57858EF816833dC91565EFcd85D96f634;
 
     address internal constant ARBITRUM_FLUID_SUSDS = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
 
@@ -34,7 +36,7 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-04-07T15:00:00Z");
+        setupDomains("2025-04-08T18:00:00Z");
 
         deployPayloads();
 
@@ -81,13 +83,13 @@ contract SparkEthereum_20250417Test is SparkTestBase {
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
         ReserveConfig memory config         = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
 
-        assertEq(config.emodeCategory, 0);
+        assertEq(config.eModeCategory, 0);
 
         executeAllPayloadsAndBridges();
 
         ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
         
-        config.emodeCategory = 2;
+        config.eModeCategory = 2;
 
         _validateReserveConfig(config, allConfigsAfter);
     }
@@ -109,16 +111,16 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             pt:           PT_SUSDE_31JUL2025,
             oracle:       PT_SUSDE_31JUL2025_PRICE_FEED,
             discount:     0.2e18,
-            currentPrice: 0.960818791222729579e36
+            currentPrice: 0.938493220446473872e36
         });
     }
 
     function test_ARBITRUM_FluidSUSDSOnboarding() public onChain(ChainIdUtils.ArbitrumOne()) {
         _testERC4626Onboarding({
-            aToken:                 ARBITRUM_FLUID_SUSDS,
-            expectedDepositAmount:  10_000_000e18,
-            depositMax:             10_000_000e18,
-            depositSlope:           5_000_000e18 / uint256(1 days)
+            vault:                 ARBITRUM_FLUID_SUSDS,
+            expectedDepositAmount: 5_000_000e18,
+            depositMax:            10_000_000e18,
+            depositSlope:          5_000_000e18 / uint256(1 days)
         });
     }
 
