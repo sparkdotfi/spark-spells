@@ -3,14 +3,9 @@ pragma solidity ^0.8.25;
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
-
 import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
-import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
-
-import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  April 17, 2025 Spark Ethereum Proposal
@@ -45,22 +40,64 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
         PAYLOAD_ARBITRUM = address(0);  // TODO
     }
 
+    function rateStrategiesUpdates()
+        public
+        view
+        override
+        returns (IEngine.RateStrategyUpdate[] memory)
+    {
+        IEngine.RateStrategyUpdate[] memory updates = new IEngine.RateStrategyUpdate[](2);
+
+        Rates.RateStrategyParams memory params = LISTING_ENGINE
+            .RATE_STRATEGIES_FACTORY()
+            .getStrategyDataOfAsset(Ethereum.CBBTC);
+        params.baseVariableBorrowRate = _bpsToRay(0);
+        params.optimalUsageRatio      = _bpsToRay(80_00);
+        params.variableRateSlope1     = _bpsToRay(1_00);
+        params.variableRateSlope2     = _bpsToRay(300_00);
+
+        updates[0] = IEngine.RateStrategyUpdate({
+            asset:  Ethereum.CBBTC,
+            params: params
+        });
+        updates[1] = IEngine.RateStrategyUpdate({
+            asset:  Ethereum.TBTC,
+            params: params
+        });
+
+        return updates;
+    }
+
+    function collateralsUpdates() public pure override returns (IEngine.CollateralUpdate[] memory) {
+        IEngine.CollateralUpdate[] memory updates = new IEngine.CollateralUpdate[](2);
+
+        updates[0] = IEngine.CollateralUpdate({
+            asset:          Ethereum.WBTC,
+            ltv:            EngineFlags.KEEP_CURRENT,
+            liqThreshold:   45_00,
+            liqBonus:       EngineFlags.KEEP_CURRENT,
+            debtCeiling:    EngineFlags.KEEP_CURRENT,
+            liqProtocolFee: EngineFlags.KEEP_CURRENT,
+            eModeCategory:  EngineFlags.KEEP_CURRENT
+        });
+        updates[1] = IEngine.CollateralUpdate({
+            asset:          Ethereum.SUSDS,
+            ltv:            EngineFlags.KEEP_CURRENT,
+            liqThreshold:   EngineFlags.KEEP_CURRENT,
+            liqBonus:       EngineFlags.KEEP_CURRENT,
+            debtCeiling:    EngineFlags.KEEP_CURRENT,
+            liqProtocolFee: EngineFlags.KEEP_CURRENT,
+            eModeCategory:  2
+        });
+
+        return updates;
+    }
+
     function _postExecute() internal override {
-        _upgradeController(
-            OLD_ALM_CONTROLLER,
-            NEW_ALM_CONTROLLER
-        );
+        _upgradeController(OLD_ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
-        _onboardAaveToken(
-            Ethereum.DAI_ATOKEN,
-            100_000_000e18,
-            uint256(50_000_000e18) / 1 days
-        );
+        _onboardAaveToken(Ethereum.DAI_ATOKEN, 100_000_000e18, uint256(50_000_000e18) / 1 days);
         // TODO Curve pools
-
-        // TODO Adjust cbBTC and tBTC Interest Rate Models
-        // TODO Reduce WBTC LT
-        // TODO Add sUSDS to USD Emode
         
         // Onboard PT-SUSDE-29MAY2025/DAI
         IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).submitCap(

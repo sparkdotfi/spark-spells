@@ -19,62 +19,6 @@ import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
 import { SparkLiquidityLayerContext } from "../../test-harness/SparkLiquidityLayerTests.sol";
 
-interface IInvestmentManager {
-    function fulfillCancelDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 fulfillment
-    ) external;
-    function fulfillCancelRedeemRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 shares
-    ) external;
-    function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-    function fulfillRedeemRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-}
-
-interface ISuperstateToken is IERC20 {
-    function calculateSuperstateTokenOut(uint256, address)
-        external view returns (uint256, uint256, uint256);
-}
-
-interface IMapleTokenExtended is IERC4626 {
-    function manager() external view returns (address);
-}
-
-interface IWithdrawalManagerLike {
-    function processRedemptions(uint256 maxSharesToProcess) external;
-}
-
-interface IPoolManagerLike {
-    function withdrawalManager() external view returns (IWithdrawalManagerLike);
-    function poolDelegate() external view returns (address);
-}
-
-interface IBuidlLike is IERC20 {
-    function issueTokens(address to, uint256 amount) external;
-}
-
 contract SparkEthereum_20250417Test is SparkTestBase {
 
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
@@ -82,6 +26,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
 
     address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = address(0);  // TODO
     address internal constant PT_SUSDE_31JUL2025            = address(0);  // TODO
+
+    address internal constant ARBITRUM_FLUID_SUSDS = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
 
     constructor() {
         id = '20250417';
@@ -105,11 +51,45 @@ contract SparkEthereum_20250417Test is SparkTestBase {
         );
     }
 
-    function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_ControllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
         _testControllerUpgrade({
             oldController: ETHEREUM_OLD_ALM_CONTROLLER,
             newController: ETHEREUM_NEW_ALM_CONTROLLER
         });
+    }
+
+    function test_ETHEREUM_WBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig memory config         = _findReserveConfigBySymbol(allConfigsBefore, 'WBTC');
+
+        assertEq(config.liquidationThreshold, 50_00);
+
+        executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        
+        config.liquidationThreshold = 45_00;
+
+        _validateReserveConfig(config, allConfigsAfter);
+    }
+
+    function test_ETHEREUM_SUSDSChanges() public onChain(ChainIdUtils.Ethereum()) {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig memory config         = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
+
+        assertEq(config.emodeCategory, 0);
+
+        executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        
+        config.emodeCategory = 2;
+
+        _validateReserveConfig(config, allConfigsAfter);
     }
 
     function test_ETHEREUM_morpho_PTSUSDE31JUL2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
@@ -130,6 +110,15 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             oracle:       PT_SUSDE_31JUL2025_PRICE_FEED,
             discount:     0.2e18,
             currentPrice: 0.960818791222729579e36
+        });
+    }
+
+    function test_ARBITRUM_FluidSUSDSOnboarding() public onChain(ChainIdUtils.ArbitrumOne()) {
+        _testERC4626Onboarding({
+            aToken:                 ARBITRUM_FLUID_SUSDS,
+            expectedDepositAmount:  10_000_000e18,
+            depositMax:             10_000_000e18,
+            depositSlope:           5_000_000e18 / uint256(1 days)
         });
     }
 
