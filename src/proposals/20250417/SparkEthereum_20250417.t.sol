@@ -60,11 +60,39 @@ contract SparkEthereum_20250417Test is SparkTestBase {
         });
     }
 
+    function test_ETHEREUM_CBBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
+        _testIRMChanges({
+            asset:      Ethereum.CBBTC,
+            oldOptimal: 0.6e27,
+            oldBase:    0,
+            oldSlope1:  0.04e27,
+            oldSlope2:  3e27,
+            newOptimal: 0.8e27,
+            newBase:    0,
+            newSlope1:  0.01e27,
+            newSlope2:  3e27
+        });
+    }
+
+    function test_ETHEREUM_TBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
+        _testIRMChanges({
+            asset:      Ethereum.TBTC,
+            oldOptimal: 0.6e27,
+            oldBase:    0,
+            oldSlope1:  0.04e27,
+            oldSlope2:  3e27,
+            newOptimal: 0.8e27,
+            newBase:    0,
+            newSlope1:  0.01e27,
+            newSlope2:  3e27
+        });
+    }
+
     function test_ETHEREUM_WBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
-        ReserveConfig memory config         = _findReserveConfigBySymbol(allConfigsBefore, 'WBTC');
+        ReserveConfig memory config = _findReserveConfigBySymbol(allConfigsBefore, 'WBTC');
 
         assertEq(config.liquidationThreshold, 50_00);
 
@@ -81,7 +109,7 @@ contract SparkEthereum_20250417Test is SparkTestBase {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
 
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
-        ReserveConfig memory config         = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
+        ReserveConfig memory config = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
 
         assertEq(config.eModeCategory, 0);
 

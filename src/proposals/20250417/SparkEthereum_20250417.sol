@@ -51,8 +51,8 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
         Rates.RateStrategyParams memory params = LISTING_ENGINE
             .RATE_STRATEGIES_FACTORY()
             .getStrategyDataOfAsset(Ethereum.CBBTC);
-        params.baseVariableBorrowRate = _bpsToRay(0);
         params.optimalUsageRatio      = _bpsToRay(80_00);
+        params.baseVariableBorrowRate = _bpsToRay(0);
         params.variableRateSlope1     = _bpsToRay(1_00);
         params.variableRateSlope2     = _bpsToRay(300_00);
 
