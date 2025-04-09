@@ -36,6 +36,9 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
     address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = 0x78804d5290F250A8066145D16A99bd3ea920b732;
     address internal constant PT_SUSDE_31JUL2025            = 0x3b3fB9C57858EF816833dC91565EFcd85D96f634;
 
+    address internal constant CURVE_SUSDSUSDT = 0x00836Fe54625BE242BcFA286207795405ca4fD10;
+    address internal constant CURVE_USDCUSDT  = 0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85;
+
     constructor() {
         PAYLOAD_ARBITRUM = address(0);  // TODO
     }
@@ -97,7 +100,29 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
         _upgradeController(OLD_ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
         _onboardAaveToken(Ethereum.DAI_ATOKEN, 100_000_000e18, uint256(50_000_000e18) / 1 days);
-        // TODO Curve pools
+        
+        _onboardCurvePool({
+            controller:    NEW_ALM_CONTROLLER,
+            pool:          CURVE_SUSDSUSDT,
+            maxSlippage:   0.9985e18,
+            swapMax:       5_000_000e18,
+            swapSlope:     20_000_000e18 / uint256(1 days),
+            depositMax:    5_000_000e18,
+            depositSlope:  20_000_000e18 / uint256(1 days),
+            withdrawMax:   5_000_000e18,
+            withdrawSlope: 20_000_000e18 / uint256(1 days)
+        });
+        _onboardCurvePool({
+            controller:    NEW_ALM_CONTROLLER,
+            pool:          CURVE_USDCUSDT,
+            maxSlippage:   0.9985e18,
+            swapMax:       5_000_000e18,
+            swapSlope:     20_000_000e18 / uint256(1 days),
+            depositMax:    0,
+            depositSlope:  0,
+            withdrawMax:   0,
+            withdrawSlope: 0
+        });
         
         // Onboard PT-SUSDE-29MAY2025/DAI
         IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).submitCap(

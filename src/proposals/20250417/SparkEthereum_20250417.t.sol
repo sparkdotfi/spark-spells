@@ -26,6 +26,9 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     address internal constant ETHEREUM_OLD_ALM_CONTROLLER = Ethereum.ALM_CONTROLLER;
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xF8Dff673b555a225e149218C5005FC88f4a13870;
 
+    address internal constant CURVE_SUSDSUSDT = 0x00836Fe54625BE242BcFA286207795405ca4fD10;
+    address internal constant CURVE_USDCUSDT  = 0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85;
+
     address internal constant PT_SUSDE_31JUL2025_PRICE_FEED = 0x78804d5290F250A8066145D16A99bd3ea920b732;
     address internal constant PT_SUSDE_31JUL2025            = 0x3b3fB9C57858EF816833dC91565EFcd85D96f634;
 
@@ -40,23 +43,44 @@ contract SparkEthereum_20250417Test is SparkTestBase {
 
         deployPayloads();
 
+        setControllerUpgrade(
+            ChainIdUtils.Ethereum(),
+            ETHEREUM_OLD_ALM_CONTROLLER,
+            ETHEREUM_NEW_ALM_CONTROLLER
+        );
+
         //chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x545eeEc8Ca599085cE86ada51eb8c0c35Af1e9d6;
         //chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = 0x6B34C0E12C84338f494efFbf49534745DDE2F24b;
-    }
-
-    // Overriding because of upgrade
-    function _getLatestControllers() internal pure override returns (address, address, address) {
-        return (
-            ETHEREUM_NEW_ALM_CONTROLLER,
-            Arbitrum.ALM_CONTROLLER,
-            Base.ALM_CONTROLLER
-        );
     }
 
     function test_ETHEREUM_ControllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
         _testControllerUpgrade({
             oldController: ETHEREUM_OLD_ALM_CONTROLLER,
             newController: ETHEREUM_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_ETHEREUM_sparklend_DAIOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testAaveOnboarding({
+            aToken:                Ethereum.DAI_ATOKEN,
+            expectedDepositAmount: 25_000_000e18,
+            depositMax:            100_000_000e18,
+            depositSlope:          50_000_000e18 / uint256(1 days)
+        });
+    }
+
+    function test_ETHEREUM_curve_USDCUSDTOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testCurveOnboarding({
+            pool:                        CURVE_USDCUSDT,
+            expectedDepositAmountToken1: 2_000_000e6,
+            expectedDepositAmountToken2: 2_000_000e6,
+            maxSlippage:                 0.9985e18,
+            swapMax:                     5_000_000e18,
+            swapSlope:                   20_000_000e18 / uint256(1 days),
+            depositMax:                  5_000_000e18,
+            depositSlope:                20_000_000e18 / uint256(1 days),
+            withdrawMax:                 20_000_000e18,
+            withdrawSlope:               5_000_000e18 / uint256(1 days)
         });
     }
 

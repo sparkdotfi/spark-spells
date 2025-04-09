@@ -27,10 +27,15 @@ import { SpellRunner } from "./SpellRunner.sol";
 
 struct SparkLiquidityLayerContext {
     address     controller;
+    address     prevController;  // Only if upgrading
     IALMProxy   proxy;
     IRateLimits rateLimits;
     address     relayer;
     address     freezer;
+}
+
+interface ICurvePoolLike {
+    function coins(uint256 index) external view returns (address);
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -40,31 +45,38 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
+    function setControllerUpgrade(ChainId chain, address prevController, address newController) internal {
+        chainSpellMetadata[chain].prevController = prevController;
+        chainSpellMetadata[chain].newController  = newController;
+    }
+
     /**********************************************************************************************/
     /*** State loading helpers                                                                  ***/
     /**********************************************************************************************/
 
-    function _getSparkLiquidityLayerContext() internal view returns(SparkLiquidityLayerContext memory ctx) {
-        ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-        if (currentChain == ChainIdUtils.Ethereum()) {
+    function _getSparkLiquidityLayerContext(ChainId chain) internal view returns(SparkLiquidityLayerContext memory ctx) {
+        if (chain == ChainIdUtils.Ethereum()) {
             ctx = SparkLiquidityLayerContext(
                 Ethereum.ALM_CONTROLLER,
+                address(0),
                 IALMProxy(Ethereum.ALM_PROXY),
                 IRateLimits(Ethereum.ALM_RATE_LIMITS),
                 Ethereum.ALM_RELAYER,
                 Ethereum.ALM_FREEZER
             );
-        } else if (currentChain == ChainIdUtils.Base()) {
+        } else if (chain == ChainIdUtils.Base()) {
             ctx = SparkLiquidityLayerContext(
                 Base.ALM_CONTROLLER,
+                address(0),
                 IALMProxy(Base.ALM_PROXY),
                 IRateLimits(Base.ALM_RATE_LIMITS),
                 Base.ALM_RELAYER,
                 Base.ALM_FREEZER
             );
-        } else if (currentChain == ChainIdUtils.ArbitrumOne()) {
+        } else if (chain == ChainIdUtils.ArbitrumOne()) {
             ctx = SparkLiquidityLayerContext(
                 Arbitrum.ALM_CONTROLLER,
+                address(0),
                 IALMProxy(Arbitrum.ALM_PROXY),
                 IRateLimits(Arbitrum.ALM_RATE_LIMITS),
                 Arbitrum.ALM_RELAYER,
@@ -73,15 +85,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             revert("SLL/executing on unknown chain");
         }
+
+        // Override if there is controller upgrades
+        if (chainSpellMetadata[chain].prevController != address(0)) {
+            ctx.prevController = chainSpellMetadata[chain].prevController;
+            ctx.controller     = chainSpellMetadata[chain].newController;
+        } else {
+            ctx.prevController = ctx.controller;
+        }
     }
 
-    // Needs to be overridden the test contract for upgrades
-    function _getLatestControllers() internal pure virtual returns (address, address, address) {
-        return (
-            Ethereum.ALM_CONTROLLER,
-            Base.ALM_CONTROLLER,
-            Arbitrum.ALM_CONTROLLER
-        );
+    function _getSparkLiquidityLayerContext() internal view returns(SparkLiquidityLayerContext memory) {
+        return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
     }
 
     /**********************************************************************************************/
@@ -254,6 +269,63 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
     }
 
+    function _testCurveOnboarding(
+        address pool,
+        uint256 expectedDepositAmountToken1,
+        uint256 expectedDepositAmountToken2,
+        uint256 maxSlippage,
+        uint256 swapMax,
+        uint256 swapSlope,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 withdrawMax,
+        uint256 withdrawSlope
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController controller = MainnetController(ctx.prevController);
+
+        uint256[] memory depositAmounts = new uint256[](2);
+        depositAmounts[0] = expectedDepositAmountToken1;
+        depositAmounts[1] = expectedDepositAmountToken2;
+
+        uint256[] memory withdrawAmounts = new uint256[](2);
+
+        uint256 swapAmount = expectedDepositAmountToken1 / 4;
+        uint256 lpBurnAmount = 1000;  // Some arbitrary small number
+
+        deal(ICurvePoolLike(pool).coins(0), address(ctx.proxy), expectedDepositAmountToken1);
+        deal(ICurvePoolLike(pool).coins(1), address(ctx.proxy), expectedDepositAmountToken2);
+
+        bytes32 swapKey     = RateLimitHelpers.makeAssetKey(controller.LIMIT_CURVE_SWAP(),     pool);
+        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_CURVE_DEPOSIT(),  pool);
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_CURVE_WITHDRAW(), pool);
+
+        _assertRateLimit(swapKey,     0, 0);
+        _assertRateLimit(depositKey,  0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+
+        assertEq(controller.maxSlippages(pool), 0);
+
+        /*vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        controller.swapCurve(pool, 0, 1, swapAmount, 0);
+
+        vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        controller.addLiquidityCurve(pool, depositAmounts, maxSlippage);
+
+        vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        controller.removeLiquidityCurve(pool, lpBurnAmount, withdrawAmounts);*/
+
+        executeAllPayloadsAndBridges();
+
+        _assertRateLimit(swapKey,     swapMax,     swapSlope);
+        _assertRateLimit(depositKey,  depositMax,  depositSlope);
+        _assertRateLimit(withdrawKey, withdrawMax, withdrawSlope);
+    }
+
     function _testControllerUpgrade(address oldController, address newController) internal {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
 
@@ -407,38 +479,41 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** E2E tests to be run on every spell                                                     ***/
     /**********************************************************************************************/
 
-    function test_E2E_sparkLiquidityLayerCrossChainSetup() public{
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.ArbitrumOne(),
-            MainnetController(Ethereum.ALM_CONTROLLER),
-            ForeignController(Arbitrum.ALM_CONTROLLER)
-        );
+    function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() public {
+        SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Base(),
-            MainnetController(Ethereum.ALM_CONTROLLER),
-            ForeignController(Base.ALM_CONTROLLER)
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxBase.prevController)
         );
 
         executeAllPayloadsAndBridges();
 
-        // Load the latest controllers (will return the same values if not overridden)
-        (
-            address updatedMainnetController,
-            address updatedArbController,
-            address updatedBaseController
-        ) = _getLatestControllers();
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Base(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxBase.controller)
+        );
+    }
+
+    function test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() public {
+        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxArbitrum = _getSparkLiquidityLayerContext(ChainIdUtils.ArbitrumOne());
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.ArbitrumOne(),
-            MainnetController(updatedMainnetController),
-            ForeignController(updatedArbController)
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxArbitrum.prevController)
         );
 
+        executeAllPayloadsAndBridges();
+
         _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Base(),
-            MainnetController(updatedMainnetController),
-            ForeignController(updatedBaseController)
+            ChainIdUtils.ArbitrumOne(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxArbitrum.controller)
         );
     }
 
