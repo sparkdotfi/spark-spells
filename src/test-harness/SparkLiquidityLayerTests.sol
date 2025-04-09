@@ -34,8 +34,29 @@ struct SparkLiquidityLayerContext {
     address     freezer;
 }
 
-interface ICurvePoolLike {
-    function coins(uint256 index) external view returns (address);
+interface ICurvePoolLike is IERC20 {
+    function add_liquidity(
+        uint256[] memory amounts,
+        uint256 minMintAmount,
+        address receiver
+    ) external;
+    function balances(uint256 index) external view returns (uint256);
+    function coins(uint256 index) external returns (address);
+    function exchange(
+        int128  inputIndex,
+        int128  outputIndex,
+        uint256 amountIn,
+        uint256 minAmountOut,
+        address receiver
+    ) external returns (uint256 tokensOut);
+    function get_virtual_price() external view returns (uint256);
+    function N_COINS() external view returns (uint256);
+    function remove_liquidity(
+        uint256 burnAmount,
+        uint256[] memory minAmounts,
+        address receiver
+    ) external;
+    function stored_rates() external view returns (uint256[] memory);
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -283,60 +304,139 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
     }
 
+    struct CurveOnboardingVars {
+        ICurvePoolLike pool;
+        SparkLiquidityLayerContext ctx;
+        MainnetController prevController;
+        MainnetController controller;
+        uint256[] depositAmounts;
+        uint256 minLPAmount;
+        uint256[] withdrawAmounts;
+        uint256[] rates;
+        bytes32 swapKey;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+        uint256 minAmountOut;
+        uint256 lpBalance;
+        uint256 smallerMaxSlippage;
+    }
+
     function _testCurveOnboarding(
         address pool,
         uint256 expectedDepositAmountToken1,
         uint256 expectedDepositAmountToken2,
+        uint256 expectedSwapAmountToken1,
         uint256 maxSlippage,
         RateLimitData memory swapLimit,
         RateLimitData memory depositLimit,
         RateLimitData memory withdrawLimit
     ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        // Avoid stack too deep
+        CurveOnboardingVars memory vars;
+        vars.pool  = ICurvePoolLike(pool);
+        vars.rates = ICurvePoolLike(pool).stored_rates();
 
-        MainnetController controller = MainnetController(ctx.controller);
+        assertEq(vars.pool.N_COINS(), 2, "Curve pool must have 2 coins");
 
-        uint256[] memory depositAmounts = new uint256[](2);
-        depositAmounts[0] = expectedDepositAmountToken1;
-        depositAmounts[1] = expectedDepositAmountToken2;
+        vars.ctx            = _getSparkLiquidityLayerContext();
+        vars.controller     = MainnetController(vars.ctx.controller);
+        vars.prevController = MainnetController(vars.ctx.prevController);
 
-        //uint256[] memory withdrawAmounts = new uint256[](2);
+        vars.depositAmounts = new uint256[](2);
+        vars.depositAmounts[0] = expectedDepositAmountToken1;
+        vars.depositAmounts[1] = expectedDepositAmountToken2;
 
-        //uint256 swapAmount = expectedDepositAmountToken1 / 4;
-        //uint256 lpBurnAmount = 1000;  // Some arbitrary small number
+        vars.minLPAmount = (
+            vars.depositAmounts[0] * vars.rates[0] +
+            vars.depositAmounts[1] * vars.rates[1]
+        ) * maxSlippage / 1e18 / vars.pool.get_virtual_price();
 
-        deal(ICurvePoolLike(pool).coins(0), address(ctx.proxy), expectedDepositAmountToken1);
-        deal(ICurvePoolLike(pool).coins(1), address(ctx.proxy), expectedDepositAmountToken2);
+        vars.swapKey     = RateLimitHelpers.makeAssetKey(vars.controller.LIMIT_CURVE_SWAP(),     pool);
+        vars.depositKey  = RateLimitHelpers.makeAssetKey(vars.controller.LIMIT_CURVE_DEPOSIT(),  pool);
+        vars.withdrawKey = RateLimitHelpers.makeAssetKey(vars.controller.LIMIT_CURVE_WITHDRAW(), pool);
 
-        bytes32 swapKey     = RateLimitHelpers.makeAssetKey(controller.LIMIT_CURVE_SWAP(),     pool);
-        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_CURVE_DEPOSIT(),  pool);
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_CURVE_WITHDRAW(), pool);
+        _assertRateLimit(vars.swapKey,     0, 0);
+        _assertRateLimit(vars.depositKey,  0, 0);
+        _assertRateLimit(vars.withdrawKey, 0, 0);
 
-        _assertRateLimit(swapKey,     0, 0);
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
-
-        assertEq(controller.maxSlippages(pool), 0);
-
-        /*vm.prank(ctx.relayer);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        controller.swapCurve(pool, 0, 1, swapAmount, 0);
-
-        vm.prank(ctx.relayer);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        controller.addLiquidityCurve(pool, depositAmounts, maxSlippage);
-
-        vm.prank(ctx.relayer);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        controller.removeLiquidityCurve(pool, lpBurnAmount, withdrawAmounts);*/
+        if (vars.prevController == vars.controller) {
+            // Only check if we are not doing a controller upgrade
+            assertEq(vars.prevController.maxSlippages(pool), 0);
+        }
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(swapKey,     swapLimit);
-        _assertRateLimit(depositKey,  depositLimit);
-        _assertRateLimit(withdrawKey, withdrawLimit);
+        _assertRateLimit(vars.swapKey,     swapLimit);
+        _assertRateLimit(vars.depositKey,  depositLimit);
+        _assertRateLimit(vars.withdrawKey, withdrawLimit);
 
-        assertEq(controller.maxSlippages(pool), maxSlippage);
+        assertEq(vars.controller.maxSlippages(pool), maxSlippage);
+
+        if (depositLimit.maxAmount != 0) {
+            // Deposit is enabled
+            assertGt(expectedDepositAmountToken1, 0);
+            assertGt(expectedDepositAmountToken2, 0);
+
+            deal(vars.pool.coins(0), address(vars.ctx.proxy), expectedDepositAmountToken1);
+            deal(vars.pool.coins(1), address(vars.ctx.proxy), expectedDepositAmountToken2);
+
+            vm.prank(vars.ctx.relayer);
+            vars.controller.addLiquidityCurve(
+                pool,
+                vars.depositAmounts,
+                vars.minLPAmount
+            );
+
+            assertEq(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), 0);
+            assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
+
+            vars.lpBalance = vars.pool.balanceOf(address(vars.ctx.proxy));
+            assertGe(vars.lpBalance, 0);
+
+            // Withdraw should also be enabled if deposit is enabled
+            assertGt(withdrawLimit.maxAmount, 0);
+
+            // FIXME this calculation is not correct
+            vars.withdrawAmounts = new uint256[](2);
+            vars.withdrawAmounts[0] = vars.lpBalance * vars.pool.balances(0) * vars.smallerMaxSlippage / vars.pool.get_virtual_price() / vars.pool.totalSupply();
+            vars.withdrawAmounts[1] = vars.lpBalance * vars.pool.balances(1) * vars.smallerMaxSlippage / vars.pool.get_virtual_price() / vars.pool.totalSupply();
+
+            vm.prank(vars.ctx.relayer);
+            vars.controller.removeLiquidityCurve(
+                pool,
+                vars.lpBalance,
+                vars.withdrawAmounts
+            );
+
+            assertGe(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.withdrawAmounts[0]);
+            assertGe(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), vars.withdrawAmounts[1]);
+        } else {
+            // Deposit is disabled
+            assertEq(expectedDepositAmountToken1, 0);
+            assertEq(expectedDepositAmountToken2, 0);
+
+            // Withdraw should also be disabled if deposit is disabled
+            assertEq(withdrawLimit.maxAmount, 0);
+        }
+
+        deal(vars.pool.coins(0), address(vars.ctx.proxy), expectedSwapAmountToken1);
+        vars.minAmountOut = expectedSwapAmountToken1 * vars.rates[0] * maxSlippage / vars.rates[1] / 1e18;
+
+        vm.prank(vars.ctx.relayer);
+        vars.controller.swapCurve(
+            pool,
+            0,
+            1,
+            expectedSwapAmountToken1,
+            vars.minAmountOut
+        );
+
+        assertEq(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), 0);
+        assertGe(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), vars.minAmountOut);
+
+        // Sanity check on maxSlippage of 15bps
+        assertGe(maxSlippage, 0.9985e18, "maxSlippage too low");
+        assertLe(maxSlippage, 1e18,      "maxSlippage too high");
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {

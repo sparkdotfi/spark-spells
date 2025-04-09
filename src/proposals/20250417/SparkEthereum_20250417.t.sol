@@ -69,11 +69,25 @@ contract SparkEthereum_20250417Test is SparkTestBase {
         });
     }
 
+    function test_ETHEREUM_curve_SUSDSUSDTOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testCurveOnboarding({
+            pool:                        CURVE_SUSDSUSDT,
+            expectedDepositAmountToken1: 2_000_000e18,
+            expectedDepositAmountToken2: 2_000_000e6,
+            expectedSwapAmountToken1:    1_000_000e18,
+            maxSlippage:                 0.9985e18,
+            swapLimit:                   RateLimitData(5_000_000e18,  20_000_000e18 / uint256(1 days)),
+            depositLimit:                RateLimitData(5_000_000e18,  20_000_000e18 / uint256(1 days)),
+            withdrawLimit:               RateLimitData(25_000_000e18, 100_000_000e18 / uint256(1 days))
+        });
+    }
+
     function test_ETHEREUM_curve_USDCUSDTOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             pool:                        CURVE_USDCUSDT,
-            expectedDepositAmountToken1: 2_000_000e6,
-            expectedDepositAmountToken2: 2_000_000e6,
+            expectedDepositAmountToken1: 0,
+            expectedDepositAmountToken2: 0,
+            expectedSwapAmountToken1:    50_000e6,
             maxSlippage:                 0.9985e18,
             swapLimit:                   RateLimitData(5_000_000e18, 20_000_000e18 / uint256(1 days)),
             depositLimit:                RateLimitData(0, 0),

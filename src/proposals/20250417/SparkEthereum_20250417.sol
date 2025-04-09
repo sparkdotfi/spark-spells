@@ -109,8 +109,8 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
             swapSlope:     20_000_000e18 / uint256(1 days),
             depositMax:    5_000_000e18,
             depositSlope:  20_000_000e18 / uint256(1 days),
-            withdrawMax:   5_000_000e18,
-            withdrawSlope: 20_000_000e18 / uint256(1 days)
+            withdrawMax:   25_000_000e18,
+            withdrawSlope: 100_000_000e18 / uint256(1 days)
         });
         _onboardCurvePool({
             controller:    NEW_ALM_CONTROLLER,
