@@ -8,11 +8,11 @@ import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
-import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IALMProxy }                       from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits }                     from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { ForeignController }               from "spark-alm-controller/src/ForeignController.sol";
+import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
 
@@ -105,6 +105,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _assertRateLimit(
        bytes32 key,
+       RateLimitData memory data
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        _assertRateLimit(
+            key,
+            data.maxAmount,
+            data.slope,
+            rateLimit.lastAmount,
+            rateLimit.lastUpdated
+        );
+    }
+
+    function _assertRateLimit(
+       bytes32 key,
        uint256 maxAmount,
        uint256 slope
     ) internal view {
@@ -148,9 +162,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // Do some sanity checks on the slope
             // This is to catch things like forgetting to divide to a per-second time, etc
 
-            // We assume it takes at least 1 day to recharge to max
-            uint256 dailySlope = slope * 1 days;
-            assertLe(dailySlope, maxAmount, "slope range sanity check failed");
+            // We assume it takes at least 6 hours to recharge to max
+            uint256 sixHoursSlope = slope * 6 hours;
+            assertLe(sixHoursSlope, maxAmount, "slope range sanity check failed");
 
             // It shouldn't take more than 30 days to recharge to max
             uint256 monthlySlope = slope * 30 days;
@@ -187,7 +201,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(ctx.relayer);
         vm.expectRevert("RateLimits/zero-maxAmount");
-        MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
+        MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
 
         executeAllPayloadsAndBridges();
 
@@ -225,9 +239,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        MainnetController controller = MainnetController(ctx.controller);
-
         bool unlimitedDeposit = depositMax == type(uint256).max;
+
+        MainnetController controller = MainnetController(ctx.controller);
 
         // Note: Aave signature is the same for mainnet and foreign
         deal(IAToken(aToken).UNDERLYING_ASSET_ADDRESS(), address(ctx.proxy), expectedDepositAmount);
@@ -240,7 +254,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(ctx.relayer);
         vm.expectRevert("RateLimits/zero-maxAmount");
-        controller.depositAave(aToken, expectedDepositAmount);
+        MainnetController(ctx.prevController).depositAave(aToken, expectedDepositAmount);
 
         executeAllPayloadsAndBridges();
 
@@ -274,25 +288,22 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 expectedDepositAmountToken1,
         uint256 expectedDepositAmountToken2,
         uint256 maxSlippage,
-        uint256 swapMax,
-        uint256 swapSlope,
-        uint256 depositMax,
-        uint256 depositSlope,
-        uint256 withdrawMax,
-        uint256 withdrawSlope
+        RateLimitData memory swapLimit,
+        RateLimitData memory depositLimit,
+        RateLimitData memory withdrawLimit
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        MainnetController controller = MainnetController(ctx.prevController);
+        MainnetController controller = MainnetController(ctx.controller);
 
         uint256[] memory depositAmounts = new uint256[](2);
         depositAmounts[0] = expectedDepositAmountToken1;
         depositAmounts[1] = expectedDepositAmountToken2;
 
-        uint256[] memory withdrawAmounts = new uint256[](2);
+        //uint256[] memory withdrawAmounts = new uint256[](2);
 
-        uint256 swapAmount = expectedDepositAmountToken1 / 4;
-        uint256 lpBurnAmount = 1000;  // Some arbitrary small number
+        //uint256 swapAmount = expectedDepositAmountToken1 / 4;
+        //uint256 lpBurnAmount = 1000;  // Some arbitrary small number
 
         deal(ICurvePoolLike(pool).coins(0), address(ctx.proxy), expectedDepositAmountToken1);
         deal(ICurvePoolLike(pool).coins(1), address(ctx.proxy), expectedDepositAmountToken2);
@@ -321,9 +332,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(swapKey,     swapMax,     swapSlope);
-        _assertRateLimit(depositKey,  depositMax,  depositSlope);
-        _assertRateLimit(withdrawKey, withdrawMax, withdrawSlope);
+        _assertRateLimit(swapKey,     swapLimit);
+        _assertRateLimit(depositKey,  depositLimit);
+        _assertRateLimit(withdrawKey, withdrawLimit);
+
+        assertEq(controller.maxSlippages(pool), maxSlippage);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {

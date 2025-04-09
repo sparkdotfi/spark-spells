@@ -13,7 +13,7 @@ import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
-import { RateLimitHelpers }  from 'spark-alm-controller/src/RateLimitHelpers.sol';
+import { RateLimitData }     from 'spark-alm-controller/src/RateLimitHelpers.sol';
 
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
@@ -75,12 +75,9 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             expectedDepositAmountToken1: 2_000_000e6,
             expectedDepositAmountToken2: 2_000_000e6,
             maxSlippage:                 0.9985e18,
-            swapMax:                     5_000_000e18,
-            swapSlope:                   20_000_000e18 / uint256(1 days),
-            depositMax:                  5_000_000e18,
-            depositSlope:                20_000_000e18 / uint256(1 days),
-            withdrawMax:                 20_000_000e18,
-            withdrawSlope:               5_000_000e18 / uint256(1 days)
+            swapLimit:                   RateLimitData(5_000_000e18, 20_000_000e18 / uint256(1 days)),
+            depositLimit:                RateLimitData(0, 0),
+            withdrawLimit:               RateLimitData(0, 0)
         });
     }
 
