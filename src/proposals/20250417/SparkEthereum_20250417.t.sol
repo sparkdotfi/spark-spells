@@ -31,7 +31,7 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-04-08T18:00:00Z");
+        setupDomains("2025-04-11T11:11:00Z");
 
         deployPayloads();
 
@@ -41,8 +41,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             ETHEREUM_NEW_ALM_CONTROLLER
         );
 
-        //chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0x545eeEc8Ca599085cE86ada51eb8c0c35Af1e9d6;
-        //chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = 0x6B34C0E12C84338f494efFbf49534745DDE2F24b;
+        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0xab465726A358c004C22bB8136d43716e1936AFa6;
+        chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = 0xA8FF99Ac98Fc0C3322F639a9591257518514455c;
     }
 
     function test_ETHEREUM_ControllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
@@ -166,7 +166,7 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             pt:           PT_SUSDE_31JUL2025,
             oracle:       PT_SUSDE_31JUL2025_PRICE_FEED,
             discount:     0.2e18,
-            currentPrice: 0.938493220446473872e36
+            currentPrice: 0.939981424403855911e36
         });
     }
 

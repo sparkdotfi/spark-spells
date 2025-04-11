@@ -40,7 +40,7 @@ contract SparkEthereum_20250417 is SparkPayloadEthereum {
     address internal constant CURVE_USDCUSDT  = 0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85;
 
     constructor() {
-        PAYLOAD_ARBITRUM = address(0);  // TODO
+        PAYLOAD_ARBITRUM = 0xab465726A358c004C22bB8136d43716e1936AFa6;
     }
 
     function rateStrategiesUpdates()
