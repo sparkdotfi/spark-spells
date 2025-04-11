@@ -64,8 +64,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     function test_ETHEREUM_curve_SUSDSUSDTOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             pool:                        CURVE_SUSDSUSDT,
-            expectedDepositAmountToken1: 2_000_000e18,
-            expectedSwapAmountToken1:    1_000_000e18,
+            expectedDepositAmountToken0: 2_000_000e18,
+            expectedSwapAmountToken0:    1_000_000e18,
             maxSlippage:                 0.9985e18,
             swapLimit:                   RateLimitData(5_000_000e18,  20_000_000e18 / uint256(1 days)),
             depositLimit:                RateLimitData(5_000_000e18,  20_000_000e18 / uint256(1 days)),
@@ -76,8 +76,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     function test_ETHEREUM_curve_USDCUSDTOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             pool:                        CURVE_USDCUSDT,
-            expectedDepositAmountToken1: 0,
-            expectedSwapAmountToken1:    50_000e6,
+            expectedDepositAmountToken0: 0,
+            expectedSwapAmountToken0:    50_000e6,
             maxSlippage:                 0.9985e18,
             swapLimit:                   RateLimitData(5_000_000e18, 20_000_000e18 / uint256(1 days)),
             depositLimit:                RateLimitData(0, 0),
