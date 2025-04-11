@@ -215,4 +215,59 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         require(address(registry) != address(0), "Sparklend/executing on unknown chain");
     }
 
+    function _testIRMChanges(
+        address asset,
+        uint256 oldOptimal,
+        uint256 oldBase,
+        uint256 oldSlope1,
+        uint256 oldSlope2,
+        uint256 newOptimal,
+        uint256 newBase,
+        uint256 newSlope1,
+        uint256 newSlope2
+    ) internal {
+        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig memory config             = _findReserveConfig(allConfigsBefore, asset);
+
+        IDefaultInterestRateStrategy prevIRM = IDefaultInterestRateStrategy(config.interestRateStrategy);
+        _validateInterestRateStrategy(
+            address(prevIRM),
+            address(prevIRM),
+            InterestStrategyValues({
+                addressesProvider:             address(prevIRM.ADDRESSES_PROVIDER()),
+                optimalUsageRatio:             oldOptimal,
+                optimalStableToTotalDebtRatio: prevIRM.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO(),
+                baseStableBorrowRate:          oldSlope1,
+                stableRateSlope1:              prevIRM.getStableRateSlope1(),
+                stableRateSlope2:              prevIRM.getStableRateSlope2(),
+                baseVariableBorrowRate:        oldBase,
+                variableRateSlope1:            oldSlope1,
+                variableRateSlope2:            oldSlope2
+            })
+        );
+
+        executeAllPayloadsAndBridges();
+
+        address newIRM = _findReserveConfig(createConfigurationSnapshot('', pool), asset).interestRateStrategy;
+        assertNotEq(newIRM, address(prevIRM));
+
+        _validateInterestRateStrategy(
+            newIRM,
+            newIRM,
+            InterestStrategyValues({
+                addressesProvider:             address(prevIRM.ADDRESSES_PROVIDER()),
+                optimalUsageRatio:             newOptimal,
+                optimalStableToTotalDebtRatio: prevIRM.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO(),
+                baseStableBorrowRate:          newSlope1,
+                stableRateSlope1:              prevIRM.getStableRateSlope1(),
+                stableRateSlope2:              prevIRM.getStableRateSlope2(),
+                baseVariableBorrowRate:        newBase,
+                variableRateSlope1:            newSlope1,
+                variableRateSlope2:            newSlope2
+            })
+        );
+    }
+
 }

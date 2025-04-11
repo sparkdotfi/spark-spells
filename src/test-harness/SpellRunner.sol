@@ -39,17 +39,20 @@ abstract contract SpellRunner is Test {
     }
 
     struct ChainSpellMetadata {
-      address                        payload;
-      IExecutor                      executor;
-      Domain                         domain;
-      /// @notice on mainnet: empty
-      /// on L2s: bridges that'll include txs in the L2. there can be multiple
-      /// bridges for a given chain, such as canonical OP bridge and CCTP
-      /// USDC-specific bridge
-      Bridge[]                       bridges;
-      BridgeType[]                   bridgeTypes;
-      // @notice coupled to SparklendTests, zero on chains where sparklend is not present
-      IPoolAddressesProviderRegistry sparklendPooAddressProviderRegistry;
+        address                        payload;
+        IExecutor                      executor;
+        Domain                         domain;
+        /// @notice on mainnet: empty
+        /// on L2s: bridges that'll include txs in the L2. there can be multiple
+        /// bridges for a given chain, such as canonical OP bridge and CCTP
+        /// USDC-specific bridge
+        Bridge[]                       bridges;
+        BridgeType[]                   bridgeTypes;
+        // @notice coupled to SparklendTests, zero on chains where sparklend is not present
+        IPoolAddressesProviderRegistry sparklendPooAddressProviderRegistry;
+        // These are set only if there is a controller upgrade on this chain in this spell
+        address                        prevController;
+        address                        newController;
     }
 
     mapping(ChainId chainId => ChainSpellMetadata chainSpellMetadata) internal chainSpellMetadata;

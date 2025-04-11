@@ -5,9 +5,14 @@ import { Domain } from "xchain-helpers/testing/Domain.sol";
 type ChainId is uint256;
 using ChainIdUtils for ChainId global;
 using { equals as == } for ChainId global;
+using { notEquals as != } for ChainId global;
 
 function equals(ChainId left, ChainId right) pure returns(bool) {
     return ChainId.unwrap(left) == ChainId.unwrap(right);
+}
+
+function notEquals(ChainId left, ChainId right) pure returns(bool) {
+    return ChainId.unwrap(left) != ChainId.unwrap(right);
 }
 
 library ChainIdUtils {

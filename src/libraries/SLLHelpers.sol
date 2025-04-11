@@ -44,6 +44,9 @@ library SLLHelpers {
     bytes32 private constant LIMIT_USDC_TO_DOMAIN = keccak256("LIMIT_USDC_TO_DOMAIN");
     bytes32 private constant LIMIT_PSM_DEPOSIT    = keccak256("LIMIT_PSM_DEPOSIT");
     bytes32 private constant LIMIT_PSM_WITHDRAW   = keccak256("LIMIT_PSM_WITHDRAW");
+    bytes32 private constant LIMIT_CURVE_DEPOSIT  = keccak256("LIMIT_CURVE_DEPOSIT");
+    bytes32 private constant LIMIT_CURVE_SWAP     = keccak256("LIMIT_CURVE_SWAP");
+    bytes32 private constant LIMIT_CURVE_WITHDRAW = keccak256("LIMIT_CURVE_WITHDRAW");
 
     /**
      * @notice Activate the bare minimum for Spark Liquidity Layer
@@ -218,6 +221,72 @@ library SLLHelpers {
             "vaultWithdrawLimit",
             asset.decimals()
         );
+    }
+
+    /**
+     * @notice Onboard an Curve pool
+     */
+    function onboardCurvePool(
+        address controller,
+        address rateLimits,
+        address pool,
+        uint256 maxSlippage,
+        uint256 swapMax,
+        uint256 swapSlope,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 withdrawMax,
+        uint256 withdrawSlope
+    ) internal {
+        MainnetController(controller).setMaxSlippage(
+            pool,
+            maxSlippage
+        );
+        if (swapMax != 0) {
+            RateLimitHelpers.setRateLimitData(
+                RateLimitHelpers.makeAssetKey(
+                    LIMIT_CURVE_SWAP,
+                    pool
+                ),
+                rateLimits,
+                RateLimitData({
+                    maxAmount : swapMax,
+                    slope     : swapSlope
+                }),
+                "poolSwapLimit",
+                18
+            );
+        }
+        if (depositMax != 0) {
+            RateLimitHelpers.setRateLimitData(
+                RateLimitHelpers.makeAssetKey(
+                    LIMIT_CURVE_DEPOSIT,
+                    pool
+                ),
+                rateLimits,
+                RateLimitData({
+                    maxAmount : depositMax,
+                    slope     : depositSlope
+                }),
+                "poolDepositLimit",
+                18
+            );
+        }
+        if (withdrawMax != 0) {
+            RateLimitHelpers.setRateLimitData(
+                RateLimitHelpers.makeAssetKey(
+                    LIMIT_CURVE_WITHDRAW,
+                    pool
+                ),
+                rateLimits,
+                RateLimitData({
+                    maxAmount : withdrawMax,
+                    slope     : withdrawSlope
+                }),
+                "poolWithdrawLimit",
+                18
+            );
+        }
     }
 
     function morphoIdleMarket(
