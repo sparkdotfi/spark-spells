@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
+import { console }  from "forge-std/console.sol";
 
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
@@ -18,6 +19,8 @@ import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
 
 import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
+import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
 
 import { Address }               from '../libraries/Address.sol';
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
@@ -396,10 +399,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // Withdraw should also be enabled if deposit is enabled
             assertGt(withdrawLimit.maxAmount, 0);
 
-            // FIXME this calculation is not correct
+            // Go slightly above maxSlippage due to rounding
             vars.withdrawAmounts = new uint256[](2);
-            vars.withdrawAmounts[0] = vars.lpBalance * vars.pool.balances(0) * vars.smallerMaxSlippage / vars.pool.get_virtual_price() / vars.pool.totalSupply();
-            vars.withdrawAmounts[1] = vars.lpBalance * vars.pool.balances(1) * vars.smallerMaxSlippage / vars.pool.get_virtual_price() / vars.pool.totalSupply();
+            vars.withdrawAmounts[0] = vars.lpBalance * vars.pool.balances(0) * (maxSlippage + 0.001e18) / vars.pool.get_virtual_price() / vars.pool.totalSupply();
+            vars.withdrawAmounts[1] = vars.lpBalance * vars.pool.balances(1) * (maxSlippage + 0.001e18)/ vars.pool.get_virtual_price() / vars.pool.totalSupply();
 
             vm.prank(vars.ctx.relayer);
             vars.controller.removeLiquidityCurve(
@@ -498,6 +501,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         IERC20  domainUsdc;
         address domainPsm3;
         uint32  domainCctpId;
+        Bridge storage bridge = chainSpellMetadata[domainId].bridges[1];
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc   = IERC20(Arbitrum.USDC);
@@ -531,10 +535,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        // NOTE: Using param here because during an upgrade the _sparkLiquidityLayerContext
-        //       will return a controller that is out of date.
-        ForeignController domainController = ForeignController(foreignController);
-
         address domainAlmProxy = address(ctx.proxy);
 
         uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
@@ -542,7 +542,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
-        _relayMessageOverBridges();
+        //_relayMessageOverBridges();
+        CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
@@ -550,7 +551,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // --- Step 3: Deposit USDC into PSM3 ---
 
         vm.prank(ctx.relayer);
-        domainController.depositPSM(address(domainUsdc), usdcAmount);
+        foreignController.depositPSM(address(domainUsdc), usdcAmount);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
@@ -558,7 +559,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // --- Step 4: Withdraw all assets from PSM3 ---
 
         vm.prank(ctx.relayer);
-        domainController.withdrawPSM(address(domainUsdc), usdcAmount);
+        foreignController.withdrawPSM(address(domainUsdc), usdcAmount);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
@@ -566,7 +567,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // --- Step 5: Bridge USDC back to mainnet ---
 
         vm.prank(ctx.relayer);
-        domainController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        foreignController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
@@ -574,7 +575,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
-        _relayMessageOverBridges();
+        //_relayMessageOverBridges();
+        CCTPBridgeTesting.relayMessagesToSource(bridge, true);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 
@@ -595,6 +597,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() public {
         SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
+
+        // FIXME something very strange is going on, simply reading the length of array makes it exist
+        //       this is a deep issue in foundry I think, but doing a workaround to make this work for now
+        for (uint256 i = 0; i < allChains.length; i++) {
+            console.log("Chain %s has %s bridges, %s bridgeTypes", i, chainSpellMetadata[allChains[i]].bridges.length, chainSpellMetadata[allChains[i]].bridgeTypes.length);
+        }
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Base(),

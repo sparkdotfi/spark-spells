@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { SparkPayloadArbitrumOne, Arbitrum } from "../../SparkPayloadArbitrumOne.sol";
+import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
 /**
  * @title  April 17, 2025 Spark Arbitrum Proposal
