@@ -327,7 +327,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testCurveOnboarding(
         address pool,
         uint256 expectedDepositAmountToken1,
-        uint256 expectedDepositAmountToken2,
         uint256 expectedSwapAmountToken1,
         uint256 maxSlippage,
         RateLimitData memory swapLimit,
@@ -347,7 +346,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vars.depositAmounts = new uint256[](2);
         vars.depositAmounts[0] = expectedDepositAmountToken1;
-        vars.depositAmounts[1] = expectedDepositAmountToken2;
+        // Derive the second amount to be balanced with the first
+        vars.depositAmounts[1] = expectedDepositAmountToken1 * vars.rates[0] / vars.rates[1];
 
         vars.minLPAmount = (
             vars.depositAmounts[0] * vars.rates[0] +
@@ -377,11 +377,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         if (depositLimit.maxAmount != 0) {
             // Deposit is enabled
-            assertGt(expectedDepositAmountToken1, 0);
-            assertGt(expectedDepositAmountToken2, 0);
+            assertGt(vars.depositAmounts[0], 0);
+            assertGt(vars.depositAmounts[1], 0);
 
-            deal(vars.pool.coins(0), address(vars.ctx.proxy), expectedDepositAmountToken1);
-            deal(vars.pool.coins(1), address(vars.ctx.proxy), expectedDepositAmountToken2);
+            deal(vars.pool.coins(0), address(vars.ctx.proxy), vars.depositAmounts[0]);
+            deal(vars.pool.coins(1), address(vars.ctx.proxy), vars.depositAmounts[1]);
 
             vm.prank(vars.ctx.relayer);
             vars.controller.addLiquidityCurve(
@@ -399,6 +399,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // Withdraw should also be enabled if deposit is enabled
             assertGt(withdrawLimit.maxAmount, 0);
 
+            uint256 snapshot = vm.snapshot();
+
             // Go slightly above maxSlippage due to rounding
             vars.withdrawAmounts = new uint256[](2);
             vars.withdrawAmounts[0] = vars.lpBalance * vars.pool.balances(0) * (maxSlippage + 0.001e18) / vars.pool.get_virtual_price() / vars.pool.totalSupply();
@@ -413,10 +415,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             assertGe(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.withdrawAmounts[0]);
             assertGe(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), vars.withdrawAmounts[1]);
+
+            vm.revertTo(snapshot);  // To allow swapping through higher liquidity below
         } else {
             // Deposit is disabled
-            assertEq(expectedDepositAmountToken1, 0);
-            assertEq(expectedDepositAmountToken2, 0);
+            assertEq(vars.depositAmounts[0], 0);
+            assertEq(vars.depositAmounts[1], 0);
 
             // Withdraw should also be disabled if deposit is disabled
             assertEq(withdrawLimit.maxAmount, 0);
