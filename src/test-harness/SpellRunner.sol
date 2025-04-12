@@ -60,11 +60,11 @@ abstract contract SpellRunner is Test {
     ChainId[] internal allChains;
     string internal    id;
 
-    modifier onChain(ChainId chainId) virtual {
-        ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-        chainSpellMetadata[chainId].domain.selectFork();
+    modifier onChain(ChainId chainId) {
+        uint256 currentFork = vm.activeFork();
+        if (chainSpellMetadata[chainId].domain.forkId != currentFork) chainSpellMetadata[chainId].domain.selectFork();
         _;
-        chainSpellMetadata[currentChain].domain.selectFork();
+        if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
     }
 
     /// @dev maximum 3 chains in 1 query
@@ -116,6 +116,9 @@ abstract contract SpellRunner is Test {
     function setupDomains(string memory date) internal {
         setupBlocksFromDate(date);
 
+        // We default to Ethereum domain
+        chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+
         chainSpellMetadata[ChainIdUtils.Ethereum()].executor    = IExecutor(Ethereum.SPARK_PROXY);
         chainSpellMetadata[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
         chainSpellMetadata[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
@@ -126,13 +129,15 @@ abstract contract SpellRunner is Test {
             ArbitrumBridgeTesting.createNativeBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
                 chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain
-        ));
+            )
+        );
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridgeTypes.push(BridgeType.ARBITRUM);
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
                 chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain
-        ));
+            )
+        );
         chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridgeTypes.push(BridgeType.CCTP);
 
         // Base
@@ -140,13 +145,15 @@ abstract contract SpellRunner is Test {
             OptimismBridgeTesting.createNativeBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
                 chainSpellMetadata[ChainIdUtils.Base()].domain
-        ));
+            )
+        );
         chainSpellMetadata[ChainIdUtils.Base()].bridgeTypes.push(BridgeType.OPTIMISM);
         chainSpellMetadata[ChainIdUtils.Base()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
                 chainSpellMetadata[ChainIdUtils.Base()].domain
-        ));
+            )
+        );
         chainSpellMetadata[ChainIdUtils.Base()].bridgeTypes.push(BridgeType.CCTP);
 
         // Gnosis
@@ -154,7 +161,8 @@ abstract contract SpellRunner is Test {
             AMBBridgeTesting.createGnosisBridge(
                 chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
                 chainSpellMetadata[ChainIdUtils.Gnosis()].domain
-        ));
+            )
+        );
         chainSpellMetadata[ChainIdUtils.Gnosis()].bridgeTypes.push(BridgeType.GNOSIS);
 
         chainSpellMetadata[ChainIdUtils.Ethereum()].sparklendPooAddressProviderRegistry = IPoolAddressesProviderRegistry(Ethereum.POOL_ADDRESSES_PROVIDER_REGISTRY);
