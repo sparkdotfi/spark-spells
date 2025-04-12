@@ -209,8 +209,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
         bool unlimitedDeposit = depositMax == type(uint256).max;
 
+        IERC20 asset = IERC20(IERC4626(vault).asset());
+
         // Note: ERC4626 signature is the same for mainnet and foreign
-        deal(IERC4626(vault).asset(), address(ctx.proxy), expectedDepositAmount);
+        deal(address(asset), address(ctx.proxy), expectedDepositAmount);
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
             MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
             vault
@@ -220,7 +222,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vault
         );
 
-        _assertRateLimit(depositKey, 0, 0);
+        _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
         vm.prank(ctx.relayer);
@@ -229,7 +231,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(depositKey, depositMax, depositSlope);
+        _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
         if (!unlimitedDeposit) {
@@ -241,17 +243,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
+        assertEq(asset.balanceOf(address(ctx.proxy)), expectedDepositAmount);
+
+        assertEq(IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(ctx.proxy))), 0);
+
         vm.prank(ctx.relayer);
-        MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
+        uint256 shares = MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        assertEq(asset.balanceOf(address(ctx.proxy)), 0);
+
+        assertApproxEqAbs(IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(ctx.proxy))), expectedDepositAmount, 10);
+
+        assertEq(IERC4626(vault).balanceOf(address(ctx.proxy)), shares);
 
         vm.prank(ctx.relayer);
         MainnetController(ctx.controller).withdrawERC4626(vault, expectedDepositAmount / 2);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        assertEq(asset.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2);
+
+        assertApproxEqAbs(IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(ctx.proxy))), expectedDepositAmount / 2, 10);
+
+        assertApproxEqAbs(IERC4626(vault).balanceOf(address(ctx.proxy)), shares / 2, 10);
     }
 
     function _testAaveOnboarding(
@@ -300,7 +318,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount, 1);
 
         assertEq(IERC20(aToken).balanceOf(address(ctx.proxy)), 0);
-
 
         vm.prank(ctx.relayer);
         controller.depositAave(aToken, expectedDepositAmount);
@@ -400,6 +417,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             deal(vars.pool.coins(0), address(vars.ctx.proxy), vars.depositAmounts[0]);
             deal(vars.pool.coins(1), address(vars.ctx.proxy), vars.depositAmounts[1]);
 
+            assertEq(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.depositAmounts[0]);
+            assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), vars.depositAmounts[1]);
+
             vm.prank(vars.ctx.relayer);
             vars.controller.addLiquidityCurve(
                 pool,
@@ -411,7 +431,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
             vars.lpBalance = vars.pool.balanceOf(address(vars.ctx.proxy));
-            assertGe(vars.lpBalance, 0);
+            assertGe(vars.lpBalance, vars.minLPAmount);
 
             // Withdraw should also be enabled if deposit is enabled
             assertGt(withdrawLimit.maxAmount, 0);
@@ -430,6 +450,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 vars.withdrawAmounts
             );
 
+            assertEq(vars.pool.balanceOf(address(vars.ctx.proxy)), 0);
             assertGe(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.withdrawAmounts[0]);
             assertGe(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), vars.withdrawAmounts[1]);
 
@@ -456,7 +477,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
         vm.prank(vars.ctx.relayer);
-        vars.controller.swapCurve(
+        uint256 amountOut = vars.controller.swapCurve(
             pool,
             0,
             1,
@@ -465,7 +486,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
 
         assertEq(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), 0);
+        assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), amountOut);
         assertGe(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), vars.minAmountOut);
+
+        // Overwrite minAmountOut based on returned amount to swap back to token0
+        vars.minAmountOut = amountOut * vars.rates[1] * maxSlippage / vars.rates[0] / 1e18;
+
+        vm.prank(vars.ctx.relayer);
+        amountOut = vars.controller.swapCurve(
+            pool,
+            1,
+            0,
+            amountOut,
+            vars.minAmountOut
+        );
+
+        assertEq(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), amountOut);
+        assertGe(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.minAmountOut);
+        assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
         // Sanity check on maxSlippage of 15bps
         assertGe(maxSlippage, 0.9985e18, "maxSlippage too low");
@@ -572,6 +610,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
+        // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
 
@@ -605,6 +644,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
+        // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToSource(bridge, true);
 
