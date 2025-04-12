@@ -7,7 +7,6 @@ import { Address } from '../libraries/Address.sol';
 
 import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/contracts/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
 import { IACLManager }                           from 'sparklend-v1-core/contracts/interfaces/IACLManager.sol';
-import { IPoolAddressesProviderRegistry }        from 'sparklend-v1-core/contracts/interfaces/IPoolAddressesProviderRegistry.sol';
 import { IPoolConfigurator }                     from 'sparklend-v1-core/contracts/interfaces/IPoolConfigurator.sol';
 import { ReserveConfiguration }                  from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 
@@ -17,6 +16,14 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+struct SparkLendContext {
+    IPoolAddressesProvider poolAddressesProvider;
+    IPool                  pool;
+    IPoolConfigurator      poolConfigurator;
+    IACLManager            aclManager;
+    IAaveOracle            priceOracle;
+}
+
 /// @dev assertions specific to sparklend, which are not run on chains where
 /// it is not deployed
 abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
@@ -24,26 +31,28 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     using DomainHelpers for StdChains.Chain;
     using DomainHelpers for Domain;
 
-    bool internal disableExportDiff;
-    bool internal disableE2E;
+    function _getSparkLendContext(ChainId chain) internal view returns(SparkLendContext memory ctx) {
+        IPoolAddressesProvider poolAddressesProvider;
 
-    /// @notice local to market currently under test
-    IPoolAddressesProvider         internal poolAddressesProvider;
-    /// @notice local to market currently under test
-    IACLManager                    internal aclManager;
-    /// @notice local to market currently under test
-    IPool                          internal pool;
-    /// @notice local to market currently under test
-    IPoolConfigurator              internal poolConfigurator;
-    /// @notice local to market currently under test
-    IAaveOracle                    internal priceOracle;
+        if (chain == ChainIdUtils.Ethereum()) {
+            poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
+        } else if (chain == ChainIdUtils.Gnosis()) {
+            poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
+        } else {
+            revert("SparkLend/executing on unknown chain");
+        }
 
-    function loadPoolContext(address poolProvider) internal {
-        poolAddressesProvider = IPoolAddressesProvider(poolProvider);
-        pool                  = IPool(poolAddressesProvider.getPool());
-        poolConfigurator      = IPoolConfigurator(poolAddressesProvider.getPoolConfigurator());
-        aclManager            = IACLManager(poolAddressesProvider.getACLManager());
-        priceOracle           = IAaveOracle(poolAddressesProvider.getPriceOracle());
+        ctx = SparkLendContext(
+            poolAddressesProvider,
+            IPool(poolAddressesProvider.getPool()),
+            IPoolConfigurator(poolAddressesProvider.getPoolConfigurator()),
+            IACLManager(poolAddressesProvider.getACLManager()),
+            IAaveOracle(poolAddressesProvider.getPriceOracle())
+        );
+    }
+
+    function _getSparkLendContext() internal view returns(SparkLendContext memory) {
+        return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
     }
 
     function test_ETHEREUM_SpellExecutionDiff() public {
@@ -56,35 +65,26 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) private {
-        address[] memory poolProviders = _getPoolAddressesProviderRegistry().getAddressesProvidersList();
         string memory prefix = string(abi.encodePacked(id, '-', chainId.toDomainString()));
 
-        for (uint256 i = 0; i < poolProviders.length; i++) {
-            loadPoolContext(poolProviders[i]);
+        IPool pool = _getSparkLendContext().pool;
 
-            createConfigurationSnapshot(
-                string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-pre')),
-                pool
-            );
-        }
+        createConfigurationSnapshot(
+            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-pre')),
+            pool
+        );
 
         executeAllPayloadsAndBridges();
 
-        for (uint256 i = 0; i < poolProviders.length; i++) {
-            loadPoolContext(poolProviders[i]);
+        createConfigurationSnapshot(
+            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-post')),
+            pool
+        );
 
-            createConfigurationSnapshot(
-                string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-post')),
-                pool
-            );
-
-            if (!disableExportDiff) {
-                diffReports(
-                    string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-pre')),
-                    string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-post'))
-                );
-            }
-        }
+        diffReports(
+            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-pre')),
+            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-post'))
+        );
     }
 
     function test_ETHEREUM_E2E() public {
@@ -97,28 +97,16 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function _runE2ETests(ChainId chainId) private onChain(chainId) {
-        if (disableE2E) return;
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        address[] memory poolProviders = _getPoolAddressesProviderRegistry().getAddressesProvidersList();
+        e2eTest(ctx.pool);
+        
+        // Prevent MemoryLimitOOG
+        _clearLogs();
 
-        for (uint256 i = 0; i < poolProviders.length; i++) {
-            loadPoolContext(poolProviders[i]);
-            e2eTest(pool);
-        }
+        executeAllPayloadsAndBridges();
 
-        // the full payload + bridges causes a MemoryOOG error on ethereum.
-        // This is a workaround, skipping the bridging to consume less
-        // resources
-        if(chainId == ChainIdUtils.Ethereum()){
-            executeMainnetPayload();
-        } else {
-            executeAllPayloadsAndBridges();
-        }
-
-        for (uint256 i = 0; i < poolProviders.length; i++) {
-            loadPoolContext(poolProviders[i]);
-            e2eTest(pool);
-        }
+        e2eTest(ctx.pool);
     }
 
     function test_ETHEREUM_TokenImplementationsMatch() public {
@@ -131,27 +119,27 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function _assertTokenImplementationsMatch(ChainId chainId) private onChain(chainId) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
         // This test is to avoid a footgun where the token implementations are upgraded (possibly in an emergency) and
         // the config engine is not redeployed to use the new implementation. As a general rule all reserves should
         // use the same implementation for AToken, StableDebtToken and VariableDebtToken.
         executeAllPayloadsAndBridges();
 
-        address[] memory reserves = pool.getReservesList();
+        address[] memory reserves = ctx.pool.getReservesList();
         assertGt(reserves.length, 0);
 
-        DataTypes.ReserveData memory data = pool.getReserveData(reserves[0]);
-        address aTokenImpl            = getImplementation(address(poolConfigurator), data.aTokenAddress);
-        address stableDebtTokenImpl   = getImplementation(address(poolConfigurator), data.stableDebtTokenAddress);
-        address variableDebtTokenImpl = getImplementation(address(poolConfigurator), data.variableDebtTokenAddress);
+        DataTypes.ReserveData memory data = ctx.pool.getReserveData(reserves[0]);
+        address aTokenImpl            = getImplementation(address(ctx.poolConfigurator), data.aTokenAddress);
+        address stableDebtTokenImpl   = getImplementation(address(ctx.poolConfigurator), data.stableDebtTokenAddress);
+        address variableDebtTokenImpl = getImplementation(address(ctx.poolConfigurator), data.variableDebtTokenAddress);
 
         for (uint256 i = 1; i < reserves.length; i++) {
-            DataTypes.ReserveData memory expectedData = pool.getReserveData(reserves[i]);
+            DataTypes.ReserveData memory expectedData = ctx.pool.getReserveData(reserves[i]);
 
-            assertEq(getImplementation(address(poolConfigurator), expectedData.aTokenAddress),            aTokenImpl);
-            assertEq(getImplementation(address(poolConfigurator), expectedData.stableDebtTokenAddress),   stableDebtTokenImpl);
-            assertEq(getImplementation(address(poolConfigurator), expectedData.variableDebtTokenAddress), variableDebtTokenImpl);
+            assertEq(getImplementation(address(ctx.poolConfigurator), expectedData.aTokenAddress),            aTokenImpl);
+            assertEq(getImplementation(address(ctx.poolConfigurator), expectedData.stableDebtTokenAddress),   stableDebtTokenImpl);
+            assertEq(getImplementation(address(ctx.poolConfigurator), expectedData.variableDebtTokenAddress), variableDebtTokenImpl);
         }
     }
 
@@ -165,8 +153,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function _runOraclesTests(ChainId chainId) private onChain(chainId) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
-
         _validateOracles();
 
         executeAllPayloadsAndBridges();
@@ -184,35 +170,31 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function _assertAllReservesSeeded(ChainId chainId) private onChain(chainId) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
         executeAllPayloadsAndBridges();
 
-        address[] memory reserves = pool.getReservesList();
+        address[] memory reserves = ctx.pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            require(IERC20(pool.getReserveData(reserves[i]).aTokenAddress).totalSupply() >= 1e4, 'RESERVE_NOT_SEEDED');
+            require(IERC20(ctx.pool.getReserveData(reserves[i]).aTokenAddress).totalSupply() >= 1e4, 'RESERVE_NOT_SEEDED');
         }
     }
 
     function _validateOracles() internal view {
-        address[] memory reserves = pool.getReservesList();
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        address[] memory reserves = ctx.pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            require(priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      '_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW');
-            require(priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,'_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH');
+            require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      '_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW');
+            require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,'_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH');
         }
     }
 
     function getImplementation(address admin, address proxy) internal returns (address) {
         vm.prank(admin);
         return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
-    }
-
-    function _getPoolAddressesProviderRegistry() internal view returns(IPoolAddressesProviderRegistry registry ){
-        ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-        registry = chainData[currentChain].sparklendPooAddressProviderRegistry;
-        require(address(registry) != address(0), "Sparklend/executing on unknown chain");
     }
 
     function _testIRMChanges(
@@ -226,9 +208,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         uint256 newSlope1,
         uint256 newSlope2
     ) internal {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
-        
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', _getSparkLendContext().pool);
         ReserveConfig   memory config           = _findReserveConfig(allConfigsBefore, asset);
 
         IDefaultInterestRateStrategy prevIRM = IDefaultInterestRateStrategy(config.interestRateStrategy);
@@ -250,7 +230,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         executeAllPayloadsAndBridges();
 
-        address newIRM = _findReserveConfig(createConfigurationSnapshot('', pool), asset).interestRateStrategy;
+        address newIRM = _findReserveConfig(createConfigurationSnapshot('', _getSparkLendContext().pool), asset).interestRateStrategy;
         assertNotEq(newIRM, address(prevIRM));
 
         _validateInterestRateStrategy(

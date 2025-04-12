@@ -11,7 +11,8 @@ import { RateLimitData }     from 'spark-alm-controller/src/RateLimitHelpers.sol
 
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
-import { ReserveConfig } from '../../test-harness/ProtocolV3TestBase.sol';
+import { ReserveConfig }    from '../../test-harness/ProtocolV3TestBase.sol';
+import { SparkLendContext } from '../../test-harness/SparklendTests.sol';
 
 contract SparkEthereum_20250417Test is SparkTestBase {
 
@@ -114,16 +115,16 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     }
 
     function test_ETHEREUM_WBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
         ReserveConfig memory config = _findReserveConfigBySymbol(allConfigsBefore, 'WBTC');
 
         assertEq(config.liquidationThreshold, 50_00);
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
         
         config.liquidationThreshold = 45_00;
 
@@ -131,16 +132,16 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     }
 
     function test_ETHEREUM_SUSDSChanges() public onChain(ChainIdUtils.Ethereum()) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
         ReserveConfig memory config = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
 
         assertEq(config.eModeCategory, 0);
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
         
         config.eModeCategory = 2;
 
