@@ -51,7 +51,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_GNOSIS_SpellExecutionDiff() public {
-        vm.skip(chainSpellMetadata[ChainIdUtils.Gnosis()].payload == address(0));
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _runSpellExecutionDiff(ChainIdUtils.Gnosis());
     }
 
@@ -92,7 +92,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_GNOSIS_E2E() public {
-        vm.skip(chainSpellMetadata[ChainIdUtils.Gnosis()].payload == address(0));
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _runE2ETests(ChainIdUtils.Gnosis());
     }
 
@@ -126,7 +126,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_GNOSIS_TokenImplementationsMatch() public {
-        vm.skip(chainSpellMetadata[ChainIdUtils.Gnosis()].payload == address(0));
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _assertTokenImplementationsMatch(ChainIdUtils.Gnosis());
     }
 
@@ -160,7 +160,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_GNOSIS_Oracles() public {
-        vm.skip(chainSpellMetadata[ChainIdUtils.Gnosis()].payload == address(0));
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _runOraclesTests(ChainIdUtils.Gnosis());
     }
 
@@ -179,7 +179,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_GNOSIS_AllReservesSeeded() public {
-        vm.skip(chainSpellMetadata[ChainIdUtils.Gnosis()].payload == address(0));
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _assertAllReservesSeeded(ChainIdUtils.Gnosis());
     }
 
@@ -211,7 +211,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _getPoolAddressesProviderRegistry() internal view returns(IPoolAddressesProviderRegistry registry ){
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-        registry = chainSpellMetadata[currentChain].sparklendPooAddressProviderRegistry;
+        registry = chainData[currentChain].sparklendPooAddressProviderRegistry;
         require(address(registry) != address(0), "Sparklend/executing on unknown chain");
     }
 

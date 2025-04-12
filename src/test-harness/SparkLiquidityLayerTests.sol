@@ -70,8 +70,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
     function setControllerUpgrade(ChainId chain, address prevController, address newController) internal {
-        chainSpellMetadata[chain].prevController = prevController;
-        chainSpellMetadata[chain].newController  = newController;
+        chainData[chain].prevController = prevController;
+        chainData[chain].newController  = newController;
     }
 
     /**********************************************************************************************/
@@ -111,9 +111,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         // Override if there is controller upgrades
-        if (chainSpellMetadata[chain].prevController != address(0)) {
-            ctx.prevController = chainSpellMetadata[chain].prevController;
-            ctx.controller     = chainSpellMetadata[chain].newController;
+        if (chainData[chain].prevController != address(0)) {
+            ctx.prevController = chainData[chain].prevController;
+            ctx.controller     = chainData[chain].newController;
         } else {
             ctx.prevController = ctx.controller;
         }
@@ -569,7 +569,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         IERC20  domainUsdc;
         address domainPsm3;
         uint32  domainCctpId;
-        Bridge storage bridge = chainSpellMetadata[domainId].bridges[1];
+        Bridge storage bridge = chainData[domainId].bridges[1];
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc   = IERC20(Arbitrum.USDC);
@@ -599,7 +599,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
-        chainSpellMetadata[domainId].domain.selectFork();
+        chainData[domainId].domain.selectFork();
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
@@ -640,7 +640,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
-        chainSpellMetadata[ChainIdUtils.Ethereum()].domain.selectFork();
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
@@ -667,12 +667,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() public {
         SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
-
-        // FIXME something very strange is going on, simply reading the length of array makes it exist
-        //       this is a deep issue in foundry I think, but doing a workaround to make this work for now
-        for (uint256 i = 0; i < allChains.length; i++) {
-            console.log("Chain %s has %s bridges, %s bridgeTypes", i, chainSpellMetadata[allChains[i]].bridges.length, chainSpellMetadata[allChains[i]].bridgeTypes.length);
-        }
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Base(),

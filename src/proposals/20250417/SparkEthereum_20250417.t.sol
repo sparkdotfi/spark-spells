@@ -41,8 +41,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             ETHEREUM_NEW_ALM_CONTROLLER
         );
 
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0xab465726A358c004C22bB8136d43716e1936AFa6;
-        chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = 0xA8FF99Ac98Fc0C3322F639a9591257518514455c;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xab465726A358c004C22bB8136d43716e1936AFa6;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xA8FF99Ac98Fc0C3322F639a9591257518514455c;
     }
 
     function test_ETHEREUM_ControllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {

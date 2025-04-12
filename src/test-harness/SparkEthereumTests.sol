@@ -104,9 +104,9 @@ abstract contract SparkEthereumTests is SparklendTests {
 
     function test_ETHEREUM_PayloadsConfigured() public onChain(ChainIdUtils.Ethereum()){
          for (uint256 i = 0; i < allChains.length; i++) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
+            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
-            address payload = chainSpellMetadata[chainId].payload;
+            address payload = chainData[chainId].payload;
             if (payload != address(0)) {
                 // A payload is defined for this domain
                 // We verify the mainnet spell defines this payload correctly
