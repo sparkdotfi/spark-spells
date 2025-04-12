@@ -224,7 +224,7 @@ library SLLHelpers {
     }
 
     /**
-     * @notice Onboard an Curve pool
+     * @notice Onboard a Curve pool
      */
     function onboardCurvePool(
         address controller,
@@ -238,10 +238,7 @@ library SLLHelpers {
         uint256 withdrawMax,
         uint256 withdrawSlope
     ) internal {
-        MainnetController(controller).setMaxSlippage(
-            pool,
-            maxSlippage
-        );
+        MainnetController(controller).setMaxSlippage(pool, maxSlippage);
         if (swapMax != 0) {
             RateLimitHelpers.setRateLimitData(
                 RateLimitHelpers.makeAssetKey(

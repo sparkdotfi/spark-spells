@@ -229,7 +229,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
         
         ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
-        ReserveConfig memory config             = _findReserveConfig(allConfigsBefore, asset);
+        ReserveConfig   memory config           = _findReserveConfig(allConfigsBefore, asset);
 
         IDefaultInterestRateStrategy prevIRM = IDefaultInterestRateStrategy(config.interestRateStrategy);
         _validateInterestRateStrategy(
