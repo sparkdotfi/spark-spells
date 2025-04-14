@@ -24,12 +24,6 @@ jobs:
         with:
           version: stable
 
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-        id: build
-
       - name: Run Forge tests
         env:
           ALCHEMY_APIKEY: ${{secrets.ALCHEMY_APIKEY}}
