@@ -7,8 +7,6 @@ import { console }   from "forge-std/console.sol";
 
 import { Address } from '../libraries/Address.sol';
 
-import { IPoolAddressesProviderRegistry } from 'sparklend-v1-core/contracts/interfaces/IPoolAddressesProviderRegistry.sol';
-
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -41,8 +39,6 @@ abstract contract SpellRunner is Test {
         /// bridges for a given chain, such as canonical OP bridge and CCTP
         /// USDC-specific bridge
         Bridge[]                       bridges;
-        // @notice coupled to SparklendTests, zero on chains where sparklend is not present
-        IPoolAddressesProviderRegistry sparklendPooAddressProviderRegistry;
         // These are set only if there is a controller upgrade on this chain in this spell
         address                        prevController;
         address                        newController;
@@ -152,9 +148,6 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Gnosis()].domain
             )
         );
-
-        chainData[ChainIdUtils.Ethereum()].sparklendPooAddressProviderRegistry = IPoolAddressesProviderRegistry(Ethereum.POOL_ADDRESSES_PROVIDER_REGISTRY);
-        chainData[ChainIdUtils.Gnosis()].sparklendPooAddressProviderRegistry   = IPoolAddressesProviderRegistry(Gnosis.POOL_ADDRESSES_PROVIDER_REGISTRY);
 
         allChains.push(ChainIdUtils.Ethereum());
         allChains.push(ChainIdUtils.Base());
