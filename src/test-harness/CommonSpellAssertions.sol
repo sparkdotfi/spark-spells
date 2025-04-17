@@ -29,7 +29,7 @@ abstract contract CommonSpellAssertions is SpellRunner {
     }
 
     function _assertPayloadBytecodeMatches(ChainId chainId) private onChain(chainId) {
-        address actualPayload = chainSpellMetadata[chainId].payload;
+        address actualPayload = chainData[chainId].payload;
         vm.skip(actualPayload == address(0));
         require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
         address expectedPayload = deployPayload(chainId);

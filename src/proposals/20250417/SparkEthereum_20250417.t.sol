@@ -11,7 +11,8 @@ import { RateLimitData }     from 'spark-alm-controller/src/RateLimitHelpers.sol
 
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 
-import { ReserveConfig } from '../../test-harness/ProtocolV3TestBase.sol';
+import { ReserveConfig }    from '../../test-harness/ProtocolV3TestBase.sol';
+import { SparkLendContext } from '../../test-harness/SparklendTests.sol';
 
 contract SparkEthereum_20250417Test is SparkTestBase {
 
@@ -41,8 +42,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             ETHEREUM_NEW_ALM_CONTROLLER
         );
 
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].payload = 0xab465726A358c004C22bB8136d43716e1936AFa6;
-        chainSpellMetadata[ChainIdUtils.Ethereum()].payload    = 0xA8FF99Ac98Fc0C3322F639a9591257518514455c;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xab465726A358c004C22bB8136d43716e1936AFa6;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xA8FF99Ac98Fc0C3322F639a9591257518514455c;
     }
 
     function test_ETHEREUM_ControllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
@@ -114,16 +115,16 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     }
 
     function test_ETHEREUM_WBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
         ReserveConfig memory config = _findReserveConfigBySymbol(allConfigsBefore, 'WBTC');
 
         assertEq(config.liquidationThreshold, 50_00);
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
         
         config.liquidationThreshold = 45_00;
 
@@ -131,16 +132,16 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     }
 
     function test_ETHEREUM_SUSDSChanges() public onChain(ChainIdUtils.Ethereum()) {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
         ReserveConfig memory config = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
 
         assertEq(config.eModeCategory, 0);
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
         
         config.eModeCategory = 2;
 
