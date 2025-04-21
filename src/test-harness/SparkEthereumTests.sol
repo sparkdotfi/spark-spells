@@ -5,9 +5,6 @@ import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
 import { Address } from '../libraries/Address.sol';
 
-import { IPoolAddressesProvider } from "aave-v3-core/contracts/interfaces/IPoolAddressesProvider.sol";
-
-import { IAaveOracle }                     from 'sparklend-v1-core/contracts/interfaces/IAaveOracle.sol';
 import { IScaledBalanceToken }             from "sparklend-v1-core/contracts/interfaces/IScaledBalanceToken.sol";
 import { IncentivizedERC20 }               from 'sparklend-v1-core/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
 import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
@@ -30,7 +27,7 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
 
-import { SparklendTests } from "./SparklendTests.sol";
+import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
@@ -61,16 +58,6 @@ interface IPendleLinearDiscountOracle {
 abstract contract SparkEthereumTests is SparklendTests {
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using WadRayMath for uint256;
-
-    IAuthority           internal authority;
-    ISparkLendFreezerMom internal freezerMom;
-    ICapAutomator        internal capAutomator;
-
-    constructor() {
-        authority    = IAuthority(Ethereum.CHIEF);
-        freezerMom   = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
-        capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-    }
 
     function test_ETHEREUM_FreezerMom() public onChain(ChainIdUtils.Ethereum()){
         uint256 snapshot = vm.snapshot();
@@ -104,9 +91,9 @@ abstract contract SparkEthereumTests is SparklendTests {
 
     function test_ETHEREUM_PayloadsConfigured() public onChain(ChainIdUtils.Ethereum()){
          for (uint256 i = 0; i < allChains.length; i++) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
+            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
-            address payload = chainSpellMetadata[chainId].payload;
+            address payload = chainData[chainId].payload;
             if (payload != address(0)) {
                 // A payload is defined for this domain
                 // We verify the mainnet spell defines this payload correctly
@@ -116,13 +103,13 @@ abstract contract SparkEthereumTests is SparklendTests {
         }
     }
 
-    function _runRewardsConfigurationTests() internal {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+    function _runRewardsConfigurationTests() internal view {
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        address[] memory reserves = pool.getReservesList();
+        address[] memory reserves = ctx.pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            DataTypes.ReserveData memory reserveData = pool.getReserveData(reserves[i]);
+            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
 
             assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
             assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
@@ -130,14 +117,16 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _assertFrozen(address asset, bool frozen) internal view {
-        assertEq(pool.getConfiguration(asset).getFrozen(), frozen);
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
     }
 
     function _assertPaused(address asset, bool paused) internal view {
-        assertEq(pool.getConfiguration(asset).getPaused(), paused);
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
     }
 
     function _voteAndCast(address _spell) internal {
+        IAuthority authority = IAuthority(Ethereum.CHIEF);
+
         address mkrWhale = makeAddr("mkrWhale");
         uint256 amount = 1_000_000 ether;
 
@@ -164,7 +153,7 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _runFreezerMomTests() internal {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
 
         // Sanity checks - cannot call Freezer Mom unless you have the hat
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
@@ -198,9 +187,9 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _runCapAutomatorTests() internal {
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        address[] memory reserves = pool.getReservesList();
+        address[] memory reserves = ctx.pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
             _assertAutomatedCapsUpdate(reserves[i]);
@@ -208,7 +197,10 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _assertAutomatedCapsUpdate(address asset) internal {
-        DataTypes.ReserveData memory reserveDataBefore = pool.getReserveData(asset);
+        SparkLendContext memory ctx = _getSparkLendContext();
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        DataTypes.ReserveData memory reserveDataBefore = ctx.pool.getReserveData(asset);
 
         uint256 supplyCapBefore = reserveDataBefore.configuration.getSupplyCap();
         uint256 borrowCapBefore = reserveDataBefore.configuration.getBorrowCap();
@@ -218,7 +210,7 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         capAutomator.exec(asset);
 
-        DataTypes.ReserveData memory reserveDataAfter = pool.getReserveData(asset);
+        DataTypes.ReserveData memory reserveDataAfter = ctx.pool.getReserveData(asset);
 
         uint256 supplyCapAfter = reserveDataAfter.configuration.getSupplyCap();
         uint256 borrowCapAfter = reserveDataAfter.configuration.getBorrowCap();
@@ -267,6 +259,8 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
         assertEq(_max,              max);
         assertEq(_gap,              gap);
@@ -274,6 +268,8 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _assertBorrowCapConfigNotSet(address asset) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
         assertEq(_max,              0);
         assertEq(_gap,              0);
@@ -281,6 +277,8 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
         assertEq(_max,              max);
         assertEq(_gap,              gap);
@@ -288,6 +286,8 @@ abstract contract SparkEthereumTests is SparklendTests {
     }
 
     function _assertSupplyCapConfigNotSet(address asset) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
         (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
         assertEq(_max,              0);
         assertEq(_gap,              0);
@@ -372,16 +372,16 @@ abstract contract SparkEthereumTests is SparklendTests {
         uint256 emodeCategory;
     }
 
-    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal{
-        loadPoolContext(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
+        SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
 
         uint256 startingReserveLength = allConfigsBefore.length;
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', pool);
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
 
         assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
 
@@ -396,9 +396,7 @@ abstract contract SparkEthereumTests is SparklendTests {
     )
         internal view
     {
-        // TODO: Refactor this
-        IPoolAddressesProvider poolAddressesProvider
-            = IPoolAddressesProvider(_getPoolAddressesProviderRegistry().getAddressesProvidersList()[0]);
+        SparkLendContext memory ctx = _getSparkLendContext();
 
         address irm = _findReserveConfigBySymbol(allReserveConfigs, params.symbol).interestRateStrategy;
 
@@ -431,7 +429,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         });
 
         InterestStrategyValues memory irmParams = InterestStrategyValues({
-            addressesProvider:             address(poolAddressesProvider),
+            addressesProvider:             address(ctx.poolAddressesProvider),
             optimalUsageRatio:             params.optimalUsageRatio,
             optimalStableToTotalDebtRatio: 0,
             baseStableBorrowRate:          params.variableRateSlope1,
@@ -460,10 +458,8 @@ abstract contract SparkEthereumTests is SparklendTests {
             increaseCooldown: params.borrowCapTtl
         });
 
-        IAaveOracle oracle = IAaveOracle(poolAddressesProvider.getPriceOracle());
-
         require(
-            oracle.getSourceOfAsset(params.tokenAddress) == params.oracleAddress,
+            ctx.priceOracle.getSourceOfAsset(params.tokenAddress) == params.oracleAddress,
             '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE'
         );
     }
@@ -543,6 +539,8 @@ abstract contract SparkEthereumTests is SparklendTests {
     )
         internal
     {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
         // Rate source should be the same
         assertEq(IRateTargetBaseIRM(newIRM).RATE_SOURCE(), IRateTargetBaseIRM(oldIRM).RATE_SOURCE());
 
@@ -554,19 +552,19 @@ abstract contract SparkEthereumTests is SparklendTests {
         assertEq(IDefaultInterestRateStrategy(oldIRM).getBaseVariableBorrowRate(), oldBaseRate);
         assertEq(IDefaultInterestRateStrategy(newIRM).getBaseVariableBorrowRate(), newBaseRate);
 
-        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', pool), symbol);
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
 
         assertEq(configBefore.interestRateStrategy, oldIRM);
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', pool), symbol);
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configAfter.interestRateStrategy,
             newIRM,
             InterestStrategyValues({
-                addressesProvider:             address(poolAddressesProvider),
+                addressesProvider:             address(ctx.poolAddressesProvider),
                 optimalUsageRatio:             1e27,
                 optimalStableToTotalDebtRatio: 0,
                 baseStableBorrowRate:          IDefaultInterestRateStrategy(oldIRM).getVariableRateSlope1(),

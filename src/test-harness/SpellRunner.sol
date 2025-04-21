@@ -7,8 +7,6 @@ import { console }   from "forge-std/console.sol";
 
 import { Address } from '../libraries/Address.sol';
 
-import { IPoolAddressesProviderRegistry } from 'sparklend-v1-core/contracts/interfaces/IPoolAddressesProviderRegistry.sol';
-
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -21,7 +19,7 @@ import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBr
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
 import { ArbitrumBridgeTesting } from "xchain-helpers/testing/bridges/ArbitrumBridgeTesting.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
-import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
+import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
@@ -31,14 +29,8 @@ abstract contract SpellRunner is Test {
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
 
-    enum BridgeType {
-        OPTIMISM,
-        CCTP,
-        GNOSIS,
-        ARBITRUM
-    }
-
-    struct ChainSpellMetadata {
+    // ChainData is already taken in StdChains
+    struct DomainData {
         address                        payload;
         IExecutor                      executor;
         Domain                         domain;
@@ -47,24 +39,21 @@ abstract contract SpellRunner is Test {
         /// bridges for a given chain, such as canonical OP bridge and CCTP
         /// USDC-specific bridge
         Bridge[]                       bridges;
-        BridgeType[]                   bridgeTypes;
-        // @notice coupled to SparklendTests, zero on chains where sparklend is not present
-        IPoolAddressesProviderRegistry sparklendPooAddressProviderRegistry;
         // These are set only if there is a controller upgrade on this chain in this spell
         address                        prevController;
         address                        newController;
     }
 
-    mapping(ChainId chainId => ChainSpellMetadata chainSpellMetadata) internal chainSpellMetadata;
+    mapping(ChainId => DomainData) internal chainData;
 
     ChainId[] internal allChains;
     string internal    id;
 
-    modifier onChain(ChainId chainId) virtual {
-        ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-        chainSpellMetadata[chainId].domain.selectFork();
+    modifier onChain(ChainId chainId) {
+        uint256 currentFork = vm.activeFork();
+        if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
         _;
-        chainSpellMetadata[currentChain].domain.selectFork();
+        if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
     }
 
     /// @dev maximum 3 chains in 1 query
@@ -106,59 +95,59 @@ abstract contract SpellRunner is Test {
         console.log("Base block: ", blocks[1]);
         console.log("Arbitrum block: ", blocks[2]);
 
-        chainSpellMetadata[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
-        chainSpellMetadata[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
-        chainSpellMetadata[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
+        chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
+        chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
+        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
+        chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
     }
 
     /// @dev to be called in setUp
     function setupDomains(string memory date) internal {
         setupBlocksFromDate(date);
 
-        chainSpellMetadata[ChainIdUtils.Ethereum()].executor    = IExecutor(Ethereum.SPARK_PROXY);
-        chainSpellMetadata[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
-        chainSpellMetadata[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
+        // We default to Ethereum domain
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        chainData[ChainIdUtils.Ethereum()].executor    = IExecutor(Ethereum.SPARK_PROXY);
+        chainData[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
+        chainData[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
 
         // Arbitrum One
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
+        chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
             ArbitrumBridgeTesting.createNativeBridge(
-                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
-                chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain
-        ));
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridgeTypes.push(BridgeType.ARBITRUM);
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridges.push(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.ArbitrumOne()].domain
+            )
+        );
+        chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
-                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
-                chainSpellMetadata[ChainIdUtils.ArbitrumOne()].domain
-        ));
-        chainSpellMetadata[ChainIdUtils.ArbitrumOne()].bridgeTypes.push(BridgeType.CCTP);
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.ArbitrumOne()].domain
+            )
+        );
 
         // Base
-        chainSpellMetadata[ChainIdUtils.Base()].bridges.push(
+        chainData[ChainIdUtils.Base()].bridges.push(
             OptimismBridgeTesting.createNativeBridge(
-                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
-                chainSpellMetadata[ChainIdUtils.Base()].domain
-        ));
-        chainSpellMetadata[ChainIdUtils.Base()].bridgeTypes.push(BridgeType.OPTIMISM);
-        chainSpellMetadata[ChainIdUtils.Base()].bridges.push(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Base()].domain
+            )
+        );
+        chainData[ChainIdUtils.Base()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
-                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
-                chainSpellMetadata[ChainIdUtils.Base()].domain
-        ));
-        chainSpellMetadata[ChainIdUtils.Base()].bridgeTypes.push(BridgeType.CCTP);
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Base()].domain
+            )
+        );
 
         // Gnosis
-        chainSpellMetadata[ChainIdUtils.Gnosis()].bridges.push(
+        chainData[ChainIdUtils.Gnosis()].bridges.push(
             AMBBridgeTesting.createGnosisBridge(
-                chainSpellMetadata[ChainIdUtils.Ethereum()].domain,
-                chainSpellMetadata[ChainIdUtils.Gnosis()].domain
-        ));
-        chainSpellMetadata[ChainIdUtils.Gnosis()].bridgeTypes.push(BridgeType.GNOSIS);
-
-        chainSpellMetadata[ChainIdUtils.Ethereum()].sparklendPooAddressProviderRegistry = IPoolAddressesProviderRegistry(Ethereum.POOL_ADDRESSES_PROVIDER_REGISTRY);
-        chainSpellMetadata[ChainIdUtils.Gnosis()].sparklendPooAddressProviderRegistry   = IPoolAddressesProviderRegistry(Gnosis.POOL_ADDRESSES_PROVIDER_REGISTRY);
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Gnosis()].domain
+            )
+        );
 
         allChains.push(ChainIdUtils.Ethereum());
         allChains.push(ChainIdUtils.Base());
@@ -167,7 +156,7 @@ abstract contract SpellRunner is Test {
     }
 
     function spellIdentifier(ChainId chainId) private view returns(string memory) {
-        string memory slug            = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
+        string memory slug       = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
         string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
         return identifier;
     }
@@ -178,10 +167,10 @@ abstract contract SpellRunner is Test {
 
     function deployPayloads() internal {
         for (uint256 i = 0; i < allChains.length; i++) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
+            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             string memory identifier = spellIdentifier(chainId);
             try vm.getCode(identifier) {
-                chainSpellMetadata[chainId].payload = deployPayload(chainId);
+                chainData[chainId].payload = deployPayload(chainId);
             } catch {
                 console.log("skipping spell deployment for network: ", chainId.toDomainString());
             }
@@ -201,36 +190,36 @@ abstract contract SpellRunner is Test {
     /// @dev bridge contracts themselves are stored on mainnet
     function _relayMessageOverBridges() internal onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; i++) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
-            for (uint256 j = 0; j < chainSpellMetadata[chainId].bridges.length ; j++){
-                _executeBridge(chainSpellMetadata[chainId].bridges[j], chainSpellMetadata[chainId].bridgeTypes[j]);
+            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
+                _executeBridge(chainData[chainId].bridges[j]);
             }
         }
     }
 
     /// @dev this does not relay messages from L2s to mainnet except in the case of USDC
-    function _executeBridge(Bridge storage bridge, BridgeType bridgeType) private {
-        if (bridgeType == BridgeType.OPTIMISM) {
+    function _executeBridge(Bridge storage bridge) private {
+        if (bridge.bridgeType == BridgeType.OPTIMISM) {
             OptimismBridgeTesting.relayMessagesToDestination(bridge, false);
-        } else if (bridgeType == BridgeType.CCTP) {
+        } else if (bridge.bridgeType == BridgeType.CCTP) {
             CCTPBridgeTesting.relayMessagesToDestination(bridge, false);
             CCTPBridgeTesting.relayMessagesToSource(bridge, false);
-        } else if (bridgeType == BridgeType.GNOSIS) {
+        } else if (bridge.bridgeType == BridgeType.AMB) {
             AMBBridgeTesting.relayMessagesToDestination(bridge, false);
-        } else if (bridgeType == BridgeType.ARBITRUM) {
+        } else if (bridge.bridgeType == BridgeType.ARBITRUM) {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
         }
     }
 
     function _executeForeignPayloads() private onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; i++) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
+            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
             address mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
-            IExecutor executor = chainSpellMetadata[chainId].executor;
+            IExecutor executor = chainData[chainId].executor;
             if (mainnetSpellPayload != address(0)) {
                 // We assume the payload has been queued in the executor (will revert otherwise)
-                chainSpellMetadata[chainId].domain.selectFork();
+                chainData[chainId].domain.selectFork();
                 uint256 actionsSetId = executor.actionsSetCount() - 1;
                 uint256 prevTimestamp = block.timestamp;
                 vm.warp(executor.getActionsSetById(actionsSetId).executionTime);
@@ -238,9 +227,9 @@ abstract contract SpellRunner is Test {
                 vm.warp(prevTimestamp);
             } else {
                 // We will simulate execution until the real spell is deployed in the mainnet spell
-                address payload = chainSpellMetadata[chainId].payload;
+                address payload = chainData[chainId].payload;
                 if (payload != address(0)) {
-                    chainSpellMetadata[chainId].domain.selectFork();
+                    chainData[chainId].domain.selectFork();
                     vm.prank(address(executor));
                     executor.executeDelegateCall(
                         payload,
@@ -255,7 +244,7 @@ abstract contract SpellRunner is Test {
     }
 
     function _getForeignPayloadFromMainnetSpell(ChainId chainId) internal onChain(ChainIdUtils.Ethereum()) returns (address) {
-        SparkPayloadEthereum spell = SparkPayloadEthereum(chainSpellMetadata[ChainIdUtils.Ethereum()].payload);
+        SparkPayloadEthereum spell = SparkPayloadEthereum(chainData[ChainIdUtils.Ethereum()].payload);
         if (chainId == ChainIdUtils.Base()) {
             return spell.PAYLOAD_BASE();
         } else if (chainId == ChainIdUtils.Gnosis()) {
@@ -268,8 +257,8 @@ abstract contract SpellRunner is Test {
     }
 
     function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
-        address payloadAddress = chainSpellMetadata[ChainIdUtils.Ethereum()].payload;
-        IExecutor executor     = chainSpellMetadata[ChainIdUtils.Ethereum()].executor;
+        address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
+        IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
 
         vm.prank(Ethereum.PAUSE_PROXY);
@@ -286,10 +275,10 @@ abstract contract SpellRunner is Test {
 
         // Need to also reset all bridge indicies
         for (uint256 i = 0; i < allChains.length; i++) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainSpellMetadata[allChains[i]].domain);
-            for (uint256 j = 0; j < chainSpellMetadata[chainId].bridges.length ; j++){
-                chainSpellMetadata[chainId].bridges[j].lastSourceLogIndex = 0;
-                chainSpellMetadata[chainId].bridges[j].lastDestinationLogIndex = 0;
+            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
+                chainData[chainId].bridges[j].lastSourceLogIndex = 0;
+                chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
         }
     }
