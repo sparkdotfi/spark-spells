@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
+import { console } from 'forge-std/console.sol';
+
 import { Address } from '../libraries/Address.sol';
 
 import { IScaledBalanceToken }             from "sparklend-v1-core/contracts/interfaces/IScaledBalanceToken.sol";
@@ -68,6 +70,14 @@ abstract contract SparkEthereumTests is SparklendTests {
         address irm;
         uint256 baseRateSpread;
         uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+        uint256 optimalUsageRatio;
+    }
+
+    struct RateTargetKinkIRMParams {
+        address irm;
+        uint256 baseRate;
+        int256  variableRateSlope1Spread;
         uint256 variableRateSlope2;
         uint256 optimalUsageRatio;
     }
@@ -567,7 +577,7 @@ abstract contract SparkEthereumTests is SparklendTests {
                 baseStableBorrowRate:          oldParams.variableRateSlope1,
                 stableRateSlope1:              0,
                 stableRateSlope2:              0,
-                baseVariableBorrowRate:        oldParams.baseRateSpread + ssrRate,
+                baseVariableBorrowRate:        ssrRate + oldParams.baseRateSpread,
                 variableRateSlope1:            oldParams.variableRateSlope1,
                 variableRateSlope2:            oldParams.variableRateSlope2
             })
@@ -589,8 +599,65 @@ abstract contract SparkEthereumTests is SparklendTests {
                 baseStableBorrowRate:          newParams.variableRateSlope1,
                 stableRateSlope1:              0,
                 stableRateSlope2:              0,
-                baseVariableBorrowRate:        newParams.baseRateSpread + ssrRate,
+                baseVariableBorrowRate:        ssrRate + newParams.baseRateSpread,
                 variableRateSlope1:            newParams.variableRateSlope1,
+                variableRateSlope2:            newParams.variableRateSlope2
+            })
+        );
+    }
+
+    function _testRateTargetKinkIRMUpdate(
+        string                  memory symbol,
+        RateTargetKinkIRMParams memory oldParams,
+        RateTargetKinkIRMParams memory newParams
+    )
+        internal
+    {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Rate source should be the same
+        assertEq(ICustomIRM(newParams.irm).RATE_SOURCE(), ICustomIRM(oldParams.irm).RATE_SOURCE());
+
+        int256 ssrRate = IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).getAPR();
+
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
+
+        console.log("irm", configBefore.interestRateStrategy);
+
+        _validateInterestRateStrategy(
+            configBefore.interestRateStrategy,
+            oldParams.irm,
+            InterestStrategyValues({
+                addressesProvider:             address(ctx.poolAddressesProvider),
+                optimalUsageRatio:             oldParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          uint256(ssrRate + oldParams.variableRateSlope1Spread),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        oldParams.baseRate,
+                variableRateSlope1:            uint256(ssrRate + oldParams.variableRateSlope1Spread),
+                variableRateSlope2:            oldParams.variableRateSlope2
+            })
+        );
+
+        assertEq(configBefore.interestRateStrategy, oldParams.irm);
+
+        executeAllPayloadsAndBridges();
+
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
+
+        _validateInterestRateStrategy(
+            configAfter.interestRateStrategy,
+            newParams.irm,
+            InterestStrategyValues({
+                addressesProvider:             address(ctx.poolAddressesProvider),
+                optimalUsageRatio:             newParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          uint256(ssrRate + newParams.variableRateSlope1Spread),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        newParams.baseRate,
+                variableRateSlope1:            uint256(ssrRate + newParams.variableRateSlope1Spread),
                 variableRateSlope2:            newParams.variableRateSlope2
             })
         );

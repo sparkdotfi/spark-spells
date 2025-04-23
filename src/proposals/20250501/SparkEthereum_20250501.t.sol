@@ -17,9 +17,9 @@ import { SparkLendContext } from '../../test-harness/SparklendTests.sol';
 contract SparkEthereum_20250417Test is SparkTestBase {
 
     address constant DAI_IRM_OLD  = 0x5a7E7a32331189a794ac33Fec76C0A1dD3dDCF9c;
-    address constant USDC_IRM_OLD = 0x0F1a9a787b4103eF5929121CD9399224c6455dD6;
+    address constant USDC_IRM_OLD = 0xb7b734CF1F13652E930f8a604E8f837f85160174;
     address constant USDS_IRM_OLD = 0xD94BA511284d2c56F59a687C3338441d33304E07;
-    address constant USDT_IRM_OLD = 0x0F1a9a787b4103eF5929121CD9399224c6455dD6;
+    address constant USDT_IRM_OLD = 0xb7b734CF1F13652E930f8a604E8f837f85160174;
 
     address constant DAI_USDS_IRM  = 0x7729E1CE24d7c4A82e76b4A2c118E328C35E6566;  // DAI  and USDS use the same params, same IRM
     address constant USDC_USDT_IRM = 0x7F2fc6A7E3b3c658A84999b26ad2013C4Dc87061;  // USDC and USDT use the same params, same IRM
@@ -68,6 +68,42 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             optimalUsageRatio  : 0.8e27
         });
         _testRateTargetBaseIRMUpdate("USDS", oldParams, newParams);
+    }
+
+    function test_ETHEREUM_sparkLend_usdcIrmUpdate() public onChain(ChainIdUtils.Ethereum()) {
+        RateTargetKinkIRMParams memory oldParams = RateTargetKinkIRMParams({
+            irm                      : USDC_IRM_OLD,
+            baseRate                 : 0,
+            variableRateSlope1Spread : 0,
+            variableRateSlope2       : 0.15e27,
+            optimalUsageRatio        : 0.95e27
+        });
+        RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
+            irm                      : USDC_USDT_IRM,
+            baseRate                 : 0,
+            variableRateSlope1Spread : 0.01e27,
+            variableRateSlope2       : 0.15e27,
+            optimalUsageRatio        : 0.95e27
+        });
+        _testRateTargetKinkIRMUpdate("USDC", oldParams, newParams);
+    }
+
+    function test_ETHEREUM_sparkLend_usdtIrmUpdate() public onChain(ChainIdUtils.Ethereum()) {
+        RateTargetKinkIRMParams memory oldParams = RateTargetKinkIRMParams({
+            irm                      : USDT_IRM_OLD,
+            baseRate                 : 0,
+            variableRateSlope1Spread : 0,
+            variableRateSlope2       : 0.15e27,
+            optimalUsageRatio        : 0.95e27
+        });
+        RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
+            irm                      : USDC_USDT_IRM,
+            baseRate                 : 0,
+            variableRateSlope1Spread : 0.01e27,
+            variableRateSlope2       : 0.15e27,
+            optimalUsageRatio        : 0.95e27
+        });
+        _testRateTargetKinkIRMUpdate("USDT", oldParams, newParams);
     }
 
 }
