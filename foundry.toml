@@ -9,7 +9,7 @@ fs_permissions = [
 solc = "0.8.25"
 optimizer = true
 ffi = true
-evm_version = "cancun"
+# evm_version = "cancun"
 
 # Very large gas limit for big tests
 gas_limit = "18446744073709551615"
