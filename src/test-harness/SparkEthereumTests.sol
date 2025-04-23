@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { console } from 'forge-std/console.sol';
-
 import { Address } from '../libraries/Address.sol';
 
 import { IScaledBalanceToken }             from "sparklend-v1-core/contracts/interfaces/IScaledBalanceToken.sol";
@@ -583,8 +581,6 @@ abstract contract SparkEthereumTests is SparklendTests {
             })
         );
 
-        assertEq(configBefore.interestRateStrategy, oldParams.irm);
-
         executeAllPayloadsAndBridges();
 
         ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
@@ -622,8 +618,6 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
 
-        console.log("irm", configBefore.interestRateStrategy);
-
         _validateInterestRateStrategy(
             configBefore.interestRateStrategy,
             oldParams.irm,
@@ -639,8 +633,6 @@ abstract contract SparkEthereumTests is SparklendTests {
                 variableRateSlope2:            oldParams.variableRateSlope2
             })
         );
-
-        assertEq(configBefore.interestRateStrategy, oldParams.irm);
 
         executeAllPayloadsAndBridges();
 

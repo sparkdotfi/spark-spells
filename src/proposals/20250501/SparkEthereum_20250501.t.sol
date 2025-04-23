@@ -1,18 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import 'src/test-harness/SparkTestBase.sol';
-
-import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
-
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { RateLimitData }     from 'spark-alm-controller/src/RateLimitHelpers.sol';
+import '../../../src/test-harness/SparkTestBase.sol';
 
-import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
-
-import { ReserveConfig }    from '../../test-harness/ProtocolV3TestBase.sol';
-import { SparkLendContext } from '../../test-harness/SparklendTests.sol';
+import { ChainIdUtils } from '../../../src/libraries/ChainId.sol';
 
 contract SparkEthereum_20250417Test is SparkTestBase {
 
