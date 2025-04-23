@@ -24,6 +24,8 @@ contract SparkEthereum_20250417Test is SparkTestBase {
     address constant DAI_USDS_IRM  = 0x7729E1CE24d7c4A82e76b4A2c118E328C35E6566;  // DAI  and USDS use the same params, same IRM
     address constant USDC_USDT_IRM = 0x7F2fc6A7E3b3c658A84999b26ad2013C4Dc87061;  // USDC and USDT use the same params, same IRM
 
+    address constant AAVE_CORE_AUSDT = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
+
     constructor() {
         id = "20250501";
     }
@@ -104,6 +106,34 @@ contract SparkEthereum_20250417Test is SparkTestBase {
             optimalUsageRatio        : 0.95e27
         });
         _testRateTargetKinkIRMUpdate("USDT", oldParams, newParams);
+    }
+
+    function test_ETHEREUM_sparkLend_usdtOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testAaveOnboarding({
+            aToken:                Ethereum.USDT_ATOKEN,
+            expectedDepositAmount: 25_000_000e6,
+            depositMax:            100_000_000e6,
+            depositSlope:          50_000_000e6 / uint256(1 days)
+        });
+    }
+
+    function test_ETHEREUM_aaveCore_usdtOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testAaveOnboarding({
+            aToken:                AAVE_CORE_AUSDT,
+            expectedDepositAmount: 25_000_000e6,
+            depositMax:            50_000_000e6,
+            depositSlope:          25_000_000e6 / uint256(1 days)
+        });
+    }
+
+    function test_ETHEREUM_sparkLend_usdtCapAutomatorUpdates() public onChain(ChainIdUtils.Ethereum()) {
+        _assertSupplyCapConfig(Ethereum.USDT, 0,          0,         0);  // Not set up
+        _assertBorrowCapConfig(Ethereum.USDT, 28_500_000, 3_000_000, 12 hours);
+
+        executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.USDT, 500_000_000, 100_000_000, 12 hours);
+        _assertBorrowCapConfig(Ethereum.USDT, 450_000_000, 50_000_000,  12 hours);
     }
 
 }

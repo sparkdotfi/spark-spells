@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
 import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPayloadEthereum.sol";
 
@@ -27,12 +29,21 @@ contract SparkEthereum_20250501 is SparkPayloadEthereum {
     address constant DAI_USDS_IRM  = 0x7729E1CE24d7c4A82e76b4A2c118E328C35E6566;  // DAI  and USDS use the same params, same IRM
     address constant USDC_USDT_IRM = 0x7F2fc6A7E3b3c658A84999b26ad2013C4Dc87061;  // USDC and USDT use the same params, same IRM
 
+    address constant AAVE_CORE_AUSDT = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
+
     function _postExecute() internal override {
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.DAI,  DAI_USDS_IRM);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.USDS, DAI_USDS_IRM);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.USDC, USDC_USDT_IRM);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.USDT, USDC_USDT_IRM);
 
+        _onboardAaveToken(Ethereum.USDT_ATOKEN, 100_000_000e6, uint256(50_000_000e6) / 1 days);
+        _onboardAaveToken(AAVE_CORE_AUSDT,      50_000_000e6,  uint256(25_000_000e6) / 1 days);
+
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        capAutomator.setSupplyCapConfig({ asset: Ethereum.USDT, max: 500_000_000, gap: 100_000_000, increaseCooldown: 12 hours });
+        capAutomator.setBorrowCapConfig({ asset: Ethereum.USDT, max: 450_000_000, gap: 50_000_000,  increaseCooldown: 12 hours });
     }
 
 }
