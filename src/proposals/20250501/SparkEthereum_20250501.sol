@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
-
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  April 17, 2025 Spark Ethereum Proposal
