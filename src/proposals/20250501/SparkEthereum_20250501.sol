@@ -8,7 +8,7 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 /**
- * @title  April 17, 2025 Spark Ethereum Proposal
+ * @title  May 1, 2025 Spark Ethereum Proposal
  * @notice Spark Liquidity Layer:
  *         - Onboard SparkLend USDT
  *         - Onboard AAVE Core USDT
@@ -20,7 +20,13 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
  *         - Adjust USDT Cap Automator Parameters
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-1-2025-proposed-changes-to-spark-for-upcoming-spell/26288
- * Vote:   TODO
+ * Vote:   https://vote.makerdao.com/polling/QmfJ5yDF
+ *         https://vote.makerdao.com/polling/QmQM99z5
+ *         https://vote.makerdao.com/polling/Qmdc28Ag
+ *         https://vote.makerdao.com/polling/QmeNB8S1
+ *         https://vote.makerdao.com/polling/Qmee2jez
+ *         https://vote.makerdao.com/polling/QmfBmrxq
+ *         https://vote.makerdao.com/polling/QmZ2vydY
  */
 contract SparkEthereum_20250501 is SparkPayloadEthereum {
 
