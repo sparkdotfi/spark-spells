@@ -55,6 +55,14 @@ interface IPendleLinearDiscountOracle {
     function baseDiscountPerYear() external view returns (uint256);
 }
 
+interface ITargetBaseIRM {
+    function getBaseVariableBorrowRateSpread() external view returns (uint256);
+}
+
+interface ITargetKinkIRM {
+    function getVariableRateSlope1Spread() external view returns (uint256);
+}
+
 /// @dev assertions specific to mainnet
 /// TODO: separate tests related to sparklend from the rest (eg: morpho)
 ///       also separate mainnet-specific sparklend tests from those we should
@@ -581,6 +589,8 @@ abstract contract SparkEthereumTests is SparklendTests {
             })
         );
 
+        assertEq(ITargetBaseIRM(configBefore.interestRateStrategy).getBaseVariableBorrowRateSpread(), oldParams.baseRateSpread);
+
         executeAllPayloadsAndBridges();
 
         ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
@@ -600,6 +610,8 @@ abstract contract SparkEthereumTests is SparklendTests {
                 variableRateSlope2:            newParams.variableRateSlope2
             })
         );
+
+        assertEq(ITargetBaseIRM(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
     }
 
     function _testRateTargetKinkIRMUpdate(
@@ -634,6 +646,8 @@ abstract contract SparkEthereumTests is SparklendTests {
             })
         );
 
+        assertEq(uint256(ITargetKinkIRM(configBefore.interestRateStrategy).getVariableRateSlope1Spread()), uint256(oldParams.variableRateSlope1Spread));
+
         executeAllPayloadsAndBridges();
 
         ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
@@ -653,6 +667,8 @@ abstract contract SparkEthereumTests is SparklendTests {
                 variableRateSlope2:            newParams.variableRateSlope2
             })
         );
+
+        assertEq(uint256(ITargetKinkIRM(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
     }
 
 }
