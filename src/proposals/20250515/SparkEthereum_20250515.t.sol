@@ -26,7 +26,7 @@ contract SparkEthereum_20250501Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sparkLend_freezerMomAuthorityUpdate() public onChain(ChainIdUtils.Ethereum()) {
-        assertEq(SparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), Ethereum.SPARK_PROXY);
+        assertEq(SparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), Ethereum.CHIEF);
 
         executeAllPayloadsAndBridges();
 
