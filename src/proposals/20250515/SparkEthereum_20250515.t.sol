@@ -21,8 +21,6 @@ contract SparkEthereum_20250501Test is SparkTestBase {
         setupDomains("2025-05-06T17:20:00Z");
 
         deployPayloads();
-
-        chainData[ChainIdUtils.Ethereum()].payload = 0x9362B8a15ab78257b11a55F7CC272F4C4676C2fe;
     }
 
     function test_ETHEREUM_sparkLend_freezerMomAuthorityUpdate() public onChain(ChainIdUtils.Ethereum()) {
