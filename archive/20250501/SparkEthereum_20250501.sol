@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
-
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 /**
- * @title  April 17, 2025 Spark Ethereum Proposal
+ * @title  May 1, 2025 Spark Ethereum Proposal
  * @notice Spark Liquidity Layer:
  *         - Onboard SparkLend USDT
  *         - Onboard AAVE Core USDT
@@ -22,7 +20,13 @@ import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPa
  *         - Adjust USDT Cap Automator Parameters
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-1-2025-proposed-changes-to-spark-for-upcoming-spell/26288
- * Vote:   TODO
+ * Vote:   https://vote.makerdao.com/polling/QmfJ5yDF
+ *         https://vote.makerdao.com/polling/QmQM99z5
+ *         https://vote.makerdao.com/polling/Qmdc28Ag
+ *         https://vote.makerdao.com/polling/QmeNB8S1
+ *         https://vote.makerdao.com/polling/Qmee2jez
+ *         https://vote.makerdao.com/polling/QmfBmrxq
+ *         https://vote.makerdao.com/polling/QmZ2vydY
  */
 contract SparkEthereum_20250501 is SparkPayloadEthereum {
 
