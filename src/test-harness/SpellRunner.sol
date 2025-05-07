@@ -25,8 +25,6 @@ import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { SparkPayloadEthereum }  from "../SparkPayloadEthereum.sol";
 
-import {console} from "forge-std/console.sol";
-
 abstract contract SpellRunner is Test {
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
@@ -80,7 +78,6 @@ abstract contract SpellRunner is Test {
         inputs[7] = "accept: application/json";
 
         string memory response = string(vm.ffi(inputs));
-        console.log("response: ", response);
         blocks = new uint256[](chains.length);
         for (uint256 i = 0; i < chains.length; i++) {
             blocks[i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
