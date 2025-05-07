@@ -11,7 +11,7 @@ interface SparkLendFreezerMom {
     function authority() external view returns (address);
 }
 
-contract SparkEthereum_20250501Test is SparkTestBase {
+contract SparkEthereum_20250515Test is SparkTestBase {
 
     constructor() {
         id = "20250515";
