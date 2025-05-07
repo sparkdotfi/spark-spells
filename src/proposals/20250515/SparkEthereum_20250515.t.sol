@@ -20,6 +20,7 @@ interface IAuthority {
     function lock(uint256 amount) external;
     function vote(address[] calldata slate) external;
     function lift(address target) external;
+    function launch() external;
 }
 
 interface IExecutable {
@@ -28,7 +29,8 @@ interface IExecutable {
 
 contract SparkEthereum_20250515Test is SparkTestBase {
 
-    address public constant SKY = 0x56072C95FAA701256059aa122697B133aDEd9279;
+    address public constant SKY   = 0x56072C95FAA701256059aa122697B133aDEd9279;
+    address public constant CHIEF = 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9;
 
     constructor() {
         id = "20250515";
@@ -38,6 +40,27 @@ contract SparkEthereum_20250515Test is SparkTestBase {
         setupDomains("2025-05-06T17:20:00Z");
 
         deployPayloads();
+
+        address mkrWhale = makeAddr("mkrWhale");
+        uint256 amount = 2_400_000_000e18;
+
+        IAuthority authority = IAuthority(CHIEF);
+
+        deal(SKY, mkrWhale, amount);
+
+        vm.startPrank(mkrWhale);
+        IERC20(SKY).approve(CHIEF, amount);
+        authority.lock(amount);
+
+        address[] memory slate = new address[](1);
+        slate[0] = address(0);
+        authority.vote(slate);
+
+        authority.launch();
+
+        vm.stopPrank();
+
+        vm.roll(block.number + 11);
     }
 
     function test_ETHEREUM_sparkLend_freezerMomAuthorityUpdate() public onChain(ChainIdUtils.Ethereum()) {
@@ -92,7 +115,6 @@ contract SparkEthereum_20250515Test is SparkTestBase {
         _assertPaused(Ethereum.WETH, true);
     }
 
-
     function _voteAndCast(address _authority, address _token, address _spell) internal {
         IAuthority authority = IAuthority(_authority);
 
@@ -109,7 +131,7 @@ contract SparkEthereum_20250515Test is SparkTestBase {
         slate[0] = _spell;
         authority.vote(slate);
 
-        vm.roll(block.number + 1);
+        vm.roll(block.number + 11);
 
         authority.lift(_spell);
 
