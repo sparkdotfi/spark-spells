@@ -17,7 +17,7 @@ interface SparkLendFreezerMom {
  * Forum:  https://forum.sky.money/t/atlas-edit-weekly-cycle-proposal-week-of-may-5-2025/26319
  * Vote:   https://vote.makerdao.com/polling/QmcZNZg3
  */
-contract SparkEthereum_20250501 is SparkPayloadEthereum {
+contract SparkEthereum_20250515 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         SparkLendFreezerMom(Ethereum.FREEZER_MOM).setAuthority(0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
