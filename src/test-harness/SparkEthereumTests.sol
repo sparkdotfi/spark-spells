@@ -88,7 +88,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         uint256 optimalUsageRatio;
     }
 
-    function test_ETHEREUM_FreezerMom() public onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_FreezerMom() public virtual onChain(ChainIdUtils.Ethereum()){
         uint256 snapshot = vm.snapshot();
 
         _runFreezerMomTests();
@@ -97,6 +97,17 @@ abstract contract SparkEthereumTests is SparklendTests {
         executeAllPayloadsAndBridges();
 
         _runFreezerMomTests();
+    }
+
+    function test_ETHEREUM_FreezerMom_multisig() public virtual onChain(ChainIdUtils.Ethereum()){
+        uint256 snapshot = vm.snapshot();
+
+        _runFreezerMomTestsMultisig();
+
+        vm.revertTo(snapshot);
+        executeAllPayloadsAndBridges();
+
+        _runFreezerMomTestsMultisig();
     }
 
     function test_ETHEREUM_RewardsConfiguration() public onChain(ChainIdUtils.Ethereum()){
@@ -179,6 +190,50 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         vm.prank(makeAddr("randomUser"));
         IExecutable(_spell).execute();
+    }
+
+    function _runFreezerMomTestsMultisig() internal {
+        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
+
+        // Sanity checks - cannot call Freezer Mom unless you have the hat
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.freezeMarket(Ethereum.DAI, true);
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.freezeAllMarkets(true);
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.pauseMarket(Ethereum.DAI, true);
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.pauseAllMarkets(true);
+
+        vm.startPrank(Ethereum.FREEZER_MULTISIG);
+
+        _assertFrozen(Ethereum.DAI,  false);
+        _assertFrozen(Ethereum.WETH, false);
+
+        freezerMom.freezeMarket(Ethereum.DAI, true);
+
+        _assertFrozen(Ethereum.DAI,  true);
+        _assertFrozen(Ethereum.WETH, false);
+
+        freezerMom.freezeAllMarkets(true);
+
+        _assertFrozen(Ethereum.DAI,  true);
+        _assertFrozen(Ethereum.WETH, true);
+
+        _assertPaused(Ethereum.DAI,  false);
+        _assertPaused(Ethereum.WETH, false);
+
+        freezerMom.pauseMarket(Ethereum.DAI, true);
+
+        _assertPaused(Ethereum.DAI,  true);
+        _assertPaused(Ethereum.WETH, false);
+
+        freezerMom.pauseAllMarkets(true);
+
+        _assertPaused(Ethereum.DAI,  true);
+        _assertPaused(Ethereum.WETH, true);
+
+        vm.stopPrank();
     }
 
     function _runFreezerMomTests() internal {
