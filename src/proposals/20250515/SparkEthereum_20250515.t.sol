@@ -49,14 +49,16 @@ contract SparkEthereum_20250515Test is SparkTestBase {
     }
 
     function test_ETHEREUM_FreezerMom() public override onChain(ChainIdUtils.Ethereum()) {
-        _runFreezerMomTests(Ethereum.CHIEF);
+        uint256 snapshot = vm.snapshot();
+        _runFreezerMomTests(Ethereum.MKR, Ethereum.CHIEF);
 
+        vm.revertTo(snapshot);
         executeAllPayloadsAndBridges();
 
-        _runFreezerMomTests(0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
+        _runFreezerMomTests(SKY, 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
     }
 
-    function _runFreezerMomTests(address authority_) internal {
+    function _runFreezerMomTests(address token_, address authority_) internal {
         ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
 
         // Sanity checks - cannot call Freezer Mom unless you have the hat
@@ -71,21 +73,21 @@ contract SparkEthereum_20250515Test is SparkTestBase {
 
         _assertFrozen(Ethereum.DAI,  false);
         _assertFrozen(Ethereum.WETH, false);
-        _voteAndCast(authority_, SKY, Ethereum.SPELL_FREEZE_DAI);
+        _voteAndCast(authority_, token_, Ethereum.SPELL_FREEZE_DAI);
         _assertFrozen(Ethereum.DAI,  true);
         _assertFrozen(Ethereum.WETH, false);
 
-        _voteAndCast(authority_, SKY, Ethereum.SPELL_FREEZE_ALL);
+        _voteAndCast(authority_, token_, Ethereum.SPELL_FREEZE_ALL);
         _assertFrozen(Ethereum.DAI,  true);
         _assertFrozen(Ethereum.WETH, true);
 
         _assertPaused(Ethereum.DAI,  false);
         _assertPaused(Ethereum.WETH, false);
-        _voteAndCast(authority_, SKY, Ethereum.SPELL_PAUSE_DAI);
+        _voteAndCast(authority_, token_, Ethereum.SPELL_PAUSE_DAI);
         _assertPaused(Ethereum.DAI,  true);
         _assertPaused(Ethereum.WETH, false);
 
-        _voteAndCast(authority_, SKY, Ethereum.SPELL_PAUSE_ALL);
+        _voteAndCast(authority_, token_, Ethereum.SPELL_PAUSE_ALL);
         _assertPaused(Ethereum.DAI,  true);
         _assertPaused(Ethereum.WETH, true);
     }
