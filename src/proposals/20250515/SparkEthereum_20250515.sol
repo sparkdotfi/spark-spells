@@ -3,9 +3,9 @@ pragma solidity ^0.8.25;
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
-
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
+
+import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  May 15, 2025 Spark Ethereum Proposal

@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
+import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
+
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import '../../../src/test-harness/SparkTestBase.sol';
+import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
 import { ChainIdUtils } from '../../../src/libraries/ChainId.sol';
 
-import { IERC20 }               from 'forge-std/interfaces/IERC20.sol';
-import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
+import '../../../src/test-harness/SparkTestBase.sol';
 
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
     function hat() external view returns (address);
+    function launch() external;
+    function lift(address target) external;
     function lock(uint256 amount) external;
     function vote(address[] calldata slate) external;
-    function lift(address target) external;
-    function launch() external;
 }
 
 interface IExecutable {
@@ -25,8 +26,8 @@ interface IExecutable {
 
 contract SparkEthereum_20250515Test is SparkTestBase {
 
-    address public constant SKY   = 0x56072C95FAA701256059aa122697B133aDEd9279;
-    address public constant CHIEF = 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9;
+    address public constant SKY       = 0x56072C95FAA701256059aa122697B133aDEd9279;
+    address public constant NEW_CHIEF = 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9;
 
     constructor() {
         id = "20250515";
@@ -37,25 +38,26 @@ contract SparkEthereum_20250515Test is SparkTestBase {
 
         deployPayloads();
 
-        address mkrWhale = makeAddr("mkrWhale");
-        uint256 amount = 2_400_000_000e18;
+        address mkrWhale = makeAddr("governanceWhale");
+        uint256 amount   = 2_400_000_000e18;  // Threshold amount to activate the chief.
 
-        IAuthority authority = IAuthority(CHIEF);
+        IAuthority authority = IAuthority(NEW_CHIEF);
 
         deal(SKY, mkrWhale, amount);
 
         vm.startPrank(mkrWhale);
-        IERC20(SKY).approve(CHIEF, amount);
+        IERC20(SKY).approve(NEW_CHIEF, amount);
         authority.lock(amount);
 
         address[] memory slate = new address[](1);
         slate[0] = address(0);
         authority.vote(slate);
 
-        authority.launch();
+        authority.launch();  // Necessary to activate the new chief.
 
         vm.stopPrank();
 
+        // min amount of blocks that have to pass in order to vote again.
         vm.roll(block.number + 11);
     }
 
@@ -64,7 +66,7 @@ contract SparkEthereum_20250515Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        assertEq(ISparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), CHIEF);
+        assertEq(ISparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), NEW_CHIEF);
     }
 
     function test_ETHEREUM_FreezerMom() public override onChain(ChainIdUtils.Ethereum()) {
@@ -74,13 +76,13 @@ contract SparkEthereum_20250515Test is SparkTestBase {
         vm.revertTo(snapshot);
         executeAllPayloadsAndBridges();
 
-        _runFreezerMomTests(SKY, CHIEF);
+        _runFreezerMomTests(SKY, NEW_CHIEF);
     }
 
     function _runFreezerMomTests(address token_, address authority_) internal {
         ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
 
-        // Sanity checks - cannot call Freezer Mom unless you have the hat
+        // Sanity checks - cannot call Freezer Mom unless you have the hat or have wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeMarket(Ethereum.DAI, true);
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
@@ -111,32 +113,33 @@ contract SparkEthereum_20250515Test is SparkTestBase {
         _assertPaused(Ethereum.WETH, true);
     }
 
-    function _voteAndCast(address _authority, address _token, address _spell) internal {
+    function _voteAndCast(address _authority, address token, address spell) internal {
         IAuthority authority = IAuthority(_authority);
 
-        address mkrWhale = makeAddr("mkrWhale");
-        uint256 amount = 1_000_000 ether;
+        address mkrWhale = makeAddr("governanceWhale");
+        uint256 amount   = 1_000_000 ether;
 
-        deal(_token, mkrWhale, amount);
+        deal(token, mkrWhale, amount);
 
         vm.startPrank(mkrWhale);
-        IERC20(_token).approve(address(authority), amount);
+        IERC20(token).approve(address(authority), amount);
         authority.lock(amount);
 
         address[] memory slate = new address[](1);
-        slate[0] = _spell;
+        slate[0] = spell;
         authority.vote(slate);
 
+        // min amount of blocks that have to pass in order to vote again.
         vm.roll(block.number + 11);
 
-        authority.lift(_spell);
+        authority.lift(spell);
 
         vm.stopPrank();
 
-        assertEq(authority.hat(), _spell);
+        assertEq(authority.hat(), spell);
 
         vm.prank(makeAddr("randomUser"));
-        IExecutable(_spell).execute();
+        IExecutable(spell).execute();
     }
 
 }

@@ -195,7 +195,7 @@ abstract contract SparkEthereumTests is SparklendTests {
     function _runFreezerMomTestsMultisig() internal {
         ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
 
-        // Sanity checks - cannot call Freezer Mom unless you have the hat
+        // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeMarket(Ethereum.DAI, true);
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
@@ -239,7 +239,7 @@ abstract contract SparkEthereumTests is SparklendTests {
     function _runFreezerMomTests() internal {
         ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
 
-        // Sanity checks - cannot call Freezer Mom unless you have the hat
+        // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeMarket(Ethereum.DAI, true);
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
