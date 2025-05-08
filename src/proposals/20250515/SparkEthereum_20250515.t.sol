@@ -64,7 +64,7 @@ contract SparkEthereum_20250515Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        assertEq(ISparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
+        assertEq(ISparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), CHIEF);
     }
 
     function test_ETHEREUM_FreezerMom() public override onChain(ChainIdUtils.Ethereum()) {
@@ -74,7 +74,7 @@ contract SparkEthereum_20250515Test is SparkTestBase {
         vm.revertTo(snapshot);
         executeAllPayloadsAndBridges();
 
-        _runFreezerMomTests(SKY, 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
+        _runFreezerMomTests(SKY, CHIEF);
     }
 
     function _runFreezerMomTests(address token_, address authority_) internal {
