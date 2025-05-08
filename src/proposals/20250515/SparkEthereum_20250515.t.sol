@@ -10,10 +10,6 @@ import { ChainIdUtils } from '../../../src/libraries/ChainId.sol';
 import { IERC20 }               from 'forge-std/interfaces/IERC20.sol';
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
-interface SparkLendFreezerMom {
-    function authority() external view returns (address);
-}
-
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
     function hat() external view returns (address);
@@ -64,11 +60,11 @@ contract SparkEthereum_20250515Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sparkLend_freezerMomAuthorityUpdate() public onChain(ChainIdUtils.Ethereum()) {
-        assertEq(SparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), Ethereum.CHIEF);
+        assertEq(ISparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), Ethereum.CHIEF);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(SparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
+        assertEq(ISparkLendFreezerMom(Ethereum.FREEZER_MOM).authority(), 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
     }
 
     function test_ETHEREUM_FreezerMom() public override onChain(ChainIdUtils.Ethereum()) {

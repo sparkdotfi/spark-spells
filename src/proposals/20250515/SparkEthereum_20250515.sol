@@ -5,9 +5,7 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
-interface SparkLendFreezerMom {
-    function setAuthority(address authority_) external;
-}
+import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
 /**
  * @title  May 15, 2025 Spark Ethereum Proposal
@@ -20,7 +18,7 @@ interface SparkLendFreezerMom {
 contract SparkEthereum_20250515 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
-        SparkLendFreezerMom(Ethereum.FREEZER_MOM).setAuthority(0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
+        ISparkLendFreezerMom(Ethereum.FREEZER_MOM).setAuthority(0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
     }
 
 }
