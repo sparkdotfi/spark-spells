@@ -99,7 +99,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         _runFreezerMomTests();
     }
 
-    function test_ETHEREUM_FreezerMom_multisig() public virtual onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_FreezerMom_Multisig() public virtual onChain(ChainIdUtils.Ethereum()){
         uint256 snapshot = vm.snapshot();
 
         _runFreezerMomTestsMultisig();
