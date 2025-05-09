@@ -17,8 +17,10 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
  */
 contract SparkEthereum_20250515 is SparkPayloadEthereum {
 
+    address constant NEW_CHIEF = 0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9;
+
     function _postExecute() internal override {
-        ISparkLendFreezerMom(Ethereum.FREEZER_MOM).setAuthority(0x929d9A1435662357F54AdcF64DcEE4d6b867a6f9);
+        ISparkLendFreezerMom(Ethereum.FREEZER_MOM).setAuthority(NEW_CHIEF);
     }
 
 }
