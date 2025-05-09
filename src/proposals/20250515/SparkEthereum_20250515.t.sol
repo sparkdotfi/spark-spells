@@ -34,9 +34,11 @@ contract SparkEthereum_20250515Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-05-06T17:20:00Z");
+        setupDomains("2025-05-09T17:01:00Z");
 
         deployPayloads();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
 
         address mkrWhale = makeAddr("governanceWhale");
         uint256 amount   = 2_400_000_000e18;  // Threshold amount to activate the chief.
