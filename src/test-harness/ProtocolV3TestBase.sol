@@ -320,7 +320,8 @@ contract ProtocolV3TestBase is CommonTestBase {
       * (10 ** borrowConfig.decimals)
       / (10 ** collateralConfig.decimals)
       * collateralConfig.ltv
-      / 100_00;
+      / 100_00
+      - (10 ** borrowConfig.decimals / 1e6);  // Round down to be conservative
   }
 
   function _isAboveBorrowCap(
