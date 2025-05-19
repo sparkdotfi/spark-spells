@@ -29,13 +29,13 @@ import { SparkTestBase }                                           from '../../t
 import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
+interface IAuthLike {
+    function rely(address usr) external;
+}
+
 interface IOptimismTokenBridge {
     function registerToken(address l1Token, address l2Token) external;
     function file(bytes32 what, address data) external;
-}
-
-interface IAuthLike {
-    function rely(address usr) external;
 }
 
 contract SparkEthereum_20250529Test is SparkTestBase {
