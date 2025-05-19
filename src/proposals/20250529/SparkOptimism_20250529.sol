@@ -17,7 +17,7 @@ import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
  * @title  May 29, 2025 Spark Optimism Proposal
  * @notice Spark Liquidity Layer: Activate Spark Liquidity Layer
  * @author Phoenix Labs
- * Forum:  TODO
+ * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372/2
  * Vote:   TODO
  */
 contract SparkOptimism_20250529 is SparkPayloadOptimism {
