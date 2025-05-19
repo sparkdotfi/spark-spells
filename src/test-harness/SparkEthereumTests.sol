@@ -29,6 +29,8 @@ import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/Protocol
 
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
+import {console} from "forge-std/console.sol";
+
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
     function hat() external view returns (address);
@@ -138,6 +140,8 @@ abstract contract SparkEthereumTests is SparklendTests {
                 // A payload is defined for this domain
                 // We verify the mainnet spell defines this payload correctly
                 address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
+                console.log("mainnetPayload", mainnetPayload);
+                console.log("payload", payload);
                 assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
             }
         }
@@ -725,5 +729,4 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         assertEq(uint256(ITargetKinkIRM(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
     }
-
 }

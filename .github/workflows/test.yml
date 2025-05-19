@@ -6,7 +6,7 @@ on:
       - master
   pull_request:
     branches:
-      - '*'
+      - "*"
 
 jobs:
   test:
@@ -34,6 +34,7 @@ jobs:
           GNOSIS_CHAIN_RPC_URL: ${{secrets.GNOSIS_CHAIN_RPC_URL}}
           BASE_RPC_URL: ${{secrets.BASE_RPC_URL}}
           GOERLI_RPC_URL: ${{secrets.GOERLI_RPC_URL}}
+          UNICHAIN_RPC_URL: ${{secrets.UNICHAIN_RPC_URL}}
         run: |
           forge test -vvv
         id: test
@@ -47,4 +48,3 @@ jobs:
           TENDERLY_API_KEY: ${{ secrets.TENDERLY_ACCESS_KEY }}
           TENDERLY_PROJECT: ${{ secrets.TENDERLY_PROJECT }}
           TENDERLY_ACCOUNT: ${{ secrets.TENDERLY_USER }}
-          

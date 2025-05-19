@@ -11,6 +11,8 @@ import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
+import { Optimism } from 'spark-address-registry/Optimism.sol';
+import { Unichain } from 'spark-address-registry/Unichain.sol';
 
 import { IExecutor } from 'lib/spark-gov-relay/src/interfaces/IExecutor.sol';
 
@@ -89,16 +91,32 @@ abstract contract SpellRunner is Test {
         chains[0] = "eth-mainnet";
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
+
+        string [] memory extraChains = new string[](1);
+        extraChains[0] = "opt-mainnet";
+        // extraChains[1] = "unichain-mainnet";
+
         uint256[] memory blocks = getBlocksFromDate(date, chains);
+        uint256[] memory extraBlocks = getBlocksFromDate(date, extraChains);
 
         console.log("Mainnet block: ", blocks[0]);
         console.log("Base block: ", blocks[1]);
         console.log("Arbitrum block: ", blocks[2]);
+        console.log("Optimism block: ", extraBlocks[0]);
+        // console.log("Unichain block: ", extraBlocks[1]);
+
+        setChain("unichain", ChainData({
+            name: "Unichain",
+            rpcUrl: vm.envString("UNICHAIN_RPC_URL"),
+            chainId: 130
+        }));
 
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
+        chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(extraBlocks[0]);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(16663007);
     }
 
     /// @dev to be called in setUp
@@ -112,6 +130,8 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Base()].executor        = IExecutor(Base.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Gnosis()].executor      = IExecutor(Gnosis.AMB_EXECUTOR);
         chainData[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Optimism()].executor    = IExecutor(Optimism.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
 
         // Arbitrum One
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
@@ -149,10 +169,40 @@ abstract contract SpellRunner is Test {
             )
         );
 
+        // Optimism
+        chainData[ChainIdUtils.Optimism()].bridges.push(
+            OptimismBridgeTesting.createNativeBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Optimism()].domain
+            )
+        );
+        chainData[ChainIdUtils.Optimism()].bridges.push(
+            CCTPBridgeTesting.createCircleBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Optimism()].domain
+            )
+        );
+
+        // Unichain
+        chainData[ChainIdUtils.Unichain()].bridges.push(
+            OptimismBridgeTesting.createNativeBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Unichain()].domain
+            )
+        );
+        chainData[ChainIdUtils.Unichain()].bridges.push(
+            CCTPBridgeTesting.createCircleBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Unichain()].domain
+            )
+        );
+
         allChains.push(ChainIdUtils.Ethereum());
         allChains.push(ChainIdUtils.Base());
         allChains.push(ChainIdUtils.Gnosis());
         allChains.push(ChainIdUtils.ArbitrumOne());
+        allChains.push(ChainIdUtils.Optimism());
+        allChains.push(ChainIdUtils.Unichain());
     }
 
     function spellIdentifier(ChainId chainId) private view returns(string memory) {
@@ -251,6 +301,10 @@ abstract contract SpellRunner is Test {
             return spell.PAYLOAD_GNOSIS();
         } else if (chainId == ChainIdUtils.ArbitrumOne()) {
             return spell.PAYLOAD_ARBITRUM();
+        } else if (chainId == ChainIdUtils.Optimism()) {
+            return spell.PAYLOAD_OPTIMISM();
+        } else if (chainId == ChainIdUtils.Unichain()) {
+            return spell.PAYLOAD_UNICHAIN();
         } else {
             revert("Unsupported chainId");
         }
