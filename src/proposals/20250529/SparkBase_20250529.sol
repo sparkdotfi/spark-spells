@@ -7,7 +7,7 @@ import { SparkPayloadBase, Base } from "../../SparkPayloadBase.sol";
 
 /**
  * @title  May 29, 2025 Spark Base Proposal
- * @notice SparkLend:Update cbBTC Morpho supply cap
+ * @notice SparkLend: Update cbBTC Morpho supply cap
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372
  * Vote:   TODO
