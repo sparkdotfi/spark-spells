@@ -171,20 +171,21 @@ abstract contract SparkEthereumTests is SparklendTests {
     function _voteAndCast(address _spell) internal {
         IAuthority authority = IAuthority(Ethereum.CHIEF);
 
-        address mkrWhale = makeAddr("mkrWhale");
-        uint256 amount = 1_000_000 ether;
+        address skyWhale = makeAddr("skyWhale");
+        uint256 amount = 4_000_000_000 ether;
 
-        deal(Ethereum.MKR, mkrWhale, amount);
+        deal(Ethereum.SKY, skyWhale, amount);
 
-        vm.startPrank(mkrWhale);
-        IERC20(Ethereum.MKR).approve(address(authority), amount);
+        vm.startPrank(skyWhale);
+        IERC20(Ethereum.SKY).approve(address(authority), amount);
         authority.lock(amount);
 
         address[] memory slate = new address[](1);
         slate[0] = _spell;
         authority.vote(slate);
 
-        vm.roll(block.number + 1);
+        // Min amount of blocks to pass to vote again.
+        vm.roll(block.number + 11);
 
         authority.lift(_spell);
 
