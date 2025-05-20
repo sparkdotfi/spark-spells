@@ -33,7 +33,14 @@ interface IOptimismTokenBridge {
 
 /**
  * @title  May 29, 2025 Spark Ethereum Proposal
- * @notice 
+ * @notice Spark Liquidity Layer:
+ *         - Onboard Optimism, Unichain
+ *         - Mint 100m USDS into Optimism and Unichain
+ *         - Mint 100m sUSDS into Optimism and Unichain
+ *         SparkLend:
+ *         - Update USDS IRM
+ *         - Update DAI IRM
+ *         - Reduce WBTC Liquidation Threshold
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372/2
  * Vote:   TODO
