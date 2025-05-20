@@ -53,11 +53,14 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-05-18T17:20:00Z");
+        setupDomains("2025-05-20T07:47:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
 
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);

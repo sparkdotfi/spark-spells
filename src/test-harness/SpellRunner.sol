@@ -94,7 +94,6 @@ abstract contract SpellRunner is Test {
 
         string [] memory extraChains = new string[](1);
         extraChains[0] = "opt-mainnet";
-        // extraChains[1] = "unichain-mainnet";
 
         uint256[] memory blocks = getBlocksFromDate(date, chains);
         uint256[] memory extraBlocks = getBlocksFromDate(date, extraChains);
@@ -103,7 +102,6 @@ abstract contract SpellRunner is Test {
         console.log("Base block: ", blocks[1]);
         console.log("Arbitrum block: ", blocks[2]);
         console.log("Optimism block: ", extraBlocks[0]);
-        // console.log("Unichain block: ", extraBlocks[1]);
 
         setChain("unichain", ChainData({
             name: "Unichain",
@@ -116,7 +114,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(extraBlocks[0]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(16663007);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(16979022);
     }
 
     /// @dev to be called in setUp

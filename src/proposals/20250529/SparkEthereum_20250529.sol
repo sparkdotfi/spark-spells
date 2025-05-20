@@ -48,7 +48,9 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
     uint256 internal constant USDS_MINT_AMOUNT     = 400_000_000e18;
 
     constructor() {
-
+        PAYLOAD_BASE = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        PAYLOAD_OPTIMISM = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        PAYLOAD_UNICHAIN = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
     }
 
     function _postExecute() internal override {
