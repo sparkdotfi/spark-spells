@@ -132,22 +132,6 @@ abstract contract SparkEthereumTests is SparklendTests {
         _checkStorageSlot(address(proxy), 5);
     }
 
-    function _checkStorageSlot(address target, uint256 limit) internal view {
-        for (uint256 slot; slot < limit; ++slot) {
-            // Use low-level staticcall to read storage slot
-            bytes32 slotValue;
-            (bool success, bytes memory data) = target.staticcall(
-                abi.encodeWithSignature("getStorageAt(uint256)", slot)
-            );
-
-            // Check if the call was successful and decode the result
-            if (success && data.length >= 32) {
-                slotValue = abi.decode(data, (bytes32));
-                require(slotValue == bytes32(0), "Slot is not zero");
-            }
-        }
-    }
-
     function test_ETHEREUM_RewardsConfiguration() public onChain(ChainIdUtils.Ethereum()){
         _runRewardsConfigurationTests();
 
@@ -177,6 +161,22 @@ abstract contract SparkEthereumTests is SparklendTests {
                 // We verify the mainnet spell defines this payload correctly
                 address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
                 assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
+            }
+        }
+    }
+
+    function _checkStorageSlot(address target, uint256 limit) internal view {
+        for (uint256 slot; slot < limit; ++slot) {
+            // Use low-level staticcall to read storage slot
+            bytes32 slotValue;
+            (bool success, bytes memory data) = target.staticcall(
+                abi.encodeWithSignature("getStorageAt(uint256)", slot)
+            );
+
+            // Check if the call was successful and decode the result
+            if (success && data.length >= 32) {
+                slotValue = abi.decode(data, (bytes32));
+                require(slotValue == bytes32(0), "Slot is not zero");
             }
         }
     }
