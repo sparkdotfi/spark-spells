@@ -118,7 +118,7 @@ abstract contract SparkEthereumTests is SparklendTests {
     function test_ETHEREUM_SparkProxyStorage() public onChain(ChainIdUtils.Ethereum()){
         ISparkProxy proxy = ISparkProxy(Ethereum.SPARK_PROXY);
         address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
-        
+
         assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
