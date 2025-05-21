@@ -57,6 +57,10 @@ interface IPendleLinearDiscountOracle {
     function baseDiscountPerYear() external view returns (uint256);
 }
 
+interface ISparkProxy {
+    function wards(address) external view returns (uint256);
+}
+
 interface ITargetBaseIRM {
     function getBaseVariableBorrowRateSpread() external view returns (uint256);
 }
@@ -64,6 +68,7 @@ interface ITargetBaseIRM {
 interface ITargetKinkIRM {
     function getVariableRateSlope1Spread() external view returns (uint256);
 }
+
 
 /// @dev assertions specific to mainnet
 /// TODO: separate tests related to sparklend from the rest (eg: morpho)
@@ -110,6 +115,19 @@ abstract contract SparkEthereumTests is SparklendTests {
         executeAllPayloadsAndBridges();
 
         _runFreezerMomTestsMultisig();
+    }
+
+    function test_ETHEREUM_SparkProxyStorage() public onChain(ChainIdUtils.Ethereum()){
+        ISparkProxy proxy = ISparkProxy(Ethereum.SPARK_PROXY);
+        address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
+        
+        assertEq(proxy.wards(ESM)                 , 1);
+        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
+
+        executeAllPayloadsAndBridges();
+
+        assertEq(proxy.wards(ESM)                 , 1);
+        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
     }
 
     function test_ETHEREUM_RewardsConfiguration() public onChain(ChainIdUtils.Ethereum()){
