@@ -263,7 +263,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
         vm.warp(mainnetTimestamp);
 
-        // --- Step 2: Mint and bridge 10m USDC to Arbitrum ---
+        // --- Step 2: Mint and bridge 10m USDC to Optimism ---
 
         uint256 usdcAmount = 10_000_000e6;
         uint256 usdcSeed   = 1e6;
@@ -491,7 +491,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
         vm.warp(mainnetTimestamp);
 
-        // --- Step 2: Mint and bridge 10m USDC to Arbitrum ---
+        // --- Step 2: Mint and bridge 10m USDC to Unichain ---
 
         uint256 usdcAmount = 10_000_000e6;
         uint256 usdcSeed   = 1e6;
