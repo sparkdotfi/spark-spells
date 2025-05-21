@@ -38,6 +38,11 @@ interface IOptimismTokenBridge {
     function file(bytes32 what, address data) external;
 }
 
+interface IPSMLike {
+    function shares(address account) external view returns (uint256);
+    function convertToAssetValue(uint256 shares) external view returns (uint256);
+}
+
 contract SparkEthereum_20250529Test is SparkTestBase {
 
     using DomainHelpers for Domain;
@@ -46,7 +51,6 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     address internal constant DAI_USDS_OLD_IRM  = 0x7729E1CE24d7c4A82e76b4A2c118E328C35E6566;
     address internal constant DAI_USDS_NEW_IRM  = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
     address internal constant DEPLOYER          = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
-
 
     constructor() {
         id = "20250529";
@@ -57,8 +61,8 @@ contract SparkEthereum_20250529Test is SparkTestBase {
 
         deployPayloads();
 
-        chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
         chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
         chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
         chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
 
@@ -66,8 +70,9 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         vm.startPrank(Ethereum.PAUSE_PROXY);
 
         // Activate the token bridge for Optimism
-        IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).registerToken(Ethereum.USDS, Optimism.USDS);
+        IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).registerToken(Ethereum.USDS,  Optimism.USDS);
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).registerToken(Ethereum.SUSDS, Optimism.SUSDS);
+        
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).file("escrow", Ethereum.OPTIMISM_ESCROW);
 
         // Activate the token bridge for Unichain
@@ -138,7 +143,6 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(address(controller.psm()),        Optimism.PSM3,                 "incorrect-psm");
         assertEq(address(controller.usdc()),       Optimism.USDC,                 "incorrect-usdc");
         assertEq(address(controller.cctp()),       Optimism.CCTP_TOKEN_MESSENGER, "incorrect-cctp");
-
     }
 
     function test_OPTIMISM_psm3Deployment() public onChain(ChainIdUtils.Optimism()) {
@@ -160,6 +164,26 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         IALMProxy         almProxy   = IALMProxy(Optimism.ALM_PROXY);
         IRateLimits       rateLimits = IRateLimits(Optimism.ALM_RATE_LIMITS);
         ForeignController controller = ForeignController(Optimism.ALM_CONTROLLER);
+
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Optimism.ALM_CONTROLLER), false, "incorrect-controller-almProxy");
+        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Optimism.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
+        assertEq(controller.hasRole(controller.FREEZER(),    Optimism.ALM_FREEZER),    false, "incorrect-freezer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Optimism.ALM_RELAYER),    false, "incorrect-relayer-controller");
+
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.USDC),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.USDC),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.USDS),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.USDS),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.SUSDS),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.SUSDS), 0, 0);
+        _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
+        _assertRateLimit(
+            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            0,
+            0
+        );
+
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(address(0)))));
 
         executeAllPayloadsAndBridges();
 
@@ -190,6 +214,126 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         );
 
         assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
+    }
+
+    function test_ETHEREUM_OPTIMISM_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
+        // Use mainnet timestamp to make PSM3 sUSDS conversion data realistic
+        skip(2 days);  // Skip two days ahead to ensure there is enough rate limit capacity
+        uint256 mainnetTimestamp = block.timestamp;
+
+        executeAllPayloadsAndBridges();
+
+        IERC20 opSUsds = IERC20(Optimism.SUSDS);
+        IERC20 opUsdc  = IERC20(Optimism.USDC);
+        IERC20 opUsds  = IERC20(Optimism.USDS);
+
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+        ForeignController opController      = ForeignController(Optimism.ALM_CONTROLLER);
+
+        uint256 susdsShares        = IERC4626(Ethereum.SUSDS).convertToShares(100_000_000e18);
+        uint256 susdsDepositShares = IERC4626(Ethereum.SUSDS).convertToShares(10_000_000e18);
+
+        chainData[ChainIdUtils.Optimism()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        assertEq(opUsds.balanceOf(Optimism.ALM_PROXY), 100_000_000e18);
+        assertEq(opUsds.balanceOf(Optimism.PSM3),      0);
+
+        assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares, 1);  // $100m
+        
+        assertEq(opSUsds.balanceOf(Optimism.PSM3), 0);
+
+        // --- Step 1: Deposit 10m USDS and 10m sUSDS into the PSM ---
+
+        vm.startPrank(Optimism.ALM_RELAYER);
+        opController.depositPSM(Optimism.USDS,  10_000_000e18);
+        opController.depositPSM(Optimism.SUSDS, susdsDepositShares);  // $10m
+        vm.stopPrank();
+
+        IPSMLike psm = IPSMLike(Optimism.PSM3);
+
+        assertApproxEqAbs(psm.convertToAssetValue(psm.shares(Optimism.ALM_PROXY)), 20_000_000e18, 27);
+
+        assertEq(opUsds.balanceOf(Optimism.ALM_PROXY), 90_000_000e18);
+        assertEq(opUsds.balanceOf(Optimism.PSM3),      10_000_000e18);
+
+        assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares - susdsDepositShares, 1);  // $90m
+        assertApproxEqAbs(opSUsds.balanceOf(Optimism.PSM3),      susdsDepositShares,               1);  // $10m
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        // --- Step 2: Mint and bridge 10m USDC to Arbitrum ---
+
+        uint256 usdcAmount = 10_000_000e6;
+        uint256 usdcSeed   = 1e6;
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.mintUSDS(usdcAmount * 1e12);
+        mainnetController.swapUSDSToUSDC(usdcAmount);
+        mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        vm.stopPrank();
+
+        chainData[ChainIdUtils.Optimism()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), 0);
+        assertEq(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed);
+
+        _relayMessageOverBridges();
+
+        assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), usdcAmount);
+        assertEq(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed);
+
+        // --- Step 3: Deposit 10m USDC into PSM3 ---
+
+        vm.startPrank(Optimism.ALM_RELAYER);
+        opController.depositPSM(Optimism.USDC, usdcAmount);
+        vm.stopPrank();
+
+        assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), 0);
+        assertEq(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed + usdcAmount);
+
+        // --- Step 4: Withdraw all assets from PSM3 ---
+
+        vm.startPrank(Optimism.ALM_RELAYER);
+        opController.withdrawPSM(Optimism.USDS,  10_000_000e18);
+        opController.withdrawPSM(Optimism.SUSDS, susdsDepositShares);  // $10m
+        opController.withdrawPSM(Optimism.USDC,  usdcAmount);
+        vm.stopPrank();
+
+        assertEq(opUsds.balanceOf(Optimism.PSM3),  0);
+        assertEq(opSUsds.balanceOf(Optimism.PSM3), 0);
+
+        assertApproxEqAbs(opUsdc.balanceOf(Optimism.PSM3), usdcSeed, 1);
+
+        assertEq(opUsds.balanceOf(Optimism.ALM_PROXY),  100_000_000e18);
+        assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares, 1);
+
+        usdcAmount -= 1;  // Rounding
+        assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), usdcAmount);
+
+        // --- Step 5: Bridge USDC back to mainnet and burn USDS
+
+        vm.startPrank(Optimism.ALM_RELAYER);
+        ForeignController(Optimism.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        vm.stopPrank();
+
+        assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY), 0);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
+
+        _relayMessageOverBridges();
+
+        assertEq(IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY), usdcPrevBalance + usdcAmount);
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.swapUSDCToUSDS(usdcAmount);
+        mainnetController.burnUSDS(usdcAmount * 1e12);
+        vm.stopPrank();
     }
 
     function test_ETHEREUM_unichainCctpConfiguration() public onChain(ChainIdUtils.Ethereum()) {
@@ -249,6 +393,26 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         IRateLimits       rateLimits = IRateLimits(Unichain.ALM_RATE_LIMITS);
         ForeignController controller = ForeignController(Unichain.ALM_CONTROLLER);
 
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Unichain.ALM_CONTROLLER), false, "incorrect-controller-almProxy");
+        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Unichain.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
+        assertEq(controller.hasRole(controller.FREEZER(),    Unichain.ALM_FREEZER),    false, "incorrect-freezer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Unichain.ALM_RELAYER),    false, "incorrect-relayer-controller");
+
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.USDC),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.USDC),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.USDS),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.USDS),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.SUSDS),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.SUSDS), 0, 0);
+        _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
+        _assertRateLimit(
+            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            0,
+            0
+        );
+
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(address(0)))));
+
         executeAllPayloadsAndBridges();
 
         assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Unichain.ALM_CONTROLLER), true, "incorrect-controller-almProxy");
@@ -278,6 +442,126 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         );
 
         assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
+    }
+
+    function test_ETHEREUM_UNICHAIN_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
+        // Use mainnet timestamp to make PSM3 sUSDS conversion data realistic
+        skip(2 days);  // Skip two days ahead to ensure there is enough rate limit capacity
+        uint256 mainnetTimestamp = block.timestamp;
+
+        executeAllPayloadsAndBridges();
+
+        IERC20 uniSUsds = IERC20(Unichain.SUSDS);
+        IERC20 uniUsdc  = IERC20(Unichain.USDC);
+        IERC20 uniUsds  = IERC20(Unichain.USDS);
+
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+        ForeignController uniController     = ForeignController(Unichain.ALM_CONTROLLER);
+
+        uint256 susdsShares        = IERC4626(Ethereum.SUSDS).convertToShares(100_000_000e18);
+        uint256 susdsDepositShares = IERC4626(Ethereum.SUSDS).convertToShares(10_000_000e18);
+
+        chainData[ChainIdUtils.Unichain()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        assertEq(uniUsds.balanceOf(Unichain.ALM_PROXY), 100_000_000e18);
+        assertEq(uniUsds.balanceOf(Unichain.PSM3),      0);
+
+        assertApproxEqAbs(uniSUsds.balanceOf(Unichain.ALM_PROXY), susdsShares, 1);  // $100m
+        
+        assertEq(uniSUsds.balanceOf(Unichain.PSM3), 0);
+
+        // --- Step 1: Deposit 10m USDS and 10m sUSDS into the PSM ---
+
+        vm.startPrank(Unichain.ALM_RELAYER);
+        uniController.depositPSM(Unichain.USDS,  10_000_000e18);
+        uniController.depositPSM(Unichain.SUSDS, susdsDepositShares);  // $10m
+        vm.stopPrank();
+
+        IPSMLike psm = IPSMLike(Unichain.PSM3);
+
+        assertApproxEqAbs(psm.convertToAssetValue(psm.shares(Unichain.ALM_PROXY)), 20_000_000e18, 27);
+
+        assertEq(uniUsds.balanceOf(Unichain.ALM_PROXY), 90_000_000e18);
+        assertEq(uniUsds.balanceOf(Unichain.PSM3),      10_000_000e18);
+
+        assertApproxEqAbs(uniSUsds.balanceOf(Unichain.ALM_PROXY), susdsShares - susdsDepositShares, 1);  // $90m
+        assertApproxEqAbs(uniSUsds.balanceOf(Unichain.PSM3),      susdsDepositShares,               1);  // $10m
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        // --- Step 2: Mint and bridge 10m USDC to Arbitrum ---
+
+        uint256 usdcAmount = 10_000_000e6;
+        uint256 usdcSeed   = 1e6;
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.mintUSDS(usdcAmount * 1e12);
+        mainnetController.swapUSDSToUSDC(usdcAmount);
+        mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        vm.stopPrank();
+
+        chainData[ChainIdUtils.Unichain()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        assertEq(uniUsdc.balanceOf(Unichain.ALM_PROXY), 0);
+        assertEq(uniUsdc.balanceOf(Unichain.PSM3),      usdcSeed);
+
+        _relayMessageOverBridges();
+
+        assertEq(uniUsdc.balanceOf(Unichain.ALM_PROXY), usdcAmount);
+        assertEq(uniUsdc.balanceOf(Unichain.PSM3),      usdcSeed);
+
+        // --- Step 3: Deposit 10m USDC into PSM3 ---
+
+        vm.startPrank(Unichain.ALM_RELAYER);
+        uniController.depositPSM(Unichain.USDC, usdcAmount);
+        vm.stopPrank();
+
+        assertEq(uniUsdc.balanceOf(Unichain.ALM_PROXY), 0);
+        assertEq(uniUsdc.balanceOf(Unichain.PSM3),      usdcSeed + usdcAmount);
+
+        // --- Step 4: Withdraw all assets from PSM3 ---
+
+        vm.startPrank(Unichain.ALM_RELAYER);
+        uniController.withdrawPSM(Unichain.USDS,  10_000_000e18);
+        uniController.withdrawPSM(Unichain.SUSDS, susdsDepositShares);  // $10m
+        uniController.withdrawPSM(Unichain.USDC,  usdcAmount);
+        vm.stopPrank();
+
+        assertEq(uniUsds.balanceOf(Unichain.PSM3),  0);
+        assertEq(uniSUsds.balanceOf(Unichain.PSM3), 0);
+
+        assertApproxEqAbs(uniUsdc.balanceOf(Unichain.PSM3), usdcSeed, 1);
+
+        assertEq(uniUsds.balanceOf(Unichain.ALM_PROXY),  100_000_000e18);
+        assertApproxEqAbs(uniSUsds.balanceOf(Unichain.ALM_PROXY), susdsShares, 1);
+
+        usdcAmount -= 1;  // Rounding
+        assertEq(uniUsdc.balanceOf(Unichain.ALM_PROXY), usdcAmount);
+
+        // --- Step 5: Bridge USDC back to mainnet and burn USDS
+
+        vm.startPrank(Unichain.ALM_RELAYER);
+        ForeignController(Unichain.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        vm.stopPrank();
+
+        assertEq(IERC20(Unichain.USDC).balanceOf(Unichain.ALM_PROXY), 0);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        vm.warp(mainnetTimestamp);
+
+        uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
+
+        _relayMessageOverBridges();
+
+        assertEq(IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY), usdcPrevBalance + usdcAmount);
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        mainnetController.swapUSDCToUSDS(usdcAmount);
+        mainnetController.burnUSDS(usdcAmount * 1e12);
+        vm.stopPrank();
     }
 
     function test_ETHEREUM_sparkLend_daiIrmUpdate() public onChain(ChainIdUtils.Ethereum()) {
@@ -320,11 +604,11 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         _testMorphoCapUpdate({
             vault: Base.MORPHO_VAULT_SUSDC,
             config: MarketParams({
-                loanToken:       Base.USDC,
-                collateralToken: Base.CBBTC,
-                oracle:          CBBTC_USDC_ORACLE,
-                irm:             Base.MORPHO_DEFAULT_IRM,
-                lltv:            0.86e18
+                loanToken       : Base.USDC,
+                collateralToken : Base.CBBTC,
+                oracle          : CBBTC_USDC_ORACLE,
+                irm             : Base.MORPHO_DEFAULT_IRM,
+                lltv            : 0.86e18
             }),
             currentCap: 500_000_000e6,
             newCap:     1_000_000_000e6
@@ -381,15 +665,15 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             configBefore.interestRateStrategy,
             oldParams.irm,
             InterestStrategyValues({
-                addressesProvider:             address(ctx.poolAddressesProvider),
-                optimalUsageRatio:             oldParams.optimalUsageRatio,
-                optimalStableToTotalDebtRatio: 0,
-                baseStableBorrowRate:          oldParams.variableRateSlope1,
-                stableRateSlope1:              0,
-                stableRateSlope2:              0,
-                baseVariableBorrowRate:        ssrRate + oldParams.baseRateSpread,
-                variableRateSlope1:            oldParams.variableRateSlope1,
-                variableRateSlope2:            oldParams.variableRateSlope2
+                addressesProvider             : address(ctx.poolAddressesProvider),
+                optimalUsageRatio             : oldParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio : 0,
+                baseStableBorrowRate          : oldParams.variableRateSlope1,
+                stableRateSlope1              : 0,
+                stableRateSlope2              : 0,
+                baseVariableBorrowRate        : ssrRate + oldParams.baseRateSpread,
+                variableRateSlope1            : oldParams.variableRateSlope1,
+                variableRateSlope2            : oldParams.variableRateSlope2
             })
         );
 
@@ -403,15 +687,15 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             configAfter.interestRateStrategy,
             newParams.irm,
             InterestStrategyValues({
-                addressesProvider:             address(ctx.poolAddressesProvider),
-                optimalUsageRatio:             newParams.optimalUsageRatio,
-                optimalStableToTotalDebtRatio: 0,
-                baseStableBorrowRate:          ssrRate + uint256(newParams.variableRateSlope1Spread),
-                stableRateSlope1:              0,
-                stableRateSlope2:              0,
-                baseVariableBorrowRate:        newParams.baseRate,
-                variableRateSlope1:            ssrRate + uint256(newParams.variableRateSlope1Spread),
-                variableRateSlope2:            newParams.variableRateSlope2
+                addressesProvider             : address(ctx.poolAddressesProvider),
+                optimalUsageRatio             : newParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio : 0,
+                baseStableBorrowRate          : ssrRate + uint256(newParams.variableRateSlope1Spread),
+                stableRateSlope1              : 0,
+                stableRateSlope2              : 0,
+                baseVariableBorrowRate        : newParams.baseRate,
+                variableRateSlope1            : ssrRate + uint256(newParams.variableRateSlope1Spread),
+                variableRateSlope2            : newParams.variableRateSlope2
             })
         );
 
@@ -419,6 +703,15 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     }
 
     function test_ETHEREUM_OPTIMISM_UNICHAIN_usdsAndSUsdsDistributions() public {
+        chainData[ChainIdUtils.Optimism()].domain.selectFork();
+
+        assertEq(IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY), 0);
+        assertEq(IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY),    0);
+
+        chainData[ChainIdUtils.Unichain()].domain.selectFork();
+
+        assertEq(IERC4626(Unichain.SUSDS).balanceOf(Unichain.ALM_PROXY), 0);
+        assertEq(IERC20(Unichain.USDS).balanceOf(Unichain.ALM_PROXY),    0);
 
         executeAllPayloadsAndBridges();
 
@@ -442,7 +735,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         IERC4626 susds = IERC4626(Ethereum.SUSDS);
 
         // Rounding on conversion
-        assertEq(susds.convertToAssets(opSUsdsShares),     100_000_000e18 - 1);
+        assertEq(susds.convertToAssets(opSUsdsShares),       100_000_000e18 - 1);
         assertEq(susds.convertToAssets(unichainSUsdsShares), 100_000_000e18 - 1);
     }
 

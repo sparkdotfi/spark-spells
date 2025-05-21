@@ -17,14 +17,14 @@ abstract contract SparkPayloadOptimism {
     function _upgradeController(address oldController, address newController) internal {
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
-                almProxy:    Optimism.ALM_PROXY,
-                controller:  newController,
-                rateLimits:  Optimism.ALM_RATE_LIMITS
+                almProxy   : Optimism.ALM_PROXY,
+                controller : newController,
+                rateLimits : Optimism.ALM_RATE_LIMITS
             }),
             ForeignControllerInit.ConfigAddressParams({
-                freezer:       Optimism.ALM_FREEZER,
-                relayer:       Optimism.ALM_RELAYER,
-                oldController: oldController
+                freezer       : Optimism.ALM_FREEZER,
+                relayer       : Optimism.ALM_RELAYER,
+                oldController : oldController
             }),
             ForeignControllerInit.CheckAddressParams({
                 admin : Optimism.SPARK_EXECUTOR,

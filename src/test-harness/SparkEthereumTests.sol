@@ -29,8 +29,6 @@ import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/Protocol
 
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
-import {console} from "forge-std/console.sol";
-
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
     function hat() external view returns (address);
@@ -121,12 +119,12 @@ abstract contract SparkEthereumTests is SparklendTests {
         ISparkProxy proxy = ISparkProxy(Ethereum.SPARK_PROXY);
         address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
         
-        assertEq(proxy.wards(ESM)                 , 1);
+        assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(proxy.wards(ESM)                 , 1);
+        assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
     }
 
@@ -158,8 +156,6 @@ abstract contract SparkEthereumTests is SparklendTests {
                 // A payload is defined for this domain
                 // We verify the mainnet spell defines this payload correctly
                 address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
-                console.log("mainnetPayload", mainnetPayload);
-                console.log("payload", payload);
                 assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
             }
         }

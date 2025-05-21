@@ -18,11 +18,11 @@ contract SparkBase_20250529 is SparkPayloadBase {
 
     function execute() external {
         MarketParams memory usdcCBBTC = MarketParams({
-            loanToken:       Base.USDC,
-            collateralToken: Base.CBBTC,
-            oracle:          CBBTC_USDC_ORACLE,
-            irm:             Base.MORPHO_DEFAULT_IRM,
-            lltv:            0.86e18 // TODO: what values to get here.
+            loanToken       : Base.USDC,
+            collateralToken : Base.CBBTC,
+            oracle          : CBBTC_USDC_ORACLE,
+            irm             : Base.MORPHO_DEFAULT_IRM,
+            lltv            : 0.86e18
         });
 
         IMetaMorpho(Base.MORPHO_VAULT_SUSDC).submitCap(
