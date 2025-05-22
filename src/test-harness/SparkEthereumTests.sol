@@ -167,16 +167,8 @@ abstract contract SparkEthereumTests is SparklendTests {
 
     function _checkStorageSlot(address target, uint256 limit) internal view {
         for (uint256 slot; slot < limit; ++slot) {
-            // Use low-level staticcall to read storage slot
-            (bool success, bytes memory data) = target.staticcall(
-                abi.encodeWithSignature("getStorageAt(uint256)", slot)
-            );
-
-            // Check if the call was successful and decode the result
-            if (success && data.length >= 32) {
-                bytes32 slotValue = abi.decode(data, (bytes32));
-                require(slotValue == bytes32(0), "Slot is not zero");
-            }
+            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
+            require(result == bytes32(0), "Slot is not zero");
         }
     }
 

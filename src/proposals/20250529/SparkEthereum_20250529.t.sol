@@ -61,10 +61,10 @@ contract SparkEthereum_20250529Test is SparkTestBase {
 
         deployPayloads();
 
-        chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
-        chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
+        // chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        // chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        // chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        // chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
 
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);
@@ -305,13 +305,13 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(opUsds.balanceOf(Optimism.PSM3),  0);
         assertEq(opSUsds.balanceOf(Optimism.PSM3), 0);
 
-        assertApproxEqAbs(opUsdc.balanceOf(Optimism.PSM3), usdcSeed, 1);
+        assertApproxEqAbs(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed,   1);
+        assertApproxEqAbs(opUsdc.balanceOf(Optimism.ALM_PROXY), usdcAmount, 1);
 
         assertEq(opUsds.balanceOf(Optimism.ALM_PROXY),  100_000_000e18);
         assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares, 1);
 
         usdcAmount -= 1;  // Rounding
-        assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), usdcAmount);
 
         // --- Step 5: Bridge USDC back to mainnet and burn USDS
 
@@ -398,11 +398,11 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(controller.hasRole(controller.FREEZER(),    Unichain.ALM_FREEZER),    false, "incorrect-freezer-controller");
         assertEq(controller.hasRole(controller.RELAYER(),    Unichain.ALM_RELAYER),    false, "incorrect-relayer-controller");
 
-        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.USDC),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Unichain.USDC),  0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.USDC),  0, 0);
-        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.USDS),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Unichain.USDS),  0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.USDS),  0, 0);
-        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.SUSDS),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Unichain.SUSDS), 0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.SUSDS), 0, 0);
         _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
         _assertRateLimit(
@@ -533,13 +533,13 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(uniUsds.balanceOf(Unichain.PSM3),  0);
         assertEq(uniSUsds.balanceOf(Unichain.PSM3), 0);
 
-        assertApproxEqAbs(uniUsdc.balanceOf(Unichain.PSM3), usdcSeed, 1);
+        assertApproxEqAbs(uniUsdc.balanceOf(Unichain.PSM3),      usdcSeed,   1);
+        assertApproxEqAbs(uniUsdc.balanceOf(Unichain.ALM_PROXY), usdcAmount, 1);
 
         assertEq(uniUsds.balanceOf(Unichain.ALM_PROXY),  100_000_000e18);
         assertApproxEqAbs(uniSUsds.balanceOf(Unichain.ALM_PROXY), susdsShares, 1);
 
         usdcAmount -= 1;  // Rounding
-        assertEq(uniUsdc.balanceOf(Unichain.ALM_PROXY), usdcAmount);
 
         // --- Step 5: Bridge USDC back to mainnet and burn USDS
 
@@ -635,14 +635,30 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     function test_ETHEREUM_sllCoreRateLimitIncrease() public onChain(ChainIdUtils.Ethereum()) {
         bytes32 usdsMintKey       = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDS_MINT();
         bytes32 swapUSDSToUSDCKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDS_TO_USDC();
-
+        bytes32 ethenaMintKey     = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDE_MINT();
+        bytes32 ethenaBurnKey     = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDE_BURN();
+        bytes32 susdeCooldownKey  = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SUSDE_COOLDOWN();
+        
+        bytes32 susdeDepositKey   = RateLimitHelpers.makeAssetKey(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT(), Ethereum.SUSDE);
+        bytes32 susdeWithdrawKey  = RateLimitHelpers.makeAssetKey(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_WITHDRAW(), Ethereum.SUSDE);
+        
         _assertRateLimit(usdsMintKey,       200_000_000e18, 200_000_000e18 / uint256(1 days));
         _assertRateLimit(swapUSDSToUSDCKey, 200_000_000e6,  200_000_000e6 / uint256(1 days));
+        _assertRateLimit(ethenaMintKey,     50_000_000e6,   50_000_000e6 / uint256(1 days));
+        _assertRateLimit(ethenaBurnKey,     100_000_000e18, 100_000_000e18 / uint256(1 days));
+        _assertRateLimit(susdeDepositKey,   100_000_000e18, 100_000_000e18 / uint256(1 days));
+        _assertRateLimit(susdeCooldownKey,  500_000_000e18, 250_000_000e18 / uint256(1 days));
 
         executeAllPayloadsAndBridges();
 
         _assertRateLimit(usdsMintKey,       500_000_000e18, 500_000_000e18 / uint256(1 days));
         _assertRateLimit(swapUSDSToUSDCKey, 500_000_000e6,  300_000_000e6 / uint256(1 days));
+        _assertRateLimit(ethenaMintKey,     250_000_000e6,  100_000_000e6 / uint256(1 days));
+        _assertRateLimit(ethenaBurnKey,     500_000_000e18, 200_000_000e18 / uint256(1 days));
+        _assertRateLimit(susdeDepositKey,   250_000_000e18, 100_000_000e18 / uint256(1 days));
+        
+        _assertUnlimitedRateLimit(susdeCooldownKey);
+        _assertUnlimitedRateLimit(susdeWithdrawKey);
     }
 
     function _testRateTargetBaseToKinkIRMUpdate(

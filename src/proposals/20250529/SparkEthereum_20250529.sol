@@ -55,9 +55,9 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
     uint256 internal constant USDS_MINT_AMOUNT     = 400_000_000e18;
 
     constructor() {
-        PAYLOAD_BASE     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        PAYLOAD_OPTIMISM = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        PAYLOAD_UNICHAIN = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
+        // PAYLOAD_BASE     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        // PAYLOAD_OPTIMISM = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        // PAYLOAD_UNICHAIN = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
     }
 
     function _postExecute() internal override {
@@ -83,6 +83,56 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
             }),
             "swapUSDSToUSDCLimit",
             6
+        );
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDE_MINT(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 250_000_000e6,
+                slope     : 100_000_000e6 / uint256(1 days)
+            }),
+            "ethenaMintLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDE_BURN(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 500_000_000e18,
+                slope     : 200_000_000e18 / uint256(1 days)
+            }),
+            "ethenaBurnLimit",
+            18
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT(),
+                Ethereum.SUSDE
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 250_000_000e18,
+                slope     : 100_000_000e18 / uint256(1 days)
+            }),
+            "susdeDepositLimit",
+            18
+        );
+        RateLimitHelpers.setRateLimitData(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SUSDE_COOLDOWN(),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "susdeCooldownLimit",
+            18
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_WITHDRAW(),
+                Ethereum.SUSDE
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "susdeWithdrawLimit",
+            18
         );
 
         // --- Set up Optimism ---
@@ -147,6 +197,19 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
         uint256 susdsSharesUnichain = susdsShares - susdsSharesOptimism;
         IERC20(Ethereum.SUSDS).approve(Ethereum.UNICHAIN_TOKEN_BRIDGE, susdsSharesUnichain);
         IOptimismTokenBridge(Ethereum.UNICHAIN_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Unichain.SUSDS, Unichain.ALM_PROXY, susdsSharesUnichain, 1_000_000, "");
+    
+        // // Onboard PT-USDS-14Aug2025
+        // IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).submitCap(
+        //     MarketParams({
+        //         loanToken:       Ethereum.USDS,
+        //         collateralToken: PT_SUSDE_31JUL2025,
+        //         oracle:          PT_SUSDE_31JUL2025_PRICE_FEED,
+        //         irm:             Ethereum.MORPHO_DEFAULT_IRM,
+        //         lltv:            0.965e18
+        //     }),
+        //     400_000_000e18
+        // );
+
     }
 
     function collateralsUpdates() public pure override returns (IEngine.CollateralUpdate[] memory) {
