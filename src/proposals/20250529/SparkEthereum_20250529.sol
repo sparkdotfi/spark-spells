@@ -18,6 +18,8 @@ import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFre
 
 import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEthereum.sol";
 
+import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
 import { CCTPForwarder } from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 
 interface IOptimismTokenBridge {
@@ -37,17 +39,24 @@ interface IOptimismTokenBridge {
  *         - Onboard Optimism, Unichain
  *         - Mint 100m USDS into Optimism and Unichain
  *         - Mint 100m sUSDS into Optimism and Unichain
+ *         - Increase USDe Mint and Staking Rate Limits
  *         SparkLend:
  *         - Update USDS IRM
  *         - Update DAI IRM
  *         - Reduce WBTC Liquidation Threshold
+ *         Spark DAI Vault:
+ *         - Onboard PT-SUSDS-14Aug2025
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372/2
+ *         https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell-2/26440
  * Vote:   TODO
  */
 contract SparkEthereum_20250529 is SparkPayloadEthereum {
 
-    address constant DAI_USDS_IRM  = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;  // DAI  and USDS use the same params, same IRM
+    address internal constant DAI_USDS_IRM                  = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;  // DAI  and USDS use the same params, same IRM
+    
+    address internal constant PT_SUSDS_14AUG2025            = 0xFfEc096c087C13Cc268497B89A613cACE4DF9A48;
+    address internal constant PT_SUSDS_14AUG2025_PRICE_FEED = 0xD7c8498fF648CBB9E79d6470cf7F639e696D27A5;
 
     uint256 internal constant SUSDS_BRIDGE_AMOUNT  = 100_000_000e18;
     uint256 internal constant SUSDS_DEPOSIT_AMOUNT = 200_000_000e18;
@@ -55,9 +64,9 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
     uint256 internal constant USDS_MINT_AMOUNT     = 400_000_000e18;
 
     constructor() {
-        // PAYLOAD_BASE     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        // PAYLOAD_OPTIMISM = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        // PAYLOAD_UNICHAIN = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
+        PAYLOAD_BASE     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        PAYLOAD_OPTIMISM = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        PAYLOAD_UNICHAIN = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
     }
 
     function _postExecute() internal override {
@@ -198,18 +207,17 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
         IERC20(Ethereum.SUSDS).approve(Ethereum.UNICHAIN_TOKEN_BRIDGE, susdsSharesUnichain);
         IOptimismTokenBridge(Ethereum.UNICHAIN_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Unichain.SUSDS, Unichain.ALM_PROXY, susdsSharesUnichain, 1_000_000, "");
     
-        // // Onboard PT-USDS-14Aug2025
-        // IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).submitCap(
-        //     MarketParams({
-        //         loanToken:       Ethereum.USDS,
-        //         collateralToken: PT_SUSDE_31JUL2025,
-        //         oracle:          PT_SUSDE_31JUL2025_PRICE_FEED,
-        //         irm:             Ethereum.MORPHO_DEFAULT_IRM,
-        //         lltv:            0.965e18
-        //     }),
-        //     400_000_000e18
-        // );
-
+        // Onboard PT-USDS-14Aug2025
+        IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_SUSDS_14AUG2025,
+                oracle:          PT_SUSDS_14AUG2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.965e18
+            }),
+            500_000_000e18
+        );
     }
 
     function collateralsUpdates() public pure override returns (IEngine.CollateralUpdate[] memory) {

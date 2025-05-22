@@ -48,23 +48,28 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     using DomainHelpers for Domain;
 
     address internal constant CBBTC_USDC_ORACLE = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
+    
     address internal constant DAI_USDS_OLD_IRM  = 0x7729E1CE24d7c4A82e76b4A2c118E328C35E6566;
     address internal constant DAI_USDS_NEW_IRM  = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+    
     address internal constant DEPLOYER          = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
+
+    address internal constant PT_SUSDS_14AUG2025            = 0xFfEc096c087C13Cc268497B89A613cACE4DF9A48;
+    address internal constant PT_SUSDS_14AUG2025_PRICE_FEED = 0xD7c8498fF648CBB9E79d6470cf7F639e696D27A5;
 
     constructor() {
         id = "20250529";
     }
 
     function setUp() public {
-        setupDomains("2025-05-20T07:47:00Z");
+        setupDomains("2025-05-22T15:04:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
         // chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
-        // chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        // chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
+        chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
 
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);
@@ -753,6 +758,27 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         // Rounding on conversion
         assertEq(susds.convertToAssets(opSUsdsShares),       100_000_000e18 - 1);
         assertEq(susds.convertToAssets(unichainSUsdsShares), 100_000_000e18 - 1);
+    }
+
+    function test_ETHEREUM_morpho_PTSUSDE14AUG2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_DAI_1,
+            config: MarketParams({
+                loanToken:       Ethereum.DAI,
+                collateralToken: PT_SUSDS_14AUG2025,
+                oracle:          PT_SUSDS_14AUG2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.965e18
+            }),
+            currentCap: 0,
+            newCap:     500_000_000e18
+        });
+        _testMorphoPendlePTOracleConfig({
+            pt:           PT_SUSDS_14AUG2025,
+            oracle:       PT_SUSDS_14AUG2025_PRICE_FEED,
+            discount:     0.15e18,
+            currentPrice: 0.966148454147640792e36
+        });
     }
 
 }
