@@ -170,11 +170,11 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(controller.hasRole(controller.FREEZER(),    Optimism.ALM_FREEZER),    false, "incorrect-freezer-controller");
         assertEq(controller.hasRole(controller.RELAYER(),    Optimism.ALM_RELAYER),    false, "incorrect-relayer-controller");
 
-        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.USDC),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Optimism.USDC),  0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.USDC),  0, 0);
-        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.USDS),   0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Optimism.USDS),  0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.USDS),  0, 0);
-        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.SUSDS),  0, 0);
+        _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Optimism.SUSDS), 0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.SUSDS), 0, 0);
         _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
         _assertRateLimit(
