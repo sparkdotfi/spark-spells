@@ -114,7 +114,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(extraBlocks[0]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(16979022);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(17257333);
     }
 
     /// @dev to be called in setUp
