@@ -33,6 +33,11 @@ interface IAuthLike {
     function rely(address usr) external;
 }
 
+interface DssAutoLineLike {
+    function setIlk(bytes32 ilk, uint256 line, uint256 gap, uint256 ttl) external;
+    function exec(bytes32 ilk) external;
+}
+
 interface IOptimismTokenBridge {
     function registerToken(address l1Token, address l2Token) external;
     function file(bytes32 what, address data) external;
@@ -46,6 +51,8 @@ interface IPSMLike {
 contract SparkEthereum_20250529Test is SparkTestBase {
 
     using DomainHelpers for Domain;
+    
+    address internal constant AUTO_LINE = 0xC7Bdd1F2B16447dcf3dE045C4a039A60EC2f0ba3;
 
     address internal constant CBBTC_USDC_ORACLE = 0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9;
     
@@ -57,12 +64,14 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     address internal constant PT_SUSDS_14AUG2025            = 0xFfEc096c087C13Cc268497B89A613cACE4DF9A48;
     address internal constant PT_SUSDS_14AUG2025_PRICE_FEED = 0xD7c8498fF648CBB9E79d6470cf7F639e696D27A5;
 
+    bytes32 internal constant ALLOCATOR_ILK = "ALLOCATOR-SPARK-A";
+
     constructor() {
         id = "20250529";
     }
 
     function setUp() public {
-        setupDomains("2025-05-22T15:04:00Z");
+        setupDomains("2025-05-23T07:51:00Z");
 
         deployPayloads();
 
@@ -73,6 +82,10 @@ contract SparkEthereum_20250529Test is SparkTestBase {
 
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);
+
+        // Increase vault to 6b max line, 500m gap
+        DssAutoLineLike(AUTO_LINE).setIlk(ALLOCATOR_ILK, 6_000_000_000e45, 500_000_000e45, 24 hours);
+        DssAutoLineLike(AUTO_LINE).exec(ALLOCATOR_ILK);
 
         // Activate the token bridge for Optimism
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).registerToken(Ethereum.USDS,  Optimism.USDS);
@@ -776,7 +789,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             pt:           PT_SUSDS_14AUG2025,
             oracle:       PT_SUSDS_14AUG2025_PRICE_FEED,
             discount:     0.15e18,
-            currentPrice: 0.966148454147640792e36
+            currentPrice: 0.96643583999238965e36
         });
     }
 
