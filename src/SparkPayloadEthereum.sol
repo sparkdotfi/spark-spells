@@ -7,6 +7,8 @@ import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
+import { Optimism } from 'spark-address-registry/Optimism.sol';
+import { Unichain } from 'spark-address-registry/Unichain.sol';
 
 import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
 
@@ -28,6 +30,8 @@ abstract contract SparkPayloadEthereum is
     address public immutable PAYLOAD_ARBITRUM;
     address public immutable PAYLOAD_BASE;
     address public immutable PAYLOAD_GNOSIS;
+    address public immutable PAYLOAD_OPTIMISM;
+    address public immutable PAYLOAD_UNICHAIN;
 
     function execute() public override {
         super.execute();
@@ -55,6 +59,22 @@ abstract contract SparkPayloadEthereum is
                 target:   Gnosis.AMB_EXECUTOR,
                 message:  _encodePayloadQueue(PAYLOAD_GNOSIS),
                 gasLimit: 1_000_000
+            });
+        }
+        if (PAYLOAD_OPTIMISM != address(0)) {
+            OptimismForwarder.sendMessageL1toL2({
+                l1CrossDomain: OptimismForwarder.L1_CROSS_DOMAIN_OPTIMISM,
+                target:        Optimism.SPARK_RECEIVER,
+                message:       _encodePayloadQueue(PAYLOAD_OPTIMISM),
+                gasLimit:      1_000_000
+            });
+        }
+        if (PAYLOAD_UNICHAIN != address(0)) {
+            OptimismForwarder.sendMessageL1toL2({
+                l1CrossDomain: OptimismForwarder.L1_CROSS_DOMAIN_UNICHAIN,
+                target:        Unichain.SPARK_RECEIVER,
+                message:       _encodePayloadQueue(PAYLOAD_UNICHAIN),
+                gasLimit:      1_000_000
             });
         }
     }
