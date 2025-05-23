@@ -9,7 +9,7 @@ import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignContro
 import { SLLHelpers } from './libraries/SLLHelpers.sol';
 
 /**
- * @dev Base smart contract for Optimism.
+ * @dev Base smart contract for Unichain.
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadUnichain {

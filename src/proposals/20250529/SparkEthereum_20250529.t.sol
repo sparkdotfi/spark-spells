@@ -67,7 +67,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         deployPayloads();
 
         chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
         chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
         chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
 
@@ -77,7 +77,6 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         // Activate the token bridge for Optimism
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).registerToken(Ethereum.USDS,  Optimism.USDS);
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).registerToken(Ethereum.SUSDS, Optimism.SUSDS);
-        
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).file("escrow", Ethereum.OPTIMISM_ESCROW);
 
         // Activate the token bridge for Unichain

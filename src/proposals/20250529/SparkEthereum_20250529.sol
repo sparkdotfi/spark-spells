@@ -39,7 +39,7 @@ interface IOptimismTokenBridge {
  *         - Onboard Optimism, Unichain
  *         - Mint 100m USDS into Optimism and Unichain
  *         - Mint 100m sUSDS into Optimism and Unichain
- *         - Increase USDe Mint and Staking Rate Limits
+ *         - Increase USDe Mint and Swap Rate Limits
  *         SparkLend:
  *         - Update USDS IRM
  *         - Update DAI IRM
@@ -199,7 +199,7 @@ contract SparkEthereum_20250529 is SparkPayloadEthereum {
         IERC20(Ethereum.SUSDS).approve(Ethereum.OPTIMISM_TOKEN_BRIDGE, susdsSharesOptimism);
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Optimism.SUSDS, Optimism.ALM_PROXY, susdsSharesOptimism, 1_000_000, "");
 
-        // Bridge to Optimism
+        // Bridge to Unichain
         IERC20(Ethereum.USDS).approve(Ethereum.UNICHAIN_TOKEN_BRIDGE, USDS_BRIDGE_AMOUNT);
         IOptimismTokenBridge(Ethereum.UNICHAIN_TOKEN_BRIDGE).bridgeERC20To(Ethereum.USDS, Unichain.USDS, Unichain.ALM_PROXY, USDS_BRIDGE_AMOUNT, 1_000_000, "");
 
