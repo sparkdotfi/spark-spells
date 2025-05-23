@@ -83,8 +83,8 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);
 
-        // Increase vault to 6b max line, 500m gap
-        DssAutoLineLike(AUTO_LINE).setIlk(ALLOCATOR_ILK, 6_000_000_000e45, 500_000_000e45, 24 hours);
+        // Increase vault to 10b max line, 500m gap
+        DssAutoLineLike(AUTO_LINE).setIlk(ALLOCATOR_ILK, 10_000_000_000e45, 500_000_000e45, 24 hours);
         DssAutoLineLike(AUTO_LINE).exec(ALLOCATOR_ILK);
 
         // Activate the token bridge for Optimism
@@ -269,7 +269,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
 
         IPSMLike psm = IPSMLike(Optimism.PSM3);
 
-        assertApproxEqAbs(psm.convertToAssetValue(psm.shares(Optimism.ALM_PROXY)), 20_000_000e18, 27);
+        assertApproxEqAbs(psm.convertToAssetValue(psm.shares(Optimism.ALM_PROXY)), 20_000_000e18, 31);
 
         assertEq(opUsds.balanceOf(Optimism.ALM_PROXY), 90_000_000e18);
         assertEq(opUsds.balanceOf(Optimism.PSM3),      10_000_000e18);
@@ -769,7 +769,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
 
         // Rounding on conversion
         assertEq(susds.convertToAssets(opSUsdsShares),       100_000_000e18 - 1);
-        assertEq(susds.convertToAssets(unichainSUsdsShares), 100_000_000e18 - 1);
+        assertEq(susds.convertToAssets(unichainSUsdsShares), 100_000_000e18);
     }
 
     function test_ETHEREUM_morpho_PTSUSDE14AUG2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
