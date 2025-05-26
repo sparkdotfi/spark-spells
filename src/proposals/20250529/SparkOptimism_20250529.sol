@@ -7,7 +7,8 @@ import {
     ControllerInstance,
     ForeignControllerInit
 } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
-import { RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+import { RateLimitData }     from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadOptimism, Optimism, SLLHelpers } from "../../SparkPayloadOptimism.sol";
 
@@ -69,6 +70,7 @@ contract SparkOptimism_20250529 is SparkPayloadOptimism {
                 slope     : 25_000_000e6 / uint256(1 days)
             })
         });
+        ForeignController(Optimism.ALM_CONTROLLER).grantRole(ForeignController(Optimism.ALM_CONTROLLER).RELAYER(), Optimism.ALM_RELAYER2);
     }
 
 }

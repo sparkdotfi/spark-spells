@@ -189,6 +189,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Optimism.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
         assertEq(controller.hasRole(controller.FREEZER(),    Optimism.ALM_FREEZER),    false, "incorrect-freezer-controller");
         assertEq(controller.hasRole(controller.RELAYER(),    Optimism.ALM_RELAYER),    false, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Optimism.ALM_RELAYER2),   false, "incorrect-relayer-controller");
 
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Optimism.USDC),  0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Optimism.USDC),  0, 0);
@@ -211,6 +212,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Optimism.ALM_CONTROLLER), true, "incorrect-controller-rateLimits");
         assertEq(controller.hasRole(controller.FREEZER(),    Optimism.ALM_FREEZER),    true, "incorrect-freezer-controller");
         assertEq(controller.hasRole(controller.RELAYER(),    Optimism.ALM_RELAYER),    true, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Optimism.ALM_RELAYER2),   true, "incorrect-relayer-controller");
 
         _assertRateLimit(
             RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Optimism.USDC),
@@ -417,6 +419,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Unichain.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
         assertEq(controller.hasRole(controller.FREEZER(),    Unichain.ALM_FREEZER),    false, "incorrect-freezer-controller");
         assertEq(controller.hasRole(controller.RELAYER(),    Unichain.ALM_RELAYER),    false, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Unichain.ALM_RELAYER2),   false, "incorrect-relayer-controller");
 
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(),  Unichain.USDC),  0, 0);
         _assertRateLimit(RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_WITHDRAW(), Unichain.USDC),  0, 0);
@@ -439,6 +442,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Unichain.ALM_CONTROLLER), true, "incorrect-controller-rateLimits");
         assertEq(controller.hasRole(controller.FREEZER(),    Unichain.ALM_FREEZER),    true, "incorrect-freezer-controller");
         assertEq(controller.hasRole(controller.RELAYER(),    Unichain.ALM_RELAYER),    true, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Unichain.ALM_RELAYER2),   true, "incorrect-relayer-controller");
 
         _assertRateLimit(
             RateLimitHelpers.makeAssetKey(controller.LIMIT_PSM_DEPOSIT(), Unichain.USDC),

@@ -7,7 +7,8 @@ import {
     ControllerInstance,
     ForeignControllerInit
 } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
-import { RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+import { RateLimitData }     from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadUnichain, Unichain, SLLHelpers } from "../../SparkPayloadUnichain.sol";
 
@@ -69,6 +70,7 @@ contract SparkUnichain_20250529 is SparkPayloadUnichain {
                 slope     : 25_000_000e6 / uint256(1 days)
             })
         });
+        ForeignController(Unichain.ALM_CONTROLLER).grantRole(ForeignController(Unichain.ALM_CONTROLLER).RELAYER(), Unichain.ALM_RELAYER2);
     }
 
 }
