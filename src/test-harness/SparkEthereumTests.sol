@@ -122,14 +122,14 @@ abstract contract SparkEthereumTests is SparklendTests {
         assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
-        _checkStorageSlot(address(proxy), 5);
+        _checkStorageSlot(address(proxy), 100);
 
         executeAllPayloadsAndBridges();
 
         assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
-        _checkStorageSlot(address(proxy), 5);
+        _checkStorageSlot(address(proxy), 100);
     }
 
     function test_ETHEREUM_RewardsConfiguration() public onChain(ChainIdUtils.Ethereum()){

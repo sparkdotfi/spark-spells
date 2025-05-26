@@ -26,7 +26,7 @@ contract SparkOptimism_20250529 is SparkPayloadOptimism {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
         mintRecipients[0] = ForeignControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
-            mintRecipient : bytes32(uint256(uint160(Ethereum.ALM_PROXY)))
+            mintRecipient : SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY)
         });
     
         ForeignControllerInit.initAlmSystem({
@@ -56,7 +56,7 @@ contract SparkOptimism_20250529 is SparkPayloadOptimism {
             usdc        : Optimism.USDC,
             usds        : Optimism.USDS,
             susds       : Optimism.SUSDS,
-            usdcDeposit : RateLimitData({ // TODO: what values to get here.
+            usdcDeposit : RateLimitData({
                 maxAmount : 50_000_000e6,
                 slope     : 50_000_000e6 / uint256(1 days)
             }),

@@ -60,48 +60,60 @@ abstract contract SpellRunner is Test {
 
     /// @dev maximum 3 chains in 1 query
     function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
-        string memory networks = "";
-        for (uint256 i = 0; i < chains.length; i++) {
-            if (i == 0) {
-                networks = string(abi.encodePacked("networks=", chains[i]));
-            } else {
-                networks = string(abi.encodePacked(networks, "&networks=", chains[i]));
-            }
-        }
-        
-        string[] memory inputs = new string[](8);
-        inputs[0] = "curl";
-        inputs[1] = "-s";
-        inputs[2] = "--request";
-        inputs[3] = "GET";
-        inputs[4] = "--url";
-        inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
-        inputs[6] = "--header";
-        inputs[7] = "accept: application/json";
-
-        string memory response = string(vm.ffi(inputs));
         blocks = new uint256[](chains.length);
-        for (uint256 i = 0; i < chains.length; i++) {
-            blocks[i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
+        
+        // Process chains in batches of 3
+        for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
+            uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
+            string[] memory batchChains = new string[](batchSize);
+            
+            // Create batch of chains
+            for (uint256 i = 0; i < batchSize; i++) {
+                batchChains[i] = chains[batchStart + i];
+            }
+            
+            // Build networks parameter for this batch
+            string memory networks = "";
+            for (uint256 i = 0; i < batchSize; i++) {
+                if (i == 0) {
+                    networks = string(abi.encodePacked("networks=", batchChains[i]));
+                } else {
+                    networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
+                }
+            }
+            
+            string[] memory inputs = new string[](8);
+            inputs[0] = "curl";
+            inputs[1] = "-s";
+            inputs[2] = "--request";
+            inputs[3] = "GET";
+            inputs[4] = "--url";
+            inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
+            inputs[6] = "--header";
+            inputs[7] = "accept: application/json";
+
+            string memory response = string(vm.ffi(inputs));
+            
+            // Store results in the correct positions of the final blocks array
+            for (uint256 i = 0; i < batchSize; i++) {
+                blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
+            }
         }
     }
 
     function setupBlocksFromDate(string memory date) internal {
-        string[] memory chains = new string[](3);
+        string[] memory chains = new string[](4);
         chains[0] = "eth-mainnet";
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
-
-        string [] memory extraChains = new string[](1);
-        extraChains[0] = "opt-mainnet";
+        chains[3] = "opt-mainnet";
 
         uint256[] memory blocks = getBlocksFromDate(date, chains);
-        uint256[] memory extraBlocks = getBlocksFromDate(date, extraChains);
 
         console.log("Mainnet block: ", blocks[0]);
         console.log("Base block: ", blocks[1]);
         console.log("Arbitrum block: ", blocks[2]);
-        console.log("Optimism block: ", extraBlocks[0]);
+        console.log("Optimism block: ", blocks[3]);
 
         setChain("unichain", ChainData({
             name: "Unichain",
@@ -113,7 +125,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
-        chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(extraBlocks[0]);
+        chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(17257333);
     }
 

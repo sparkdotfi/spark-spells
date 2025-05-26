@@ -26,7 +26,7 @@ contract SparkUnichain_20250529 is SparkPayloadUnichain {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
         mintRecipients[0] = ForeignControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
-            mintRecipient : bytes32(uint256(uint160(Ethereum.ALM_PROXY)))
+            mintRecipient : SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY)
         });
     
         ForeignControllerInit.initAlmSystem({

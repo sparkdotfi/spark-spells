@@ -17,9 +17,11 @@ import { IALMProxy }             from 'spark-alm-controller/src/interfaces/IALMP
 import { MainnetController }     from 'spark-alm-controller/src/MainnetController.sol';
 import { RateLimitHelpers }      from 'spark-alm-controller/src/RateLimitHelpers.sol';
 
+import { SLLHelpers } from '../../SparkPayloadEthereum.sol';
+
 import { IPSM3 } from 'spark-psm/src/interfaces/IPSM3.sol';
 
-import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
+import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 
 import { InterestStrategyValues, ReserveConfig }                   from '../../test-harness/ProtocolV3TestBase.sol';
 import { ICustomIRM, IRateSource, ITargetBaseIRM, ITargetKinkIRM } from '../../test-harness/SparkEthereumTests.sol';
@@ -59,10 +61,11 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     address internal constant DAI_USDS_OLD_IRM  = 0x7729E1CE24d7c4A82e76b4A2c118E328C35E6566;
     address internal constant DAI_USDS_NEW_IRM  = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
     
-    address internal constant DEPLOYER          = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
+    address internal constant OPTIMISM_DEPLOYER = 0xd1236a6A111879d9862f8374BA15344b6B233Fbd;
+    address internal constant UNICHAIN_DEPLOYER = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
 
-    address internal constant PT_SUSDS_14AUG2025            = 0xFfEc096c087C13Cc268497B89A613cACE4DF9A48;
-    address internal constant PT_SUSDS_14AUG2025_PRICE_FEED = 0xD7c8498fF648CBB9E79d6470cf7F639e696D27A5;
+    address internal constant PT_USDS_14AUG2025            = 0xFfEc096c087C13Cc268497B89A613cACE4DF9A48;
+    address internal constant PT_USDS_14AUG2025_PRICE_FEED = 0xD7c8498fF648CBB9E79d6470cf7F639e696D27A5;
 
     bytes32 internal constant ALLOCATOR_ILK = "ALLOCATOR-SPARK-A";
 
@@ -75,10 +78,10 @@ contract SparkEthereum_20250529Test is SparkTestBase {
 
         deployPayloads();
 
-        chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        chainData[ChainIdUtils.Ethereum()].payload = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
-        chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
+        // chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        // chainData[ChainIdUtils.Ethereum()].payload = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
+        // chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        // chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
 
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);
@@ -138,7 +141,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         executeAllPayloadsAndBridges();
 
         _assertRateLimit(optimismKey, 50_000_000e6, 25_000_000e6 / uint256(1 days));
-        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM), bytes32(uint256(uint160(Optimism.ALM_PROXY))));
+        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM), SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
     }
 
     function test_OPTIMISM_almControllerDeployment() public onChain(ChainIdUtils.Optimism()) {
@@ -151,9 +154,9 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(rateLimits.hasRole(0x0, Optimism.SPARK_EXECUTOR), true, "incorrect-admin-rateLimits");
         assertEq(controller.hasRole(0x0, Optimism.SPARK_EXECUTOR), true, "incorrect-admin-controller");
 
-        assertEq(almProxy.hasRole(0x0,   DEPLOYER), false, "incorrect-admin-almProxy");
-        assertEq(rateLimits.hasRole(0x0, DEPLOYER), false, "incorrect-admin-rateLimits");
-        assertEq(controller.hasRole(0x0, DEPLOYER), false, "incorrect-admin-controller");
+        assertEq(almProxy.hasRole(0x0,   OPTIMISM_DEPLOYER), false, "incorrect-admin-almProxy");
+        assertEq(rateLimits.hasRole(0x0, OPTIMISM_DEPLOYER), false, "incorrect-admin-rateLimits");
+        assertEq(controller.hasRole(0x0, OPTIMISM_DEPLOYER), false, "incorrect-admin-controller");
 
         assertEq(address(controller.proxy()),      Optimism.ALM_PROXY,            "incorrect-almProxy");
         assertEq(address(controller.rateLimits()), Optimism.ALM_RATE_LIMITS,      "incorrect-rateLimits");
@@ -200,7 +203,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             0
         );
 
-        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(address(0)))));
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
         executeAllPayloadsAndBridges();
 
@@ -378,9 +381,9 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         assertEq(rateLimits.hasRole(0x0, Unichain.SPARK_EXECUTOR), true, "incorrect-admin-rateLimits");
         assertEq(controller.hasRole(0x0, Unichain.SPARK_EXECUTOR), true, "incorrect-admin-controller");
 
-        assertEq(almProxy.hasRole(0x0,   DEPLOYER), false, "incorrect-admin-almProxy");
-        assertEq(rateLimits.hasRole(0x0, DEPLOYER), false, "incorrect-admin-rateLimits");
-        assertEq(controller.hasRole(0x0, DEPLOYER), false, "incorrect-admin-controller");
+        assertEq(almProxy.hasRole(0x0,   UNICHAIN_DEPLOYER), false, "incorrect-admin-almProxy");
+        assertEq(rateLimits.hasRole(0x0, UNICHAIN_DEPLOYER), false, "incorrect-admin-rateLimits");
+        assertEq(controller.hasRole(0x0, UNICHAIN_DEPLOYER), false, "incorrect-admin-controller");
 
         assertEq(address(controller.proxy()),      Unichain.ALM_PROXY,            "incorrect-almProxy");
         assertEq(address(controller.rateLimits()), Unichain.ALM_RATE_LIMITS,      "incorrect-rateLimits");
@@ -428,7 +431,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             0
         );
 
-        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(address(0)))));
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
         executeAllPayloadsAndBridges();
 
@@ -655,10 +658,9 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         bytes32 ethenaMintKey     = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDE_MINT();
         bytes32 ethenaBurnKey     = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDE_BURN();
         bytes32 susdeCooldownKey  = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SUSDE_COOLDOWN();
-        
+
         bytes32 susdeDepositKey   = RateLimitHelpers.makeAssetKey(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT(), Ethereum.SUSDE);
-        bytes32 susdeWithdrawKey  = RateLimitHelpers.makeAssetKey(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_WITHDRAW(), Ethereum.SUSDE);
-        
+
         _assertRateLimit(usdsMintKey,       200_000_000e18, 200_000_000e18 / uint256(1 days));
         _assertRateLimit(swapUSDSToUSDCKey, 200_000_000e6,  200_000_000e6 / uint256(1 days));
         _assertRateLimit(ethenaMintKey,     50_000_000e6,   50_000_000e6 / uint256(1 days));
@@ -675,7 +677,6 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         _assertRateLimit(susdeDepositKey,   250_000_000e18, 100_000_000e18 / uint256(1 days));
         
         _assertUnlimitedRateLimit(susdeCooldownKey);
-        _assertUnlimitedRateLimit(susdeWithdrawKey);
     }
 
     function _testRateTargetBaseToKinkIRMUpdate(
@@ -777,8 +778,8 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             vault: Ethereum.MORPHO_VAULT_DAI_1,
             config: MarketParams({
                 loanToken:       Ethereum.DAI,
-                collateralToken: PT_SUSDS_14AUG2025,
-                oracle:          PT_SUSDS_14AUG2025_PRICE_FEED,
+                collateralToken: PT_USDS_14AUG2025,
+                oracle:          PT_USDS_14AUG2025_PRICE_FEED,
                 irm:             Ethereum.MORPHO_DEFAULT_IRM,
                 lltv:            0.965e18
             }),
@@ -786,8 +787,8 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             newCap:     500_000_000e18
         });
         _testMorphoPendlePTOracleConfig({
-            pt:           PT_SUSDS_14AUG2025,
-            oracle:       PT_SUSDS_14AUG2025_PRICE_FEED,
+            pt:           PT_USDS_14AUG2025,
+            oracle:       PT_USDS_14AUG2025_PRICE_FEED,
             discount:     0.15e18,
             currentPrice: 0.96643583999238965e36
         });
