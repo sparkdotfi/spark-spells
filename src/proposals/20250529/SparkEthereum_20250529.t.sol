@@ -74,14 +74,14 @@ contract SparkEthereum_20250529Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-05-23T07:51:00Z");
+        setupDomains("2025-05-26T13:17:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
-        // chainData[ChainIdUtils.Optimism()].payload = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
-        // chainData[ChainIdUtils.Unichain()].payload = 0xbF5a7CfaF47fd1Ad75c9C613b1d4C196eE1b4EeF;
+        chainData[ChainIdUtils.Base()].payload     = 0x3a1d3A9B0eD182d7B17aa61393D46a4f4EE0CEA5;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x3968a022D955Bbb7927cc011A48601B65a33F346;
+        chainData[ChainIdUtils.Optimism()].payload = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
+        chainData[ChainIdUtils.Unichain()].payload = 0xFd5B1cC4e102b54F0c4Ed8913b81bAe04817F244;
 
         // Mainnet
         vm.startPrank(Ethereum.PAUSE_PROXY);
@@ -794,7 +794,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             pt:           PT_USDS_14AUG2025,
             oracle:       PT_USDS_14AUG2025_PRICE_FEED,
             discount:     0.15e18,
-            currentPrice: 0.96643583999238965e36
+            currentPrice: 0.967761753234398783e36
         });
     }
 
