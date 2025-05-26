@@ -19,7 +19,7 @@ import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
  * @notice Spark Liquidity Layer: Activate Spark Liquidity Layer
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372/2
- * Vote:   TODO
+ * Vote:   https://vote.makerdao.com/polling/QmXjeJtw
  */
 contract SparkUnichain_20250529 is SparkPayloadUnichain {
 

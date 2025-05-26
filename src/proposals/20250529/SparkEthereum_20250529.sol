@@ -48,11 +48,16 @@ interface IOptimismTokenBridge {
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372/2
  *         https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell-2/26440
- * Vote:   TODO
+ * Vote:   https://vote.makerdao.com/polling/QmVt1spi
+ *         https://vote.makerdao.com/polling/QmUnygNr
+ *         https://vote.makerdao.com/polling/QmX16hA3
+ *         https://vote.makerdao.com/polling/QmUYRV1H
+ *         https://vote.makerdao.com/polling/QmXjeJtw
+ *         https://vote.makerdao.com/polling/QmNe8Erm
  */
 contract SparkEthereum_20250529 is SparkPayloadEthereum {
 
-    address internal constant DAI_USDS_IRM                  = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;  // DAI  and USDS use the same params, same IRM
+    address internal constant DAI_USDS_IRM = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;  // DAI  and USDS use the same params, same IRM
     
     address internal constant PT_USDS_14AUG2025            = 0xFfEc096c087C13Cc268497B89A613cACE4DF9A48;
     address internal constant PT_USDS_14AUG2025_PRICE_FEED = 0xD7c8498fF648CBB9E79d6470cf7F639e696D27A5;

@@ -10,7 +10,7 @@ import { SparkPayloadBase, Base } from "../../SparkPayloadBase.sol";
  * @notice SparkLend: Update cbBTC Morpho supply cap
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/may-29-2025-proposed-changes-to-spark-for-upcoming-spell/26372
- * Vote:   TODO
+ * Vote:   https://vote.makerdao.com/polling/QmfPc8Ub
  */
 contract SparkBase_20250529 is SparkPayloadBase {
 
