@@ -36,7 +36,7 @@ interface IOptimismTokenBridge {
  * @notice Spark Liquidity Layer:
  *         - Onboard Optimism, Unichain
  *         - Mint 100m USDS into Optimism and Unichain
- *         - Mint 100m sUSDS into Optimism and Unichain
+ *         - Mint 100m worth of sUSDS into Optimism and Unichain
  *         - Increase USDe Mint and Swap Rate Limits
  *         - Increase USDS Mint and USDC Swap Rate Limits
  *         SparkLend:

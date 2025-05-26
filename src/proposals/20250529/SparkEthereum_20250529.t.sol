@@ -235,7 +235,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             25_000_000e6 / uint256(1 days)
         );
 
-        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
     }
 
     function test_ETHEREUM_OPTIMISM_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
@@ -370,7 +370,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
         executeAllPayloadsAndBridges();
 
         _assertRateLimit(unichainKey, 50_000_000e6, 25_000_000e6 / uint256(1 days));
-        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN), bytes32(uint256(uint160(Unichain.ALM_PROXY))));
+        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN), SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
     }
 
     function test_UNICHAIN_almControllerDeployment() public onChain(ChainIdUtils.Unichain()) {
@@ -465,7 +465,7 @@ contract SparkEthereum_20250529Test is SparkTestBase {
             25_000_000e6 / uint256(1 days)
         );
 
-        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
     }
 
     function test_ETHEREUM_UNICHAIN_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
