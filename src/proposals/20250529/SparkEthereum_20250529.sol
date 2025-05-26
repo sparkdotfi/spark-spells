@@ -37,7 +37,7 @@ interface IOptimismTokenBridge {
  *         - Onboard Optimism, Unichain
  *         - Mint 100m USDS into Optimism and Unichain
  *         - Mint 100m worth of sUSDS into Optimism and Unichain
- *         - Increase USDe Mint and Swap Rate Limits
+ *         - Increase USDe Mint and Staking Rate Limits
  *         - Increase USDS Mint and USDC Swap Rate Limits
  *         SparkLend:
  *         - Update USDS IRM
