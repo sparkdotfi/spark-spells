@@ -163,13 +163,13 @@ contract ProtocolV3TestBase is CommonTestBase {
 
     for (uint256 i = 0; i < configs.length; i++) {
       if (!_includeCollateralAssetInE2e(configs[i])) {
-        console.log('Skip collateral: %s, not configured', configs[i].symbol);
+        // console.log('Skip collateral: %s, not configured', configs[i].symbol);
         continue;
       }
 
       for(uint256 j; j < configs.length; j++) {
         if (!_includeBorrowAssetInE2e(configs[j])) {
-          console.log('Skip borrow: %s, not configured', configs[i].symbol);
+          // console.log('Skip borrow: %s, not configured', configs[i].symbol);
           continue;
         }
 
@@ -184,11 +184,11 @@ contract ProtocolV3TestBase is CommonTestBase {
     ReserveConfig memory collateralConfig,
     ReserveConfig memory borrowConfig
   ) public {
-    console.log(
-      '\n\nE2E: Collateral %s, borrow %s',
-      collateralConfig.symbol,
-      borrowConfig.symbol
-    );
+    // console.log(
+    //   '\n\nE2E: Collateral %s, borrow %s',
+    //   collateralConfig.symbol,
+    //   borrowConfig.symbol
+    // );
 
     address collateralSupplier = vm.addr(3);
     address borrowSupplier     = vm.addr(4);
@@ -210,25 +210,25 @@ contract ProtocolV3TestBase is CommonTestBase {
       : collateralAmount * 2;
 
     if (_isAboveSupplyCap(collateralConfig, totalCollateralAssetSupplied)) {
-      console.log('Skip collateral: %s, supply cap fully utilized', collateralConfig.symbol);
+      // console.log('Skip collateral: %s, supply cap fully utilized', collateralConfig.symbol);
       return;
     }
     if (
       _isAboveSupplyCap(borrowConfig, totalBorrowAssetSupplied)
     ) {
-      console.log('Skip borrow: %s, supply cap fully utilized', borrowConfig.symbol);
+      // console.log('Skip borrow: %s, supply cap fully utilized', borrowConfig.symbol);
       return;
     }
 
     if (
       _isAboveBorrowCap(pool, borrowConfig, maxBorrowAmount)
     ) {
-      console.log('Skip borrow: %s, borrow cap fully utilized', borrowConfig.symbol);
+      // console.log('Skip borrow: %s, borrow cap fully utilized', borrowConfig.symbol);
       return;
     }
 
     if (collateralConfig.debtCeiling > 0 && !borrowConfig.isBorrowableInIsolation) {
-      console.log('Skip: %s-%s combo, asset not supported for isolated borrow', collateralConfig.symbol, borrowConfig.symbol);
+      // console.log('Skip: %s-%s combo, asset not supported for isolated borrow', collateralConfig.symbol, borrowConfig.symbol);
       return;
     }
 
@@ -597,7 +597,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
     uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
 
-    console.log('SUPPLY: %s, Amount: %s', config.symbol, _formattedAmount(amount, config.decimals));
+    // console.log('SUPPLY: %s, Amount: %s', config.symbol, _formattedAmount(amount, config.decimals));
     vm.startPrank(user);
     IERC20(config.underlying).safeApprove(address(pool), amount);
     pool.supply(config.underlying, amount, user, 0);
@@ -624,7 +624,7 @@ contract ProtocolV3TestBase is CommonTestBase {
 
     vm.prank(user);
     uint256 amountOut = pool.withdraw(config.underlying, amount, user);
-    console.log('WITHDRAW: %s, Amount: %s', config.symbol, _formattedAmount(amountOut, config.decimals));
+    // console.log('WITHDRAW: %s, Amount: %s', config.symbol, _formattedAmount(amountOut, config.decimals));
 
     uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
     uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
@@ -651,7 +651,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
     uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
 
-    console.log('BORROW: %s, Amount %s, Stable: %s', config.symbol, _formattedAmount(amount, config.decimals), stable);
+    // console.log('BORROW: %s, Amount %s, Stable: %s', config.symbol, _formattedAmount(amount, config.decimals), stable);
     vm.prank(user);
     pool.borrow(config.underlying, amount, stable ? 1 : 2, 0, user);
 
@@ -679,7 +679,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
     uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
 
-    console.log('REPAY: %s, Amount: %s', config.symbol, _formattedAmount(amount, config.decimals));
+    // console.log('REPAY: %s, Amount: %s', config.symbol, _formattedAmount(amount, config.decimals));
     vm.startPrank(user);
     IERC20(config.underlying).safeApprove(address(pool), amount);
     pool.repay(config.underlying, amount, stable ? 1 : 2, user);
@@ -723,7 +723,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     vm.startPrank(liquidator);
     SafeERC20.safeApprove(IERC20(borrow.underlying), address(pool), balances.debtBefore);
 
-    console.log('LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s', collateral.symbol, borrow.symbol, _formattedAmount(balances.debtBefore, borrow.decimals));
+    // console.log('LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s', collateral.symbol, borrow.symbol, _formattedAmount(balances.debtBefore, borrow.decimals));
     pool.liquidationCall(collateral.underlying, borrow.underlying, user, balances.debtBefore, false);
     vm.stopPrank();
 
@@ -1236,32 +1236,32 @@ contract ProtocolV3TestBase is CommonTestBase {
   }
 
   function _logReserveConfig(ReserveConfig memory config) internal pure {
-    console.log('Symbol ', config.symbol);
-    console.log('Underlying address ', config.underlying);
-    console.log('AToken address ', config.aToken);
-    console.log('Stable debt token address ', config.stableDebtToken);
-    console.log('Variable debt token address ', config.variableDebtToken);
-    console.log('Decimals ', config.decimals);
-    console.log('LTV ', config.ltv);
-    console.log('Liquidation Threshold ', config.liquidationThreshold);
-    console.log('Liquidation Bonus ', config.liquidationBonus);
-    console.log('Liquidation protocol fee ', config.liquidationProtocolFee);
-    console.log('Reserve Factor ', config.reserveFactor);
-    console.log('Usage as collateral enabled ', (config.usageAsCollateralEnabled) ? 'Yes' : 'No');
-    console.log('Borrowing enabled ', (config.borrowingEnabled) ? 'Yes' : 'No');
-    console.log('Stable borrow rate enabled ', (config.stableBorrowRateEnabled) ? 'Yes' : 'No');
-    console.log('Supply cap ', config.supplyCap);
-    console.log('Borrow cap ', config.borrowCap);
-    console.log('Debt ceiling ', config.debtCeiling);
-    console.log('eMode category ', config.eModeCategory);
-    console.log('Interest rate strategy ', config.interestRateStrategy);
-    console.log('Is active ', (config.isActive) ? 'Yes' : 'No');
-    console.log('Is frozen ', (config.isFrozen) ? 'Yes' : 'No');
-    console.log('Is siloed ', (config.isSiloed) ? 'Yes' : 'No');
-    console.log('Is borrowable in isolation ', (config.isBorrowableInIsolation) ? 'Yes' : 'No');
-    console.log('Is flashloanable ', (config.isFlashloanable) ? 'Yes' : 'No');
-    console.log('-----');
-    console.log('-----');
+    // console.log('Symbol ', config.symbol);
+    // console.log('Underlying address ', config.underlying);
+    // console.log('AToken address ', config.aToken);
+    // console.log('Stable debt token address ', config.stableDebtToken);
+    // console.log('Variable debt token address ', config.variableDebtToken);
+    // console.log('Decimals ', config.decimals);
+    // console.log('LTV ', config.ltv);
+    // console.log('Liquidation Threshold ', config.liquidationThreshold);
+    // console.log('Liquidation Bonus ', config.liquidationBonus);
+    // console.log('Liquidation protocol fee ', config.liquidationProtocolFee);
+    // console.log('Reserve Factor ', config.reserveFactor);
+    // console.log('Usage as collateral enabled ', (config.usageAsCollateralEnabled) ? 'Yes' : 'No');
+    // console.log('Borrowing enabled ', (config.borrowingEnabled) ? 'Yes' : 'No');
+    // console.log('Stable borrow rate enabled ', (config.stableBorrowRateEnabled) ? 'Yes' : 'No');
+    // console.log('Supply cap ', config.supplyCap);
+    // console.log('Borrow cap ', config.borrowCap);
+    // console.log('Debt ceiling ', config.debtCeiling);
+    // console.log('eMode category ', config.eModeCategory);
+    // console.log('Interest rate strategy ', config.interestRateStrategy);
+    // console.log('Is active ', (config.isActive) ? 'Yes' : 'No');
+    // console.log('Is frozen ', (config.isFrozen) ? 'Yes' : 'No');
+    // console.log('Is siloed ', (config.isSiloed) ? 'Yes' : 'No');
+    // console.log('Is borrowable in isolation ', (config.isBorrowableInIsolation) ? 'Yes' : 'No');
+    // console.log('Is flashloanable ', (config.isFlashloanable) ? 'Yes' : 'No');
+    // console.log('-----');
+    // console.log('-----');
   }
 
   function _validateReserveConfig(

@@ -52,10 +52,22 @@ abstract contract SpellRunner is Test {
     string internal    id;
 
     modifier onChain(ChainId chainId) {
-        uint256 currentFork = vm.activeFork();
+        console.log("");
+        console.log("--- onChain");
+        console.log("onChain: ", chainId.toDomainString());
+        uint256 currentFork      = vm.activeFork();
+        uint256 currentTimestamp = block.timestamp;
+        console.log("currentFork: ", currentFork);
+        console.log("currentTimestamp: ", currentTimestamp);
         if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
         _;
-        if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
+        if (vm.activeFork() != currentFork) {
+            console.log("selecting fork: ", currentFork);
+            vm.selectFork(currentFork);
+        }
+        console.log("warping to: ", currentTimestamp);
+        vm.warp(currentTimestamp);
+        console.log("--- onChain END");
     }
 
     /// @dev maximum 3 chains in 1 query
@@ -68,7 +80,7 @@ abstract contract SpellRunner is Test {
                 networks = string(abi.encodePacked(networks, "&networks=", chains[i]));
             }
         }
-        
+
         string[] memory inputs = new string[](8);
         inputs[0] = "curl";
         inputs[1] = "-s";
@@ -115,6 +127,8 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(extraBlocks[0]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(17257333);
+
+        console.log("TIMESTAMP0: ", block.timestamp);
     }
 
     /// @dev to be called in setUp
@@ -201,6 +215,8 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.ArbitrumOne());
         allChains.push(ChainIdUtils.Optimism());
         allChains.push(ChainIdUtils.Unichain());
+
+        console.log("TIMESTAMP9: ", block.timestamp);
     }
 
     function spellIdentifier(ChainId chainId) private view returns(string memory) {
@@ -217,7 +233,10 @@ abstract contract SpellRunner is Test {
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             string memory identifier = spellIdentifier(chainId);
+            console.log("identifier: ", identifier);
+            console.log("BEFORE TRY");
             try vm.getCode(identifier) {
+                console.log("AFTER TRY");
                 chainData[chainId].payload = deployPayload(chainId);
             } catch {
                 console.log("skipping spell deployment for network: ", chainId.toDomainString());
@@ -227,12 +246,17 @@ abstract contract SpellRunner is Test {
 
     /// @dev takes care to revert the selected fork to what was chosen before
     function executeAllPayloadsAndBridges() internal {
+        console.log("--- EXECUTE ALL PAYLOADS AND BRIDGES");
+        console.log("TIMESTAMP1: ", block.timestamp);
         // only execute mainnet payload
         executeMainnetPayload();
+        console.log("TIMESTAMP2: ", block.timestamp);
         // then use bridges to execute other chains' payloads
         _relayMessageOverBridges();
+        console.log("TIMESTAMP3: ", block.timestamp);
         // execute the foreign payloads (either by simulation or real execute)
         _executeForeignPayloads();
+        console.log("TIMESTAMP4: ", block.timestamp);
     }
 
     /// @dev bridge contracts themselves are stored on mainnet
@@ -270,9 +294,12 @@ abstract contract SpellRunner is Test {
                 chainData[chainId].domain.selectFork();
                 uint256 actionsSetId = executor.actionsSetCount() - 1;
                 uint256 prevTimestamp = block.timestamp;
+                console.log("chainId: ", chainId.toDomainString());
+                console.log("---PRE-WARP ", block.timestamp);
                 vm.warp(executor.getActionsSetById(actionsSetId).executionTime);
                 executor.execute(actionsSetId);
                 vm.warp(prevTimestamp);
+                console.log("---POST-WARP", block.timestamp);
             } else {
                 // We will simulate execution until the real spell is deployed in the mainnet spell
                 address payload = chainData[chainId].payload;

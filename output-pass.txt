@@ -1,0 +1,112 @@
+[PASS] test_ETHEREUM_OPTIMISM_UNICHAIN_usdsAndSUsdsDistributions() (gas: 51502112)
+Logs:
+  Mainnet block:  22544190
+  Base block:  30598657
+  Arbitrum block:  339622051
+  Optimism block:  136193942
+  TIMESTAMP0:  1
+  TIMESTAMP9:  1747986671
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  0
+  currentTimestamp:  1747986671
+  --- START
+  susds conversion:  105246532681604553894219813
+  timestamp0:    1747986671
+  block.number:  22544190
+  optimism
+  timestamp0:    1747986661
+  block.number:  136193942
+  unichain
+  timestamp2:    1748005692
+  block.number:  17257333
+  --- EXECUTE ALL PAYLOADS AND BRIDGES
+  TIMESTAMP1:  1748005692
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  5
+  currentTimestamp:  1748005692
+  selecting fork:  5
+  warping to:  1748005692
+  --- onChain END
+  TIMESTAMP2:  1748005692
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  5
+  currentTimestamp:  1748005692
+  warping to:  1748005692
+  --- onChain END
+  TIMESTAMP3:  1748005692
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  5
+  currentTimestamp:  1748005692
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  0
+  currentTimestamp:  1747986671
+  warping to:  1747986671
+  --- onChain END
+  chainId:  Base
+  ---PRE-WARP  1747986661
+  ---POST-WARP 1747986661
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  1
+  currentTimestamp:  1747986661
+  selecting fork:  1
+  warping to:  1747986661
+  --- onChain END
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  1
+  currentTimestamp:  1747986661
+  selecting fork:  1
+  warping to:  1747986661
+  --- onChain END
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  1
+  currentTimestamp:  1747986661
+  selecting fork:  1
+  warping to:  1747986661
+  --- onChain END
+  chainId:  Optimism
+  ---PRE-WARP  1747986661
+  ---POST-WARP 1747986661
+
+  --- onChain
+  onChain:  Ethereum
+  currentFork:  4
+  currentTimestamp:  1747986661
+  selecting fork:  4
+  warping to:  1747986661
+  --- onChain END
+  chainId:  Unichain
+  ---PRE-WARP  1748005692
+  ---POST-WARP 1748005692
+  warping to:  1748005692
+  --- onChain END
+  TIMESTAMP4:  1748005692
+  optimism
+  timestamp3:    1747986661
+  block.number:  136193942
+  unichain
+  timestamp4:    1748005692
+  block.number:  17257333
+  opSUsdsShares:        95015006624991109408874343
+  unichainSUsdsShares:  95015006624991109408874344
+  --- END
+  susds conversion:  105246532681604553894219813
+  timestamp:     1747986671
+  block.number:  22544190
+  warping to:  1747986671
+  --- onChain END

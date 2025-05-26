@@ -100,7 +100,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         e2eTest(ctx.pool);
-        
+
         // Prevent MemoryLimitOOG
         _clearLogs();
 
@@ -144,7 +144,11 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_ETHEREUM_Oracles() public {
+        console.log("timestamp:    ", block.timestamp);
+        console.log("block.number: ", block.number);
         _runOraclesTests(ChainIdUtils.Ethereum());
+        console.log("timestamp:    ", block.timestamp);
+        console.log("block.number: ", block.number);
     }
 
     function test_GNOSIS_Oracles() public {
