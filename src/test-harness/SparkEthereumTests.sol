@@ -55,6 +55,10 @@ interface IPendleLinearDiscountOracle {
     function baseDiscountPerYear() external view returns (uint256);
 }
 
+interface ISparkProxy {
+    function wards(address) external view returns (uint256);
+}
+
 interface ITargetBaseIRM {
     function getBaseVariableBorrowRateSpread() external view returns (uint256);
 }
@@ -62,6 +66,7 @@ interface ITargetBaseIRM {
 interface ITargetKinkIRM {
     function getVariableRateSlope1Spread() external view returns (uint256);
 }
+
 
 /// @dev assertions specific to mainnet
 /// TODO: separate tests related to sparklend from the rest (eg: morpho)
@@ -110,6 +115,23 @@ abstract contract SparkEthereumTests is SparklendTests {
         _runFreezerMomTestsMultisig();
     }
 
+    function test_ETHEREUM_SparkProxyStorage() public onChain(ChainIdUtils.Ethereum()){
+        ISparkProxy proxy = ISparkProxy(Ethereum.SPARK_PROXY);
+        address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
+
+        assertEq(proxy.wards(ESM),                  1);
+        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
+
+        _checkStorageSlot(address(proxy), 100);
+
+        executeAllPayloadsAndBridges();
+
+        assertEq(proxy.wards(ESM),                  1);
+        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
+
+        _checkStorageSlot(address(proxy), 100);
+    }
+
     function test_ETHEREUM_RewardsConfiguration() public onChain(ChainIdUtils.Ethereum()){
         _runRewardsConfigurationTests();
 
@@ -143,6 +165,13 @@ abstract contract SparkEthereumTests is SparklendTests {
         }
     }
 
+    function _checkStorageSlot(address target, uint256 limit) internal view {
+        for (uint256 slot; slot < limit; ++slot) {
+            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
+            require(result == bytes32(0), "Slot is not zero");
+        }
+    }
+
     function _runRewardsConfigurationTests() internal view {
         SparkLendContext memory ctx = _getSparkLendContext();
 
@@ -167,20 +196,21 @@ abstract contract SparkEthereumTests is SparklendTests {
     function _voteAndCast(address _spell) internal {
         IAuthority authority = IAuthority(Ethereum.CHIEF);
 
-        address mkrWhale = makeAddr("mkrWhale");
-        uint256 amount = 1_000_000 ether;
+        address skyWhale = makeAddr("skyWhale");
+        uint256 amount = 4_000_000_000 ether;
 
-        deal(Ethereum.MKR, mkrWhale, amount);
+        deal(Ethereum.SKY, skyWhale, amount);
 
-        vm.startPrank(mkrWhale);
-        IERC20(Ethereum.MKR).approve(address(authority), amount);
+        vm.startPrank(skyWhale);
+        IERC20(Ethereum.SKY).approve(address(authority), amount);
         authority.lock(amount);
 
         address[] memory slate = new address[](1);
         slate[0] = _spell;
         authority.vote(slate);
 
-        vm.roll(block.number + 1);
+        // Min amount of blocks to pass to vote again.
+        vm.roll(block.number + 11);
 
         authority.lift(_spell);
 
@@ -725,5 +755,4 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         assertEq(uint256(ITargetKinkIRM(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
     }
-
 }

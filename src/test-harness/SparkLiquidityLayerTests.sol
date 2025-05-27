@@ -7,6 +7,8 @@ import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Optimism } from 'spark-address-registry/Optimism.sol';
+import { Unichain } from 'spark-address-registry/Unichain.sol';
 
 import { IALMProxy }                       from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }                     from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -104,6 +106,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 IRateLimits(Arbitrum.ALM_RATE_LIMITS),
                 Arbitrum.ALM_RELAYER,
                 Arbitrum.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Optimism()) {
+            ctx = SparkLiquidityLayerContext(
+                Optimism.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Optimism.ALM_PROXY),
+                IRateLimits(Optimism.ALM_RATE_LIMITS),
+                Optimism.ALM_RELAYER,
+                Optimism.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Unichain()) {
+            ctx = SparkLiquidityLayerContext(
+                Unichain.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Unichain.ALM_PROXY),
+                IRateLimits(Unichain.ALM_RATE_LIMITS),
+                Unichain.ALM_RELAYER,
+                Unichain.ALM_FREEZER
             );
         } else {
             revert("SLL/executing on unknown chain");
