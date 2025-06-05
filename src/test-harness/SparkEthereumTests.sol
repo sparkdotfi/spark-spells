@@ -197,7 +197,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         IAuthority authority = IAuthority(Ethereum.CHIEF);
 
         address skyWhale = makeAddr("skyWhale");
-        uint256 amount = 4_000_000_000 ether;
+        uint256 amount = 6_000_000_000 ether;
 
         deal(Ethereum.SKY, skyWhale, amount);
 
