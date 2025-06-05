@@ -67,9 +67,9 @@ contract SparkEthereum_20250612Test is SparkTestBase {
 
     function test_ETHEREUM_SparkLend_ezETHSupplyCap() public onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.EZETH, 20_000, 2_000, 12 hours);
-        
+
         executeAllPayloadsAndBridges();
-        
+
         _assertSupplyCapConfig(Ethereum.EZETH, 40_000, 5_000, 12 hours);
     }
 
