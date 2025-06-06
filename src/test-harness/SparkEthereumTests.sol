@@ -51,8 +51,10 @@ interface IRateSource {
 }
 
 interface IPendleLinearDiscountOracle {
-    function PT() external view returns (address);
     function baseDiscountPerYear() external view returns (uint256);
+    function getDiscount(uint256 timeLeft) external view returns (uint256);
+    function maturity() external view returns (uint256);
+    function PT() external view returns (address);
 }
 
 interface ISparkProxy {
@@ -67,6 +69,10 @@ interface ITargetKinkIRM {
     function getVariableRateSlope1Spread() external view returns (uint256);
 }
 
+interface IMorphoOracleFactory {
+    // NOTE: This applies to all oracles deployed by the factory
+    function isMorphoChainlinkOracleV2(address) external view returns (bool);
+}
 
 /// @dev assertions specific to mainnet
 /// TODO: separate tests related to sparklend from the rest (eg: morpho)
@@ -92,6 +98,8 @@ abstract contract SparkEthereumTests is SparklendTests {
         uint256 variableRateSlope2;
         uint256 optimalUsageRatio;
     }
+
+    address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
     function test_ETHEREUM_FreezerMom() public virtual onChain(ChainIdUtils.Ethereum()){
         uint256 snapshot = vm.snapshot();
@@ -611,7 +619,7 @@ abstract contract SparkEthereumTests is SparklendTests {
         address pt,
         address oracle,
         uint256 discount,
-        uint256 currentPrice
+        uint256 maturity
     )
         internal
     {
@@ -625,20 +633,35 @@ abstract contract SparkEthereumTests is SparklendTests {
         assertEq(address(_oracle.QUOTE_VAULT()),          address(0));
         assertEq(_oracle.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
         assertEq(_oracle.SCALE_FACTOR(),                  1e18);
-        assertEq(_oracle.price(),                         currentPrice);
+        assertGe(_oracle.price(),                         0.01e36);
         assertLe(_oracle.price(),                         1e36);
 
         IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
 
         assertEq(baseFeed.PT(),                  pt);
         assertEq(baseFeed.baseDiscountPerYear(), discount);
+        assertEq(baseFeed.maturity(),            maturity);
 
-        uint256 snapshot = vm.snapshot();
-        skip(365 days);
+        assertEq(baseFeed.getDiscount(365 days), discount);
+
+        uint256 blockTime = block.timestamp;
+
+        uint256 price = _oracle.price();
+
+        vm.warp(blockTime + 1 days);
+
+        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * uint256(1)/365, 0.005e36);
+
+        vm.warp(maturity - 1 seconds);
+
+        assertLe(_oracle.price(), 1e36);
+
+        vm.warp(maturity);
+
         assertEq(_oracle.price(), 1e36);
-        vm.revertTo(snapshot);
 
-        // TODO confirm morpho oracle was deployed from official factory
+        assertEq(IMorphoOracleFactory(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
+
         // TODO add a bytecode check to the pendle oracle
     }
 

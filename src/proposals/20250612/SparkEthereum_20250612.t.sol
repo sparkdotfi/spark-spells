@@ -177,10 +177,10 @@ contract SparkEthereum_20250612Test is SparkTestBase {
             newCap:     500_000_000e18
         });
         _testMorphoPendlePTOracleConfig({
-            pt:           PT_EUSDE_14AUG2025,
-            oracle:       PT_EUSDE_14AUG2025_PRICE_FEED,
-            discount:     0.15e18,
-            currentPrice: 0.971865634512937596e36
+            pt:       PT_EUSDE_14AUG2025,
+            oracle:   PT_EUSDE_14AUG2025_PRICE_FEED,
+            discount: 0.15e18,
+            maturity: 1755129600  // Thursday, August 14, 2025 12:00:00 AM
         });
     }
 
@@ -198,10 +198,10 @@ contract SparkEthereum_20250612Test is SparkTestBase {
             newCap:     500_000_000e18
         });
         _testMorphoPendlePTOracleConfig({
-            pt:           PT_SUSDE_25SEP2025,
-            oracle:       PT_SUSDE_25SEP2025_PRICE_FEED,
-            discount:     0.15e18,
-            currentPrice: 0.954605360540334856e36
+            pt:       PT_SUSDE_25SEP2025,
+            oracle:   PT_SUSDE_25SEP2025_PRICE_FEED,
+            discount: 0.15e18,
+            maturity: 1758758400  // Thursday, September 25, 2025 12:00:00 AM
         });
     }
 
