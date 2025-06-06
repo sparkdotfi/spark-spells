@@ -124,13 +124,13 @@ contract SparkEthereum_20250612Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sllSyrupUSDCDepositLimit() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 susdeDepositKey = RateLimitHelpers.makeAssetKey(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT(), SYRUP_USDC);
+        bytes32 syrupUsdcDepositKey = RateLimitHelpers.makeAssetKey(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT(), SYRUP_USDC);
 
-        _assertRateLimit(susdeDepositKey, 25_000_000e6, 5_000_000e6 / uint256(1 days));
+        _assertRateLimit(syrupUsdcDepositKey, 25_000_000e6, 5_000_000e6 / uint256(1 days));
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(susdeDepositKey, 100_000_000e6, 20_000_000e6 / uint256(1 days));
+        _assertRateLimit(syrupUsdcDepositKey, 100_000_000e6, 20_000_000e6 / uint256(1 days));
     }
 
     function test_ETHEREUM_morpho_PTSUSDE29MAY2025CapDecrease() public onChain(ChainIdUtils.Ethereum()) {
