@@ -255,9 +255,15 @@ contract SparkEthereum_20250612Test is SparkTestBase {
     }
 
     function test_ETHEREUM_SparkLend_AssetsLiabilities() public onChain(ChainIdUtils.Ethereum()) {
-        (uint256 assetsBefore, uint256 liabilitiesBefore, uint256 accruedToTreasuryScaledBefore, uint256 aTokenBalanceBefore) = getReserveAssetLiability(Ethereum.DAI);
+        (
+            uint256 assetsBefore,
+            uint256 liabilitiesBefore,
+            uint256 accruedToTreasuryScaledBefore,
+            uint256 aTokenBalanceBefore
+        ) = getReserveAssetLiability(Ethereum.DAI);
+
         uint256 amount = 1_000_000e18;
-        
+
         assertEq(accruedToTreasuryScaledBefore, 0);
         assertEq(aTokenBalanceBefore,           0);
 
@@ -271,8 +277,13 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         IERC20(Ethereum.DAI).approve(POOL, amount);
         IPool(POOL).deposit(Ethereum.DAI, amount, address(this), 0);
 
-        (uint256 assetsAfter, uint256 liabilitiesAfter, uint256 accruedToTreasuryScaledAfter, uint256 aTokenBalanceAfter) = getReserveAssetLiability(Ethereum.DAI);
-        
+        (
+            uint256 assetsAfter,
+            uint256 liabilitiesAfter,
+            uint256 accruedToTreasuryScaledAfter,
+            uint256 aTokenBalanceAfter
+        ) = getReserveAssetLiability(Ethereum.DAI);
+
         assertEq(assetsAfter - liabilitiesAfter,   262471813176323304951182);
         assertEq(assetsBefore - liabilitiesBefore, 333089201432253315330463);
         assertEq(accruedToTreasuryScaledAfter,     62750587617324456676735);
