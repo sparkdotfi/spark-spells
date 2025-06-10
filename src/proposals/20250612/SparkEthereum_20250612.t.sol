@@ -28,8 +28,6 @@ import { SparkTestBase }    from '../../test-harness/SparkTestBase.sol';
 
 contract SparkEthereum_20250612Test is SparkTestBase {
 
-    address constant DATA_PROVIDER                          = 0xFc21d6d146E6086B8359705C8b28512a983db0cb;
-    address constant POOL                                   = 0xC13e21B648A5Ee794902342038FF3aDAB66BE987;
     address internal constant PT_EUSDE_29MAY2025            = 0x50D2C7992b802Eef16c04FeADAB310f31866a545;
     address internal constant PT_EUSDE_29MAY2025_PRICE_FEED = 0x39a695Eb6d0C01F6977521E5E79EA8bc232b506a;
     address internal constant PT_EUSDE_14AUG2025            = 0x14Bdc3A3AE09f5518b923b69489CBcAfB238e617;
@@ -274,8 +272,8 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         // deposit into sparklend
         deal(Ethereum.DAI, address(this), amount);
 
-        IERC20(Ethereum.DAI).approve(POOL, amount);
-        IPool(POOL).deposit(Ethereum.DAI, amount, address(this), 0);
+        IERC20(Ethereum.DAI).approve(Ethereum.POOL, amount);
+        IPool(Ethereum.POOL).deposit(Ethereum.DAI, amount, address(this), 0);
 
         (
             uint256 assetsAfter,
@@ -284,17 +282,17 @@ contract SparkEthereum_20250612Test is SparkTestBase {
             uint256 aTokenBalanceAfter
         ) = getReserveAssetLiability(Ethereum.DAI);
 
-        assertEq(assetsAfter - liabilitiesAfter,   262471813176323304951182);
-        assertEq(assetsBefore - liabilitiesBefore, 333089201432253315330463);
-        assertEq(accruedToTreasuryScaledAfter,     62750587617324456676735);
+        assertEq(assetsAfter - liabilitiesAfter,   262_471.813176323304951182e18);
+        assertEq(assetsBefore - liabilitiesBefore, 333_089.201432253315330463e18);
+        assertEq(accruedToTreasuryScaledAfter,     62_750.587617324456676735e18);
         assertEq(aTokenBalanceAfter,               amount);
     }
 
     function getReserveAssetLiability(address asset)
         internal view returns (uint256 assets, uint256 liabilities, uint256 accruedToTreasuryScaled, uint256 aTokenBalance)
     {
-        IPool pool                     = IPool(POOL);
-        IPoolDataProvider dataProvider = IPoolDataProvider(DATA_PROVIDER);
+        IPool pool                     = IPool(Ethereum.POOL);
+        IPoolDataProvider dataProvider = IPoolDataProvider(Ethereum.PROTOCOL_DATA_PROVIDER);
 
         ( , accruedToTreasuryScaled,,,,,,,,,, )
             = dataProvider.getReserveData(asset);
