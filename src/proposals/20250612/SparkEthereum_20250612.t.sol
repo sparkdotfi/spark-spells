@@ -98,7 +98,7 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).setSupplyQueue(ids);
         controller.depositERC4626(Ethereum.MORPHO_VAULT_DAI_1, depositAmount);
         vm.stopPrank();
-        
+
         assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18 - depositAmount);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
@@ -256,14 +256,14 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         (
             uint256 assetsBefore,
             uint256 liabilitiesBefore,
-            uint256 accruedToTreasuryScaledBefore,
+            uint256 accruedToTreasuryBefore,
             uint256 aTokenBalanceBefore
         ) = getReserveAssetLiability(Ethereum.DAI);
 
         uint256 amount = 1_000_000e18;
 
-        assertEq(accruedToTreasuryScaledBefore, 0);
-        assertEq(aTokenBalanceBefore,           0);
+        assertEq(accruedToTreasuryBefore, 0);
+        assertEq(aTokenBalanceBefore,     0);
 
         executeAllPayloadsAndBridges();
 
@@ -278,23 +278,25 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         (
             uint256 assetsAfter,
             uint256 liabilitiesAfter,
-            uint256 accruedToTreasuryScaledAfter,
+            uint256 accruedToTreasuryAfter,
             uint256 aTokenBalanceAfter
         ) = getReserveAssetLiability(Ethereum.DAI);
 
         assertEq(assetsAfter - liabilitiesAfter,   262_471.813176323304951182e18);
         assertEq(assetsBefore - liabilitiesBefore, 333_089.201432253315330463e18);
-        assertEq(accruedToTreasuryScaledAfter,     62_750.587617324456676735e18);
+        assertEq(accruedToTreasuryAfter,           71_442.651784746627828900e18);
         assertEq(aTokenBalanceAfter,               amount);
+
+        assertApproxEqAbs((assetsBefore - liabilitiesBefore) - (assetsAfter - liabilitiesAfter), accruedToTreasuryAfter, 1000e18);
     }
 
     function getReserveAssetLiability(address asset)
-        internal view returns (uint256 assets, uint256 liabilities, uint256 accruedToTreasuryScaled, uint256 aTokenBalance)
+        internal view returns (uint256 assets, uint256 liabilities, uint256 accruedToTreasury, uint256 aTokenBalance)
     {
         IPool pool                     = IPool(Ethereum.POOL);
         IPoolDataProvider dataProvider = IPoolDataProvider(Ethereum.PROTOCOL_DATA_PROVIDER);
 
-        ( , accruedToTreasuryScaled,,,,,,,,,, )
+        ( , uint256 accruedToTreasuryScaled,,,,,,,,,, )
             = dataProvider.getReserveData(asset);
 
         ( address aToken,, ) = dataProvider.getReserveTokensAddresses(asset);
@@ -305,6 +307,8 @@ contract SparkEthereum_20250612Test is SparkTestBase {
 
         assets        = totalLiquidity + totalDebt;
         liabilities   = scaledLiabilities * pool.getReserveNormalizedIncome(asset) / 1e27;
+
+        accruedToTreasury = accruedToTreasuryScaled * pool.getReserveNormalizedIncome(asset) / 1e27;
 
         uint256 precision = 10 ** IERC20(asset).decimals();
 
