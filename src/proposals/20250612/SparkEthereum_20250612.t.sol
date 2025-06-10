@@ -288,6 +288,9 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         assertEq(aTokenBalanceAfter,               amount);
 
         assertApproxEqAbs((assetsBefore - liabilitiesBefore) - (assetsAfter - liabilitiesAfter), accruedToTreasuryAfter, 1000e18);
+
+        // The dust continues to accrue, (roughly 1000 DAI), but the difference is reduced by the newly introduced reserve factor.
+        assertLe((assetsBefore - liabilitiesBefore) - (assetsAfter - liabilitiesAfter), accruedToTreasuryAfter);
     }
 
     function getReserveAssetLiability(address asset)
