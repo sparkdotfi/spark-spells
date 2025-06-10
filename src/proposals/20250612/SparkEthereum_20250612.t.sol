@@ -1,13 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+
+import { IMetaMorpho, MarketParams, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
+import { IRateLimits }       from 'spark-alm-controller/src/interfaces/IRateLimits.sol';
 import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
 import { RateLimitHelpers }  from 'spark-alm-controller/src/RateLimitHelpers.sol';
+
+import { IAToken }           from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
+import { IPool }             from 'sparklend-v1-core/contracts/interfaces/IPool.sol';
+import { IPoolDataProvider } from 'sparklend-v1-core/contracts/interfaces/IPoolDataProvider.sol';
+
+import { SLLHelpers } from '../../SparkPayloadEthereum.sol';
 
 import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 
@@ -17,6 +28,8 @@ import { SparkTestBase }    from '../../test-harness/SparkTestBase.sol';
 
 contract SparkEthereum_20250612Test is SparkTestBase {
 
+    address constant DATA_PROVIDER                          = 0xFc21d6d146E6086B8359705C8b28512a983db0cb;
+    address constant POOL                                   = 0xC13e21B648A5Ee794902342038FF3aDAB66BE987;
     address internal constant PT_EUSDE_29MAY2025            = 0x50D2C7992b802Eef16c04FeADAB310f31866a545;
     address internal constant PT_EUSDE_29MAY2025_PRICE_FEED = 0x39a695Eb6d0C01F6977521E5E79EA8bc232b506a;
     address internal constant PT_EUSDE_14AUG2025            = 0x14Bdc3A3AE09f5518b923b69489CBcAfB238e617;
@@ -42,7 +55,10 @@ contract SparkEthereum_20250612Test is SparkTestBase {
 
     function test_ETHEREUM_SLL_MorphoSparkDAIOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+        IRateLimits rateLimits       = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+        uint256 depositAmount        = 1_000_000e18;
 
+        deal(Ethereum.DAI, Ethereum.ALM_PROXY, 20 * depositAmount);
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
             controller.LIMIT_4626_DEPOSIT(),
             Ethereum.MORPHO_VAULT_DAI_1
@@ -57,12 +73,45 @@ contract SparkEthereum_20250612Test is SparkTestBase {
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
+        vm.prank(Ethereum.ALM_RELAYER);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        controller.depositERC4626(Ethereum.MORPHO_VAULT_DAI_1, depositAmount);
+
         executeAllPayloadsAndBridges();
 
         assertEq(IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).isAllocator(Ethereum.ALM_RELAYER), true);
 
         _assertRateLimit(depositKey,  200_000_000e18,    uint256(100_000_000e18) / 1 days);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        vm.prank(Ethereum.ALM_RELAYER);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        controller.depositERC4626(Ethereum.MORPHO_VAULT_DAI_1, 200_000_001e18);
+
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18);
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(Ethereum.DAI);
+
+        Id[] memory ids = new Id[](1);
+        ids[0] = MarketParamsLib.id(idleMarket);
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        IMetaMorpho(Ethereum.MORPHO_VAULT_DAI_1).setSupplyQueue(ids);
+        controller.depositERC4626(Ethereum.MORPHO_VAULT_DAI_1, depositAmount);
+        vm.stopPrank();
+        
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18 - depositAmount);
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        vm.prank(Ethereum.ALM_RELAYER);
+        controller.withdrawERC4626(Ethereum.MORPHO_VAULT_DAI_1, 1e18);
+
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18 - depositAmount);
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        skip(1 days);
+        assertEq(rateLimits.getCurrentRateLimit(depositKey), 200_000_000e18);
     }
 
     function test_ETHEREUM_SparkLend_ezETHSupplyCap() public onChain(ChainIdUtils.Ethereum()) {
@@ -203,6 +252,57 @@ contract SparkEthereum_20250612Test is SparkTestBase {
             discount: 0.15e18,
             maturity: 1758758400  // Thursday, September 25, 2025 12:00:00 AM
         });
+    }
+
+    function test_ETHEREUM_SparkLend_AssetsLiabilities() public onChain(ChainIdUtils.Ethereum()) {
+        (uint256 assetsBefore, uint256 liabilitiesBefore, uint256 accruedToTreasuryScaledBefore, uint256 aTokenBalanceBefore) = getReserveAssetLiability(Ethereum.DAI);
+        uint256 amount = 1_000_000e18;
+        
+        assertEq(accruedToTreasuryScaledBefore, 0);
+        assertEq(aTokenBalanceBefore,           0);
+
+        executeAllPayloadsAndBridges();
+
+        vm.warp(block.timestamp + 10 days);
+
+        // deposit into sparklend
+        deal(Ethereum.DAI, address(this), amount);
+
+        IERC20(Ethereum.DAI).approve(POOL, amount);
+        IPool(POOL).deposit(Ethereum.DAI, amount, address(this), 0);
+
+        (uint256 assetsAfter, uint256 liabilitiesAfter, uint256 accruedToTreasuryScaledAfter, uint256 aTokenBalanceAfter) = getReserveAssetLiability(Ethereum.DAI);
+        
+        assertEq(assetsAfter - liabilitiesAfter,   262471813176323304951182);
+        assertEq(assetsBefore - liabilitiesBefore, 333089201432253315330463);
+        assertEq(accruedToTreasuryScaledAfter,     62750587617324456676735);
+        assertEq(aTokenBalanceAfter,               amount);
+    }
+
+    function getReserveAssetLiability(address asset)
+        internal view returns (uint256 assets, uint256 liabilities, uint256 accruedToTreasuryScaled, uint256 aTokenBalance)
+    {
+        IPool pool                     = IPool(POOL);
+        IPoolDataProvider dataProvider = IPoolDataProvider(DATA_PROVIDER);
+
+        ( , accruedToTreasuryScaled,,,,,,,,,, )
+            = dataProvider.getReserveData(asset);
+
+        ( address aToken,, ) = dataProvider.getReserveTokensAddresses(asset);
+
+        uint256 totalDebt         = dataProvider.getTotalDebt(asset);
+        uint256 totalLiquidity    = IERC20(asset).balanceOf(aToken);
+        uint256 scaledLiabilities = IAToken(aToken).scaledTotalSupply() + accruedToTreasuryScaled;
+
+        assets        = totalLiquidity + totalDebt;
+        liabilities   = scaledLiabilities * pool.getReserveNormalizedIncome(asset) / 1e27;
+
+        uint256 precision = 10 ** IERC20(asset).decimals();
+
+        assets      = assets      * 1e18 / precision;
+        liabilities = liabilities * 1e18 / precision;
+
+        aTokenBalance = IAToken(aToken).balanceOf(address(this));
     }
 
 }
