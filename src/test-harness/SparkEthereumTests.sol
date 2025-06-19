@@ -617,6 +617,7 @@ abstract contract SparkEthereumTests is SparklendTests {
 
     function _testMorphoPendlePTOracleConfig(
         address pt,
+        address loanToken,
         address oracle,
         uint256 discount,
         uint256 maturity
@@ -625,6 +626,9 @@ abstract contract SparkEthereumTests is SparklendTests {
     {
         IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
 
+        uint256 loanTokenDecimals = IERC20(loanToken).decimals();
+        uint256 ptDecimals        = IERC20(pt).decimals();
+
         assertEq(address(_oracle.BASE_FEED_2()),          address(0));
         assertEq(address(_oracle.BASE_VAULT()),           address(0));
         assertEq(_oracle.BASE_VAULT_CONVERSION_SAMPLE(),  1);
@@ -632,9 +636,9 @@ abstract contract SparkEthereumTests is SparklendTests {
         assertEq(address(_oracle.QUOTE_FEED_2()),         address(0));
         assertEq(address(_oracle.QUOTE_VAULT()),          address(0));
         assertEq(_oracle.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
-        assertEq(_oracle.SCALE_FACTOR(),                  1e18);
+        assertEq(_oracle.SCALE_FACTOR(),                  1e18 * 10 ** (loanTokenDecimals - ptDecimals));
         assertGe(_oracle.price(),                         0.01e36);
-        assertLe(_oracle.price(),                         1e36);
+        assertLe(_oracle.price(),                         1e36 * 10 ** (loanTokenDecimals - ptDecimals));
 
         IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
 
@@ -650,15 +654,15 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         vm.warp(blockTime + 1 days);
 
-        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * uint256(1)/365, 0.005e36);
+        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * 10 ** (loanTokenDecimals - ptDecimals) / 365, 0.005e36 * 10 ** (loanTokenDecimals - ptDecimals));
 
         vm.warp(maturity - 1 seconds);
 
-        assertLe(_oracle.price(), 1e36);
+        assertLe(_oracle.price(), 1e36 * 10 ** (loanTokenDecimals - ptDecimals));
 
         vm.warp(maturity);
 
-        assertEq(_oracle.price(), 1e36);
+        assertEq(_oracle.price(), 1e36 * 10 ** (loanTokenDecimals - ptDecimals));
 
         assertEq(IMorphoOracleFactory(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
 
