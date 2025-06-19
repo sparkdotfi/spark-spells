@@ -12,7 +12,6 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
  * @notice Spark DAI Morpho Vault:
  *         - Onboard PT-syrupUSDC-28Aug2025/DAI
  *         - Onboard PT-USDe-25Sept2025/DAI
- *         - Onboard LP-USDS-14Aug2025/DAI
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/june-26-2025-proposed-changes-to-spark-for-upcoming-spell/26663
  * Vote:   
