@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { Address } from '../libraries/Address.sol';
+import { PendleSparkLinearDiscountOracle } from 'lib/pendle-core-v2-public/contracts/oracles/internal/PendleSparkLinearDiscountOracle.sol';
 
 import { IScaledBalanceToken }             from "sparklend-v1-core/contracts/interfaces/IScaledBalanceToken.sol";
 import { IncentivizedERC20 }               from 'sparklend-v1-core/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
@@ -23,10 +23,12 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/contracts/interfaces/IDefaultInterestRateStrategy.sol';
 
+import { Address }               from '../libraries/Address.sol';
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
 
+import { CommonSpellAssertions }            from "./CommonSpellAssertions.sol";
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
 interface IAuthority {
@@ -666,7 +668,10 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         assertEq(IMorphoOracleFactory(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
 
-        // TODO add a bytecode check to the pendle oracle
+        address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
+
+        _assertBytecodeMatches(expectedPendleOracle, address(baseFeed));
+
     }
 
     function _testRateTargetBaseIRMUpdate(
