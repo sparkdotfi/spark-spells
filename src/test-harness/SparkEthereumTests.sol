@@ -24,7 +24,6 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
 
-import { CommonSpellAssertions }            from "./CommonSpellAssertions.sol";
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
 interface IAuthority {
