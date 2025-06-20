@@ -10,7 +10,6 @@ import { IncentivizedERC20 }               from 'sparklend-v1-core/contracts/pro
 import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { WadRayMath }                      from "sparklend-v1-core/contracts/protocol/libraries/math/WadRayMath.sol";
 
-import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
@@ -21,9 +20,6 @@ import { IMorphoChainlinkOracleV2 }                      from 'morpho-blue-oracl
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/contracts/interfaces/IDefaultInterestRateStrategy.sol';
-
-import { Address }               from '../libraries/Address.sol';
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';

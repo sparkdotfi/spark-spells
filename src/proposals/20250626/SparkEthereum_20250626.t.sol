@@ -3,7 +3,9 @@ pragma solidity ^0.8.10;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, IMorpho, MarketParams, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { Position } from 'morpho-blue/src/interfaces/IMorpho.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
@@ -26,16 +28,16 @@ contract SparkEthereum_20250626Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-06-19T16:40:00Z");
+        setupDomains("2025-06-20T15:14:00Z");
 
         deployPayloads();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0xF485e3351a4C3D7d1F89B1842Af625Fd0dFB90C8;
+
+        deal(Ethereum.USDS, Ethereum.SPARK_PROXY, TRANSFER_AMOUNT);
     }
 
     function test_ETHEREUM_transferUSDS() public onChain(ChainIdUtils.Ethereum()) {
-        deal(Ethereum.USDS, Ethereum.SPARK_PROXY, TRANSFER_AMOUNT);
-
         uint256 destinationBalanceBefore = IERC20(Ethereum.USDS).balanceOf(DESTINATION);
         uint256 sparkProxyBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
 
@@ -68,6 +70,13 @@ contract SparkEthereum_20250626Test is SparkTestBase {
             discount:  0.15e18,
             maturity:  1756339200
         });
+
+        Position memory position = IMorpho(Ethereum.MORPHO).position(
+            Id.wrap(0xbd290578029fb5adc4a67b0a96ec409002478d1092e56429a00ed30a106de7f3),  // id of PT-syrupUSDC-28Aug2025/DAI
+            address(1)
+        );
+
+        assertEq(position.supplyShares, 1e24);
     }
 
     function test_ETHEREUM_morpho_PTUSDE25SEP2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
@@ -90,6 +99,13 @@ contract SparkEthereum_20250626Test is SparkTestBase {
             discount:  0.15e18,
             maturity:  1758758400
         });
+
+        Position memory position = IMorpho(Ethereum.MORPHO).position(
+            Id.wrap(0x45d97c66db5e803b9446802702f087d4293a2f74b370105dc3a88a278bf6bb21),  // id of PT-USDe-25Sept2025/DAI
+            address(1)
+        );
+
+        assertEq(position.supplyShares, 1e24);
     }
 
 }
