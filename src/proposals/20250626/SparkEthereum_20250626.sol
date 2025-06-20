@@ -14,7 +14,8 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
  *         - Onboard PT-USDe-25Sept2025/DAI
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/june-26-2025-proposed-changes-to-spark-for-upcoming-spell/26663
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmcGPTMX
+ *         https://vote.sky.money/polling/QmWtGgPH
  */
 contract SparkEthereum_20250626 is SparkPayloadEthereum {
 
