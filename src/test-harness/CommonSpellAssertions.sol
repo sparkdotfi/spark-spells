@@ -42,6 +42,10 @@ abstract contract CommonSpellAssertions is SpellRunner {
         require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
         address expectedPayload = deployPayload(chainId);
 
+        _assertBytecodeMatches(expectedPayload, actualPayload);
+    }
+
+    function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {
         uint256 expectedBytecodeSize = expectedPayload.code.length;
         uint256 actualBytecodeSize   = actualPayload.code.length;
 

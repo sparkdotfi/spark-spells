@@ -14,6 +14,8 @@ import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
+import { CommonSpellAssertions } from "./CommonSpellAssertions.sol";
+
 import { SpellRunner } from "./SpellRunner.sol";
 
 struct SparkLendContext {
@@ -26,7 +28,7 @@ struct SparkLendContext {
 
 /// @dev assertions specific to sparklend, which are not run on chains where
 /// it is not deployed
-abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
+abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner, CommonSpellAssertions {
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using DomainHelpers for StdChains.Chain;
     using DomainHelpers for Domain;
@@ -100,7 +102,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         e2eTest(ctx.pool);
-        
+
         // Prevent MemoryLimitOOG
         _clearLogs();
 
