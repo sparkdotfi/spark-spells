@@ -38,16 +38,15 @@ contract SparkEthereum_20250626Test is SparkTestBase {
     }
 
     function test_ETHEREUM_transferUSDS() public onChain(ChainIdUtils.Ethereum()) {
-        uint256 destinationBalanceBefore = IERC20(Ethereum.USDS).balanceOf(DESTINATION);
-        uint256 sparkProxyBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        uint256 destinationBalanceBefore = usds.balanceOf(DESTINATION);
+        uint256 sparkProxyBalanceBefore  = usds.balanceOf(Ethereum.SPARK_PROXY);
 
         executeAllPayloadsAndBridges();
 
-        uint256 destinationBalanceAfter = IERC20(Ethereum.USDS).balanceOf(DESTINATION);
-        uint256 sparkProxyBalanceAfter  = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
-
-        assertEq(destinationBalanceAfter - destinationBalanceBefore, TRANSFER_AMOUNT);
-        assertEq(sparkProxyBalanceBefore - sparkProxyBalanceAfter,   TRANSFER_AMOUNT);
+        assertEq(usds.balanceOf(DESTINATION),          destinationBalanceBefore + TRANSFER_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY), sparkProxyBalanceBefore  - TRANSFER_AMOUNT);
     }
 
     function test_ETHEREUM_morpho_PTSYRUPUSDC28AUG2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
