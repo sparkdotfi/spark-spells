@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
+import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
+
 import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -11,10 +13,13 @@ import { SparkTestBase } from '../../test-harness/SparkTestBase.sol';
 
 contract SparkEthereum_20250626Test is SparkTestBase {
 
+    address internal constant DESTINATION                        = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
     address internal constant PT_SYRUP_USDC_28AUG2025            = 0xCcE7D12f683c6dAe700154f0BAdf779C0bA1F89A;
     address internal constant PT_SYRUP_USDC_28AUG2025_PRICE_FEED = 0xdcC91883A87D336a2EEC0213E9167b4A6CD5b175;
     address internal constant PT_USDE_25SEP2025                  = 0xBC6736d346a5eBC0dEbc997397912CD9b8FAe10a;
     address internal constant PT_USDE_25SEP2025_PRICE_FEED       = 0x076a476329CAf84Ef7FED997063a0055900eE00f;
+
+    uint256 internal constant TRANSFER_AMOUNT = 800_000e18;
 
     constructor() {
         id = "20250626";
@@ -26,6 +31,21 @@ contract SparkEthereum_20250626Test is SparkTestBase {
         deployPayloads();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0xF485e3351a4C3D7d1F89B1842Af625Fd0dFB90C8;
+    }
+
+    function test_ETHEREUM_transferUSDS() public onChain(ChainIdUtils.Ethereum()) {
+        deal(Ethereum.USDS, Ethereum.SPARK_PROXY, TRANSFER_AMOUNT);
+
+        uint256 destinationBalanceBefore = IERC20(Ethereum.USDS).balanceOf(DESTINATION);
+        uint256 sparkProxyBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+
+        executeAllPayloadsAndBridges();
+
+        uint256 destinationBalanceAfter = IERC20(Ethereum.USDS).balanceOf(DESTINATION);
+        uint256 sparkProxyBalanceAfter  = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+
+        assertEq(destinationBalanceAfter - destinationBalanceBefore, TRANSFER_AMOUNT);
+        assertEq(sparkProxyBalanceBefore - sparkProxyBalanceAfter,   TRANSFER_AMOUNT);
     }
 
     function test_ETHEREUM_morpho_PTSYRUPUSDC28AUG2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
