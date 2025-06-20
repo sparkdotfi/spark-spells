@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { IMetaMorpho, IMorpho, MarketParams, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMorpho, MarketParams, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { Position } from 'morpho-blue/src/interfaces/IMorpho.sol';
 
