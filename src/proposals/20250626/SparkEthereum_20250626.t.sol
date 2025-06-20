@@ -28,11 +28,11 @@ contract SparkEthereum_20250626Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-06-20T15:14:00Z");
+        setupDomains("2025-06-20T16:35:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xF485e3351a4C3D7d1F89B1842Af625Fd0dFB90C8;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x74e1ba852C864d689562b5977EedCB127fDE0C9F;
 
         deal(Ethereum.USDS, Ethereum.SPARK_PROXY, TRANSFER_AMOUNT);
     }
