@@ -3,14 +3,13 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { Address } from '../libraries/Address.sol';
+import { PendleSparkLinearDiscountOracle } from 'lib/pendle-core-v2-public/contracts/oracles/internal/PendleSparkLinearDiscountOracle.sol';
 
 import { IScaledBalanceToken }             from "sparklend-v1-core/contracts/interfaces/IScaledBalanceToken.sol";
 import { IncentivizedERC20 }               from 'sparklend-v1-core/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
 import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { WadRayMath }                      from "sparklend-v1-core/contracts/protocol/libraries/math/WadRayMath.sol";
 
-import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
@@ -20,8 +19,6 @@ import { MarketParamsLib }                               from 'morpho-blue/src/l
 import { IMorphoChainlinkOracleV2 }                      from 'morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
-
-import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/contracts/interfaces/IDefaultInterestRateStrategy.sol';
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
@@ -617,6 +614,7 @@ abstract contract SparkEthereumTests is SparklendTests {
 
     function _testMorphoPendlePTOracleConfig(
         address pt,
+        address loanToken,
         address oracle,
         uint256 discount,
         uint256 maturity
@@ -625,6 +623,11 @@ abstract contract SparkEthereumTests is SparklendTests {
     {
         IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
 
+        IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
+
+        // TODO: This assumes loanTokenDecimals >= ptDecimals, fix for the other case.
+        uint256 assetConversion = 10 ** (IERC20(loanToken).decimals() - IERC20(pt).decimals());
+
         assertEq(address(_oracle.BASE_FEED_2()),          address(0));
         assertEq(address(_oracle.BASE_VAULT()),           address(0));
         assertEq(_oracle.BASE_VAULT_CONVERSION_SAMPLE(),  1);
@@ -632,11 +635,9 @@ abstract contract SparkEthereumTests is SparklendTests {
         assertEq(address(_oracle.QUOTE_FEED_2()),         address(0));
         assertEq(address(_oracle.QUOTE_VAULT()),          address(0));
         assertEq(_oracle.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
-        assertEq(_oracle.SCALE_FACTOR(),                  1e18);
+        assertEq(_oracle.SCALE_FACTOR(),                  1e36 * assetConversion / 10 ** (IERC20(address(baseFeed)).decimals()));
         assertGe(_oracle.price(),                         0.01e36);
-        assertLe(_oracle.price(),                         1e36);
-
-        IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
+        assertLe(_oracle.price(),                         1e36 * assetConversion);
 
         assertEq(baseFeed.PT(),                  pt);
         assertEq(baseFeed.baseDiscountPerYear(), discount);
@@ -650,19 +651,22 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         vm.warp(blockTime + 1 days);
 
-        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * uint256(1)/365, 0.005e36);
+        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * assetConversion / 365, 0.005e36 * assetConversion);
 
         vm.warp(maturity - 1 seconds);
 
-        assertLe(_oracle.price(), 1e36);
+        assertLe(_oracle.price(), 1e36 * assetConversion);
 
         vm.warp(maturity);
 
-        assertEq(_oracle.price(), 1e36);
+        assertEq(_oracle.price(), 1e36 * assetConversion);
 
         assertEq(IMorphoOracleFactory(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
 
-        // TODO add a bytecode check to the pendle oracle
+        address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
+
+        _assertBytecodeMatches(expectedPendleOracle, address(baseFeed));
+
     }
 
     function _testRateTargetBaseIRMUpdate(
