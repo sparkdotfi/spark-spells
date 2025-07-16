@@ -34,10 +34,10 @@ interface IController {
 
 /**
  * @title  July 24, 2025 Spark Ethereum Proposal
- * @notice SparkLend:
- *         - Reduce WBTC Liquidation Threshold
+ * @notice Spark Liquidity Layer:
  *         - Transfer BUIDL and JTRSY tokens to Grove
  *         SparkLend:
+ *         - Reduce WBTC Liquidation Threshold
  *         - Transfer accumulated SparkLend ETH to multisig to be liquidated
  *         Spark USDS Vault:
  *         - Onboard PT-SPK-USDS Farm
