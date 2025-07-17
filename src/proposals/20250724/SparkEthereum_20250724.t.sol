@@ -70,6 +70,8 @@ contract SparkEthereum_20250724Test is SparkTestBase {
     function test_ETHEREUM_transferEthToMultisig() public onChain(ChainIdUtils.Ethereum()) {
         uint256 balanceBefore = IERC20(Ethereum.WETH_ATOKEN).balanceOf(Ethereum.TREASURY);
 
+        assertGe(balanceBefore, 500e18);
+
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.WETH_ATOKEN).balanceOf(Ethereum.TREASURY),    0);
@@ -79,6 +81,9 @@ contract SparkEthereum_20250724Test is SparkTestBase {
     function test_ETHEREUM_transferTokensToGrove() public onChain(ChainIdUtils.Ethereum()) {
         uint256 buidlIbalanceBefore = IERC20(Ethereum.BUIDLI).balanceOf(Ethereum.ALM_PROXY);
         uint256 jtrsyBalanceBefore  = IERC20(Ethereum.JTRSY).balanceOf(Ethereum.ALM_PROXY);
+
+        assertGe(buidlIbalanceBefore, 800_000_000e6);
+        assertGe(jtrsyBalanceBefore,  370_000_000e6);
 
         executeAllPayloadsAndBridges();
 
@@ -106,7 +111,7 @@ contract SparkEthereum_20250724Test is SparkTestBase {
             loanToken: Ethereum.USDS,
             oracle:    PT_SPK_USDS_24SEP2025_PRICE_FEED,
             discount:  0.15e18,
-            maturity:  1758758400
+            maturity:  1758758400  // Thursday, September 25, 2025 12:00:00 AM UTC
         });
     }
 
