@@ -117,7 +117,7 @@ contract SparkEthereum_20250724Test is SparkTestBase {
             loanToken: Ethereum.USDS,
             oracle:    PT_SPK_USDS_25SEP2025_PRICE_FEED,
             discount:  0.15e18,
-            maturity:  1758758400  // Friday, September 26, 2025 12:00:00 AM UTC
+            maturity:  1758758400  // Thursday, September 25, 2025 12:00:00 AM UTC
         });
     }
 
@@ -147,8 +147,6 @@ contract SparkEthereum_20250724Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        skip(1 days);
-
         assertEq(IMetaMorpho(SPARK_USDS_VAULT).isAllocator(Ethereum.ALM_RELAYER), true);
 
         _assertRateLimit(depositKey,  200_000_000e18,    uint256(100_000_000e18) / 1 days);
@@ -162,13 +160,26 @@ contract SparkEthereum_20250724Test is SparkTestBase {
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(Ethereum.USDS);
+        MarketParams memory ptMarket   = MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_SPK_USDS_25SEP2025,
+                oracle:          PT_SPK_USDS_25SEP2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.965e18
+            });
+
+        skip(1 days);
 
         IMetaMorpho(SPARK_USDS_VAULT).acceptCap(
             idleMarket
         );
+        IMetaMorpho(SPARK_USDS_VAULT).acceptCap(
+            ptMarket
+        );
 
-        Id[] memory ids = new Id[](1);
-        ids[0] = MarketParamsLib.id(idleMarket);
+        Id[] memory ids = new Id[](2);
+        ids[0] = MarketParamsLib.id(ptMarket);
+        ids[1] = MarketParamsLib.id(idleMarket);
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         IMetaMorpho(SPARK_USDS_VAULT).setSupplyQueue(ids);
