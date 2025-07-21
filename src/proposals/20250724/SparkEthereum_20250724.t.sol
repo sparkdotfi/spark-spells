@@ -21,8 +21,8 @@ contract SparkEthereum_20250724Test is SparkTestBase {
 
     address internal constant GROVE_ALM_PROXY                  = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant LIQUIDATION_MULTISIG             = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant PT_SPK_USDS_24SEP2025            = 0xC347584b415715B1b66774B2899Fef2FD3b56d6e;
-    address internal constant PT_SPK_USDS_24SEP2025_PRICE_FEED = 0xaA31f21E3d23bF3A8F401E670171b0DA10F8466f;
+    address internal constant PT_SPK_USDS_25SEP2025            = 0xC347584b415715B1b66774B2899Fef2FD3b56d6e;
+    address internal constant PT_SPK_USDS_25SEP2025_PRICE_FEED = 0xaA31f21E3d23bF3A8F401E670171b0DA10F8466f;
     address internal constant SPARK_USDS_VAULT                 = 0xe41a0583334f0dc4E023Acd0bFef3667F6FE0597;
 
     constructor() {
@@ -93,13 +93,13 @@ contract SparkEthereum_20250724Test is SparkTestBase {
         assertEq(IERC20(Ethereum.JTRSY).balanceOf(GROVE_ALM_PROXY),     jtrsyBalanceBefore);
     }
 
-    function test_ETHEREUM_morpho_PTSPKUSDS24SEP2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_morpho_PTSPKUSDS25SEP2025Onboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: SPARK_USDS_VAULT,
             config: MarketParams({
                 loanToken:       Ethereum.USDS,
-                collateralToken: PT_SPK_USDS_24SEP2025,
-                oracle:          PT_SPK_USDS_24SEP2025_PRICE_FEED,
+                collateralToken: PT_SPK_USDS_25SEP2025,
+                oracle:          PT_SPK_USDS_25SEP2025_PRICE_FEED,
                 irm:             Ethereum.MORPHO_DEFAULT_IRM,
                 lltv:            0.965e18
             }),
@@ -107,9 +107,9 @@ contract SparkEthereum_20250724Test is SparkTestBase {
             newCap:     500_000_000e18
         });
         _testMorphoPendlePTOracleConfig({
-            pt:        PT_SPK_USDS_24SEP2025,
+            pt:        PT_SPK_USDS_25SEP2025,
             loanToken: Ethereum.USDS,
-            oracle:    PT_SPK_USDS_24SEP2025_PRICE_FEED,
+            oracle:    PT_SPK_USDS_25SEP2025_PRICE_FEED,
             discount:  0.15e18,
             maturity:  1758758400  // Thursday, September 25, 2025 12:00:00 AM UTC
         });
