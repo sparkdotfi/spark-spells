@@ -3,13 +3,19 @@ pragma solidity ^0.8.10;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, MarketParams, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 
-import { RateLimitHelpers }  from 'spark-alm-controller/src/RateLimitHelpers.sol';
 import { ForeignController } from 'spark-alm-controller/src/ForeignController.sol';
+import { IRateLimits }       from 'spark-alm-controller/src/interfaces/IRateLimits.sol';
+import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
+import { RateLimitHelpers }  from 'spark-alm-controller/src/RateLimitHelpers.sol';
+
+import { SLLHelpers } from '../../SparkPayloadEthereum.sol';
 
 import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 
@@ -111,8 +117,75 @@ contract SparkEthereum_20250724Test is SparkTestBase {
             loanToken: Ethereum.USDS,
             oracle:    PT_SPK_USDS_25SEP2025_PRICE_FEED,
             discount:  0.15e18,
-            maturity:  1758758400  // Thursday, September 25, 2025 12:00:00 AM UTC
+            maturity:  1758758400  // Friday, September 26, 2025 12:00:00 AM UTC
         });
+    }
+
+    function test_ETHEREUM_SLL_MorphoSparkUSDSOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+        IRateLimits rateLimits       = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+        uint256 depositAmount        = 1_000_000e18;
+
+        deal(Ethereum.USDS, Ethereum.ALM_PROXY, 20 * depositAmount);
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_4626_DEPOSIT(),
+            SPARK_USDS_VAULT
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_4626_WITHDRAW(),
+            SPARK_USDS_VAULT
+        );
+
+        assertEq(IMetaMorpho(SPARK_USDS_VAULT).isAllocator(Ethereum.ALM_RELAYER), false);
+
+        _assertRateLimit(depositKey,  0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+
+        vm.prank(Ethereum.ALM_RELAYER);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        controller.depositERC4626(SPARK_USDS_VAULT, depositAmount);
+
+        executeAllPayloadsAndBridges();
+
+        skip(1 days);
+
+        assertEq(IMetaMorpho(SPARK_USDS_VAULT).isAllocator(Ethereum.ALM_RELAYER), true);
+
+        _assertRateLimit(depositKey,  200_000_000e18,    uint256(100_000_000e18) / 1 days);
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        vm.prank(Ethereum.ALM_RELAYER);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        controller.depositERC4626(SPARK_USDS_VAULT, 200_000_001e18);
+
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18);
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(Ethereum.USDS);
+
+        IMetaMorpho(SPARK_USDS_VAULT).acceptCap(
+            idleMarket
+        );
+
+        Id[] memory ids = new Id[](1);
+        ids[0] = MarketParamsLib.id(idleMarket);
+
+        vm.startPrank(Ethereum.ALM_RELAYER);
+        IMetaMorpho(SPARK_USDS_VAULT).setSupplyQueue(ids);
+        controller.depositERC4626(SPARK_USDS_VAULT, depositAmount);
+        vm.stopPrank();
+
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18 - depositAmount);
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        vm.prank(Ethereum.ALM_RELAYER);
+        controller.withdrawERC4626(SPARK_USDS_VAULT, 1e18);
+
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  200_000_000e18 - depositAmount);
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        skip(1 days);
+        assertEq(rateLimits.getCurrentRateLimit(depositKey), 200_000_000e18);
     }
 
 }

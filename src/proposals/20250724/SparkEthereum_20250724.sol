@@ -9,7 +9,7 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { IALMProxy } from 'spark-alm-controller/src/interfaces/IALMProxy.sol';
 
-import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, IEngine, EngineFlags, SLLHelpers } from "../../SparkPayloadEthereum.sol";
 
 interface ITreasuryController {
     function transfer(
@@ -79,6 +79,21 @@ contract SparkEthereum_20250724 is SparkPayloadEthereum {
             recipient: LIQUIDATION_MULTISIG,
             amount:    IERC20(Ethereum.WETH_ATOKEN).balanceOf(Ethereum.TREASURY)
         });
+
+        IMetaMorpho(SPARK_USDS_VAULT).setIsAllocator(
+            Ethereum.ALM_RELAYER,
+            true
+        );
+        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(Ethereum.USDS);
+        IMetaMorpho(SPARK_USDS_VAULT).submitCap(
+            idleMarket,
+            type(uint184).max
+        );
+        _onboardERC4626Vault(
+            SPARK_USDS_VAULT,
+            200_000_000e18,
+            100_000_000e18 / uint256(1 days)
+        );
 
         // Grant controller role to Spark Proxy
         IController(Ethereum.ALM_PROXY).grantRole(
