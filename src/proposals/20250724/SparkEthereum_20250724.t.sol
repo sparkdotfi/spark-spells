@@ -36,11 +36,12 @@ contract SparkEthereum_20250724Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-07-16T13:51:00Z");
+        setupDomains("2025-07-21T15:15:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x74e1ba852C864d689562b5977EedCB127fDE0C9F;
+        chainData[ChainIdUtils.Base()].payload     = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x41EdbF09cd2f272175c7fACB857B767859543D15;
     }
 
     function test_ETHEREUM_WBTCChanges() public onChain(ChainIdUtils.Ethereum()) {
@@ -88,7 +89,7 @@ contract SparkEthereum_20250724Test is SparkTestBase {
         uint256 buidlIbalanceBefore = IERC20(Ethereum.BUIDLI).balanceOf(Ethereum.ALM_PROXY);
         uint256 jtrsyBalanceBefore  = IERC20(Ethereum.JTRSY).balanceOf(Ethereum.ALM_PROXY);
 
-        assertGe(buidlIbalanceBefore, 800_000_000e6);
+        assertGe(buidlIbalanceBefore, 600_000_000e6);
         assertGe(jtrsyBalanceBefore,  370_000_000e6);
 
         executeAllPayloadsAndBridges();

@@ -56,6 +56,10 @@ contract SparkEthereum_20250724 is SparkPayloadEthereum {
     address internal constant PT_SPK_USDS_25SEP2025_PRICE_FEED = 0xaA31f21E3d23bF3A8F401E670171b0DA10F8466f;
     address internal constant SPARK_USDS_VAULT                 = 0xe41a0583334f0dc4E023Acd0bFef3667F6FE0597;
 
+    constructor() {
+        PAYLOAD_BASE = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
+    }
+
     function collateralsUpdates() public pure override returns (IEngine.CollateralUpdate[] memory) {
         IEngine.CollateralUpdate[] memory updates = new IEngine.CollateralUpdate[](1);
 
