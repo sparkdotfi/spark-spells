@@ -13,6 +13,7 @@ import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 import { InterestStrategyValues, ReserveConfig } from '../../test-harness/ProtocolV3TestBase.sol';
 import { ICustomIRM, IRateSource }               from '../../test-harness/SparkEthereumTests.sol';
 import { SparkLendContext }                      from '../../test-harness/SparklendTests.sol';
+import { SparkLiquidityLayerContext }            from '../../test-harness/SparkLiquidityLayerTests.sol';
 import { SparkTestBase }                         from '../../test-harness/SparkTestBase.sol';
 
 contract SparkEthereum_20250807Test is SparkTestBase {
@@ -252,6 +253,9 @@ contract SparkEthereum_20250807Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sll_onboardPyusd() public onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(ctx.controller);
+
         bytes32 pyusdDepositKey = RateLimitHelpers.makeAssetKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
             PYUSD_ATOKEN
@@ -261,6 +265,12 @@ contract SparkEthereum_20250807Test is SparkTestBase {
             PYUSD_ATOKEN
         );
 
+        IERC20 underlying = IERC20(PYUSD);
+
+        uint256 expectedDepositAmount = 1_000_000e6;
+
+        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
+
         _assertRateLimit(pyusdDepositKey,  0, 0);
         _assertRateLimit(pyusdWithdrawKey, 0, 0);
 
@@ -268,6 +278,33 @@ contract SparkEthereum_20250807Test is SparkTestBase {
 
         _assertRateLimit(pyusdDepositKey,  50_000_000e6,      25_000_000e6 / uint256(1 days));
         _assertRateLimit(pyusdWithdrawKey, type(uint256).max, 0);
+
+        uint256 aTokenBalance = underlying.balanceOf(PYUSD_ATOKEN);
+
+        assertEq(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount);
+
+        assertEq(IERC20(PYUSD_ATOKEN).balanceOf(address(ctx.proxy)), 0);
+
+        vm.prank(ctx.relayer);
+        controller.depositAave(PYUSD_ATOKEN, expectedDepositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(pyusdDepositKey),  50_000_000e6 - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(pyusdWithdrawKey), type(uint256).max);
+
+        assertApproxEqAbs(underlying.balanceOf(PYUSD_ATOKEN),       aTokenBalance + expectedDepositAmount, 1);
+        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                     1);
+
+        assertApproxEqAbs(IERC20(PYUSD_ATOKEN).balanceOf(address(ctx.proxy)), expectedDepositAmount, 1);
+
+        vm.prank(ctx.relayer);
+        controller.withdrawAave(PYUSD_ATOKEN, expectedDepositAmount / 2);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(pyusdDepositKey),  50_000_000e6 - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(pyusdWithdrawKey), type(uint256).max);
+
+        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
+
+        assertApproxEqAbs(IERC20(PYUSD_ATOKEN).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
     }
 
     function test_ETHEREUM_curve_pyusdusdcOnboarding() public onChain(ChainIdUtils.Ethereum()) {

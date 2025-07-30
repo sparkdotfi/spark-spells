@@ -93,6 +93,7 @@ contract SparkEthereum_20250807 is SparkPayloadEthereum {
         IERC20(PYUSD).approve(address(LISTING_ENGINE.POOL()), 1e6);
         LISTING_ENGINE.POOL().supply(PYUSD, 1e6, address(this), 0);
 
+        IPoolConfigurator(Ethereum.POOL_CONFIGURATOR).setLiquidationProtocolFee(PYUSD, 10_00);
         IPoolConfigurator(Ethereum.POOL_CONFIGURATOR).setReserveFlashLoaning(Ethereum.USDS, true);
 
         RateLimitHelpers.setRateLimitData(
