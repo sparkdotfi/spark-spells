@@ -5,19 +5,22 @@ import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPayloadEthereum.sol";
+import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
 import { IPoolConfigurator } from 'sparklend-v1-core/contracts/interfaces/IPoolConfigurator.sol';
 
+import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPayloadEthereum.sol";
+
 /**
  * @title  August 7, 2025 Spark Ethereum Proposal
  * @notice Spark Liquidity Layer:
  *         - Onboard SparkLend pyUSD
- *         - Onboard Curve pyUSD/USDC Pool (TODO)
+ *         - Onboard Curve pyUSD/USDC Pool
  *         SparkLend:
- *         - Onboard pyUSD (TODO)
+ *         - Onboard pyUSD
  *         - Update Stablecoin Rate Models
  *         - Enable Flash Loans for USDS
  * @author Phoenix Labs
@@ -26,7 +29,9 @@ import { IPoolConfigurator } from 'sparklend-v1-core/contracts/interfaces/IPoolC
  */
 contract SparkEthereum_20250807 is SparkPayloadEthereum {
 
+    address internal constant CURVE_PYUSDUSDC     = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
     address internal constant PYUSD               = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+    address internal constant PYUSD_ATOKEN        = 0x779224df1c756b4EDD899854F32a53E8c2B2ce5d;
     address internal constant PYUSD_PRICE_FEED    = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
     address internal constant USDS_DAI_IRM        = 0xD99f41B22BBb4af36ae452Bf0Cc3aA07ce91bD66;
     address internal constant USDC_USDT_PYUSD_IRM = 0xD3d3BcD8cC1D3d0676Da13F7Fc095497329EC683;
@@ -85,6 +90,42 @@ contract SparkEthereum_20250807 is SparkPayloadEthereum {
         LISTING_ENGINE.POOL().supply(PYUSD, 1e6, address(this), 0);
 
         IPoolConfigurator(Ethereum.POOL_CONFIGURATOR).setReserveFlashLoaning(Ethereum.USDS, true);
+
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
+                PYUSD_ATOKEN
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitData({
+                maxAmount : 50_000_000e6,
+                slope     : 25_000_000e6 / uint256(1 days)
+            }),
+            "pyusdDepositLimit",
+            6
+        );
+        RateLimitHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_WITHDRAW(),
+                PYUSD_ATOKEN
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            RateLimitHelpers.unlimitedRateLimit(),
+            "pyusdWithdrawLimit",
+            6
+        );
+
+        _onboardCurvePool({
+            controller:    Ethereum.ALM_CONTROLLER,
+            pool:          CURVE_PYUSDUSDC,
+            maxSlippage:   0.9995e18,
+            swapMax:       5_000_000e18,
+            swapSlope:     25_000_000e18 / uint256(1 days),
+            depositMax:    0,
+            depositSlope:  0,
+            withdrawMax:   0,
+            withdrawSlope: 0
+        });
     }
 
 }
