@@ -80,7 +80,7 @@ contract SparkEthereum_20250807Test is SparkTestBase {
             // Isolation  and emode configurations
             isolationMode:            false,
             isolationModeDebtCeiling: 0,
-            liquidationProtocolFee:   0,
+            liquidationProtocolFee:   10_00,
             emodeCategory:            2
         });
 
