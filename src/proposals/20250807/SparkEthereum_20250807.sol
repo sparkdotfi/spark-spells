@@ -25,7 +25,11 @@ import { SparkPayloadEthereum, IEngine, EngineFlags, Rates } from "../../SparkPa
  *         - Enable Flash Loans for USDS
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/august-7-2025-proposed-changes-to-spark-for-upcoming-spell/26896
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmUevv3W
+ *         https://vote.sky.money/polling/QmVGr47c
+ *         https://vote.sky.money/polling/QmZu3tVL
+ *         https://vote.sky.money/polling/QmXLExe7
+ *         https://vote.sky.money/polling/QmU6L1gS
  */
 contract SparkEthereum_20250807 is SparkPayloadEthereum {
 
