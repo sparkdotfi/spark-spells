@@ -96,29 +96,7 @@ contract SparkEthereum_20250807 is SparkPayloadEthereum {
         IPoolConfigurator(Ethereum.POOL_CONFIGURATOR).setLiquidationProtocolFee(PYUSD, 10_00);
         IPoolConfigurator(Ethereum.POOL_CONFIGURATOR).setReserveFlashLoaning(Ethereum.USDS, true);
 
-        RateLimitHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
-                PYUSD_ATOKEN
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            RateLimitData({
-                maxAmount : 50_000_000e6,
-                slope     : 25_000_000e6 / uint256(1 days)
-            }),
-            "pyusdDepositLimit",
-            6
-        );
-        RateLimitHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_WITHDRAW(),
-                PYUSD_ATOKEN
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            RateLimitHelpers.unlimitedRateLimit(),
-            "pyusdWithdrawLimit",
-            6
-        );
+        _onboardAaveToken(PYUSD_ATOKEN, 50_000_000e6, 25_000_000e6 / uint256(1 days));
 
         _onboardCurvePool({
             controller:    Ethereum.ALM_CONTROLLER,

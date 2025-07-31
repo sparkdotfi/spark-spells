@@ -34,7 +34,7 @@ contract SparkEthereum_20231011 is SparkPayloadEthereum {
         });
     }
 
-    function ()
+    function newListings()
         public pure override returns (IEngine.Listing[] memory)
     {
         IEngine.Listing[] memory listings = new IEngine.Listing[](1);
