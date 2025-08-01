@@ -5,8 +5,8 @@ import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
-import { MainnetController }                from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers, RateLimitData }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { ChainIdUtils } from 'src/libraries/ChainId.sol';
 
@@ -32,11 +32,11 @@ contract SparkEthereum_20250807Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-07-29T15:43:00Z");
+        setupDomains("2025-08-01T09:56:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x41EdbF09cd2f272175c7fACB857B767859543D15;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xb12057500EB57C3c43B91171D52b6DB141cCa01a;
 
         // Deal the amount of pyUSD to Spark Proxy
         deal(PYUSD, Ethereum.SPARK_PROXY, 1e6);
