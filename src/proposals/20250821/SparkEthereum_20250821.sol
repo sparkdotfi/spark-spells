@@ -25,7 +25,9 @@ import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEt
  *         - Authorize Rate Limited Transfer of MORPHO Tokens to Multisig
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/august-21-2025-proposed-changes-to-spark-for-upcoming-spell/26997
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmefEkAi
+ *         https://vote.sky.money/polling/QmP8NVR5
+ *         https://vote.sky.money/polling/QmNmGBSt
  */
 contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
