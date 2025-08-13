@@ -32,14 +32,14 @@ contract SparkEthereum_20250821Test is SparkTestBase {
     address internal constant NEW_USDS_DAI_IRM = 0x8a95998639A34462A1FdAaaA5506F66F90Ef2fDd;
 
     address internal constant OLD_WETH_IRM = 0xf4268AeC16d13446381F8a2c9bB05239323756ca;
-    address internal constant NEW_WETH_IRM = 0x2841651b030dB9B0E3C37e8468ebC12E7ce9E050;
+    address internal constant NEW_WETH_IRM = 0x4FD869adB651917D5c2591DD7128Ae6e1C24bDD5;
 
     constructor() {
         id = "20250821";
     }
 
     function setUp() public {
-        setupDomains("2025-08-13T12:34:00Z");
+        setupDomains("2025-08-13T13:24:00Z");
 
         deployPayloads();
 
@@ -174,6 +174,24 @@ contract SparkEthereum_20250821Test is SparkTestBase {
             optimalUsageRatio        : 0.95e27
         });
         _testRateTargetKinkIRMUpdate("USDT", oldParams, newParams);
+    }
+
+    function test_ETHEREUM_sparkLend_wethIrmUpdate() public onChain(ChainIdUtils.Ethereum()) {
+        RateTargetKinkIRMParams memory oldParams = RateTargetKinkIRMParams({
+            irm                      : OLD_WETH_IRM,
+            baseRate                 : 0,
+            variableRateSlope1Spread : -0.005e27,
+            variableRateSlope2       : 1.2e27,
+            optimalUsageRatio        : 0.90e27
+        });
+        RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
+            irm                      : NEW_WETH_IRM,
+            baseRate                 : 0,
+            variableRateSlope1Spread : -0.003e27,
+            variableRateSlope2       : 1.2e27,
+            optimalUsageRatio        : 0.90e27
+        });
+        _testRateTargetKinkIRMUpdate("WETH", oldParams, newParams);
     }
 
     function test_ETHEREUM_sparkLend_marketUpdates() public onChain(ChainIdUtils.Ethereum()) {

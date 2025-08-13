@@ -45,6 +45,7 @@ interface ICustomIRM {
 
 interface IRateSource {
     function getAPR() external view returns (int256);
+    function decimals() external view returns (uint256);
 }
 
 interface IPendleLinearDiscountOracle {
@@ -738,7 +739,8 @@ abstract contract SparkEthereumTests is SparklendTests {
         // Rate source should be the same
         assertEq(ICustomIRM(newParams.irm).RATE_SOURCE(), ICustomIRM(oldParams.irm).RATE_SOURCE());
 
-        int256 ssrRate = IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).getAPR();
+        uint256 ssrRateDecimals = IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).decimals();
+        int256 ssrRate = IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
 
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
 
@@ -782,4 +784,5 @@ abstract contract SparkEthereumTests is SparklendTests {
 
         assertEq(uint256(ITargetKinkIRM(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
     }
+
 }

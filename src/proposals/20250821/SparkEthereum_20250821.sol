@@ -38,7 +38,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
     address internal constant NEW_USDS_DAI_IRM  = 0x8a95998639A34462A1FdAaaA5506F66F90Ef2fDd;
     address internal constant NEW_USDC_USDT_IRM = 0x2961d766D71F33F6C5e6Ca8bA7d0Ca08E6452C92;
-    address internal constant NEW_WETH_IRM      = 0x2841651b030dB9B0E3C37e8468ebC12E7ce9E050;
+    address internal constant NEW_WETH_IRM      = 0x4FD869adB651917D5c2591DD7128Ae6e1C24bDD5;
 
     function collateralsUpdates()
         public pure override returns (IEngine.CollateralUpdate[] memory)
