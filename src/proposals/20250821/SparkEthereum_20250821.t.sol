@@ -25,7 +25,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
     address internal constant MORPHO_TOKEN      = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
     address internal constant SPARK_MULTISIG    = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
 
-    address internal constant OLD_USDC_USDT_IRM = 0x7F2fc6A7E3b3c658A84999b26ad2013C4Dc87061;
+    address internal constant OLD_USDC_USDT_IRM = 0xD3d3BcD8cC1D3d0676Da13F7Fc095497329EC683;
     address internal constant NEW_USDC_USDT_IRM = 0x2961d766D71F33F6C5e6Ca8bA7d0Ca08E6452C92;
 
     address internal constant OLD_USDS_DAI_IRM = 0xD99f41B22BBb4af36ae452Bf0Cc3aA07ce91bD66;
@@ -39,7 +39,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-08-13T09:47:00Z");
+        setupDomains("2025-08-13T12:34:00Z");
 
         deployPayloads();
 
@@ -115,8 +115,8 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
             irm                      : NEW_USDS_DAI_IRM,
             baseRate                 : 0,
-            variableRateSlope1Spread : 0.01e27,
-            variableRateSlope2       : 0.125e27,
+            variableRateSlope1Spread : 0.0125e27,
+            variableRateSlope2       : 0.15e27,
             optimalUsageRatio        : 0.8e27
         });
         _testRateTargetKinkIRMUpdate("DAI", oldParams, newParams);
@@ -133,8 +133,8 @@ contract SparkEthereum_20250821Test is SparkTestBase {
          RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
             irm                      : NEW_USDS_DAI_IRM,
             baseRate                 : 0,
-            variableRateSlope1Spread : 0.01e27,
-            variableRateSlope2       : 0.125e27,
+            variableRateSlope1Spread : 0.0125e27,
+            variableRateSlope2       : 0.15e27,
             optimalUsageRatio        : 0.8e27
         });
         _testRateTargetKinkIRMUpdate("USDS", oldParams, newParams);
@@ -151,8 +151,8 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
             irm                      : NEW_USDC_USDT_IRM,
             baseRate                 : 0,
-            variableRateSlope1Spread : 0.015e27,
-            variableRateSlope2       : 0.125e27,
+            variableRateSlope1Spread : 0.0125e27,
+            variableRateSlope2       : 0.15e27,
             optimalUsageRatio        : 0.95e27
         });
         _testRateTargetKinkIRMUpdate("USDC", oldParams, newParams);
@@ -169,8 +169,8 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         RateTargetKinkIRMParams memory newParams = RateTargetKinkIRMParams({
             irm                      : NEW_USDC_USDT_IRM,
             baseRate                 : 0,
-            variableRateSlope1Spread : 0.015e27,
-            variableRateSlope2       : 0.125e27,
+            variableRateSlope1Spread : 0.0125e27,
+            variableRateSlope2       : 0.15e27,
             optimalUsageRatio        : 0.95e27
         });
         _testRateTargetKinkIRMUpdate("USDT", oldParams, newParams);
@@ -219,7 +219,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         // lBTC Before
 
-        ReserveConfig memory lBTCConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'lBTC');
+        ReserveConfig memory lBTCConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'LBTC');
 
         assertEq(lBTCConfigBefore.ltv,                  65_00);
         assertEq(lBTCConfigBefore.liquidationThreshold, 70_00);
@@ -255,7 +255,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         _assertBorrowCapConfig({
             asset:            Ethereum.WSTETH,
             max:              1,
-            gap:              10_000,
+            gap:              1,
             increaseCooldown: 12 hours
         });
 
@@ -329,7 +329,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         _assertBorrowCapConfig({
             asset:            Ethereum.RETH,
             max:              1,
-            gap:              100,
+            gap:              1,
             increaseCooldown: 12 hours
         });
     }

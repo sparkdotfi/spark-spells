@@ -157,8 +157,8 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
     
         ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
 
-        capAutomator.setBorrowCapConfig({ asset: Ethereum.WSTETH, max: 1, gap: 10_000, increaseCooldown: 12 hours });
-        capAutomator.setBorrowCapConfig({ asset: Ethereum.RETH,   max: 1, gap: 100,    increaseCooldown: 12 hours });
+        capAutomator.setBorrowCapConfig({ asset: Ethereum.WSTETH, max: 1, gap: 1, increaseCooldown: 12 hours });
+        capAutomator.setBorrowCapConfig({ asset: Ethereum.RETH,   max: 1, gap: 1, increaseCooldown: 12 hours });
     }
 
 }
