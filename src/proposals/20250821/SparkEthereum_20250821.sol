@@ -154,7 +154,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.USDC, NEW_USDC_USDT_IRM);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.USDT, NEW_USDC_USDT_IRM);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.WETH, NEW_WETH_IRM);
-    
+
         ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
 
         capAutomator.setBorrowCapConfig({ asset: Ethereum.WSTETH, max: 1, gap: 1, increaseCooldown: 12 hours });
