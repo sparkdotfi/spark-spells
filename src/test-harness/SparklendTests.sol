@@ -5,10 +5,10 @@ import './ProtocolV3TestBase.sol';
 
 import { Address } from '../libraries/Address.sol';
 
-import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/contracts/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
-import { IACLManager }                           from 'sparklend-v1-core/contracts/interfaces/IACLManager.sol';
-import { IPoolConfigurator }                     from 'sparklend-v1-core/contracts/interfaces/IPoolConfigurator.sol';
-import { ReserveConfiguration }                  from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
+import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
+import { IACLManager }                           from 'sparklend-v1-core/interfaces/IACLManager.sol';
+import { IPoolConfigurator }                     from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
+import { ReserveConfiguration }                  from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 

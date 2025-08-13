@@ -67,7 +67,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
             SPARK_MULTISIG
         );
 
-        _assertRateLimit(transferKey,  0, 0);
+        _assertRateLimit(transferKey, 0, 0);
 
         executeAllPayloadsAndBridges();
 
@@ -78,16 +78,18 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         vm.prank(ctx.relayer);
         controller.transferAsset(MORPHO_TOKEN, SPARK_MULTISIG, 100_000e18);
 
-        assertEq(IERC20(MORPHO_TOKEN).balanceOf(SPARK_MULTISIG), 100_000e18);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+        assertEq(IERC20(MORPHO_TOKEN).balanceOf(SPARK_MULTISIG),     100_000e18);
+        assertEq(IERC20(MORPHO_TOKEN).balanceOf(Ethereum.ALM_PROXY), 100_000e18);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey),    0);
 
         skip(1 days + 1 seconds);  // +1 second due to rounding
 
         vm.prank(ctx.relayer);
         controller.transferAsset(MORPHO_TOKEN, SPARK_MULTISIG, 100_000e18);
 
-        assertEq(IERC20(MORPHO_TOKEN).balanceOf(SPARK_MULTISIG), 200_000e18);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+        assertEq(IERC20(MORPHO_TOKEN).balanceOf(SPARK_MULTISIG),     200_000e18);
+        assertEq(IERC20(MORPHO_TOKEN).balanceOf(Ethereum.ALM_PROXY), 0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey),    0);
 
         skip(1 days + 1 seconds);  // +1 second due to rounding
 
@@ -266,7 +268,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         ReserveConfig memory wstethConfigAfter = wstethConfigBefore;
 
         wstethConfigAfter.ltv                  = 83_00;
-        wstethConfigAfter.liquidationThreshold = 86_00;
+        wstethConfigAfter.liquidationThreshold = 84_00;
 
         _validateReserveConfig(wstethConfigAfter, allConfigsAfter);
 

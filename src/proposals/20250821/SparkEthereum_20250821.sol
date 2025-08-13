@@ -31,7 +31,7 @@ import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEt
  */
 contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
-    uint256 internal constant MORPHO_SPARK_USDC_VAULT_FEE = 0.1e18;
+    uint256 internal constant MORPHO_SPARK_USDS_VAULT_FEE = 0.1e18;
     uint256 internal constant USDS_AMOUNT                 = 19_411.17e18;
 
     address internal constant AAVE_V3_COLLECTOR = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
@@ -50,7 +50,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
         collateralUpdates[0] = IEngine.CollateralUpdate({
             asset:          Ethereum.WSTETH,
             ltv:            83_00,
-            liqThreshold:   86_00,
+            liqThreshold:   84_00,
             liqBonus:       EngineFlags.KEEP_CURRENT,
             debtCeiling:    EngineFlags.KEEP_CURRENT,
             liqProtocolFee: EngineFlags.KEEP_CURRENT,
@@ -132,7 +132,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).setFeeRecipient(Ethereum.ALM_PROXY);
-        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).setFee(MORPHO_SPARK_USDC_VAULT_FEE);
+        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).setFee(MORPHO_SPARK_USDS_VAULT_FEE);
 
         IERC20(Ethereum.USDS).transfer(AAVE_V3_COLLECTOR, USDS_AMOUNT);
 

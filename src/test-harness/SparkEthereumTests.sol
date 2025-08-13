@@ -5,12 +5,14 @@ import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
 import { PendleSparkLinearDiscountOracle } from 'lib/pendle-core-v2-public/contracts/oracles/internal/PendleSparkLinearDiscountOracle.sol';
 
-import { IScaledBalanceToken }             from "sparklend-v1-core/contracts/interfaces/IScaledBalanceToken.sol";
-import { IncentivizedERC20 }               from 'sparklend-v1-core/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
-import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import { WadRayMath }                      from "sparklend-v1-core/contracts/protocol/libraries/math/WadRayMath.sol";
+import { IScaledBalanceToken }             from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
+import { IncentivizedERC20 }               from 'sparklend-v1-core/protocol/tokenization/base/IncentivizedERC20.sol';
+import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
+import { WadRayMath }                      from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+
+import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol';
 
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
@@ -783,6 +785,17 @@ abstract contract SparkEthereumTests is SparklendTests {
         );
 
         assertEq(uint256(ITargetKinkIRM(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
+
+        address expectedIRM = address(new RateTargetKinkInterestRateStrategy(
+            IPoolAddressesProvider(address(ctx.poolAddressesProvider)),
+            ICustomIRM(newParams.irm).RATE_SOURCE(),
+            newParams.optimalUsageRatio,
+            newParams.baseRate,
+            newParams.variableRateSlope1Spread,
+            newParams.variableRateSlope2
+        ));
+
+        _assertBytecodeMatches(expectedIRM, address(newParams.irm));
     }
 
 }
