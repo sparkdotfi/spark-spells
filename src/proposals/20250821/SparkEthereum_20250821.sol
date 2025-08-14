@@ -48,6 +48,16 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
         IEngine.CollateralUpdate[] memory collateralUpdates = new IEngine.CollateralUpdate[](8);
 
         collateralUpdates[0] = IEngine.CollateralUpdate({
+            asset:          Ethereum.WETH,
+            ltv:            85_00,
+            liqThreshold:   86_00,
+            liqBonus:       EngineFlags.KEEP_CURRENT,
+            debtCeiling:    EngineFlags.KEEP_CURRENT,
+            liqProtocolFee: EngineFlags.KEEP_CURRENT,
+            eModeCategory:  EngineFlags.KEEP_CURRENT
+        });
+
+        collateralUpdates[1] = IEngine.CollateralUpdate({
             asset:          Ethereum.WSTETH,
             ltv:            83_00,
             liqThreshold:   84_00,
@@ -57,7 +67,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
             eModeCategory:  EngineFlags.KEEP_CURRENT
         });
 
-        collateralUpdates[1] = IEngine.CollateralUpdate({
+        collateralUpdates[2] = IEngine.CollateralUpdate({
             asset:          Ethereum.CBBTC,
             ltv:            81_00,
             liqThreshold:   82_00,
@@ -67,7 +77,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
             eModeCategory:  EngineFlags.KEEP_CURRENT
         });
 
-        collateralUpdates[2] = IEngine.CollateralUpdate({
+        collateralUpdates[3] = IEngine.CollateralUpdate({
             asset:          Ethereum.WEETH,
             ltv:            79_00,
             liqThreshold:   80_00,
@@ -77,7 +87,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
             eModeCategory:  EngineFlags.KEEP_CURRENT
         });
 
-        collateralUpdates[3] = IEngine.CollateralUpdate({
+        collateralUpdates[4] = IEngine.CollateralUpdate({
             asset:          Ethereum.RSETH,
             ltv:            75_00,
             liqThreshold:   76_00,
@@ -87,7 +97,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
             eModeCategory:  EngineFlags.KEEP_CURRENT
         });
 
-        collateralUpdates[4] = IEngine.CollateralUpdate({
+        collateralUpdates[5] = IEngine.CollateralUpdate({
             asset:          Ethereum.EZETH,
             ltv:            75_00,
             liqThreshold:   76_00,
@@ -97,7 +107,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
             eModeCategory:  EngineFlags.KEEP_CURRENT
         });
 
-        collateralUpdates[5] = IEngine.CollateralUpdate({
+        collateralUpdates[6] = IEngine.CollateralUpdate({
             asset:          Ethereum.LBTC,
             ltv:            74_00,
             liqThreshold:   75_00,
@@ -107,20 +117,10 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
             eModeCategory:  EngineFlags.KEEP_CURRENT
         });
 
-        collateralUpdates[6] = IEngine.CollateralUpdate({
+        collateralUpdates[7] = IEngine.CollateralUpdate({
             asset:          Ethereum.TBTC,
             ltv:            74_00,
             liqThreshold:   75_00,
-            liqBonus:       EngineFlags.KEEP_CURRENT,
-            debtCeiling:    EngineFlags.KEEP_CURRENT,
-            liqProtocolFee: EngineFlags.KEEP_CURRENT,
-            eModeCategory:  EngineFlags.KEEP_CURRENT
-        });
-
-        collateralUpdates[7] = IEngine.CollateralUpdate({
-            asset:          Ethereum.WETH,
-            ltv:            85_00,
-            liqThreshold:   86_00,
             liqBonus:       EngineFlags.KEEP_CURRENT,
             debtCeiling:    EngineFlags.KEEP_CURRENT,
             liqProtocolFee: EngineFlags.KEEP_CURRENT,

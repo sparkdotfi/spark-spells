@@ -795,7 +795,7 @@ abstract contract SparkEthereumTests is SparklendTests {
             newParams.variableRateSlope2
         ));
 
-        _assertBytecodeMatches(expectedIRM, address(newParams.irm));
+        _assertBytecodeMatches(expectedIRM, newParams.irm);
     }
 
 }

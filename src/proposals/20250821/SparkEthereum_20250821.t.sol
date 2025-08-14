@@ -17,6 +17,8 @@ import { SparkLendContext }           from '../../test-harness/SparklendTests.so
 import { SparkLiquidityLayerContext } from '../../test-harness/SparkLiquidityLayerTests.sol';
 import { SparkTestBase }              from '../../test-harness/SparkTestBase.sol';
 
+import { console } from 'forge-std/console.sol';
+
 contract SparkEthereum_20250821Test is SparkTestBase {
 
     uint256 internal constant USDS_AMOUNT = 19_411.17e18;
@@ -46,7 +48,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         // chainData[ChainIdUtils.Ethereum()].payload = 0xb12057500EB57C3c43B91171D52b6DB141cCa01a;
     }
 
-    function test_ETHEREUM_Spark_MorphoUSDSVaultFee() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_Spark_morphoUSDSVaultFee() public onChain(ChainIdUtils.Ethereum()) {
         assertEq(IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).fee(),          0);
         assertEq(IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).feeRecipient(), address(0));
 
@@ -75,6 +77,9 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         deal(MORPHO_TOKEN, Ethereum.ALM_PROXY, 200_000e18);
 
+        assertEq(IERC20(MORPHO_TOKEN).balanceOf(SPARK_MULTISIG),     0);
+        assertEq(IERC20(MORPHO_TOKEN).balanceOf(Ethereum.ALM_PROXY), 200_000e18);
+
         vm.prank(ctx.relayer);
         controller.transferAsset(MORPHO_TOKEN, SPARK_MULTISIG, 100_000e18);
 
@@ -96,7 +101,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 100_000e18);
     }
 
-    function test_ETHEREUM_USDSTransfer() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_usdsTransfer() public onChain(ChainIdUtils.Ethereum()) {
         assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    0);
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18);
 
@@ -214,12 +219,33 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
 
-        // wstETH Before
+        // wETH
+
+        assertEq(wethConfigBefore.ltv,                  82_00);
+        assertEq(wethConfigBefore.liquidationThreshold, 83_00);
+        assertEq(wethConfigBefore.interestRateStrategy, OLD_WETH_IRM);
+
+        ReserveConfig memory wethConfigAfter = wethConfigBefore;
+
+        wethConfigAfter.ltv                  = 85_00;
+        wethConfigAfter.liquidationThreshold = 86_00;
+        wethConfigAfter.interestRateStrategy = NEW_WETH_IRM;
+
+        _validateReserveConfig(wethConfigAfter, allConfigsAfter);
+
+        // rETH
+
+        _assertBorrowCapConfig({
+            asset:            Ethereum.RETH,
+            max:              1,
+            gap:              1,
+            increaseCooldown: 12 hours
+        });
+
+        // wstETH
 
         assertEq(wstethConfigBefore.ltv,                  79_00);
         assertEq(wstethConfigBefore.liquidationThreshold, 80_00);
-
-        // wstETH After
 
         ReserveConfig memory wstethConfigAfter = wstethConfigBefore;
 
@@ -235,12 +261,10 @@ contract SparkEthereum_20250821Test is SparkTestBase {
             increaseCooldown: 12 hours
         });
 
-        // cbBTC Before
+        // cbBTC
 
         assertEq(cbBTCConfigBefore.ltv,                  74_00);
         assertEq(cbBTCConfigBefore.liquidationThreshold, 75_00);
-
-        // cbBTC After
 
         ReserveConfig memory cbBTCConfigAfter = cbBTCConfigBefore;
 
@@ -249,13 +273,11 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(cbBTCConfigAfter, allConfigsAfter);
 
-        // weETH Before
+        // weETH
 
         assertEq(weETHConfigBefore.ltv,                  72_00);
         assertEq(weETHConfigBefore.liquidationThreshold, 73_00);
         assertEq(weETHConfigBefore.liquidationBonus,     110_00);
-
-        // weETH After
 
         ReserveConfig memory weETHConfigAfter = weETHConfigBefore;
 
@@ -265,12 +287,10 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(weETHConfigAfter, allConfigsAfter);
 
-        // rsETH Before
+        // rsETH
 
         assertEq(rsETHConfigBefore.ltv,                  72_00);
         assertEq(rsETHConfigBefore.liquidationThreshold, 73_00);
-
-        // rsETH After
 
         ReserveConfig memory rsETHConfigAfter = rsETHConfigBefore;
 
@@ -279,12 +299,10 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(rsETHConfigAfter, allConfigsAfter);
 
-        // ezETH Before
+        // ezETH
 
         assertEq(ezETHConfigBefore.ltv,                  72_00);
         assertEq(ezETHConfigBefore.liquidationThreshold, 73_00);
-
-        // ezETH After
 
         ReserveConfig memory ezETHConfigAfter = ezETHConfigBefore;
 
@@ -293,12 +311,10 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(ezETHConfigAfter, allConfigsAfter);
 
-        // lBTC Before
+        // lBTC
 
         assertEq(lBTCConfigBefore.ltv,                  65_00);
         assertEq(lBTCConfigBefore.liquidationThreshold, 70_00);
-
-        // lBTC After
 
         ReserveConfig memory lBTCConfigAfter = lBTCConfigBefore;
 
@@ -307,12 +323,10 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(lBTCConfigAfter, allConfigsAfter);
 
-        // tBTC Before
+        // tBTC
 
         assertEq(tBTCConfigBefore.ltv,                  65_00);
         assertEq(tBTCConfigBefore.liquidationThreshold, 70_00);
-
-        // tBTC After
 
         ReserveConfig memory tBTCConfigAfter = tBTCConfigBefore;
 
@@ -321,30 +335,6 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(tBTCConfigAfter, allConfigsAfter);
 
-        // wETH Before
-
-        assertEq(wethConfigBefore.ltv,                  82_00);
-        assertEq(wethConfigBefore.liquidationThreshold, 83_00);
-        assertEq(wethConfigBefore.interestRateStrategy, OLD_WETH_IRM);
-
-        // wETH After
-
-        ReserveConfig memory wethConfigAfter = wethConfigBefore;
-
-        wethConfigAfter.ltv                  = 85_00;
-        wethConfigAfter.liquidationThreshold = 86_00;
-        wethConfigAfter.interestRateStrategy = NEW_WETH_IRM;
-
-        _validateReserveConfig(wethConfigAfter, allConfigsAfter);
-
-        // rETH params update
-
-        _assertBorrowCapConfig({
-            asset:            Ethereum.RETH,
-            max:              1,
-            gap:              1,
-            increaseCooldown: 12 hours
-        });
     }
 
 }
