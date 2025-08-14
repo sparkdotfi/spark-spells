@@ -14,8 +14,10 @@ evm_version = "cancun"
 # Very large gas limit for big tests
 gas_limit = "18446744073709551615"
 
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
-
 remappings = [
-    "morpho-blue/=lib/metamorpho/lib/morpho-blue/"
+    "morpho-blue/=lib/metamorpho/lib/morpho-blue/",
+    "sparklend-advanced/=lib/sparklend-advanced/",
+    "sparklend-v1-core/=lib/sparklend-v1-core/contracts/"
 ]
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

@@ -3,19 +3,19 @@ pragma solidity >=0.7.5 <0.9.0;
 
 import 'forge-std/Test.sol';
 
-import { IAaveOracle }                  from 'sparklend-v1-core/contracts/interfaces/IAaveOracle.sol';
-import { IAToken }                      from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
-import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/contracts/interfaces/IDefaultInterestRateStrategy.sol';
-import { IPool }                        from 'sparklend-v1-core/contracts/interfaces/IPool.sol';
-import { IPoolAddressesProvider }       from 'sparklend-v1-core/contracts/interfaces/IPoolAddressesProvider.sol';
-import { IPoolConfigurator }            from 'sparklend-v1-core/contracts/interfaces/IPoolConfigurator.sol';
-import { IPoolDataProvider }            from 'sparklend-v1-core/contracts/interfaces/IPoolDataProvider.sol';
-import { IStableDebtToken }             from 'sparklend-v1-core/contracts/interfaces/IStableDebtToken.sol';
-import { IVariableDebtToken }           from 'sparklend-v1-core/contracts/interfaces/IVariableDebtToken.sol';
+import { IAaveOracle }                  from 'sparklend-v1-core/interfaces/IAaveOracle.sol';
+import { IAToken }                      from 'sparklend-v1-core/interfaces/IAToken.sol';
+import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol';
+import { IPool }                        from 'sparklend-v1-core/interfaces/IPool.sol';
+import { IPoolAddressesProvider }       from 'sparklend-v1-core/interfaces/IPoolAddressesProvider.sol';
+import { IPoolConfigurator }            from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
+import { IPoolDataProvider }            from 'sparklend-v1-core/interfaces/IPoolDataProvider.sol';
+import { IStableDebtToken }             from 'sparklend-v1-core/interfaces/IStableDebtToken.sol';
+import { IVariableDebtToken }           from 'sparklend-v1-core/interfaces/IVariableDebtToken.sol';
 
-import { ReserveConfiguration } from 'sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import { WadRayMath }           from 'sparklend-v1-core/contracts/protocol/libraries/math/WadRayMath.sol';
-import { DataTypes }            from 'sparklend-v1-core/contracts/protocol/libraries/types/DataTypes.sol';
+import { ReserveConfiguration } from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
+import { WadRayMath }           from 'sparklend-v1-core/protocol/libraries/math/WadRayMath.sol';
+import { DataTypes }            from 'sparklend-v1-core/protocol/libraries/types/DataTypes.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
