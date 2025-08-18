@@ -19,10 +19,14 @@ import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEt
  * @notice SparkLend:
  *         - Refresh Market Params
  *         Spark USDS Morpho Vault:
- *         - Activate Vault Fee
+ *         - Activate Vault Fee and set fee recipient
+ *         - Adjust PT-USDS-SPK-25Sept Pool Supply Cap
  *         Spark Treasury:
  *         - Transfer Aave Revenue Share Payment
+ *         - Transfer USDS to Spark Foundation
  *         - Authorize Rate Limited Transfer of MORPHO Tokens to Multisig
+ *         Spark Liquidity Layer:
+ *         - Update SparkLend USDS Rate Limits
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/august-21-2025-proposed-changes-to-spark-for-upcoming-spell/26997
  *         https://forum.sky.money/t/august-21-2025-proposed-changes-to-spark-for-upcoming-spell-2/27059
