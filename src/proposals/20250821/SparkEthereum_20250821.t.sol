@@ -17,8 +17,6 @@ import { SparkLendContext }           from '../../test-harness/SparklendTests.so
 import { SparkLiquidityLayerContext } from '../../test-harness/SparkLiquidityLayerTests.sol';
 import { SparkTestBase }              from '../../test-harness/SparkTestBase.sol';
 
-import { console } from 'forge-std/console.sol';
-
 contract SparkEthereum_20250821Test is SparkTestBase {
 
     uint256 internal constant USDS_AMOUNT_TO_AAVE             = 19_411.17e18;
@@ -349,7 +347,6 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        console.log("check");
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18 - USDS_AMOUNT_TO_SPARK_FOUNDATION - USDS_AMOUNT_TO_AAVE);
         assertEq(IERC20(Ethereum.USDS).balanceOf(SPARK_FOUNDATION),     800_000e18);
     }
