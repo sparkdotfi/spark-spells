@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { IMetaMorpho } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
@@ -25,18 +25,26 @@ import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEt
  *         - Authorize Rate Limited Transfer of MORPHO Tokens to Multisig
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/august-21-2025-proposed-changes-to-spark-for-upcoming-spell/26997
+ *         https://forum.sky.money/t/august-21-2025-proposed-changes-to-spark-for-upcoming-spell-2/27059
  * Vote:   https://vote.sky.money/polling/QmefEkAi
  *         https://vote.sky.money/polling/QmP8NVR5
  *         https://vote.sky.money/polling/QmNmGBSt
  */
 contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
-    uint256 internal constant MORPHO_SPARK_USDS_VAULT_FEE = 0.1e18;
-    uint256 internal constant USDS_AMOUNT                 = 19_411.17e18;
+    uint256 internal constant MORPHO_SPARK_USDS_VAULT_FEE     = 0.1e18;
+    uint256 internal constant USDS_AMOUNT_TO_AAVE             = 19_411.17e18;
+    uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
 
     address internal constant AAVE_V3_COLLECTOR = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
+    address internal constant USDE_ATOKEN       = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant MORPHO_TOKEN      = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
+    address internal constant SPARK_FOUNDATION  = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
     address internal constant SPARK_MULTISIG    = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant USDS_ATOKEN       = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
+
+    address internal constant PT_SPK_USDS_25SEP2025            = 0xC347584b415715B1b66774B2899Fef2FD3b56d6e;
+    address internal constant PT_SPK_USDS_25SEP2025_PRICE_FEED = 0xaA31f21E3d23bF3A8F401E670171b0DA10F8466f;
 
     address internal constant NEW_USDS_DAI_IRM  = 0x8a95998639A34462A1FdAaaA5506F66F90Ef2fDd;
     address internal constant NEW_USDC_USDT_IRM = 0x2961d766D71F33F6C5e6Ca8bA7d0Ca08E6452C92;
@@ -134,7 +142,7 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
         IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).setFeeRecipient(Ethereum.ALM_PROXY);
         IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).setFee(MORPHO_SPARK_USDS_VAULT_FEE);
 
-        IERC20(Ethereum.USDS).transfer(AAVE_V3_COLLECTOR, USDS_AMOUNT);
+        IERC20(Ethereum.USDS).transfer(AAVE_V3_COLLECTOR, USDS_AMOUNT_TO_AAVE);
 
         RateLimitHelpers.setRateLimitData(
             RateLimitHelpers.makeAssetDestinationKey(
@@ -161,6 +169,21 @@ contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
         capAutomator.setBorrowCapConfig({ asset: Ethereum.WSTETH, max: 1, gap: 1, increaseCooldown: 12 hours });
         capAutomator.setBorrowCapConfig({ asset: Ethereum.RETH,   max: 1, gap: 1, increaseCooldown: 12 hours });
+
+        IERC20(Ethereum.USDS).transfer(SPARK_FOUNDATION, USDS_AMOUNT_TO_SPARK_FOUNDATION);
+
+        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_SPK_USDS_25SEP2025,
+                oracle:          PT_SPK_USDS_25SEP2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.965e18
+            }),
+            1_000_000_000e18
+        );
+
+        _onboardAaveToken(USDS_ATOKEN, 200_000_000e18, 400_000_000e18 / uint256(1 days));
     }
 
 }

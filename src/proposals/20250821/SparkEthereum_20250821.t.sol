@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { IMetaMorpho } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
@@ -21,11 +21,18 @@ import { console } from 'forge-std/console.sol';
 
 contract SparkEthereum_20250821Test is SparkTestBase {
 
-    uint256 internal constant USDS_AMOUNT = 19_411.17e18;
+    uint256 internal constant USDS_AMOUNT_TO_AAVE             = 19_411.17e18;
+    uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
 
     address internal constant AAVE_V3_COLLECTOR = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
+    address internal constant USDE_ATOKEN       = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant MORPHO_TOKEN      = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
+    address internal constant SPARK_FOUNDATION  = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
     address internal constant SPARK_MULTISIG    = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant USDS_ATOKEN       = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
+
+    address internal constant PT_SPK_USDS_25SEP2025            = 0xC347584b415715B1b66774B2899Fef2FD3b56d6e;
+    address internal constant PT_SPK_USDS_25SEP2025_PRICE_FEED = 0xaA31f21E3d23bF3A8F401E670171b0DA10F8466f;
 
     address internal constant OLD_USDC_USDT_IRM = 0xD3d3BcD8cC1D3d0676Da13F7Fc095497329EC683;
     address internal constant NEW_USDC_USDT_IRM = 0x2961d766D71F33F6C5e6Ca8bA7d0Ca08E6452C92;
@@ -48,7 +55,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         // chainData[ChainIdUtils.Ethereum()].payload = 0xb12057500EB57C3c43B91171D52b6DB141cCa01a;
     }
 
-    function test_ETHEREUM_Spark_morphoUSDSVaultFee() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_spark_morphoUSDSVaultFee() public onChain(ChainIdUtils.Ethereum()) {
         assertEq(IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).fee(),          0);
         assertEq(IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).feeRecipient(), address(0));
 
@@ -58,7 +65,7 @@ contract SparkEthereum_20250821Test is SparkTestBase {
         assertEq(IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).feeRecipient(), Ethereum.ALM_PROXY);
     }
 
-    function test_ETHEREUM_Spark_MorphoTransferLimit() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_spark_morphoTransferLimit() public onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
@@ -107,8 +114,8 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    USDS_AMOUNT);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18 - USDS_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    USDS_AMOUNT_TO_AAVE);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18 - USDS_AMOUNT_TO_AAVE - USDS_AMOUNT_TO_SPARK_FOUNDATION);
     }
 
     function test_ETHEREUM_sparkLend_daiIrmUpdate() public onChain(ChainIdUtils.Ethereum()) {
@@ -335,6 +342,51 @@ contract SparkEthereum_20250821Test is SparkTestBase {
 
         _validateReserveConfig(tBTCConfigAfter, allConfigsAfter);
 
+    }
+
+    function test_ETHEREUM_transferUSDSToFoundation() public onChain(ChainIdUtils.Ethereum()) {        
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(SPARK_FOUNDATION),     0);
+
+        executeAllPayloadsAndBridges();
+
+        console.log("check");
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18 - USDS_AMOUNT_TO_SPARK_FOUNDATION - USDS_AMOUNT_TO_AAVE);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(SPARK_FOUNDATION),     800_000e18);
+    }
+
+    function test_ETHEREUM_morpho_PTSPKUSDS25SEP2025CapUpdate() public onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_USDS,
+            config: MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_SPK_USDS_25SEP2025,
+                oracle:          PT_SPK_USDS_25SEP2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.965e18
+            }),
+            currentCap: 500_000_000e18,
+            newCap:     1_000_000_000e18
+        });
+    }
+
+    function test_ETHEREUM_sll_updateSparkLendUSDSRateLimits() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usdsDepositKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
+            USDS_ATOKEN
+        );
+        bytes32 usdsWithdrawKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_WITHDRAW(),
+            USDS_ATOKEN
+        );
+
+        _assertRateLimit(usdsDepositKey,  150_000_000e18,    uint256(75_000_000e18) / 1 days);
+        _assertRateLimit(usdsWithdrawKey, type(uint256).max, 0);
+
+        executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usdsDepositKey,  200_000_000e18,    400_000_000e18 / uint256(1 days));
+        _assertRateLimit(usdsWithdrawKey, type(uint256).max, 0);
     }
 
 }
