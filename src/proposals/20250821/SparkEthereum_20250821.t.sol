@@ -45,11 +45,11 @@ contract SparkEthereum_20250821Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-08-13T13:24:00Z");
+        setupDomains("2025-08-19T13:45:00Z");
 
         deployPayloads();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xb12057500EB57C3c43B91171D52b6DB141cCa01a;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xa57d3ea3aBAbD57Ed1a1d91CD998a68FB490B95E;
     }
 
     function test_ETHEREUM_spark_morphoUSDSVaultFee() public onChain(ChainIdUtils.Ethereum()) {
