@@ -106,12 +106,12 @@ contract SparkEthereum_20250821Test is SparkTestBase {
     }
 
     function test_ETHEREUM_usdsTransfer() public onChain(ChainIdUtils.Ethereum()) {
-        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    0);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    0.000470969463387791e18);
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    USDS_AMOUNT_TO_AAVE);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_V3_COLLECTOR),    0.000470969463387791e18 + USDS_AMOUNT_TO_AAVE);
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), 22_058_467.785801365846236778e18 - USDS_AMOUNT_TO_AAVE - USDS_AMOUNT_TO_SPARK_FOUNDATION);
     }
 
