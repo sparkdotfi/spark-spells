@@ -16,7 +16,7 @@ import { ForeignController }               from "spark-alm-controller/src/Foreig
 import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { IAToken } from 'sparklend-v1-core/contracts/interfaces/IAToken.sol';
+import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
 
 import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
