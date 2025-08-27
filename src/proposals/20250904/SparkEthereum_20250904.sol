@@ -13,7 +13,7 @@ import { IALMProxy }                       from "spark-alm-controller/src/interf
 
 import { IPool } from "sparklend-v1-core/interfaces/IPool.sol";
 
-import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, IEngine, EngineFlags, SLLHelpers } from "../../SparkPayloadEthereum.sol";
 
 interface ITreasuryController {
     function transfer(
@@ -46,10 +46,13 @@ interface IController {
  */
 contract SparkEthereum_20250904 is SparkPayloadEthereum {
 
+    address internal constant CBBTC_PRICE_FEED              = 0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a;
     address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
     address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x20Cea639A895c3c85dce326dc6A736508C310B4b;
     address internal constant PT_SUSDE_27NOV2025            = 0xe6A934089BBEe34F832060CE98848359883749B3;
     address internal constant PT_SUSDE_27NOV2025_PRICE_FEED = 0x098fA1fcB5Ed89Bffb2d6876857764fc14837DB5;
+    address internal constant WETH_PRICE_FEED               = 0xdC6fd5831277c693b1054e19E94047cB37c77615;
+    address internal constant WSTETH_PRICE_FEED             = 0x48F7E36EB6B826B2dF4B2E630B62Cd25e89E40e2;
 
     address internal constant CURVE_PYUSDUSDC = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
     address internal constant PYUSD_ATOKEN    = 0x779224df1c756b4EDD899854F32a53E8c2B2ce5d;
@@ -58,10 +61,57 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
 
     address internal constant GROVE_ALM_PROXY  = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant SPARK_FOUNDATION = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
+    address internal constant SPARK_USDC_VAULT = 0xfeaC08ffA38d95ec5Ed7C46c933C8891a44C5F26;
 
     uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
 
     function _postExecute() internal override {
+        IMetaMorpho(SPARK_USDC_VAULT).setIsAllocator(
+            Ethereum.ALM_RELAYER,
+            true
+        );
+        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(Ethereum.USDC);
+        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
+            idleMarket,
+            type(uint184).max
+        );
+        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.USDC,
+                collateralToken: Ethereum.CBBTC,
+                oracle:          CBBTC_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.86e18
+            }),
+            500_000_000e6  // TODO: check this decimals
+        );
+        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.USDC,
+                collateralToken: Ethereum.WSTETH,
+                oracle:          WSTETH_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.86e18
+            }),
+            500_000_000e18  // TODO: check this decimals
+        );
+        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.USDC,
+                collateralToken: Ethereum.WETH,
+                oracle:          WETH_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.86e18
+            }),
+            500_000_000e18  // TODO: check this decimals
+        );
+
+        _onboardERC4626Vault(
+            SPARK_USDC_VAULT,
+            50_000_000e6,
+            25_000_000e6 / uint256(1 days)
+        );
+
         IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
             MarketParams({
                 loanToken:       Ethereum.USDS,
@@ -72,7 +122,6 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
             }),
             500_000_000e18
         );
-
         IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
             MarketParams({
                 loanToken:       Ethereum.USDS,
