@@ -669,7 +669,6 @@ abstract contract SparkEthereumTests is SparklendTests {
         address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
 
         _assertBytecodeMatches(expectedPendleOracle, address(baseFeed));
-
     }
 
     function _testRateTargetBaseIRMUpdate(
