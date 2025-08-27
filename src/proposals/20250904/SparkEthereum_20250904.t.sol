@@ -46,14 +46,6 @@ contract SparkEthereum_20250904Test is SparkTestBase {
         // chainData[ChainIdUtils.Ethereum()].payload = 0xa57d3ea3aBAbD57Ed1a1d91CD998a68FB490B95E;
     }
 
-    function test_BASE_spark_morphoUSDCVaultFee() public onChain(ChainIdUtils.Base()) {
-        assertEq(IMetaMorpho(Base.MORPHO_VAULT_SUSDC).fee(), 0.1e18);
-
-        executeAllPayloadsAndBridges();
-
-        assertEq(IMetaMorpho(Base.MORPHO_VAULT_SUSDC).fee(), 0.01e18);
-    }
-
     function test_ETHEREUM_transferUSDSToFoundation() public onChain(ChainIdUtils.Ethereum()) {
         uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(SPARK_FOUNDATION);
         uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);

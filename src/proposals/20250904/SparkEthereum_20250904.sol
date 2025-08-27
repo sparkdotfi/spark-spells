@@ -83,7 +83,7 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
                 irm:             Ethereum.MORPHO_DEFAULT_IRM,
                 lltv:            0.86e18
             }),
-            500_000_000e6  // TODO: check this decimals
+            500_000_000e6
         );
         IMetaMorpho(SPARK_USDC_VAULT).submitCap(
             MarketParams({
@@ -93,7 +93,7 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
                 irm:             Ethereum.MORPHO_DEFAULT_IRM,
                 lltv:            0.86e18
             }),
-            500_000_000e18  // TODO: check this decimals
+            500_000_000e6
         );
         IMetaMorpho(SPARK_USDC_VAULT).submitCap(
             MarketParams({
@@ -103,7 +103,7 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
                 irm:             Ethereum.MORPHO_DEFAULT_IRM,
                 lltv:            0.86e18
             }),
-            500_000_000e18  // TODO: check this decimals
+            500_000_000e6
         );
 
         _onboardERC4626Vault(
