@@ -132,7 +132,7 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
         });
         _configureCurvePool({
             controller:    Ethereum.ALM_CONTROLLER,
-            pool:          Ethereum.CURVE_SUSDSUSDT,
+            pool:          CURVE_PYUSDUSDC,
             maxSlippage:   0.9990e18,
             swapMax:       5_000_000e18,
             swapSlope:     100_000_000e18 / uint256(1 days),
