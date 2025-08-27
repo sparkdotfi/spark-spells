@@ -37,8 +37,8 @@ abstract contract SparkPayloadBase {
         );
     }
 
-    function _onboardAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
-        SLLHelpers.onboardAaveToken(
+    function _configureAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
+        SLLHelpers.configureAaveToken(
             Base.ALM_RATE_LIMITS,
             token,
             depositMax,
@@ -46,8 +46,8 @@ abstract contract SparkPayloadBase {
         );
     }
 
-    function _onboardERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
-        SLLHelpers.onboardERC4626Vault(
+    function _configureERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
+        SLLHelpers.configureERC4626Vault(
             Base.ALM_RATE_LIMITS,
             vault,
             depositMax,
