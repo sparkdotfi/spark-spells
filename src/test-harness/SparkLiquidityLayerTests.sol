@@ -357,7 +357,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
 
-        assertApproxEqAbs(IERC20(aToken).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
+        assertApproxEqAbs(IERC20(aToken).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 2);
     }
 
     struct CurveOnboardingVars {

@@ -68,7 +68,7 @@ contract SparkEthereum_20250904Test is SparkTestBase {
             currentCap: 0,
             newCap:     500_000_000e18
         });
-        _testMorphoPendlePTOracleConfig({  // TODO: the bytecode check is failing here due to via-ir
+        _testMorphoPendlePTOracleConfig({
             pt:        PT_USDE_27NOV2025,
             loanToken: Ethereum.USDS,
             oracle:    PT_USDE_27NOV2025_PRICE_FEED,
@@ -90,7 +90,7 @@ contract SparkEthereum_20250904Test is SparkTestBase {
             currentCap: 0,
             newCap:     500_000_000e18
         });
-        _testMorphoPendlePTOracleConfig({  // TODO: the bytecode check is failing here due to via-ir
+        _testMorphoPendlePTOracleConfig({
             pt:        PT_SUSDE_27NOV2025,
             loanToken: Ethereum.USDS,
             oracle:    PT_SUSDE_27NOV2025_PRICE_FEED,
@@ -100,16 +100,16 @@ contract SparkEthereum_20250904Test is SparkTestBase {
     }
 
     function test_ETHEREUM_transferBuildIToGrove() public onChain(ChainIdUtils.Ethereum()) {
-        uint256 sparkBuidlIbalanceBefore  = IERC20(Ethereum.BUIDLI).balanceOf(Ethereum.ALM_PROXY);
-        uint256 grovekBuidlIbalanceBefore = IERC20(Ethereum.BUIDLI).balanceOf(GROVE_ALM_PROXY);
+        uint256 sparkBuidlIBalanceBefore = IERC20(Ethereum.BUIDLI).balanceOf(Ethereum.ALM_PROXY);
+        uint256 groveBuidlIBalanceBefore = IERC20(Ethereum.BUIDLI).balanceOf(GROVE_ALM_PROXY);
 
-        assertEq(sparkBuidlIbalanceBefore,  900_612.89e6);
-        assertEq(grovekBuidlIbalanceBefore, 509_303_524.28e6);
+        assertEq(sparkBuidlIBalanceBefore, 900_612.89e6);
+        assertEq(groveBuidlIBalanceBefore, 509_303_524.28e6);
 
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.BUIDLI).balanceOf(Ethereum.ALM_PROXY), 0);
-        assertEq(IERC20(Ethereum.BUIDLI).balanceOf(GROVE_ALM_PROXY),    grovekBuidlIbalanceBefore + sparkBuidlIbalanceBefore);
+        assertEq(IERC20(Ethereum.BUIDLI).balanceOf(GROVE_ALM_PROXY),    groveBuidlIBalanceBefore + sparkBuidlIBalanceBefore);
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
@@ -126,58 +126,12 @@ contract SparkEthereum_20250904Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sll_onboardUsde() public onChain(ChainIdUtils.Ethereum()) {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(ctx.controller);
-
-        bytes32 usdeDepositKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_DEPOSIT(),
-            USDE_ATOKEN
+        _testAaveOnboarding(
+            USDE_ATOKEN,
+            1_000_000e18,
+            250_000_000e18,
+            100_000_000e18 / uint256(1 days)
         );
-        bytes32 usdeWithdrawKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_AAVE_WITHDRAW(),
-            USDE_ATOKEN
-        );
-
-        IERC20 underlying = IERC20(Ethereum.USDE);
-
-        uint256 expectedDepositAmount = 1_000_000e18;
-
-        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
-
-        _assertRateLimit(usdeDepositKey,  0, 0);
-        _assertRateLimit(usdeWithdrawKey, 0, 0);
-
-        executeAllPayloadsAndBridges();
-
-        _assertRateLimit(usdeDepositKey,  250_000_000e18,      100_000_000e18 / uint256(1 days));
-        _assertRateLimit(usdeWithdrawKey, type(uint256).max, 0);
-
-        uint256 aTokenBalance = underlying.balanceOf(USDE_ATOKEN);
-
-        assertEq(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount);
-
-        assertEq(IERC20(USDE_ATOKEN).balanceOf(address(ctx.proxy)), 0);
-
-        vm.prank(ctx.relayer);
-        controller.depositAave(USDE_ATOKEN, expectedDepositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(usdeDepositKey),  250_000_000e18 - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(usdeWithdrawKey), type(uint256).max);
-
-        assertApproxEqAbs(underlying.balanceOf(USDE_ATOKEN),        aTokenBalance + expectedDepositAmount, 1);
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                     1);
-
-        assertApproxEqAbs(IERC20(USDE_ATOKEN).balanceOf(address(ctx.proxy)), expectedDepositAmount, 1);
-
-        vm.prank(ctx.relayer);
-        controller.withdrawAave(USDE_ATOKEN, expectedDepositAmount / 2);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(usdeDepositKey),  250_000_000e18 - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(usdeWithdrawKey), type(uint256).max);
-
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
-
-        assertApproxEqAbs(IERC20(USDE_ATOKEN).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 2);
     }
 
     function test_ETHEREUM_sll_updateCurveSwapLimitAndMaxSlippage() public onChain(ChainIdUtils.Ethereum()) {

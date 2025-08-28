@@ -12,10 +12,10 @@ import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
 import { Optimism } from 'spark-address-registry/Optimism.sol';
 import { Unichain } from 'spark-address-registry/Unichain.sol';
 
-import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
-
 import { IALMProxy }         from 'spark-alm-controller/src/interfaces/IALMProxy.sol';
 import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
+
+import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
 
 import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
 import { IPool }   from 'sparklend-v1-core/interfaces/IPool.sol';
@@ -201,12 +201,13 @@ abstract contract SparkPayloadEthereum is
     function _transferFromSparkLendTreasury(address[] memory aTokens) internal {
         address[] memory assets = new address[](aTokens.length);
 
-        for(uint256 i; i < aTokens.length; i++) {
+        for (uint256 i; i < aTokens.length; i++) {
             assets[i] = IAToken(aTokens[i]).UNDERLYING_ASSET_ADDRESS();
         }
 
         IPool(Ethereum.POOL).mintToTreasury(assets);
-        for(uint256 i; i < aTokens.length; i++) {
+
+        for (uint256 i; i < aTokens.length; i++) {
             ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
                 collector: Ethereum.TREASURY,
                 token:     aTokens[i],
