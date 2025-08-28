@@ -6,7 +6,7 @@ import './AaveV3PayloadBase.sol';
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
 import { IMetaMorpho, MarketParams, Id, IERC4626 } from 'metamorpho/interfaces/IMetaMorpho.sol';
-import { IMetaMorphoFactory }        from 'metamorpho/interfaces/IMetaMorphoFactory.sol';
+import { IMetaMorphoFactory }                      from 'metamorpho/interfaces/IMetaMorphoFactory.sol';
 
 import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
@@ -213,16 +213,20 @@ abstract contract SparkPayloadEthereum is
         IPool(Ethereum.POOL).mintToTreasury(assets);
 
         for (uint256 i; i < aTokens.length; i++) {
+            address treasury = aTokens[i] == Ethereum.DAI_SPTOKEN
+                ? Ethereum.DAI_TREASURY
+                : Ethereum.TREASURY;
+
             ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
-                collector: Ethereum.TREASURY,
+                collector: treasury,
                 token:     aTokens[i],
                 recipient: Ethereum.SPARK_PROXY,
-                amount:    IERC20(aTokens[i]).balanceOf(Ethereum.TREASURY)
+                amount:    IERC20(aTokens[i]).balanceOf(treasury)
             });
         }
     }
 
-    function _setupNewMorphoVault(
+    function _setUpNewMorphoVault(
         address               asset,
         string         memory name,
         string         memory symbol,
@@ -238,7 +242,7 @@ abstract contract SparkPayloadEthereum is
             asset:           asset,
             name:            name,
             symbol:          symbol,
-            salt:            bytes32(0)
+            salt:            ""
         });
 
         require(markets.length == caps.length, "Markets and caps length mismatch");
@@ -260,16 +264,7 @@ abstract contract SparkPayloadEthereum is
         // Add idle market to supply queue
         ids[ids.length - 1] = MarketParamsLib.id(idleMarket);
 
-        // Set Spark Proxy as allocator temporarily to set supply queue
-        vault.setIsAllocator(
-            Ethereum.SPARK_PROXY,
-            true
-        );
         vault.setSupplyQueue(ids);
-        vault.setIsAllocator(
-            Ethereum.SPARK_PROXY,
-            false
-        );
 
         // Set ALM Relayer as allocator.
         vault.setIsAllocator(

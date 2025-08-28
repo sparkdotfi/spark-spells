@@ -225,6 +225,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
+        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, false);
+    }
+
+    function _testERC4626Onboarding(
+        address vault,
+        uint256 expectedDepositAmount,
+        uint256 depositMax,
+        uint256 depositSlope,
+        bool    skipInitialCheck
+    ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
         bool unlimitedDeposit = depositMax == type(uint256).max;
 
@@ -241,14 +251,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vault
         );
 
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
+        if (!skipInitialCheck) {
 
-        vm.prank(ctx.relayer);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
+            _assertRateLimit(depositKey,  0, 0);
+            _assertRateLimit(withdrawKey, 0, 0);
 
-        executeAllPayloadsAndBridges();
+            vm.prank(ctx.relayer);
+            vm.expectRevert("RateLimits/zero-maxAmount");
+            MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
+
+            executeAllPayloadsAndBridges();
+        }
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);

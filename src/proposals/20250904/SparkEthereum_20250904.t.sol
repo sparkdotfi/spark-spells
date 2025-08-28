@@ -119,12 +119,12 @@ contract SparkEthereum_20250904Test is SparkTestBase {
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY);
 
         assertEq(spDaiBalanceBefore,  0);
-        assertEq(spUsdsBalanceBefore, 1.011302592418089069e18);
+        assertEq(spUsdsBalanceBefore, 1.011359442520425081e18);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY),  0);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY), 545_870.559142088949939569e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY),  517_493.123807496091784760e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY), 552_572.687148684873522806e18);
     }
 
     function test_ETHEREUM_sll_onboardUsde() public onChain(ChainIdUtils.Ethereum()) {

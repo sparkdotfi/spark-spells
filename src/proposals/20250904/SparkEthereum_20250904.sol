@@ -72,7 +72,7 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
         });
         caps[1] = 500_000_000e6;
 
-        _setupNewMorphoVault({
+        _setUpNewMorphoVault({
             asset:           Ethereum.USDC,
             name:            "Spark Blue Chip USDC Vault",
             symbol:          "sparkUSDCbc",

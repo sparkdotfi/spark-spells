@@ -2,34 +2,36 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
-
 import { VmSafe } from "forge-std/Vm.sol";
 
 import { PendleSparkLinearDiscountOracle } from 'lib/pendle-core-v2-public/contracts/oracles/internal/PendleSparkLinearDiscountOracle.sol';
 
-import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { IMetaMorpho, MarketParams, PendingUint192, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { MarketParamsLib }          from 'morpho-blue/src/libraries/MarketParamsLib.sol';
 import { IMorphoChainlinkOracleV2 } from 'morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol';
 
+import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+
+import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol';
+
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+
+import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
+
+import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
+
+import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
+
 import { IScaledBalanceToken }             from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
 import { IncentivizedERC20 }               from 'sparklend-v1-core/protocol/tokenization/base/IncentivizedERC20.sol';
 import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { WadRayMath }                      from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-
-import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol';
-
-import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
-
-import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
-
+import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
+import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
-
-import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
 import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
@@ -83,7 +85,7 @@ interface IMorphoOracleFactory {
 /// TODO: separate tests related to sparklend from the rest (eg: morpho)
 ///       also separate mainnet-specific sparklend tests from those we should
 ///       run on Gnosis as well
-abstract contract SparkEthereumTests is SparklendTests {
+abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests {
 
     using RecordedLogs for *;
 
@@ -835,6 +837,31 @@ abstract contract SparkEthereumTests is SparklendTests {
         }
 
         require(vault != address(0), "Vault not found");
+
+        assertEq(IMetaMorpho(vault).asset(),                           asset);
+        assertEq(IMetaMorpho(vault).name(),                            name);
+        assertEq(IMetaMorpho(vault).symbol(),                          symbol);
+        assertEq(IMetaMorpho(vault).timelock(),                        1 days);
+        assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
+        assertEq(IMetaMorpho(vault).supplyQueueLength(),               markets.length + 1);
+
+        for (uint256 i = 0; i < markets.length; i++) {
+            assertEq(Id.unwrap(IMetaMorpho(vault).supplyQueue(i)), Id.unwrap(MarketParamsLib.id(markets[i])));
+
+            _assertMorphoCap(vault, markets[i], caps[i]);
+        }
+
+        assertEq(
+            Id.unwrap(IMetaMorpho(vault).supplyQueue(IMetaMorpho(vault).supplyQueueLength() - 1)),
+            Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
+        );
+
+        assertEq(IMetaMorpho(vault).totalAssets(),    initialDeposit);
+        assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20(asset).decimals());
+
+        if (sllDepositMax != 0 && sllDepositSlope != 0) {
+            _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, true);
+        }
     }
 
 }
