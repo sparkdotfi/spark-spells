@@ -19,10 +19,12 @@ contract SparkEthereum_20250904Test is SparkTestBase {
 
     uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
 
+    address internal constant CBBTC_PRICE_FEED              = 0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a;
     address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
     address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
     address internal constant PT_SUSDE_27NOV2025            = 0xe6A934089BBEe34F832060CE98848359883749B3;
     address internal constant PT_SUSDE_27NOV2025_PRICE_FEED = 0xd46F66D7Fc5aD6f54b9B62D36B9A4d99f3Cca451;
+    address internal constant WSTETH_PRICE_FEED             = 0x48F7E36EB6B826B2dF4B2E630B62Cd25e89E40e2;
 
     address internal constant CURVE_PYUSDUSDC = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
     address internal constant USDE_ATOKEN     = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
@@ -35,7 +37,7 @@ contract SparkEthereum_20250904Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-08-27T18:04:00Z");
+        setupDomains("2025-08-28T07:56:00Z");
 
         deployPayloads();
 
@@ -181,6 +183,40 @@ contract SparkEthereum_20250904Test is SparkTestBase {
 
         _assertRateLimit(usdtDepositKey,  100_000_000e6, 100_000_000e6 / uint256(1 days));
         _assertRateLimit(pyusdDepositKey, 100_000_000e6, 100_000_000e6 / uint256(1 days));
+    }
+
+    function test_ETHEREUM_morpho_createNewMorphoVault() public onChain(ChainIdUtils.Ethereum()) {
+        MarketParams[] memory markets = new MarketParams[](2);
+        uint256[] memory caps = new uint256[](2);
+
+        markets[0] = MarketParams({
+            loanToken:       Ethereum.USDC,
+            collateralToken: Ethereum.CBBTC,
+            oracle:          CBBTC_PRICE_FEED,
+            irm:             Ethereum.MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
+        caps[0] = 500_000_000e6;
+
+        markets[1] = MarketParams({
+            loanToken:       Ethereum.USDC,
+            collateralToken: Ethereum.WSTETH,
+            oracle:          WSTETH_PRICE_FEED,
+            irm:             Ethereum.MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
+        caps[1] = 500_000_000e6;
+
+        _testMorphoVaultCreation({
+            asset:           Ethereum.USDC,
+            name:            "Spark Blue Chip USDC Vault",
+            symbol:          "sparkUSDCbc",
+            markets:         markets,
+            caps:            caps,
+            initialDeposit:  1e6,
+            sllDepositMax:   50_000_000e6,
+            sllDepositSlope: 100_000_000e6 / uint256(1 days)
+        });
     }
 
 }

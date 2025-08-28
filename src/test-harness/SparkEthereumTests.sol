@@ -3,7 +3,16 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
+import { VmSafe } from "forge-std/Vm.sol";
+
 import { PendleSparkLinearDiscountOracle } from 'lib/pendle-core-v2-public/contracts/oracles/internal/PendleSparkLinearDiscountOracle.sol';
+
+import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
+
+import { IMetaMorpho, MarketParams, PendingUint192, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { MarketParamsLib }          from 'morpho-blue/src/libraries/MarketParamsLib.sol';
+import { IMorphoChainlinkOracleV2 } from 'morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol';
 
 import { IScaledBalanceToken }             from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
 import { IncentivizedERC20 }               from 'sparklend-v1-core/protocol/tokenization/base/IncentivizedERC20.sol';
@@ -16,17 +25,13 @@ import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'spar
 
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
-import { IMetaMorpho, MarketParams, PendingUint192, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
-import { MarketParamsLib }                               from 'morpho-blue/src/libraries/MarketParamsLib.sol';
-import { IMorphoChainlinkOracleV2 }                      from 'morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol';
-
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
-
-import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
 
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
+
+import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
@@ -79,6 +84,8 @@ interface IMorphoOracleFactory {
 ///       also separate mainnet-specific sparklend tests from those we should
 ///       run on Gnosis as well
 abstract contract SparkEthereumTests is SparklendTests {
+
+    using RecordedLogs for *;
 
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using WadRayMath for uint256;
@@ -795,6 +802,39 @@ abstract contract SparkEthereumTests is SparklendTests {
         ));
 
         _assertBytecodeMatches(expectedIRM, newParams.irm);
+    }
+
+    function _testMorphoVaultCreation(
+        address               asset,
+        string         memory name,
+        string         memory symbol,
+        MarketParams[] memory markets,
+        uint256[]      memory caps,
+        uint256               initialDeposit,
+        uint256               sllDepositMax,
+        uint256               sllDepositSlope
+    )
+        internal
+    {
+        bytes32 CREATE_META_MORPHO_SIG = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
+
+        // Start the recorder
+        RecordedLogs.init();
+
+        executeAllPayloadsAndBridges();
+
+        VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
+
+        address vault;
+
+        for (uint256 i = 0; i < allLogs.length; i++) {
+            if (allLogs[i].topics[0] == CREATE_META_MORPHO_SIG) {
+                vault = address(uint160(uint256(allLogs[i].topics[1])));
+                break;
+            }
+        }
+
+        require(vault != address(0), "Vault not found");
     }
 
 }

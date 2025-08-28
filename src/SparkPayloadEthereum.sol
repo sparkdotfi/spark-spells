@@ -5,6 +5,11 @@ import './AaveV3PayloadBase.sol';
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
+import { IMetaMorpho, MarketParams, Id, IERC4626 } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorphoFactory }        from 'metamorpho/interfaces/IMetaMorphoFactory.sol';
+
+import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
+
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -214,6 +219,77 @@ abstract contract SparkPayloadEthereum is
                 recipient: Ethereum.SPARK_PROXY,
                 amount:    IERC20(aTokens[i]).balanceOf(Ethereum.TREASURY)
             });
+        }
+    }
+
+    function _setupNewMorphoVault(
+        address               asset,
+        string         memory name,
+        string         memory symbol,
+        MarketParams[] memory markets,
+        uint256[]      memory caps,
+        uint256               initialDeposit,
+        uint256               sllDepositMax,
+        uint256               sllDepositSlope
+    ) internal {
+        IMetaMorpho vault = IMetaMorphoFactory(Ethereum.MORPHO_FACTORY).createMetaMorpho({
+            initialOwner:    Ethereum.SPARK_PROXY,
+            initialTimelock: 0,
+            asset:           asset,
+            name:            name,
+            symbol:          symbol,
+            salt:            bytes32(0)
+        });
+
+        require(markets.length == caps.length, "Markets and caps length mismatch");
+
+        Id[] memory ids = new Id[](markets.length + 1);
+
+        for (uint256 i; i < markets.length; i++) {
+            vault.submitCap(markets[i], caps[i]);
+            vault.acceptCap(markets[i]);
+
+            ids[i] = MarketParamsLib.id(markets[i]);
+        }
+
+        // Submit and accept cap for idle market
+        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(asset);
+        vault.submitCap(idleMarket, type(uint184).max);
+        vault.acceptCap(idleMarket);
+
+        // Add idle market to supply queue
+        ids[ids.length - 1] = MarketParamsLib.id(idleMarket);
+
+        // Set Spark Proxy as allocator temporarily to set supply queue
+        vault.setIsAllocator(
+            Ethereum.SPARK_PROXY,
+            true
+        );
+        vault.setSupplyQueue(ids);
+        vault.setIsAllocator(
+            Ethereum.SPARK_PROXY,
+            false
+        );
+
+        // Set ALM Relayer as allocator.
+        vault.setIsAllocator(
+            Ethereum.ALM_RELAYER,
+            true
+        );
+
+        // Seed vault with initial deposit
+        IERC20(asset).approve(address(vault), initialDeposit);
+        IERC4626(address(vault)).deposit(initialDeposit, address(1));
+
+        // Submit timelock for vault (Increases are immediate)
+        vault.submitTimelock(1 days);
+
+        if (sllDepositMax != 0 && sllDepositSlope != 0) {
+            _configureERC4626Vault(
+                address(vault),
+                sllDepositMax,
+                sllDepositSlope
+            );
         }
     }
 

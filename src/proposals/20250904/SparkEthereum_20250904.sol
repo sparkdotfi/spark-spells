@@ -46,49 +46,42 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
 
     address internal constant GROVE_ALM_PROXY  = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant SPARK_FOUNDATION = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
-    address internal constant SPARK_USDC_VAULT = 0xfeaC08ffA38d95ec5Ed7C46c933C8891a44C5F26;
 
     uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
 
     function _postExecute() internal override {
 
-        // Configure Spark USDC Morpho Vault
+        MarketParams[] memory markets = new MarketParams[](2);
+        uint256[] memory caps = new uint256[](2);
 
-        IMetaMorpho(SPARK_USDC_VAULT).setIsAllocator(
-            Ethereum.ALM_RELAYER,
-            true
-        );
-        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(Ethereum.USDC);
-        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
-            idleMarket,
-            type(uint184).max
-        );
-        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
-            MarketParams({
-                loanToken:       Ethereum.USDC,
-                collateralToken: Ethereum.CBBTC,
-                oracle:          CBBTC_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.86e18
-            }),
-            500_000_000e6
-        );
-        IMetaMorpho(SPARK_USDC_VAULT).submitCap(
-            MarketParams({
-                loanToken:       Ethereum.USDC,
-                collateralToken: Ethereum.WSTETH,
-                oracle:          WSTETH_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.86e18
-            }),
-            500_000_000e6
-        );
+        markets[0] = MarketParams({
+            loanToken:       Ethereum.USDC,
+            collateralToken: Ethereum.CBBTC,
+            oracle:          CBBTC_PRICE_FEED,
+            irm:             Ethereum.MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
+        caps[0] = 500_000_000e6;
 
-        _configureERC4626Vault(
-            SPARK_USDC_VAULT,
-            50_000_000e6,
-            25_000_000e6 / uint256(1 days)
-        );
+        markets[1] = MarketParams({
+            loanToken:       Ethereum.USDC,
+            collateralToken: Ethereum.WSTETH,
+            oracle:          WSTETH_PRICE_FEED,
+            irm:             Ethereum.MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
+        caps[1] = 500_000_000e6;
+
+        _setupNewMorphoVault({
+            asset:           Ethereum.USDC,
+            name:            "Spark Blue Chip USDC Vault",
+            symbol:          "sparkUSDCbc",
+            markets:         markets,
+            caps:            caps,
+            initialDeposit:  1e6,
+            sllDepositMax:   50_000_000e6,
+            sllDepositSlope: 100_000_000e6 / uint256(1 days)
+        });
 
         // Onboard November Ethena PTs
 
