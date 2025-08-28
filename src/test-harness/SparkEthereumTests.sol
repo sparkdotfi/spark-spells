@@ -20,14 +20,14 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { ISparkLendFreezerMom } from 'sparklend-freezer/interfaces/ISparkLendFreezerMom.sol';
 
-import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
-
-import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
-
 import { IScaledBalanceToken }             from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
 import { IncentivizedERC20 }               from 'sparklend-v1-core/protocol/tokenization/base/IncentivizedERC20.sol';
 import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { WadRayMath }                      from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
+
+import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
+
+import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
 
 import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
 import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
@@ -818,7 +818,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     )
         internal
     {
-        bytes32 CREATE_META_MORPHO_SIG = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
+        bytes32 CREATE_METAMORPHO_SIG = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
 
         // Start the recorder
         RecordedLogs.init();
@@ -830,7 +830,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address vault;
 
         for (uint256 i = 0; i < allLogs.length; i++) {
-            if (allLogs[i].topics[0] == CREATE_META_MORPHO_SIG) {
+            if (allLogs[i].topics[0] == CREATE_METAMORPHO_SIG) {
                 vault = address(uint160(uint256(allLogs[i].topics[1])));
                 break;
             }
@@ -844,6 +844,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(IMetaMorpho(vault).timelock(),                        1 days);
         assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
         assertEq(IMetaMorpho(vault).supplyQueueLength(),               markets.length + 1);
+        assertEq(IMetaMorpho(vault).owner(),                           Ethereum.SPARK_PROXY);
 
         for (uint256 i = 0; i < markets.length; i++) {
             assertEq(Id.unwrap(IMetaMorpho(vault).supplyQueue(i)), Id.unwrap(MarketParamsLib.id(markets[i])));
@@ -855,6 +856,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             Id.unwrap(IMetaMorpho(vault).supplyQueue(IMetaMorpho(vault).supplyQueueLength() - 1)),
             Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
         );
+        _assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint256).max);
 
         assertEq(IMetaMorpho(vault).totalAssets(),    initialDeposit);
         assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20(asset).decimals());

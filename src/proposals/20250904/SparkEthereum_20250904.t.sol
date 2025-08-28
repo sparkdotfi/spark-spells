@@ -123,6 +123,8 @@ contract SparkEthereum_20250904Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY),  517_493.123807496091784760e18);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY), 552_572.687148684873522806e18);
     }
