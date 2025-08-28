@@ -856,7 +856,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             Id.unwrap(IMetaMorpho(vault).supplyQueue(IMetaMorpho(vault).supplyQueueLength() - 1)),
             Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
         );
-        _assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint256).max);
+        _assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint184).max);
 
         assertEq(IMetaMorpho(vault).totalAssets(),    initialDeposit);
         assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20(asset).decimals());
