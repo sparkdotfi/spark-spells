@@ -217,7 +217,7 @@ contract SparkEthereum_20250904Test is SparkTestBase {
             caps:            caps,
             initialDeposit:  1e6,
             sllDepositMax:   50_000_000e6,
-            sllDepositSlope: 100_000_000e6 / uint256(1 days)
+            sllDepositSlope: 25_000_000e6 / uint256(1 days)
         });
     }
 

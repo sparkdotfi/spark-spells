@@ -667,6 +667,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // --- Step 5: Bridge USDC back to mainnet ---
 
+        skip(1 days);  // Skip 1 day to allow for the rate limit to be refilled
+
         vm.prank(ctx.relayer);
         foreignController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 

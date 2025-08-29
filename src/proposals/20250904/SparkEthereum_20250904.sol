@@ -51,6 +51,31 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
 
+        // Onboard November Ethena PTs
+
+        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_USDE_27NOV2025,
+                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            500_000_000e18
+        );
+        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
+            MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_SUSDE_27NOV2025,
+                oracle:          PT_SUSDE_27NOV2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            500_000_000e18
+        );
+
+        // Create Spark USDC Morpho Vault and onboard to Spark Liquidity Layer
+
         MarketParams[] memory markets = new MarketParams[](2);
         uint256[] memory caps = new uint256[](2);
 
@@ -80,31 +105,8 @@ contract SparkEthereum_20250904 is SparkPayloadEthereum {
             caps:            caps,
             initialDeposit:  1e6,
             sllDepositMax:   50_000_000e6,
-            sllDepositSlope: 100_000_000e6 / uint256(1 days)
+            sllDepositSlope: 25_000_000e6 / uint256(1 days)
         });
-
-        // Onboard November Ethena PTs
-
-        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
-            MarketParams({
-                loanToken:       Ethereum.USDS,
-                collateralToken: PT_USDE_27NOV2025,
-                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.915e18
-            }),
-            500_000_000e18
-        );
-        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
-            MarketParams({
-                loanToken:       Ethereum.USDS,
-                collateralToken: PT_SUSDE_27NOV2025,
-                oracle:          PT_SUSDE_27NOV2025_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.915e18
-            }),
-            500_000_000e18
-        );
 
         // Onboard Aave aUSDe
 
