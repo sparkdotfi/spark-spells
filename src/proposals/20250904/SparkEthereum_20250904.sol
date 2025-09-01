@@ -30,7 +30,14 @@ import { SparkPayloadEthereum, IEngine, EngineFlags, SLLHelpers } from "../../Sp
  *         - Transfer USDS to Spark Foundation
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/september-4-2025-proposed-changes-to-spark-for-upcoming-spell/27102
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmUKs4Lt
+ *         https://vote.sky.money/polling/QmNbTb5v
+ *         https://vote.sky.money/polling/QmTS1Jw7
+ *         https://vote.sky.money/polling/QmRLrw8X
+ *         https://vote.sky.money/polling/QmbSeE7t
+ *         https://vote.sky.money/polling/QmXDwbcJ
+ *         https://vote.sky.money/polling/QmeLKi1N
+ *         https://vote.sky.money/polling/QmbHt4Vg
  */
 contract SparkEthereum_20250904 is SparkPayloadEthereum {
 

@@ -818,6 +818,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     )
         internal
     {
+        require(markets.length == caps.length, "Markets and caps length mismatch");
+
         bytes32 CREATE_METAMORPHO_SIG = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
 
         // Start the recorder
