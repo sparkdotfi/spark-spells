@@ -846,19 +846,17 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(IMetaMorpho(vault).symbol(),                          symbol);
         assertEq(IMetaMorpho(vault).timelock(),                        1 days);
         assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
-        assertEq(IMetaMorpho(vault).supplyQueueLength(),               markets.length + 1);
+        assertEq(IMetaMorpho(vault).supplyQueueLength(),               1);
         assertEq(IMetaMorpho(vault).owner(),                           Ethereum.SPARK_PROXY);
         assertEq(IMetaMorpho(vault).feeRecipient(),                    Ethereum.ALM_PROXY);
         assertEq(IMetaMorpho(vault).fee(),                             vaultFee);
 
         for (uint256 i = 0; i < markets.length; i++) {
-            assertEq(Id.unwrap(IMetaMorpho(vault).supplyQueue(i)), Id.unwrap(MarketParamsLib.id(markets[i])));
-
             _assertMorphoCap(vault, markets[i], caps[i]);
         }
 
         assertEq(
-            Id.unwrap(IMetaMorpho(vault).supplyQueue(IMetaMorpho(vault).supplyQueueLength() - 1)),
+            Id.unwrap(IMetaMorpho(vault).supplyQueue(0)),
             Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
         );
         _assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint184).max);

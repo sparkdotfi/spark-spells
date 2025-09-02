@@ -248,13 +248,9 @@ abstract contract SparkPayloadEthereum is
 
         require(markets.length == caps.length, "Markets and caps length mismatch");
 
-        Id[] memory ids = new Id[](markets.length + 1);
-
         for (uint256 i; i < markets.length; i++) {
             vault.submitCap(markets[i], caps[i]);
             vault.acceptCap(markets[i]);
-
-            ids[i] = MarketParamsLib.id(markets[i]);
         }
 
         // Submit and accept cap for idle market
@@ -263,7 +259,8 @@ abstract contract SparkPayloadEthereum is
         vault.acceptCap(idleMarket);
 
         // Add idle market to supply queue
-        ids[ids.length - 1] = MarketParamsLib.id(idleMarket);
+        Id[] memory ids = new Id[](1);
+        ids[0] = MarketParamsLib.id(idleMarket);
 
         vault.setSupplyQueue(ids);
 
