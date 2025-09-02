@@ -44,7 +44,7 @@ contract CommonTestBase is Test {
     if (block.chainid == ChainIds.MAINNET) {
       // USDC
       if (asset == USDC_MAINNET) {
-        vm.prank(0x28C6c06298d514Db089934071355E5743bf21d60);
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
         IERC20(asset).transfer(user, amount);
         return true;
       }
