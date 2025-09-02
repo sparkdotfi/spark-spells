@@ -252,7 +252,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
 
         if (!skipInitialCheck) {
-
             _assertRateLimit(depositKey,  0, 0);
             _assertRateLimit(withdrawKey, 0, 0);
 

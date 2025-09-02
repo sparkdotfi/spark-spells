@@ -25,6 +25,8 @@ import { IncentivizedERC20 }               from 'sparklend-v1-core/protocol/toke
 import { ReserveConfiguration, DataTypes } from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { WadRayMath }                      from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
+import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
+
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
 import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
@@ -32,8 +34,6 @@ import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
 import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
 import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
 import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
-
-import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
@@ -812,6 +812,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         string         memory symbol,
         MarketParams[] memory markets,
         uint256[]      memory caps,
+        uint256               vaultFee,
         uint256               initialDeposit,
         uint256               sllDepositMax,
         uint256               sllDepositSlope
@@ -847,6 +848,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
         assertEq(IMetaMorpho(vault).supplyQueueLength(),               markets.length + 1);
         assertEq(IMetaMorpho(vault).owner(),                           Ethereum.SPARK_PROXY);
+        assertEq(IMetaMorpho(vault).feeRecipient(),                    Ethereum.ALM_PROXY);
+        assertEq(IMetaMorpho(vault).fee(),                             vaultFee);
 
         for (uint256 i = 0; i < markets.length; i++) {
             assertEq(Id.unwrap(IMetaMorpho(vault).supplyQueue(i)), Id.unwrap(MarketParamsLib.id(markets[i])));

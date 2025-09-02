@@ -232,6 +232,7 @@ abstract contract SparkPayloadEthereum is
         string         memory symbol,
         MarketParams[] memory markets,
         uint256[]      memory caps,
+        uint256               vaultFee,
         uint256               initialDeposit,
         uint256               sllDepositMax,
         uint256               sllDepositSlope
@@ -271,6 +272,10 @@ abstract contract SparkPayloadEthereum is
             Ethereum.ALM_RELAYER,
             true
         );
+
+        // Set Vault Fee Recipient and Fee
+        vault.setFeeRecipient(Ethereum.ALM_PROXY);
+        vault.setFee(vaultFee);
 
         // Seed vault with initial deposit
         IERC20(asset).approve(address(vault), initialDeposit);

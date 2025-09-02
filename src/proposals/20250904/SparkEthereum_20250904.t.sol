@@ -215,6 +215,7 @@ contract SparkEthereum_20250904Test is SparkTestBase {
             symbol:          "sparkUSDCbc",
             markets:         markets,
             caps:            caps,
+            vaultFee:        0.01e18,
             initialDeposit:  1e6,
             sllDepositMax:   50_000_000e6,
             sllDepositSlope: 25_000_000e6 / uint256(1 days)
