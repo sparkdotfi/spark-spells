@@ -41,7 +41,7 @@ jobs:
 
       # submits a PR comment with a spell simulation
       - name: Spell Caster
-        uses: marsfoundation/spell-caster@action
+        uses: marsfoundation/spell-caster@action-test
         if: github.event_name == 'pull_request'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
