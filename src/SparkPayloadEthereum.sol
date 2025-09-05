@@ -3,6 +3,13 @@ pragma solidity ^0.8.0;
 
 import './AaveV3PayloadBase.sol';
 
+import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
+
+import { IMetaMorpho, MarketParams, Id, IERC4626 } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorphoFactory }                      from 'metamorpho/interfaces/IMetaMorphoFactory.sol';
+
+import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
+
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -10,13 +17,28 @@ import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
 import { Optimism } from 'spark-address-registry/Optimism.sol';
 import { Unichain } from 'spark-address-registry/Unichain.sol';
 
+import { IALMProxy }         from 'spark-alm-controller/src/interfaces/IALMProxy.sol';
+import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
+
 import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
 
-import { AMBForwarder }      from "xchain-helpers/forwarders/AMBForwarder.sol";
-import { ArbitrumForwarder } from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
-import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
+import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
+import { IPool }   from 'sparklend-v1-core/interfaces/IPool.sol';
+
+import { AMBForwarder }      from 'xchain-helpers/forwarders/AMBForwarder.sol';
+import { ArbitrumForwarder } from 'xchain-helpers/forwarders/ArbitrumForwarder.sol';
+import { OptimismForwarder } from 'xchain-helpers/forwarders/OptimismForwarder.sol';
 
 import { SLLHelpers } from './libraries/SLLHelpers.sol';
+
+interface ITreasuryController {
+    function transfer(
+        address collector,
+        address token,
+        address recipient,
+        uint256 amount
+    ) external;
+}
 
 /**
  * @dev Base smart contract for Ethereum.
@@ -112,8 +134,8 @@ abstract contract SparkPayloadEthereum is
         );
     }
 
-    function _onboardAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
-        SLLHelpers.onboardAaveToken(
+    function _configureAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
+        SLLHelpers.configureAaveToken(
             Ethereum.ALM_RATE_LIMITS,
             token,
             depositMax,
@@ -121,8 +143,8 @@ abstract contract SparkPayloadEthereum is
         );
     }
 
-    function _onboardERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
-        SLLHelpers.onboardERC4626Vault(
+    function _configureERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
+        SLLHelpers.configureERC4626Vault(
             Ethereum.ALM_RATE_LIMITS,
             vault,
             depositMax,
@@ -130,7 +152,7 @@ abstract contract SparkPayloadEthereum is
         );
     }
 
-    function _onboardCurvePool(
+    function _configureCurvePool(
         address controller,
         address pool,
         uint256 maxSlippage,
@@ -141,7 +163,7 @@ abstract contract SparkPayloadEthereum is
         uint256 withdrawMax,
         uint256 withdrawSlope
     ) internal {
-        SLLHelpers.onboardCurvePool(
+        SLLHelpers.configureCurvePool(
             controller,
             Ethereum.ALM_RATE_LIMITS,
             pool,
@@ -153,6 +175,119 @@ abstract contract SparkPayloadEthereum is
             withdrawMax,
             withdrawSlope
         );
+    }
+
+    function _transferAssetFromAlmProxy(
+        address asset,
+        address destination,
+        uint256 amount
+    ) internal {
+        // Grant controller role to Spark Proxy
+        MainnetController(Ethereum.ALM_PROXY).grantRole(
+            IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
+            Ethereum.SPARK_PROXY
+        );
+
+        IALMProxy(Ethereum.ALM_PROXY).doCall(
+            asset,
+            abi.encodeCall(
+                IERC20(asset).transfer,
+                (destination, amount)
+            )
+        );
+
+        // Revoke controller role from Spark Proxy
+        MainnetController(Ethereum.ALM_PROXY).revokeRole(
+            IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
+            Ethereum.SPARK_PROXY
+        );
+    }
+
+    function _transferFromSparkLendTreasury(address[] memory aTokens) internal {
+        address[] memory assets = new address[](aTokens.length);
+
+        for (uint256 i; i < aTokens.length; i++) {
+            assets[i] = IAToken(aTokens[i]).UNDERLYING_ASSET_ADDRESS();
+        }
+
+        IPool(Ethereum.POOL).mintToTreasury(assets);
+
+        for (uint256 i; i < aTokens.length; i++) {
+            address treasury = aTokens[i] == Ethereum.DAI_SPTOKEN
+                ? Ethereum.DAI_TREASURY
+                : Ethereum.TREASURY;
+
+            ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
+                collector: treasury,
+                token:     aTokens[i],
+                recipient: Ethereum.SPARK_PROXY,
+                amount:    IERC20(aTokens[i]).balanceOf(treasury)
+            });
+        }
+    }
+
+    function _setUpNewMorphoVault(
+        address               asset,
+        string         memory name,
+        string         memory symbol,
+        MarketParams[] memory markets,
+        uint256[]      memory caps,
+        uint256               vaultFee,
+        uint256               initialDeposit,
+        uint256               sllDepositMax,
+        uint256               sllDepositSlope
+    ) internal {
+        IMetaMorpho vault = IMetaMorphoFactory(Ethereum.MORPHO_FACTORY).createMetaMorpho({
+            initialOwner:    Ethereum.SPARK_PROXY,
+            initialTimelock: 0,
+            asset:           asset,
+            name:            name,
+            symbol:          symbol,
+            salt:            ""
+        });
+
+        require(markets.length == caps.length, "Markets and caps length mismatch");
+
+        for (uint256 i; i < markets.length; i++) {
+            vault.submitCap(markets[i], caps[i]);
+            vault.acceptCap(markets[i]);
+        }
+
+        // Submit and accept cap for idle market
+        MarketParams memory idleMarket = SLLHelpers.morphoIdleMarket(asset);
+        vault.submitCap(idleMarket, type(uint184).max);
+        vault.acceptCap(idleMarket);
+
+        // Add idle market to supply queue
+        Id[] memory ids = new Id[](1);
+        ids[0] = MarketParamsLib.id(idleMarket);
+
+        vault.setSupplyQueue(ids);
+
+        // Set ALM Relayer as allocator.
+        vault.setIsAllocator(
+            Ethereum.ALM_RELAYER,
+            true
+        );
+
+        // Set Vault Fee Recipient and Fee
+        vault.setFeeRecipient(Ethereum.ALM_PROXY);
+        vault.setFee(vaultFee);
+
+        // Seed vault with initial deposit
+        IERC20(asset).approve(address(vault), initialDeposit);
+        IERC4626(address(vault)).deposit(initialDeposit, address(1));
+
+        // Submit timelock for vault (Increases are immediate)
+        vault.submitTimelock(1 days);
+
+        if (sllDepositMax != 0 && sllDepositSlope != 0) {
+            _configureERC4626Vault(
+                address(vault),
+                sllDepositMax,
+                sllDepositSlope
+            );
+        }
     }
 
 }

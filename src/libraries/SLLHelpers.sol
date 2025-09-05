@@ -149,11 +149,11 @@ library SLLHelpers {
     }
 
     /**
-     * @notice Onboard an Aave token
+     * @notice Configure an Aave token
      * @dev This will set the deposit to the given numbers with
      *      the withdraw limit set to unlimited.
      */
-    function onboardAaveToken(
+    function configureAaveToken(
         address rateLimits,
         address token,
         uint256 depositMax,
@@ -187,11 +187,11 @@ library SLLHelpers {
     }
 
     /**
-     * @notice Onboard an ERC4626 vault
+     * @notice Configure an ERC4626 vault
      * @dev This will set the deposit to the given numbers with
      *      the withdraw limit set to unlimited.
      */
-    function onboardERC4626Vault(
+    function configureERC4626Vault(
         address rateLimits,
         address vault,
         uint256 depositMax,
@@ -227,7 +227,7 @@ library SLLHelpers {
     /**
      * @notice Onboard a Curve pool
      */
-    function onboardCurvePool(
+    function configureCurvePool(
         address controller,
         address rateLimits,
         address pool,

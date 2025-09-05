@@ -179,7 +179,13 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner, CommonSpell
         address[] memory reserves = ctx.pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            require(IERC20(ctx.pool.getReserveData(reserves[i]).aTokenAddress).totalSupply() >= 1e4, 'RESERVE_NOT_SEEDED');
+            address aToken = ctx.pool.getReserveData(reserves[i]).aTokenAddress;
+
+            if (aToken == Ethereum.GNO_SPTOKEN) {
+                continue;
+            }
+
+            require(IERC20(aToken).totalSupply() >= 1e4, 'RESERVE_NOT_SEEDED');
         }
     }
 

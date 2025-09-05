@@ -44,27 +44,27 @@ contract CommonTestBase is Test {
     if (block.chainid == ChainIds.MAINNET) {
       // USDC
       if (asset == USDC_MAINNET) {
-        vm.prank(0x28C6c06298d514Db089934071355E5743bf21d60);
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);  // USDC whale
         IERC20(asset).transfer(user, amount);
         return true;
       }
     } else if (block.chainid == ChainIds.GNOSIS) {
       // EURe
       if (asset == EURE_GNOSIS) {
-        vm.prank(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+        vm.prank(0xBA12222222228d8Ba445958a75a0704d566BF2C8);  // EURe whale
         IERC20(asset).transfer(user, amount);
         return true;
       }
       // USDC.e
       if (asset == USDCE_GNOSIS) {
-        vm.prank(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+        vm.prank(0xBA12222222228d8Ba445958a75a0704d566BF2C8);  // USDC.e whale
         IERC20(asset).transfer(user, amount);
         return true;
       }
     } else if (block.chainid == ChainIds.BASE) {
       // USDC
       if (asset == USDC_BASE) {
-        vm.prank(0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78);
+        vm.prank(0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78);  // Base USDC whale
         IERC20(asset).transfer(user, amount);
         return true;
       }

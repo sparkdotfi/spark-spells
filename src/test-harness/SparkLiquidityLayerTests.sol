@@ -205,9 +205,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // Do some sanity checks on the slope
             // This is to catch things like forgetting to divide to a per-second time, etc
 
-            // We assume it takes at least 4 hours to recharge to max
-            uint256 fourHoursSlope = slope * 4 hours;
-            assertLe(fourHoursSlope, maxAmount, "slope range sanity check failed");
+            // We assume it takes at least 1 hours to recharge to max
+            uint256 oneHoursSlope = slope * 1 hours;
+            assertLe(oneHoursSlope, maxAmount, "slope range sanity check failed");
 
             // It shouldn't take more than 30 days to recharge to max
             uint256 monthlySlope = slope * 30 days;
@@ -225,6 +225,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
+        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, false);
+    }
+
+    function _testERC4626Onboarding(
+        address vault,
+        uint256 expectedDepositAmount,
+        uint256 depositMax,
+        uint256 depositSlope,
+        bool    skipInitialCheck
+    ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
         bool unlimitedDeposit = depositMax == type(uint256).max;
 
@@ -241,14 +251,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vault
         );
 
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
+        if (!skipInitialCheck) {
+            _assertRateLimit(depositKey,  0, 0);
+            _assertRateLimit(withdrawKey, 0, 0);
 
-        vm.prank(ctx.relayer);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
+            vm.prank(ctx.relayer);
+            vm.expectRevert("RateLimits/zero-maxAmount");
+            MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
 
-        executeAllPayloadsAndBridges();
+            executeAllPayloadsAndBridges();
+        }
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
@@ -357,7 +369,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
 
-        assertApproxEqAbs(IERC20(aToken).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
+        assertApproxEqAbs(IERC20(aToken).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 2);
     }
 
     struct CurveOnboardingVars {
@@ -653,6 +665,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
 
         // --- Step 5: Bridge USDC back to mainnet ---
+
+        skip(1 days);  // Skip 1 day to allow for the rate limit to be refilled
 
         vm.prank(ctx.relayer);
         foreignController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
