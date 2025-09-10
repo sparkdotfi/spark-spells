@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';

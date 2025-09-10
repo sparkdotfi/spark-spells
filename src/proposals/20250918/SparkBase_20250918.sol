@@ -2,10 +2,7 @@
 pragma solidity ^0.8.25;
 
 import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
-import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 import { ForeignController }     from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers }      from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { IRateLimits }           from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -22,7 +19,9 @@ import { SparkPayloadBase, SLLHelpers } from "src/SparkPayloadBase.sol";
  *         - Activate MORPHO Transfer Rate Limit
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/september-18-2025-proposed-changes-to-spark-for-upcoming-spell/27153
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmVwqNSv
+ *         https://vote.sky.money/polling/QmPT2Ynb
+ *         https://vote.sky.money/polling/QmUaV3Xj
  */
 contract SparkBase_20250918 is SparkPayloadBase {
 

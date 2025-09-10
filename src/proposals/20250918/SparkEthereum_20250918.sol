@@ -14,7 +14,7 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { SparkPayloadEthereum, SLLHelpers } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 
 /**
  * @title  September 18, 2025 Spark Ethereum Proposal
@@ -30,7 +30,13 @@ import { SparkPayloadEthereum, SLLHelpers } from "../../SparkPayloadEthereum.sol
  *         - Claim Accrued Reserves for USDS and DAI
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/september-18-2025-proposed-changes-to-spark-for-upcoming-spell/27153
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmXzyYyJ
+ *         https://vote.sky.money/polling/QmUv9fbY
+ *         https://vote.sky.money/polling/Qme1KAbo
+ *         https://vote.sky.money/polling/QmdX2eGt
+ *         https://vote.sky.money/polling/QmeyqTyQ
+ *         https://vote.sky.money/polling/Qmc8PHPC
+ *         https://vote.sky.money/polling/QmX3Lfa6
  */
 contract SparkEthereum_20250918 is SparkPayloadEthereum {
 
