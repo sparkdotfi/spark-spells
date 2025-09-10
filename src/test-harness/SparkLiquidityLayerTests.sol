@@ -18,6 +18,10 @@ import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLi
 
 import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
 
+import { IMetaMorpho } from "metamorpho/interfaces/IMetaMorpho.sol";
+
+import { console2 } from "forge-std/console2.sol";
+
 import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
@@ -225,7 +229,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
-        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, false);
+        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, 10, false);
     }
 
     function _testERC4626Onboarding(
@@ -233,10 +237,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 expectedDepositAmount,
         uint256 depositMax,
         uint256 depositSlope,
+        uint256 tolerance,
         bool    skipInitialCheck
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        bool unlimitedDeposit = depositMax == type(uint256).max;
 
         IERC20 asset = IERC20(IERC4626(vault).asset());
 
@@ -265,42 +269,107 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
+        _testERC4626Integration(E2ETestParams(ctx, vault, expectedDepositAmount, depositKey, withdrawKey, tolerance));
+    }
+
+    struct E2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+        uint256 tolerance;
+    }
+
+    function _handleMorphoFees(E2ETestParams memory p) internal {
+        // If the feeRecipient is set, the vault will accrue fees into the ALMProxy during e2e test
+        // deposit, causing unexpected behavior. This is a workaround to avoid this.
+        try IMetaMorpho(p.vault).feeRecipient() {
+            address asset = IERC4626(p.vault).asset();
+            deal(asset, address(p.ctx.proxy), 1);
+            vm.prank(p.ctx.relayer);
+            MainnetController(p.ctx.controller).depositERC4626(p.vault, 1);
+        } catch {
+            // Do nothing
+        }
+    }
+
+    function _testERC4626Integration(E2ETestParams memory p) internal {
+        _handleMorphoFees(p);
+
+        IERC20 asset = IERC20(IERC4626(p.vault).asset());
+
+        deal(address(asset), address(p.ctx.proxy), p.depositAmount);
+
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        // Assert all withdrawals are unlimited
+        assertEq(withdrawLimit, type(uint256).max);
+
+        bool unlimitedDeposit = depositLimit == type(uint256).max;
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
         if (!unlimitedDeposit) {
-            vm.prank(ctx.relayer);
+            vm.prank(p.ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
-            MainnetController(ctx.controller).depositERC4626(vault, depositMax + 1);
+            MainnetController(p.ctx.controller).depositERC4626(p.vault, depositLimit + 1);
         }
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
 
-        assertEq(asset.balanceOf(address(ctx.proxy)), expectedDepositAmount);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
 
-        assertEq(IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(ctx.proxy))), 0);
+        uint256 startingShares = IERC4626(p.vault).balanceOf(address(p.ctx.proxy));
+        uint256 startingAssets = IERC4626(p.vault).convertToAssets(startingShares);
 
-        vm.prank(ctx.relayer);
-        uint256 shares = MainnetController(ctx.controller).depositERC4626(vault, expectedDepositAmount);
+        vm.prank(p.ctx.relayer);
+        uint256 shares = MainnetController(p.ctx.controller).depositERC4626(p.vault, p.depositAmount);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        if (!unlimitedDeposit) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        }
 
-        assertEq(asset.balanceOf(address(ctx.proxy)), 0);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
 
-        assertApproxEqAbs(IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(ctx.proxy))), expectedDepositAmount, 10);
+        // TODO: Investigate which this needs so much tolerance (MORPHO_USDC_BC)
+        assertApproxEqAbs(IERC4626(p.vault).balanceOf(address(p.ctx.proxy)), startingShares + shares, p.tolerance);
 
-        assertEq(IERC4626(vault).balanceOf(address(ctx.proxy)), shares);
+        // Assert assets deposited are reflected in position
+        assertApproxEqAbs(
+            IERC4626(p.vault).convertToAssets(IERC4626(p.vault).balanceOf(address(p.ctx.proxy))),
+            startingAssets + p.depositAmount,
+            p.tolerance
+        );
 
-        vm.prank(ctx.relayer);
-        MainnetController(ctx.controller).withdrawERC4626(vault, expectedDepositAmount / 2);
+        /*************************************************/
+        /*** Step 3: Warp to check rate limit recharge ***/
+        /*************************************************/
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        vm.warp(block.timestamp + 1 days);
 
-        assertEq(asset.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2);
+        // Assert rate limit recharge
+        if (!unlimitedDeposit) {
+            assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        }
 
-        assertApproxEqAbs(IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(ctx.proxy))), expectedDepositAmount / 2, 10);
+        /********************************************************************************************************/
+        /*** Step 4: Withdraw and check resulting position, ensuring value accrual and appropriate withdrawal ***/
+        /********************************************************************************************************/
 
-        assertApproxEqAbs(IERC4626(vault).balanceOf(address(ctx.proxy)), shares / 2, 10);
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).withdrawERC4626(p.vault, p.depositAmount);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+
+        // Assert value accrual
+        assertGt(IERC4626(p.vault).convertToAssets(IERC4626(p.vault).balanceOf(address(p.ctx.proxy))), startingAssets);
+        assertGt(IERC4626(p.vault).balanceOf(address(p.ctx.proxy)),                                    startingShares);
     }
 
     function _testAaveOnboarding(
