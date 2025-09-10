@@ -17,6 +17,8 @@ import { Base } from "spark-address-registry/Base.sol";
 
 import { EnumerableSet } from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
+import { ChainIdUtils } from 'src/libraries/ChainId.sol';
+
 import {VmSafe } from "forge-std/Vm.sol";
 
 /// @dev convenience contract meant to be the single point of entry for all
@@ -26,20 +28,18 @@ abstract contract SparkTestBase is SparkEthereumTests {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // TODO: Put in registry
-    address public constant AAVE_ETH_USDS      = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
-    address public constant AAVE_CORE_AUSDT = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
-
+    address public constant AAVE_CORE_AUSDT    = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
     address public constant AAVE_ETH_LIDO_USDS = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
     address public constant AAVE_ETH_USDC      = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
-    address public constant BUIDL_DEPOSIT     = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
-    address public constant BUIDL_REDEEM      = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
-    address public constant MORPHO_TOKEN    = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
-    address internal constant SPARK_MULTISIG    = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant USDS_ATOKEN    = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
-    address internal constant CURVE_PYUSDUSDC = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
-    address internal constant USDE_ATOKEN     = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
-    address internal constant MORPHO_USDC_BC = 0x56A76b428244a50513ec81e225a293d128fd581D;
-
+    address public constant AAVE_ETH_USDS      = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
+    address public constant BUIDL_DEPOSIT      = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
+    address public constant BUIDL_REDEEM       = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
+    address public constant CURVE_PYUSDUSDC    = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+    address public constant MORPHO_TOKEN       = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
+    address public constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
+    address public constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address public constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
+    address public constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
 
     // TODO: Finish
     enum Category {
@@ -87,6 +87,28 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
+    function test_test() public {
+        populateRateLimitKeys();
+        loadPreExecutionIntegrations();
+
+        // For each integration, check that all non-zero keys are present in the rate limit keys, and remove them from the set to ensure completeness
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            require(
+                ethereumSllIntegrations[i].entryId != bytes32(0) ||
+                ethereumSllIntegrations[i].exitId  != bytes32(0),
+                "Empty integration"
+            );
+
+            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
+            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId)  || ethereumSllIntegrations[i].exitId  == bytes32(0));
+
+            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
+            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
+        }
+
+        assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+    }
+
     function populateRateLimitKeys() public returns (bytes32[] memory uniqueKeys) {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
@@ -100,7 +122,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         // Collect unique keys from topics[1] (`key`)
         for (uint256 i = 0; i < allLogs.length; i++) {
-            console2.logBytes32(allLogs[i].topics[0]);
             if (allLogs[i].topics.length > 1) {
                 ( uint256 maxAmount,,, )
                     = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
@@ -109,194 +130,67 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }
         }
 
-        console2.log("_ethereumRateLimitKeys.length", _ethereumRateLimitKeys.length());
-        console2.log("allLogs.length", allLogs.length);
-        // console2.log("_ethereumRateLimitKeys.values", _ethereumRateLimitKeys.values());
-
         // Copy to memory (OZ returns a memory array view of the storage vector)
         uniqueKeys = _ethereumRateLimitKeys.values();
 
-        // // IMPORTANT: clear the storage set so nothing persists between calls
-        // _ethereumRateLimitKeys.clear();
+        console2.log("Rate limit keys", _ethereumRateLimitKeys.length());
     }
 
-    function _beforeExecution() internal {
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-DAI_SPTOKEN", Category.AAVE,         Ethereum.DAI_SPTOKEN));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-PYUSD_SPTOKEN", Category.AAVE,         Ethereum.PYUSD_SPTOKEN));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDC_SPTOKEN", Category.AAVE,         Ethereum.USDC_SPTOKEN)); // SparkLend
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDS_SPTOKEN", Category.AAVE,         Ethereum.USDS_SPTOKEN));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDT_SPTOKEN", Category.AAVE,         Ethereum.USDT_SPTOKEN));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDE_ATOKEN", Category.AAVE,        USDE_ATOKEN));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_USDS", Category.AAVE,         AAVE_ETH_USDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_LIDO_USDS", Category.AAVE,         AAVE_ETH_LIDO_USDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_USDC", Category.AAVE,         AAVE_ETH_USDC));
-        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-CORE_AUSDT", Category.AAVE,         AAVE_CORE_AUSDT));
-
-
-        ethereumSllIntegrations.push(_createSLLIntegration("CENTRIFUGE-JTRSY_VAULT", Category.CENTRIFUGE, Ethereum.JTRSY_VAULT));
-
-        ethereumSllIntegrations.push(_createSLLIntegration("PSM-USDS", Category.PSM, Ethereum.USDS));
-
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT));
-
-        ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0)));
-
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT));
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-USDCUSDT", Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT));
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, CURVE_PYUSDUSDC));
-
-        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_ONCHAIN-USTB", Category.SUPERSTATE_ONCHAIN,  Ethereum.USTB));
-        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_OFFCHAIN-USTB", Category.SUPERSTATE_OFFCHAIN, address(0), Ethereum.USTB, address(0), Ethereum.USTB));
+    function loadPreExecutionIntegrations() internal {
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_USDC",      Category.AAVE, AAVE_ETH_USDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_USDS",      Category.AAVE, AAVE_ETH_USDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-PYUSD_SPTOKEN", Category.AAVE, Ethereum.PYUSD_SPTOKEN));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDC_SPTOKEN",  Category.AAVE, Ethereum.USDC_SPTOKEN)); // SparkLend
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDE_ATOKEN",   Category.AAVE, USDE_ATOKEN));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDS_SPTOKEN",  Category.AAVE, Ethereum.USDS_SPTOKEN));
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-USDT_SPTOKEN",  Category.AAVE, Ethereum.USDT_SPTOKEN));
 
         ethereumSllIntegrations.push(_createSLLIntegration("BUIDL-USDC", Category.BUIDL, Ethereum.USDC, Ethereum.BUIDLI, BUIDL_DEPOSIT, BUIDL_REDEEM));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("CORE-USDS", Category.CORE,         Ethereum.USDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SUSDS", Category.ERC4626,      Ethereum.SUSDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626,      Ethereum.MORPHO_VAULT_DAI_1));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_USDS", Category.ERC4626,      Ethereum.MORPHO_VAULT_USDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC", Category.ERC4626,      Ethereum.SYRUP_USDC));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-FLUID_SUSDS", Category.ERC4626,      Ethereum.FLUID_SUSDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_USDC_BC", Category.ERC4626,      MORPHO_USDC_BC));
-        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_SUSDE-SUSDE", Category.ETHENA_SUSDE, Ethereum.SUSDE));
-        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_USDE-USDE", Category.ETHENA_USDE,  Ethereum.USDE));
-        ethereumSllIntegrations.push(_createSLLIntegration("MAPLE-SYRUP_USDC", Category.MAPLE,        Ethereum.SYRUP_USDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-BASE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE));
         ethereumSllIntegrations.push(_createSLLIntegration("CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE));
-        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-OPTIMISM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM));
-        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-UNICHAIN", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN));
+        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE));
+        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM));
+        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("CCTP-GENERAL", Category.CCTP_GENERAL, Ethereum.USDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("CENTRIFUGE-JTRSY_VAULT", Category.CENTRIFUGE, Ethereum.JTRSY_VAULT));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("CORE-USDS", Category.CORE, Ethereum.USDS));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, CURVE_PYUSDUSDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT));
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC));
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1));
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC",         Category.ERC4626, Ethereum.SYRUP_USDC));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_SUSDE-SUSDE", Category.ETHENA_SUSDE, Ethereum.SUSDE));
+        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_USDE-USDE",   Category.ETHENA_USDE,  Ethereum.USDE));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("PSM-USDS", Category.PSM, Ethereum.USDS));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0)));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_OFFCHAIN-USTB", Category.SUPERSTATE_OFFCHAIN, address(0), Ethereum.USTB, address(0), Ethereum.USTB));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_ONCHAIN-USTB", Category.SUPERSTATE_ONCHAIN,  Ethereum.USTB));
     }
 
     function _afterExecution() internal {
         // set all storage using beforeExecution
         // override to add more values, assert
-    }
-
-    function test_test() public {
-        console2.log("Block.timestamp", block.timestamp);
-        populateRateLimitKeys();
-        _beforeExecution();
-        // Assert integrations length == keys length
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            console2.log("---");
-            console2.log(ethereumSllIntegrations[i].label);
-            console2.logBytes32(ethereumSllIntegrations[i].entryId);
-            console2.logBytes32(ethereumSllIntegrations[i].exitId);
-            console2.log(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId));
-            console2.log(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId));
-            require(
-                ethereumSllIntegrations[i].entryId != bytes32(0) ||
-                ethereumSllIntegrations[i].exitId  != bytes32(0),
-                "Empty integration"
-            );
-
-            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
-            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId) || ethereumSllIntegrations[i].exitId == bytes32(0));
-            console2.log("_ethereumRateLimitKeys.length()", _ethereumRateLimitKeys.length());
-            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
-            console2.log("_ethereumRateLimitKeys.length()", _ethereumRateLimitKeys.length());
-            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
-        }
-
-        bytes32[] memory topics = new bytes32[](1);
-        topics[0] = IRateLimits.RateLimitDataSet.selector;
-
-        VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            START_BLOCK,
-            block.number,
-            Ethereum.ALM_RATE_LIMITS,
-            topics
-        );
-
-
-
-        // For all remaining keys, log the tx hash they occured in
-        for (uint256 i = 0; i < _ethereumRateLimitKeys.length(); i++) {
-            for (uint256 j = 0; j < allLogs.length; j++) {
-                if (allLogs[j].topics[1] == _ethereumRateLimitKeys.at(i)) {
-                    console2.log("Tx hash", j);
-                    console2.logBytes32(_ethereumRateLimitKeys.at(i));
-                    console2.logBytes32(allLogs[j].transactionHash);
-                }
-            }
-        }
     }
 
     function _createSLLIntegration(string memory label, Category category, address integration) internal view returns (SLLIntegration memory) {
