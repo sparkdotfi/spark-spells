@@ -337,7 +337,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
 
-        // TODO: Investigate which this needs so much tolerance (MORPHO_USDC_BC)
         assertApproxEqAbs(IERC4626(p.vault).balanceOf(address(p.ctx.proxy)), startingShares + shares, p.tolerance);
 
         // Assert assets deposited are reflected in position
@@ -351,11 +350,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 3: Warp to check rate limit recharge ***/
         /*************************************************/
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 30 days);
 
         // Assert rate limit recharge
         if (!unlimitedDeposit) {
             assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
         }
 
         /********************************************************************************************************/
@@ -380,8 +380,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        bool unlimitedDeposit = depositMax == type(uint256).max;
-
         IERC20 underlying = IERC20(IAToken(aToken).UNDERLYING_ASSET_ADDRESS());
 
         MainnetController controller = MainnetController(ctx.controller);
@@ -404,41 +402,76 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        if (!unlimitedDeposit) {
-            vm.prank(ctx.relayer);
-            vm.expectRevert("RateLimits/rate-limit-exceeded");
-            controller.depositAave(aToken, depositMax + 1);
-        }
-
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        uint256 aTokenBalance = underlying.balanceOf(aToken);
+        _testERC4626Integration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
+    }
 
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount, 1);
+    function _testAaveIntegration(E2ETestParams memory p) internal {
+        IERC20 asset = IERC20(IAToken(p.vault).UNDERLYING_ASSET_ADDRESS());
 
-        assertEq(IERC20(aToken).balanceOf(address(ctx.proxy)), 0);
+        deal(address(asset), address(p.ctx.proxy), p.depositAmount);
 
-        vm.prank(ctx.relayer);
-        controller.depositAave(aToken, expectedDepositAmount);
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        // Assert all withdrawals are unlimited
+        assertEq(withdrawLimit, type(uint256).max);
 
-        assertApproxEqAbs(underlying.balanceOf(aToken),             aTokenBalance + expectedDepositAmount, 1);
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                     1);
+        bool unlimitedDeposit = depositLimit == type(uint256).max;
 
-        assertApproxEqAbs(IERC20(aToken).balanceOf(address(ctx.proxy)), expectedDepositAmount, 1);
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
 
-        vm.prank(ctx.relayer);
-        controller.withdrawAave(aToken, expectedDepositAmount / 2);
+        if (!unlimitedDeposit) {
+            vm.prank(p.ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            MainnetController(p.ctx.controller).depositAave(p.vault, depositLimit + 1);
+        }
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  unlimitedDeposit ? type(uint256).max : depositMax - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
 
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 1);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
 
-        assertApproxEqAbs(IERC20(aToken).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2, 2);
+        uint256 startingATokenBalance = IERC4626(p.vault).balanceOf(address(p.ctx.proxy));
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).depositAave(p.vault, p.depositAmount);
+
+        if (!unlimitedDeposit) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        }
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+
+        assertApproxEqAbs(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance + p.depositAmount, p.tolerance);
+
+        /*************************************************/
+        /*** Step 3: Warp to check rate limit recharge ***/
+        /*************************************************/
+
+        vm.warp(block.timestamp + 30 days);
+
+        // Assert rate limit recharge
+        if (!unlimitedDeposit) {
+            assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+        }
+
+        /********************************************************************************************************/
+        /*** Step 4: Withdraw and check resulting position, ensuring value accrual and appropriate withdrawal ***/
+        /********************************************************************************************************/
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).withdrawAave(p.vault, p.depositAmount);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+
+        assertGt(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
     }
 
     struct CurveOnboardingVars {

@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
+import { ChainId } from 'src/libraries/ChainId.sol';
+
+import { IAToken } from "lib/sparklend-v1-core/contracts/interfaces/IAToken.sol";
+
 import { SparkEthereumTests } from "./SparkEthereumTests.sol";
 
 import { console2 } from "forge-std/console2.sol";
@@ -120,16 +124,18 @@ abstract contract SparkTestBase is SparkEthereumTests {
         console2.log("Running SLL E2E test for", integration.label);
 
         if (integration.category == Category.AAVE) {
-            // TODO: Add skipInitialCheck
-            // _testAaveOnboarding({
-            //     aToken:                integration.integration,
-            //     expectedDepositAmount: 10_000_000e18,
-            //     depositMax:            rateLimits.getRateLimitData(integration.entryId).maxAmount,
-            //     depositSlope:          rateLimits.getRateLimitData(integration.entryId).slope
-            // });
+            uint256 decimals = IERC20(IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS()).decimals();
+            _testAaveIntegration(E2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                vault:         integration.integration,
+                depositAmount: 10_000_000 * 10 ** decimals,
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId,
+                tolerance:     10
+            }));
         }
 
-        if (integration.category == Category.ERC4626) {
+        else if (integration.category == Category.ERC4626) {
             uint256 decimals = IERC20(IERC4626(integration.integration).asset()).decimals();
             _testERC4626Integration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
@@ -139,6 +145,27 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 withdrawKey:   integration.exitId,
                 tolerance:     10
             }));
+        }
+
+        else if (integration.category == Category.CCTP_GENERAL) {
+            // Must be set
+            assertGt(IRateLimits(_getSparkLiquidityLayerContext().rateLimits).getCurrentRateLimit(integration.entryId), 0);
+        }
+
+        else if (integration.category == Category.CCTP) {
+            ChainId domainId;
+
+            if      (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE))) domainId = ChainIdUtils.ArbitrumOne();
+            else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE)))         domainId = ChainIdUtils.Base();
+            else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM)))     domainId = ChainIdUtils.Optimism();
+            else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN)))     domainId = ChainIdUtils.Unichain();
+            else revert("Invalid domain ID");
+
+            _testE2ESLLCrossChainForDomain(
+                domainId,
+                MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).prevController),
+                ForeignController(_getSparkLiquidityLayerContext(domainId).prevController)
+            );
         }
     }
 
