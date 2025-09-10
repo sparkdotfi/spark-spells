@@ -12,7 +12,7 @@ import { IRateLimits }           from "spark-alm-controller/src/interfaces/IRate
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { SparkPayloadBase } from "src/SparkPayloadBase.sol";
+import { SparkPayloadBase, SLLHelpers } from "src/SparkPayloadBase.sol";
 
 /**
  * @title  Sep 18, 2025 Spark Base Proposal
@@ -37,13 +37,11 @@ contract SparkBase_20250918 is SparkPayloadBase {
 
         // --- Increase USDC CCTP Rate Limits ---
 
-        IRateLimits(Base.ALM_RATE_LIMITS).setRateLimitData(
-            RateLimitHelpers.makeDomainKey(
-                ForeignController(NEW_ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
-                CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM
-            ),
+        SLLHelpers.setUSDCToDomainRateLimit(
+            Base.ALM_RATE_LIMITS,
+            CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
             200_000_000e6,
-            500_000_000e6 / uint256(1 days)
+            uint256(500_000_000e6) / 1 days
         );
 
         // --- Activate MORPHO Transfer Rate Limit ---

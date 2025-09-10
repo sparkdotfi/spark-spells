@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
-
 import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -16,7 +14,7 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { SparkPayloadEthereum, IEngine, EngineFlags, SLLHelpers } from "../../SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, SLLHelpers } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  September 18, 2025 Spark Ethereum Proposal
@@ -36,8 +34,8 @@ import { SparkPayloadEthereum, IEngine, EngineFlags, SLLHelpers } from "../../Sp
  */
 contract SparkEthereum_20250918 is SparkPayloadEthereum {
 
-    address internal constant NEW_ALM_CONTROLLER = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
     address internal constant CURVE_PYUSDUSDS    = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
+    address internal constant NEW_ALM_CONTROLLER = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
     address internal constant PT_USDS_SPK_18DEC2025            = 0xA2a420230A5cb045db052E377D20b9c156805b95;
@@ -48,11 +46,9 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
         _upgradeController(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
         // Increase USDC CCTP Rate Limits
-        IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
-            RateLimitHelpers.makeDomainKey(
-                MainnetController(NEW_ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
-                CCTPForwarder.DOMAIN_ID_CIRCLE_BASE
-            ),
+        SLLHelpers.setUSDCToDomainRateLimit(
+            Ethereum.ALM_RATE_LIMITS,
+            CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
             200_000_000e6,
             500_000_000e6 / uint256(1 days)
         );

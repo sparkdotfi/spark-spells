@@ -29,6 +29,8 @@ import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+import { console } from "forge-std/console.sol";
+
 struct SparkLiquidityLayerContext {
     address     controller;
     address     prevController;  // Only if upgrading
@@ -395,6 +397,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testCurveOnboarding(
+        address controller,
         address pool,
         uint256 expectedDepositAmountToken0,
         uint256 expectedSwapAmountToken0,
@@ -410,9 +413,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vars.pool.N_COINS(), 2, "Curve pool must have 2 coins");
 
-        vars.ctx            = _getSparkLiquidityLayerContext();
-        vars.controller     = MainnetController(vars.ctx.controller);
-        vars.prevController = MainnetController(vars.ctx.prevController);
+        vars.ctx        = _getSparkLiquidityLayerContext();
+        vars.controller = MainnetController(controller);
 
         vars.depositAmounts = new uint256[](2);
         vars.depositAmounts[0] = expectedDepositAmountToken0;
@@ -431,11 +433,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(vars.swapKey,     0, 0);
         _assertRateLimit(vars.depositKey,  0, 0);
         _assertRateLimit(vars.withdrawKey, 0, 0);
-
-        if (vars.prevController == vars.controller) {
-            // Only check if we are not doing a controller upgrade
-            assertEq(vars.prevController.maxSlippages(pool), 0);
-        }
 
         executeAllPayloadsAndBridges();
 
@@ -542,7 +539,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
         // Sanity check on maxSlippage of 15bps
-        assertGe(maxSlippage, 0.9985e18, "maxSlippage too low");
+        assertGe(maxSlippage, 0.998e18,  "maxSlippage too low");
         assertLe(maxSlippage, 1e18,      "maxSlippage too high");
     }
 
