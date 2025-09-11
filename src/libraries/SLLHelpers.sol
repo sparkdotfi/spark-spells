@@ -69,62 +69,88 @@ library SLLHelpers {
         RateLimitData memory cctpEthereumDeposit
     ) internal {
         // PSM USDC
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 usdc
             ),
+            rateLimits,
             usdcDeposit.maxAmount,
-            usdcDeposit.slope
+            usdcDeposit.slope,
+            6
         );
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 usdc
             ),
+            rateLimits,
             usdcWithdraw.maxAmount,
-            usdcWithdraw.slope
+            usdcWithdraw.slope,
+            6
         );
 
         // PSM USDS
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 usds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 usds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
 
         // PSM sUSDS
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 susds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 susds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
 
         // CCTP
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            LIMIT_USDC_TO_CCTP
+        setRateLimitData(
+            LIMIT_USDC_TO_CCTP,
+            rateLimits,
+            type(uint256).max,
+            0,
+            6
         );
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeDomainKey(
                 LIMIT_USDC_TO_DOMAIN,
                 0  // Ethereum domain id (https://developers.circle.com/stablecoins/evm-smart-contracts)
             ),
+            rateLimits,
             cctpEthereumDeposit.maxAmount,
-            cctpEthereumDeposit.slope
+            cctpEthereumDeposit.slope,
+            6
         );
     }
 
@@ -139,19 +165,27 @@ library SLLHelpers {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        IERC20 underlying = IERC20(IAToken(token).UNDERLYING_ASSET_ADDRESS());
+
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_AAVE_DEPOSIT,
                 token
             ),
+            rateLimits,
             depositMax,
-            depositSlope
+            depositSlope,
+            underlying.decimals()
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_AAVE_WITHDRAW,
                 token
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            underlying.decimals()
         );
     }
 
@@ -166,19 +200,27 @@ library SLLHelpers {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        IERC20 asset = IERC20(IERC4626(vault).asset());
+
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_4626_DEPOSIT,
                 vault
             ),
+            rateLimits,
             depositMax,
-            depositSlope
+            depositSlope,
+            asset.decimals()
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_4626_WITHDRAW,
                 vault
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            asset.decimals()
         );
     }
 
@@ -199,33 +241,39 @@ library SLLHelpers {
     ) internal {
         MainnetController(controller).setMaxSlippage(pool, maxSlippage);
         if (swapMax != 0) {
-            IRateLimits(rateLimits).setRateLimitData(
+            setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
                     LIMIT_CURVE_SWAP,
                     pool
                 ),
+                rateLimits,
                 swapMax,
-                swapSlope
+                swapSlope,
+                18
             );
         }
         if (depositMax != 0) {
-            IRateLimits(rateLimits).setRateLimitData(
+            setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
                     LIMIT_CURVE_DEPOSIT,
                     pool
                 ),
+                rateLimits,
                 depositMax,
-                depositSlope
+                depositSlope,
+                18
             );
         }
         if (withdrawMax != 0) {
-            IRateLimits(rateLimits).setRateLimitData(
+            setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
                     LIMIT_CURVE_WITHDRAW,
                     pool
                 ),
+                rateLimits,
                 withdrawMax,
-                withdrawSlope
+                withdrawSlope,
+                18
             );
         }
     }
@@ -277,10 +325,12 @@ library SLLHelpers {
         uint256 maxAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             LIMIT_USDS_MINT,
+            rateLimits,
             maxAmount,
-            slope
+            slope,
+            18
         );
     }
 
@@ -289,10 +339,12 @@ library SLLHelpers {
         uint256 maxUsdcAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             LIMIT_USDS_TO_USDC,
+            rateLimits,
             maxUsdcAmount,
-            slope
+            slope,
+            6
         );
     }
 
@@ -301,10 +353,12 @@ library SLLHelpers {
         uint256 maxUsdcAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             LIMIT_USDC_TO_CCTP,
+            rateLimits,
             maxUsdcAmount,
-            slope
+            slope,
+            6
         );
     }
 
@@ -314,10 +368,12 @@ library SLLHelpers {
         uint256 maxUsdcAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeDomainKey(LIMIT_USDC_TO_DOMAIN, destinationDomain),
+            rateLimits,
             maxUsdcAmount,
-            slope
+            slope,
+            6
         );
     }
 
@@ -398,6 +454,29 @@ library SLLHelpers {
             mintRecipients:      mintRecipients,
             layerZeroRecipients: layerZeroRecipients
         });
+    }
+
+    function setRateLimitData(
+        bytes32 key,
+        address rateLimits,
+        uint256 maxAmount,
+        uint256 slope,
+        uint256 decimals
+    )
+        internal
+    {
+        // Handle setting an unlimited rate limit
+        if (maxAmount == type(uint256).max) {
+            require(slope == 0, "InvalidUnlimitedRateLimitSlope");
+        } else {
+            uint256 upperBound = 1e12 * (10 ** decimals);
+            uint256 lowerBound = 10 ** decimals;
+
+            require(maxAmount <= upperBound && maxAmount >= lowerBound,             "InvalidMaxAmountPrecision");
+            require(slope <= upperBound / 1 hours && slope >= lowerBound / 1 hours, "InvalidSlopePrecision");
+            require(slope != 0,                                                     "InvalidSlopePrecision");
+        }
+        IRateLimits(rateLimits).setRateLimitData(key, maxAmount, slope);
     }
 
 }

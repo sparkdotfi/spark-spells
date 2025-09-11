@@ -45,14 +45,16 @@ contract SparkBase_20250918 is SparkPayloadBase {
 
         // --- Activate MORPHO Transfer Rate Limit ---
 
-        IRateLimits(Base.ALM_RATE_LIMITS).setRateLimitData(
+        SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAssetDestinationKey(
                 ForeignController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
                 MORPHO_TOKEN,
                 SPARK_MULTISIG
             ),
+            Base.ALM_RATE_LIMITS,
             100_000e18,
-            100_000e18 / uint256(1 days)
+            100_000e18 / uint256(1 days),
+            18
         );
     }
 
