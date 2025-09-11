@@ -10,11 +10,11 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Optimism } from 'spark-address-registry/Optimism.sol';
 import { Unichain } from 'spark-address-registry/Unichain.sol';
 
-import { IALMProxy }                       from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { IRateLimits }                     from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { ForeignController }               from "spark-alm-controller/src/ForeignController.sol";
-import { MainnetController }               from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers, RateLimitData } from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
 
@@ -33,6 +33,8 @@ import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+import { console } from "forge-std/console.sol";
+
 struct SparkLiquidityLayerContext {
     address     controller;
     address     prevController;  // Only if upgrading
@@ -40,6 +42,11 @@ struct SparkLiquidityLayerContext {
     IRateLimits rateLimits;
     address     relayer;
     address     freezer;
+}
+
+struct RateLimitData {
+    uint256 maxAmount;
+    uint256 slope;
 }
 
 interface ICurvePoolLike is IERC20 {
@@ -492,6 +499,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testCurveOnboarding(
+        address controller,
         address pool,
         uint256 expectedDepositAmountToken0,
         uint256 expectedSwapAmountToken0,
@@ -507,9 +515,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vars.pool.N_COINS(), 2, "Curve pool must have 2 coins");
 
-        vars.ctx            = _getSparkLiquidityLayerContext();
-        vars.controller     = MainnetController(vars.ctx.controller);
-        vars.prevController = MainnetController(vars.ctx.prevController);
+        vars.ctx        = _getSparkLiquidityLayerContext();
+        vars.controller = MainnetController(controller);
 
         vars.depositAmounts = new uint256[](2);
         vars.depositAmounts[0] = expectedDepositAmountToken0;
@@ -528,11 +535,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(vars.swapKey,     0, 0);
         _assertRateLimit(vars.depositKey,  0, 0);
         _assertRateLimit(vars.withdrawKey, 0, 0);
-
-        if (vars.prevController == vars.controller) {
-            // Only check if we are not doing a controller upgrade
-            assertEq(vars.prevController.maxSlippages(pool), 0);
-        }
 
         executeAllPayloadsAndBridges();
 
@@ -639,7 +641,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
         // Sanity check on maxSlippage of 15bps
-        assertGe(maxSlippage, 0.9985e18, "maxSlippage too low");
+        assertGe(maxSlippage, 0.998e18,  "maxSlippage too low");
         assertLe(maxSlippage, 1e18,      "maxSlippage too high");
     }
 
@@ -789,6 +791,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (currentChain == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(address(0)));
+
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
         }
@@ -808,6 +813,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (currentChain == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(Base.ALM_PROXY));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
+
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
         }

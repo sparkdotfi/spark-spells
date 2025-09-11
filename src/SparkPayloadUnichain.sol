@@ -14,7 +14,13 @@ import { SLLHelpers } from './libraries/SLLHelpers.sol';
  */
 abstract contract SparkPayloadUnichain {
     
+    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
+
     function _upgradeController(address oldController, address newController) internal {
+        address[] memory relayers = new address[](2);
+        relayers[0] = Unichain.ALM_RELAYER;
+        relayers[1] = ALM_RELAYER_BACKUP;
+        
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
                 almProxy:    Unichain.ALM_PROXY,
@@ -23,7 +29,7 @@ abstract contract SparkPayloadUnichain {
             }),
             ForeignControllerInit.ConfigAddressParams({
                 freezer:       Unichain.ALM_FREEZER,
-                relayer:       Unichain.ALM_RELAYER,
+                relayers:      relayers,
                 oldController: oldController
             }),
             ForeignControllerInit.CheckAddressParams({
