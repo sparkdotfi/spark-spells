@@ -203,7 +203,7 @@ abstract contract SparkPayloadEthereum is
         );
     }
 
-    function _transferFromSparkLendTreasury(address[] memory aTokens, address recipient) internal {
+    function _transferFromSparkLendTreasury(address[] memory aTokens) internal {
         address[] memory assets = new address[](aTokens.length);
 
         for (uint256 i; i < aTokens.length; i++) {
@@ -220,7 +220,7 @@ abstract contract SparkPayloadEthereum is
             ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
                 collector: treasury,
                 token:     aTokens[i],
-                recipient: recipient,
+                recipient: Ethereum.ALM_PROXY,
                 amount:    IERC20(aTokens[i]).balanceOf(treasury)
             });
         }

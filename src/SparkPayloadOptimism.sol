@@ -14,12 +14,10 @@ import { SLLHelpers } from './libraries/SLLHelpers.sol';
  */
 abstract contract SparkPayloadOptimism {
     
-    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
-
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
         relayers[0] = Optimism.ALM_RELAYER;
-        relayers[1] = ALM_RELAYER_BACKUP;
+        relayers[1] = Optimism.ALM_RELAYER2;
         
         SLLHelpers.upgradeForeignController(
             ControllerInstance({

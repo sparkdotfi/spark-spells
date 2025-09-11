@@ -120,7 +120,7 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
         aTokens[0] = Ethereum.DAI_SPTOKEN;
         aTokens[1] = Ethereum.USDS_SPTOKEN;
 
-        _transferFromSparkLendTreasury(aTokens, Ethereum.ALM_PROXY);
+        _transferFromSparkLendTreasury(aTokens);
     }
 
 }

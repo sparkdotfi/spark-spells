@@ -538,7 +538,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGe(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.minAmountOut);
         assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
-        // Sanity check on maxSlippage of 15bps
+        // Sanity check on maxSlippage of 20bps
         assertGe(maxSlippage, 0.998e18,  "maxSlippage too low");
         assertLe(maxSlippage, 1e18,      "maxSlippage too high");
     }

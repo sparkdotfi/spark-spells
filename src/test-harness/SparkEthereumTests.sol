@@ -14,6 +14,9 @@ import { IMorphoChainlinkOracleV2 } from 'morpho-blue-oracles/morpho-chainlink/i
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+
 import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
@@ -29,7 +32,7 @@ import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
-import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
+import { SparkLiquidityLayerTests, SparkLiquidityLayerContext } from "./SparkLiquidityLayerTests.sol";
 
 import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
 import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
@@ -43,18 +46,38 @@ interface IAuthority {
     function lift(address target) external;
 }
 
-interface IExecutable {
-    function execute() external;
-}
-
 interface ICustomIRM {
     function RATE_SOURCE() external view returns (address);
     function getBaseVariableBorrowRateSpread() external view returns (uint256);
 }
 
-interface IRateSource {
-    function getAPR() external view returns (int256);
-    function decimals() external view returns (uint256);
+interface IExecutable {
+    function execute() external;
+}
+
+interface IFarmLike {
+    function earned(address account) external view returns (uint256);
+}
+
+interface IMorpho {
+    function position(Id id, address user) external view returns (Position memory p);
+
+    function market(Id id)
+        external
+        view
+        returns (
+            uint128 totalSupplyAssets,
+            uint128 totalSupplyShares,
+            uint128 totalBorrowAssets,
+            uint128 totalBorrowShares,
+            uint128 lastUpdate,
+            uint128 fee
+        );
+}
+
+interface IMorphoOracleFactory {
+    // NOTE: This applies to all oracles deployed by the factory
+    function isMorphoChainlinkOracleV2(address) external view returns (bool);
 }
 
 interface IPendleLinearDiscountOracle {
@@ -62,6 +85,11 @@ interface IPendleLinearDiscountOracle {
     function getDiscount(uint256 timeLeft) external view returns (uint256);
     function maturity() external view returns (uint256);
     function PT() external view returns (address);
+}
+
+interface IRateSource {
+    function getAPR() external view returns (int256);
+    function decimals() external view returns (uint256);
 }
 
 interface ISparkProxy {
@@ -76,9 +104,10 @@ interface ITargetKinkIRM {
     function getVariableRateSlope1Spread() external view returns (uint256);
 }
 
-interface IMorphoOracleFactory {
-    // NOTE: This applies to all oracles deployed by the factory
-    function isMorphoChainlinkOracleV2(address) external view returns (bool);
+struct Position {
+    uint256 supplyShares;
+    uint128 borrowShares;
+    uint128 collateral;
 }
 
 /// @dev assertions specific to mainnet
@@ -622,6 +651,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             _assertMorphoCap(vault, config, newCap);
         }
 
+        ( uint256 totalSupplyAssets_,,,,, ) = IMorpho(Ethereum.MORPHO).market(MarketParamsLib.id(config));
+        assertGe(totalSupplyAssets_, 10 ** IERC20(config.loanToken).decimals());
+
+        Position memory position = IMorpho(Ethereum.MORPHO).position(MarketParamsLib.id(config), address(1));
+        assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
 
     function _testMorphoPendlePTOracleConfig(
@@ -867,6 +901,99 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, true);
         }
+    }
+
+    function _testTransferAssetIntegration(
+        address token,
+        address destination,
+        address controller,
+        address proxy
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(controller);
+
+        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(controller).LIMIT_ASSET_TRANSFER(),
+            token,
+            destination
+        );
+
+        deal(token, proxy, 200_000e18);
+
+        assertEq(IERC20(token).balanceOf(destination), 0);
+        assertEq(IERC20(token).balanceOf(proxy),       200_000e18);
+
+        vm.prank(ctx.relayer);
+        controller.transferAsset(token, destination, 100_000e18);
+
+        assertEq(IERC20(token).balanceOf(destination),         100_000e18);
+        assertEq(IERC20(token).balanceOf(proxy),               100_000e18);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        vm.prank(ctx.relayer);
+        controller.transferAsset(token, destination, 100_000e18);
+
+        assertEq(IERC20(token).balanceOf(destination),         200_000e18);
+        assertEq(IERC20(token).balanceOf(proxy),               0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 100_000e18);
+    }
+
+    function _testFarmingIntegration(
+        address farm,
+        address controller,
+        uint256 depositMax
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(controller);
+
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(controller).LIMIT_FARM_DEPOSIT(),
+            farm
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(controller).LIMIT_FARM_WITHDRAW(),
+            farm
+        );
+
+        IERC20 underlying = IERC20(Ethereum.USDS);
+
+        uint256 expectedDepositAmount = 1_000_000e18;
+
+        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
+
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)), 0);
+
+        vm.prank(ctx.relayer);
+        controller.depositToFarm(farm, expectedDepositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax - expectedDepositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       expectedDepositAmount);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
+        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), 0);
+
+        skip(1 days);
+
+        uint256 rewards = IFarmLike(farm).earned(address(ctx.proxy));
+
+        assertGt(rewards, 0);
+
+        vm.prank(ctx.relayer);
+        controller.withdrawFromFarm(farm, expectedDepositAmount / 2);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       expectedDepositAmount / 2);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),           expectedDepositAmount / 2);
+        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), rewards);
     }
 
 }
