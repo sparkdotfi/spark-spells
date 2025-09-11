@@ -160,7 +160,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             address asset0 = ICurvePoolLike(integration.integration).coins(0);
             address asset1 = ICurvePoolLike(integration.integration).coins(1);
 
-            _testCurveLPIntegration(CurveE2ETestParams({
+            _testCurveLPIntegration(CurveLPE2ETestParams({
                 ctx:            _getSparkLiquidityLayerContext(),
                 pool:           integration.integration,
                 asset0:         asset0,
@@ -169,6 +169,20 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 depositKey:     integration.entryId,
                 withdrawKey:    integration.exitId,
                 tolerance:      10
+            }));
+        }
+
+        else if (integration.category == Category.CURVE_SWAP) {
+            address asset0 = ICurvePoolLike(integration.integration).coins(0);
+            address asset1 = ICurvePoolLike(integration.integration).coins(1);
+
+            _testCurveSwapIntegration(CurveSwapE2ETestParams({
+                ctx:            _getSparkLiquidityLayerContext(),
+                pool:           integration.integration,
+                asset0:         asset0,
+                asset1:         asset1,
+                swapAmount:     1_000_000e18,  // Normalized to 18 decimals
+                swapKey:        integration.entryId
             }));
         }
 
