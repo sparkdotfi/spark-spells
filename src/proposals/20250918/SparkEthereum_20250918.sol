@@ -40,7 +40,6 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  */
 contract SparkEthereum_20250918 is SparkPayloadEthereum {
 
-    address internal constant CURVE_PYUSDUSDS    = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
     address internal constant NEW_ALM_CONTROLLER = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
@@ -60,20 +59,26 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
         );
 
         // Onboard USDS SPK Farm
-        IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
+        SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 MainnetController(NEW_ALM_CONTROLLER).LIMIT_FARM_DEPOSIT(),
                 USDS_SPK_FARM
             ),
+            Ethereum.ALM_RATE_LIMITS,
             250_000_000e18,
-            50_000_000e18 / uint256(1 days)
+            50_000_000e18 / uint256(1 days),
+            18
         );
 
-        IRateLimits(Ethereum.ALM_RATE_LIMITS).setUnlimitedRateLimitData(
+        SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 MainnetController(NEW_ALM_CONTROLLER).LIMIT_FARM_WITHDRAW(),
                 USDS_SPK_FARM
-            )
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            type(uint256).max,
+            0,
+            18
         );
 
         // Onboard December PT-USDS-SPK
@@ -91,7 +96,7 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
         // Onboard PYUSD/USDS Curve Pool
         _configureCurvePool({
             controller:    NEW_ALM_CONTROLLER,
-            pool:          CURVE_PYUSDUSDS,
+            pool:          Ethereum.CURVE_PYUSDUSDS,
             maxSlippage:   0.998e18,
             swapMax:       5_000_000e18,
             swapSlope:     50_000_000e18 / uint256(1 days),
@@ -120,7 +125,7 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
         aTokens[0] = Ethereum.DAI_SPTOKEN;
         aTokens[1] = Ethereum.USDS_SPTOKEN;
 
-        _transferFromSparkLendTreasury(aTokens, Ethereum.ALM_PROXY);
+        _transferFromSparkLendTreasury(aTokens);
     }
 
 }

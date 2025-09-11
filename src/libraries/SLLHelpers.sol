@@ -14,6 +14,8 @@ import { MarketParamsLib }  from "morpho-blue/src/libraries/MarketParamsLib.sol"
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Optimism } from 'spark-address-registry/Optimism.sol';
+import { Unichain } from 'spark-address-registry/Unichain.sol';
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { MainnetControllerInit } from "spark-alm-controller/deploy/MainnetControllerInit.sol";
@@ -37,9 +39,6 @@ library SLLHelpers {
 
     // This is the same on all chains
     address private constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
-
-    // This is the same on all chains
-    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
     bytes32 private constant LIMIT_4626_DEPOSIT   = keccak256("LIMIT_4626_DEPOSIT");
     bytes32 private constant LIMIT_4626_WITHDRAW  = keccak256("LIMIT_4626_WITHDRAW");
@@ -69,62 +68,88 @@ library SLLHelpers {
         RateLimitData memory cctpEthereumDeposit
     ) internal {
         // PSM USDC
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 usdc
             ),
+            rateLimits,
             usdcDeposit.maxAmount,
-            usdcDeposit.slope
+            usdcDeposit.slope,
+            6
         );
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 usdc
             ),
+            rateLimits,
             usdcWithdraw.maxAmount,
-            usdcWithdraw.slope
+            usdcWithdraw.slope,
+            6
         );
 
         // PSM USDS
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 usds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 usds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
 
         // PSM sUSDS
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 susds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 susds
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            18
         );
 
         // CCTP
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            LIMIT_USDC_TO_CCTP
+        setRateLimitData(
+            LIMIT_USDC_TO_CCTP,
+            rateLimits,
+            type(uint256).max,
+            0,
+            6
         );
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeDomainKey(
                 LIMIT_USDC_TO_DOMAIN,
                 0  // Ethereum domain id (https://developers.circle.com/stablecoins/evm-smart-contracts)
             ),
+            rateLimits,
             cctpEthereumDeposit.maxAmount,
-            cctpEthereumDeposit.slope
+            cctpEthereumDeposit.slope,
+            6
         );
     }
 
@@ -139,19 +164,27 @@ library SLLHelpers {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        IERC20 underlying = IERC20(IAToken(token).UNDERLYING_ASSET_ADDRESS());
+
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_AAVE_DEPOSIT,
                 token
             ),
+            rateLimits,
             depositMax,
-            depositSlope
+            depositSlope,
+            underlying.decimals()
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_AAVE_WITHDRAW,
                 token
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            underlying.decimals()
         );
     }
 
@@ -166,19 +199,27 @@ library SLLHelpers {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        IERC20 asset = IERC20(IERC4626(vault).asset());
+
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_4626_DEPOSIT,
                 vault
             ),
+            rateLimits,
             depositMax,
-            depositSlope
+            depositSlope,
+            asset.decimals()
         );
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_4626_WITHDRAW,
                 vault
-            )
+            ),
+            rateLimits,
+            type(uint256).max,
+            0,
+            asset.decimals()
         );
     }
 
@@ -199,33 +240,39 @@ library SLLHelpers {
     ) internal {
         MainnetController(controller).setMaxSlippage(pool, maxSlippage);
         if (swapMax != 0) {
-            IRateLimits(rateLimits).setRateLimitData(
+            setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
                     LIMIT_CURVE_SWAP,
                     pool
                 ),
+                rateLimits,
                 swapMax,
-                swapSlope
+                swapSlope,
+                18
             );
         }
         if (depositMax != 0) {
-            IRateLimits(rateLimits).setRateLimitData(
+            setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
                     LIMIT_CURVE_DEPOSIT,
                     pool
                 ),
+                rateLimits,
                 depositMax,
-                depositSlope
+                depositSlope,
+                18
             );
         }
         if (withdrawMax != 0) {
-            IRateLimits(rateLimits).setRateLimitData(
+            setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
                     LIMIT_CURVE_WITHDRAW,
                     pool
                 ),
+                rateLimits,
                 withdrawMax,
-                withdrawSlope
+                withdrawSlope,
+                18
             );
         }
     }
@@ -277,10 +324,12 @@ library SLLHelpers {
         uint256 maxAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             LIMIT_USDS_MINT,
+            rateLimits,
             maxAmount,
-            slope
+            slope,
+            18
         );
     }
 
@@ -289,10 +338,12 @@ library SLLHelpers {
         uint256 maxUsdcAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             LIMIT_USDS_TO_USDC,
+            rateLimits,
             maxUsdcAmount,
-            slope
+            slope,
+            6
         );
     }
 
@@ -301,10 +352,12 @@ library SLLHelpers {
         uint256 maxUsdcAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             LIMIT_USDC_TO_CCTP,
+            rateLimits,
             maxUsdcAmount,
-            slope
+            slope,
+            6
         );
     }
 
@@ -314,10 +367,12 @@ library SLLHelpers {
         uint256 maxUsdcAmount,
         uint256 slope
     ) internal {
-        IRateLimits(rateLimits).setRateLimitData(
+        setRateLimitData(
             RateLimitHelpers.makeDomainKey(LIMIT_USDC_TO_DOMAIN, destinationDomain),
+            rateLimits,
             maxUsdcAmount,
-            slope
+            slope,
+            6
         );
     }
 
@@ -326,7 +381,7 @@ library SLLHelpers {
     }
 
     function upgradeMainnetController(address oldController, address newController) internal {
-        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](2);
+        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](4);
         mintRecipients[0] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
             mintRecipient : addrToBytes32(Base.ALM_PROXY)
@@ -335,10 +390,18 @@ library SLLHelpers {
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE,
             mintRecipient : addrToBytes32(Arbitrum.ALM_PROXY)
         });
+        mintRecipients[2] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM,
+            mintRecipient : addrToBytes32(Optimism.ALM_PROXY)
+        });
+        mintRecipients[3] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN,
+            mintRecipient : addrToBytes32(Unichain.ALM_PROXY)
+        });
 
         MainnetControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new MainnetControllerInit.LayerZeroRecipient[](0);
 
-        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](2);
+        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](3);
         maxSlippageParams[0] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_SUSDSUSDT,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_SUSDSUSDT)
@@ -347,10 +410,14 @@ library SLLHelpers {
             pool        : Ethereum.CURVE_PYUSDUSDC,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_PYUSDUSDC)
         });
+        maxSlippageParams[2] = MainnetControllerInit.MaxSlippageParams({
+            pool        : Ethereum.CURVE_USDCUSDT,
+            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_USDCUSDT)
+        });
 
         address[] memory relayers = new address[](2);
         relayers[0] = Ethereum.ALM_RELAYER;
-        relayers[1] = ALM_RELAYER_BACKUP;
+        relayers[1] = Ethereum.ALM_RELAYER2;
 
         MainnetControllerInit.upgradeController({
             controllerInst: ControllerInstance({
@@ -398,6 +465,29 @@ library SLLHelpers {
             mintRecipients:      mintRecipients,
             layerZeroRecipients: layerZeroRecipients
         });
+    }
+
+    function setRateLimitData(
+        bytes32 key,
+        address rateLimits,
+        uint256 maxAmount,
+        uint256 slope,
+        uint256 decimals
+    )
+        internal
+    {
+        // Handle setting an unlimited rate limit
+        if (maxAmount == type(uint256).max) {
+            require(slope == 0, "InvalidUnlimitedRateLimitSlope");
+        } else {
+            uint256 upperBound = 1e12 * (10 ** decimals);
+            uint256 lowerBound = 10 ** decimals;
+
+            require(maxAmount <= upperBound && maxAmount >= lowerBound,             "InvalidMaxAmountPrecision");
+            require(slope <= upperBound / 1 hours && slope >= lowerBound / 1 hours, "InvalidSlopePrecision");
+            require(slope != 0,                                                     "InvalidSlopePrecision");
+        }
+        IRateLimits(rateLimits).setRateLimitData(key, maxAmount, slope);
     }
 
 }

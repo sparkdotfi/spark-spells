@@ -18,10 +18,6 @@ import { ChainIdUtils }                              from 'src/libraries/ChainId
 import { SparkLiquidityLayerContext, RateLimitData } from 'src/test-harness/SparkLiquidityLayerTests.sol';
 import { SparkTestBase }                             from 'src/test-harness/SparkTestBase.sol';
 
-interface IFarmLike {
-    function balanceOf(address account) external view returns (uint256);
-}
-
 contract SparkEthereum_20250918Test is SparkTestBase {
 
     // address internal constant CURVE_PYUSDUSDS             = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
@@ -31,16 +27,16 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     address internal constant PT_USDS_SPK_18DEC2025            = 0xA2a420230A5cb045db052E377D20b9c156805b95;
     address internal constant PT_USDS_SPK_18DEC2025_PRICE_FEED = 0x0F9D6c72959d836D4DECdE30Ab0AD836979EFE87;
 
-    address internal constant NEW_ALM_CONTROLLER_BASE     = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-    address internal constant MORPHO_TOKEN_BASE           = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
-    address internal constant SPARK_MULTISIG_BASE         = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant NEW_ALM_CONTROLLER_BASE = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+    address internal constant MORPHO_TOKEN_BASE       = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
+    address internal constant SPARK_MULTISIG_BASE     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
 
     constructor() {
         id = "20250918";
     }
 
     function setUp() public {
-        setupDomains("2025-09-10T08:36:00Z");
+        setupDomains("2025-09-11T15:36:00Z");
 
         deployPayloads();
 
@@ -72,9 +68,6 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sll_onboardUsdsSpkFarm() public onChain(ChainIdUtils.Ethereum()) {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(NEW_ALM_CONTROLLER_ETHEREUM);
-
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
             MainnetController(NEW_ALM_CONTROLLER_ETHEREUM).LIMIT_FARM_DEPOSIT(),
             USDS_SPK_FARM
@@ -84,12 +77,6 @@ contract SparkEthereum_20250918Test is SparkTestBase {
             USDS_SPK_FARM
         );
 
-        IERC20 underlying = IERC20(Ethereum.USDS);
-
-        uint256 expectedDepositAmount = 1_000_000e18;
-
-        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
-
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
@@ -98,31 +85,17 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         _assertRateLimit(depositKey,  250_000_000e18,    50_000_000e18 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        assertEq(IFarmLike(USDS_SPK_FARM).balanceOf(address(ctx.proxy)), 0);
-
-        vm.prank(ctx.relayer);
-        controller.depositToFarm(USDS_SPK_FARM, expectedDepositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  250_000_000e18 - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(IFarmLike(USDS_SPK_FARM).balanceOf(address(ctx.proxy)), expectedDepositAmount);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),               0);
-
-        vm.prank(ctx.relayer);
-        controller.withdrawFromFarm(USDS_SPK_FARM, expectedDepositAmount / 2);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  250_000_000e18 - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(IFarmLike(USDS_SPK_FARM).balanceOf(address(ctx.proxy)), expectedDepositAmount / 2);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),               expectedDepositAmount / 2);
+        _testFarmingIntegration(
+            USDS_SPK_FARM,
+            NEW_ALM_CONTROLLER_ETHEREUM,
+            250_000_000e18
+        );
     }
 
     function test_ETHEREUM_curvePoolOnboarding() public onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             controller:                  NEW_ALM_CONTROLLER_ETHEREUM,
-            pool:                        CURVE_PYUSDUSDS,
+            pool:                        Ethereum.CURVE_PYUSDUSDS,
             expectedDepositAmountToken0: 1e6,
             expectedSwapAmountToken0:    1e6,
             maxSlippage:                 0.998e18,
@@ -168,15 +141,15 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  426_533_971.126578246102965428e18);
-        assertEq(spUsdsBalanceBefore, 571_933_609.319213677194335496e18);
+        assertEq(spDaiBalanceBefore,  403_900_219.257618698251294940e18);
+        assertEq(spUsdsBalanceBefore, 585_704_191.344631576801243402e18);
 
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    426_542_116.448272852508728339e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   571_943_578.254251010380121323e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    403_914_504.364815905624869653e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   585_720_254.757705997756680042e18);
     }
 
     function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
@@ -203,11 +176,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         );
     }
 
-    function test_ETHEREUM_spark_morphoTransferLimit() public onChain(ChainIdUtils.Base()) {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        ForeignController controller = ForeignController(NEW_ALM_CONTROLLER_BASE);
-
+    function test_BASE_spark_morphoTransferLimit() public onChain(ChainIdUtils.Base()) {
         bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
             ForeignController(NEW_ALM_CONTROLLER_BASE).LIMIT_ASSET_TRANSFER(),
             MORPHO_TOKEN_BASE,
@@ -220,30 +189,12 @@ contract SparkEthereum_20250918Test is SparkTestBase {
 
         _assertRateLimit(transferKey, 100_000e18, 100_000e18 / uint256(1 days));
 
-        deal(MORPHO_TOKEN_BASE, Base.ALM_PROXY, 200_000e18);
-
-        assertEq(IERC20(MORPHO_TOKEN_BASE).balanceOf(SPARK_MULTISIG_BASE),     0);
-        assertEq(IERC20(MORPHO_TOKEN_BASE).balanceOf(Base.ALM_PROXY), 200_000e18);
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(MORPHO_TOKEN_BASE, SPARK_MULTISIG_BASE, 100_000e18);
-
-        assertEq(IERC20(MORPHO_TOKEN_BASE).balanceOf(SPARK_MULTISIG_BASE),     100_000e18);
-        assertEq(IERC20(MORPHO_TOKEN_BASE).balanceOf(Base.ALM_PROXY), 100_000e18);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey),    0);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(MORPHO_TOKEN_BASE, SPARK_MULTISIG_BASE, 100_000e18);
-
-        assertEq(IERC20(MORPHO_TOKEN_BASE).balanceOf(SPARK_MULTISIG_BASE),     200_000e18);
-        assertEq(IERC20(MORPHO_TOKEN_BASE).balanceOf(Base.ALM_PROXY), 0);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey),    0);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 100_000e18);
+        _testTransferAssetIntegration(
+            MORPHO_TOKEN_BASE,
+            SPARK_MULTISIG_BASE,
+            NEW_ALM_CONTROLLER_BASE,
+            Base.ALM_PROXY
+        );
     }
 
 }
