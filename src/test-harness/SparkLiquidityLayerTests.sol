@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
+import { VmSafe }   from "forge-std/Vm.sol";
 
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
@@ -28,8 +29,6 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
 
 import { SpellRunner } from "./SpellRunner.sol";
-
-import { console } from "forge-std/console.sol";
 
 struct SparkLiquidityLayerContext {
     address     controller;
@@ -568,9 +567,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (currentChain == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(address(0)));
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
         }
@@ -588,14 +591,85 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(controller.hasRole(FREEZER, ctx.freezer),        true);
 
         if (currentChain == ChainIdUtils.Ethereum()) {
+            _assertOldControllerEvents(oldController);
+
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(Base.ALM_PROXY));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
+
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN));
+
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
         }
+    }
+
+    function _assertOldControllerEvents(address _oldController) internal {
+        MainnetController oldController = MainnetController(_oldController);
+
+        bytes32[] memory topics = new bytes32[](1);
+        topics[0] = MainnetController.MaxSlippageSet.selector;
+
+        uint256 startBlock = 22218000;
+
+        VmSafe.EthGetLogs[] memory slippageLogs = vm.eth_getLogs(
+            startBlock,
+            block.number,
+            _oldController,
+            topics
+        );
+
+        topics[0] = MainnetController.MintRecipientSet.selector;
+        VmSafe.EthGetLogs[] memory cctpLogs = vm.eth_getLogs(
+            startBlock,
+            block.number,
+            _oldController,
+            topics
+        );
+
+        topics[0] = MainnetController.LayerZeroRecipientSet.selector;
+        VmSafe.EthGetLogs[] memory layerZeroLogs = vm.eth_getLogs(
+            startBlock,
+            block.number,
+            _oldController,
+            topics
+        );
+
+        assertEq(slippageLogs.length,  5);
+        assertEq(cctpLogs.length,      4);
+        assertEq(layerZeroLogs.length, 0);
+
+        assertEq(address(uint160(uint256(slippageLogs[0].topics[1]))), Ethereum.CURVE_SUSDSUSDT);
+        assertEq(address(uint160(uint256(slippageLogs[1].topics[1]))), Ethereum.CURVE_USDCUSDT);
+        assertEq(address(uint160(uint256(slippageLogs[2].topics[1]))), Ethereum.CURVE_PYUSDUSDC);
+        assertEq(address(uint160(uint256(slippageLogs[3].topics[1]))), Ethereum.CURVE_SUSDSUSDT);  // Duplicated
+        assertEq(address(uint160(uint256(slippageLogs[4].topics[1]))), Ethereum.CURVE_PYUSDUSDC);  // Duplicated
+
+        assertEq(oldController.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
+        assertEq(oldController.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
+        assertEq(oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
+
+        assertEq(uint32(uint256(cctpLogs[0].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        assertEq(uint32(uint256(cctpLogs[1].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        assertEq(uint32(uint256(cctpLogs[2].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        assertEq(uint32(uint256(cctpLogs[3].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(Base.ALM_PROXY));
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
     }
 
     function _testE2ESLLCrossChainForDomain(

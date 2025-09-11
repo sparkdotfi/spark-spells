@@ -14,6 +14,8 @@ import { MarketParamsLib }  from "morpho-blue/src/libraries/MarketParamsLib.sol"
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Optimism } from 'spark-address-registry/Optimism.sol';
+import { Unichain } from 'spark-address-registry/Unichain.sol';
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { MainnetControllerInit } from "spark-alm-controller/deploy/MainnetControllerInit.sol";
@@ -37,9 +39,6 @@ library SLLHelpers {
 
     // This is the same on all chains
     address private constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
-
-    // This is the same on all chains
-    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
     bytes32 private constant LIMIT_4626_DEPOSIT   = keccak256("LIMIT_4626_DEPOSIT");
     bytes32 private constant LIMIT_4626_WITHDRAW  = keccak256("LIMIT_4626_WITHDRAW");
@@ -382,7 +381,7 @@ library SLLHelpers {
     }
 
     function upgradeMainnetController(address oldController, address newController) internal {
-        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](2);
+        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](4);
         mintRecipients[0] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
             mintRecipient : addrToBytes32(Base.ALM_PROXY)
@@ -391,10 +390,18 @@ library SLLHelpers {
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE,
             mintRecipient : addrToBytes32(Arbitrum.ALM_PROXY)
         });
+        mintRecipients[2] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM,
+            mintRecipient : addrToBytes32(Optimism.ALM_PROXY)
+        });
+        mintRecipients[3] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN,
+            mintRecipient : addrToBytes32(Unichain.ALM_PROXY)
+        });
 
         MainnetControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new MainnetControllerInit.LayerZeroRecipient[](0);
 
-        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](2);
+        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](3);
         maxSlippageParams[0] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_SUSDSUSDT,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_SUSDSUSDT)
@@ -403,10 +410,14 @@ library SLLHelpers {
             pool        : Ethereum.CURVE_PYUSDUSDC,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_PYUSDUSDC)
         });
+        maxSlippageParams[2] = MainnetControllerInit.MaxSlippageParams({
+            pool        : Ethereum.CURVE_USDCUSDT,
+            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_USDCUSDT)
+        });
 
         address[] memory relayers = new address[](2);
         relayers[0] = Ethereum.ALM_RELAYER;
-        relayers[1] = ALM_RELAYER_BACKUP;
+        relayers[1] = Ethereum.ALM_RELAYER2;
 
         MainnetControllerInit.upgradeController({
             controllerInst: ControllerInstance({
