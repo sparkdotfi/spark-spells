@@ -52,6 +52,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
     address public constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address public constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
 
+    address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
+
     // TODO: Finish
     enum Category {
         ERC4626,
@@ -118,6 +120,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // }
 
         // assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _runSLLE2ETests(ethereumSllIntegrations[i]);
+        }
+
+        executeAllPayloadsAndBridges();
+
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER_ETHEREUM;
+
+        populateRateLimitKeys();
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);

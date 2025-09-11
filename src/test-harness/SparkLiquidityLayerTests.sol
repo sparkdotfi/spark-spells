@@ -433,6 +433,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
 
         if (!unlimitedDeposit) {
+
+            console2.log("p.ctx.relayer", p.ctx.relayer);
+            console2.log("p.ctx.controller", p.ctx.controller);
+            console2.log("hasRole", MainnetController(p.ctx.controller).hasRole(MainnetController(p.ctx.controller).RELAYER(), p.ctx.relayer));
+
             vm.prank(p.ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
             MainnetController(p.ctx.controller).depositAave(p.vault, depositLimit + 1);

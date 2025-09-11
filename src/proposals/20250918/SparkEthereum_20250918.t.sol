@@ -25,7 +25,7 @@ interface IFarmLike {
 contract SparkEthereum_20250918Test is SparkTestBase {
 
     address internal constant CURVE_PYUSDUSDS             = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
-    address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
+    // address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
     address internal constant USDS_SPK_FARM               = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
     address internal constant PT_USDS_SPK_18DEC2025            = 0xA2a420230A5cb045db052E377D20b9c156805b95;
