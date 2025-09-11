@@ -321,7 +321,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.SUPERSTATE_ONCHAIN) {
             entryId = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
-            exitId  = mainnetController.LIMIT_SUPERSTATE_REDEEM();
+            exitId  = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
         }
         else if (category == Category.CCTP_GENERAL) {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
