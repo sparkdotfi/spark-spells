@@ -46,11 +46,13 @@ abstract contract SparkTestBase is SparkEthereumTests {
     address public constant BUIDL_DEPOSIT      = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
     address public constant BUIDL_REDEEM       = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
     address public constant CURVE_PYUSDUSDC    = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+    address public constant CURVE_PYUSDUSDS    = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
     address public constant MORPHO_TOKEN       = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
     address public constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
     address public constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
     address public constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address public constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
+    address public constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -62,6 +64,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         AAVE,
         CCTP,
         CCTP_GENERAL,
+        FARM,
         BUIDL,
         SUPERSTATE,
         CENTRIFUGE,
@@ -101,36 +104,60 @@ abstract contract SparkTestBase is SparkEthereumTests {
     MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
     function test_test() public {
-        populateRateLimitKeys();
+        populateRateLimitKeys(false);
         loadPreExecutionIntegrations();
 
-        // // For each integration, check that all non-zero keys are present in the rate limit keys, and remove them from the set to ensure completeness
-        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-        //     require(
-        //         ethereumSllIntegrations[i].entryId != bytes32(0) ||
-        //         ethereumSllIntegrations[i].exitId  != bytes32(0),
-        //         "Empty integration"
-        //     );
+        // For each integration, check that all non-zero keys are present in the rate limit keys, and remove them from the set to ensure completeness
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            require(
+                ethereumSllIntegrations[i].entryId != bytes32(0) ||
+                ethereumSllIntegrations[i].exitId  != bytes32(0),
+                "Empty integration"
+            );
 
-        //     assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
-        //     assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId)  || ethereumSllIntegrations[i].exitId  == bytes32(0));
+            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
+            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId)  || ethereumSllIntegrations[i].exitId  == bytes32(0));
 
-        //     _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
-        //     _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
-        // }
+            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
+            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
+        }
 
-        // assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+        assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
         }
 
-        executeAllPayloadsAndBridges();
+        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+
+        // executeAllPayloadsAndBridges();
+        executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER_ETHEREUM;
 
-        populateRateLimitKeys();
+        // Overwrite mainnetController with the new controller for the rest of the tests
+        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        populateRateLimitKeys(true);
+        loadPostExecutionIntegrations();
+
+        // For each integration, check that all non-zero keys are present in the rate limit keys, and remove them from the set to ensure completeness
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            require(
+                ethereumSllIntegrations[i].entryId != bytes32(0) ||
+                ethereumSllIntegrations[i].exitId  != bytes32(0),
+                "Empty integration"
+            );
+
+            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
+            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId)  || ethereumSllIntegrations[i].exitId  == bytes32(0));
+
+            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
+            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
+        }
+
+        assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
@@ -153,6 +180,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.ERC4626) {
+            // TODO: Remove this, these integrations are broken
+            if (integration.integration == Ethereum.FLUID_SUSDS || integration.integration == Ethereum.SYRUP_USDC) return;
+
             uint256 decimals = IERC20(IERC4626(integration.integration).asset()).decimals();
             _testERC4626Integration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
@@ -217,7 +247,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
     }
 
-    function populateRateLimitKeys() public returns (bytes32[] memory uniqueKeys) {
+    function populateRateLimitKeys(bool isPostExecution) public returns (bytes32[] memory uniqueKeys) {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
@@ -235,6 +265,18 @@ abstract contract SparkTestBase is SparkEthereumTests {
                     = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
                 if (maxAmount == 0) continue;
                 _ethereumRateLimitKeys.add(allLogs[i].topics[1]);
+            }
+        }
+
+        // Collects all new logs from rate limits after spell is executed
+        if (isPostExecution) {
+            VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
+            for (uint256 i = 0; i < newLogs.length; i++) {
+                if (newLogs[i].topics[0] == IRateLimits.RateLimitDataSet.selector) {
+                    ( uint256 maxAmount,,, ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
+                    if (maxAmount == 0) continue;
+                    _ethereumRateLimitKeys.add(newLogs[i].topics[1]);
+                }
             }
         }
 
@@ -280,8 +322,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS));
-        // ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC",         Category.ERC4626, Ethereum.SYRUP_USDC));   // TODO: Move to maple test
-        // ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS));  // TODO: Fix FluidLiquidityError
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC",         Category.ERC4626, Ethereum.SYRUP_USDC));   // TODO: Move to maple test
+        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS));  // TODO: Fix FluidLiquidityError
 
         ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_SUSDE-SUSDE", Category.ETHENA_SUSDE, Ethereum.SUSDE));
         ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_USDE-USDE",   Category.ETHENA_USDE,  Ethereum.USDE));
@@ -297,14 +339,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_ONCHAIN-USTB", Category.SUPERSTATE_ONCHAIN,  Ethereum.USTB));
     }
 
-    function _afterExecution() internal {
-        // set all storage using beforeExecution
-        // override to add more values, assert
+    function loadPostExecutionIntegrations() internal {
+        ethereumSllIntegrations.push(_createSLLIntegration("FARM-USDS_SPK_FARM",   Category.FARM,       USDS_SPK_FARM));
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, CURVE_PYUSDUSDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-PYUSDUSDS",   Category.CURVE_LP,   CURVE_PYUSDUSDS));
     }
 
-    function _createSLLIntegration(string memory label, Category category, address integration) internal view returns (SLLIntegration memory) {
+    function _createSLLIntegration(string memory label, Category category, address integration) internal returns (SLLIntegration memory) {
         bytes32 entryId;
         bytes32 exitId;
+
+        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         if (category == Category.ERC4626) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
@@ -313,6 +358,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (category == Category.ETHENA_USDE) {
             entryId = mainnetController.LIMIT_USDE_MINT();
             exitId  = mainnetController.LIMIT_USDE_BURN();
+        }
+        else if (category == Category.FARM) {
+            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_DEPOSIT(),  integration);
+            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration);
         }
         else if (category == Category.ETHENA_SUSDE) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
