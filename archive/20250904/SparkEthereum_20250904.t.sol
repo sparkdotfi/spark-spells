@@ -26,8 +26,8 @@ contract SparkEthereum_20250904Test is SparkTestBase {
     address internal constant PT_SUSDE_27NOV2025_PRICE_FEED = 0xd46F66D7Fc5aD6f54b9B62D36B9A4d99f3Cca451;
     address internal constant WSTETH_PRICE_FEED             = 0x48F7E36EB6B826B2dF4B2E630B62Cd25e89E40e2;
 
-    address internal constant CURVE_PYUSDUSDC = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
-    address internal constant USDE_ATOKEN     = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
+    // address internal constant CURVE_PYUSDUSDC = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+    // address internal constant USDE_ATOKEN     = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
 
     address internal constant GROVE_ALM_PROXY  = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant SPARK_FOUNDATION = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
@@ -37,7 +37,7 @@ contract SparkEthereum_20250904Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-02T16:09:00Z");
+        setupDomains("2025-09-09T16:09:00Z");
 
         deployPayloads();
 

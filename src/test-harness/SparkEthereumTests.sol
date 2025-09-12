@@ -918,7 +918,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20(asset).decimals());
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
-            _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, true);
+            _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
         }
     }
 

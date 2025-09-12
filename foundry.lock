@@ -1,0 +1,53 @@
+{
+  "lib/aave-v3-periphery": {
+    "rev": "72fdcca18838c2f4e05ecd25bbfb44f0db5383f7"
+  },
+  "lib/erc20-helpers": {
+    "rev": "3c66d2b38ae12f5c0f81068fdb6a59f4079c799a"
+  },
+  "lib/forge-std": {
+    "rev": "6853b9ec7df5dc0c213b05ae67785ad4f4baa0ea"
+  },
+  "lib/metamorpho": {
+    "rev": "f5faa9c21b1396c291b471a6a5ad9407d23486a9"
+  },
+  "lib/morpho-blue-oracles": {
+    "rev": "07a9a6988b0e1b316ac2fa97ec62ad485fbd0041"
+  },
+  "lib/openzeppelin-contracts": {
+    "tag": {
+      "name": "v5.4.0",
+      "rev": "c64a1edb67b6e3f4a15cca8909c9482ad33a02b0"
+    }
+  },
+  "lib/pendle-core-v2-public": {
+    "rev": "b026075688d70aeaf636c72b189c1aa5a912c9bf"
+  },
+  "lib/spark-address-registry": {
+    "rev": "ddb861bb695531133b1f33a6f110e5a417fcfd1a"
+  },
+  "lib/spark-alm-controller": {
+    "rev": "f87126eb92fb8f5b9e1fd58c2bd7fc43315df762"
+  },
+  "lib/spark-gov-relay": {
+    "rev": "60b57c9740d827c9c7b3b748fc142bc47e3e7c32"
+  },
+  "lib/sparklend-advanced": {
+    "rev": "3b0449ae7178ce7b41d7131df2e0a5e8438c33d4"
+  },
+  "lib/sparklend-cap-automator": {
+    "rev": "460bf45ed6642ff218612ca334b576f1b683a037"
+  },
+  "lib/sparklend-freezer": {
+    "rev": "24fd954511b64e53eceb199c68b737a8bdf913f3"
+  },
+  "lib/sparklend-kill-switch": {
+    "rev": "0fc7c0deda9ca2071bfaab48dd8d49c54fc4f76f"
+  },
+  "lib/sparklend-v1-core": {
+    "rev": "8120e495061dc3315f0a86f682f4ca645a418bf7"
+  },
+  "lib/xchain-helpers": {
+    "rev": "bc117a102c67619f5c229063970a1bbf1e4f5a85"
+  }
+}

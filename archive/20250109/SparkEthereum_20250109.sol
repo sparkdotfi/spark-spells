@@ -78,7 +78,7 @@ contract SparkEthereum_20250109 is SparkPayloadEthereum {
     address internal constant ATOKEN_USDC = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
 
     uint256 internal constant USDS_MINT_AMOUNT = 99_000_000e18;
-    
+
     constructor() {
         PAYLOAD_BASE = 0x02C3eA4e34C0cBd694D2adFa2c690EECbC1793eE;
     }
