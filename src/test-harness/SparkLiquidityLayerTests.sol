@@ -694,7 +694,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         deal(token, address(ctx.proxy), transferAmount);
 
-        assertEq(IERC20(token).balanceOf(destination),      0);
+        assertEq(IERC20(token).balanceOf(destination),        0);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
@@ -702,7 +702,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         controller.transferAsset(token, destination, transferAmount / 2);
 
-        assertEq(IERC20(token).balanceOf(destination),      transferAmount / 2);
+        assertEq(IERC20(token).balanceOf(destination),        transferAmount / 2);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
@@ -712,7 +712,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         controller.transferAsset(token, destination, transferAmount / 2);
 
-        assertEq(IERC20(token).balanceOf(destination),      transferAmount);
+        assertEq(IERC20(token).balanceOf(destination),        transferAmount);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
@@ -754,10 +754,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit - depositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       depositAmount);
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),         depositAmount);
         assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
         assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), 0);
-        assertEq(underlying.balanceOf(farm),                       initialFarmBalance + depositAmount);
+        assertEq(underlying.balanceOf(farm),                         initialFarmBalance + depositAmount);
 
         skip(1 days);
 
@@ -771,10 +771,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       0);
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),         0);
         assertEq(underlying.balanceOf(address(ctx.proxy)),           depositAmount);
         assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), rewards);
-        assertEq(underlying.balanceOf(farm),                       initialFarmBalance);
+        assertEq(underlying.balanceOf(farm),                         initialFarmBalance);
     }
 
     function _testE2ESLLCrossChainForDomain(
