@@ -69,6 +69,10 @@ interface ICurvePoolLike is IERC20 {
     function stored_rates() external view returns (uint256[] memory);
 }
 
+interface ICurveStableswapFactory {
+    function get_implementation_address(address pool) external view returns (address);
+}
+
 interface IFarmLike {
     function earned(address account) external view returns (uint256);
 }
@@ -399,6 +403,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 smallerMaxSlippage;
     }
 
+    function isDeployedByFactory(address pool) internal view returns (bool) {
+        address impl = ICurveStableswapFactory(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
+        return impl != address(0);
+    }
+
     function _testCurveOnboarding(
         address controller,
         address pool,
@@ -409,6 +418,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         RateLimitData memory depositLimit,
         RateLimitData memory withdrawLimit
     ) internal {
+        require(isDeployedByFactory(pool), "Pool is not deployed by factory");
+
+        assertGe(IERC20(pool).balanceOf(address(1)), 1e18);
+
         // Avoid stack too deep
         CurveOnboardingVars memory vars;
         vars.pool  = ICurvePoolLike(pool);
@@ -610,13 +623,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);  // NOTE: New slippage not in oldController, part of the payload to onboard a new pool. 
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
         } else {
+            bytes32[] memory topics = new bytes32[](1);
+            topics[0] = ForeignController.MintRecipientSet.selector;
+
+            VmSafe.EthGetLogs[] memory cctpLogs = vm.eth_getLogs(
+                0,
+                block.number,
+                oldController,
+                topics
+            );
+
+            assertEq(cctpLogs.length, 1);
+
+            assertEq(uint32(uint256(cctpLogs[0].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), ForeignController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM));
         }
     }
 
@@ -747,6 +775,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         deal(address(underlying), address(ctx.proxy), depositAmount);
 
         assertEq(IERC20(farm).balanceOf(address(ctx.proxy)), 0);
+        assertEq(underlying.balanceOf(farm),                 initialFarmBalance);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),     depositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         vm.prank(ctx.relayer);
         controller.depositToFarm(farm, depositAmount);
@@ -755,13 +788,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),         depositAmount);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
         assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), 0);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
         assertEq(underlying.balanceOf(farm),                         initialFarmBalance + depositAmount);
+
+        uint256 rewards = IFarmLike(farm).earned(address(ctx.proxy));
+
+        assertEq(rewards, 0);
 
         skip(1 days);
 
-        uint256 rewards = IFarmLike(farm).earned(address(ctx.proxy));
+        rewards = IFarmLike(farm).earned(address(ctx.proxy));
 
         assertGt(rewards, 0);
 
@@ -797,6 +834,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             domainUsdc   = IERC20(Base.USDC);
             domainPsm3   = Base.PSM3;
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
+        } else if (domainId == ChainIdUtils.Optimism()) {
+            domainUsdc   = IERC20(Optimism.USDC);
+            domainPsm3   = Optimism.PSM3;
+            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
+        } else if (domainId == ChainIdUtils.Unichain()) {
+            domainUsdc   = IERC20(Unichain.USDC);
+            domainPsm3   = Unichain.PSM3;
+            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
         } else {
             revert("SLL/unknown domain");
         }
@@ -919,6 +964,44 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ChainIdUtils.ArbitrumOne(),
             MainnetController(ctxMainnet.controller),
             ForeignController(ctxArbitrum.controller)
+        );
+    }
+
+    function test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() public {
+        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxOptimism = _getSparkLiquidityLayerContext(ChainIdUtils.Optimism());
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Optimism(),
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxOptimism.prevController)
+        );
+
+        executeAllPayloadsAndBridges();
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.ArbitrumOne(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxOptimism.controller)
+        );
+    }
+
+    function test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() public {
+        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxUnichain = _getSparkLiquidityLayerContext(ChainIdUtils.Unichain());
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Unichain(),
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxUnichain.prevController)
+        );
+
+        executeAllPayloadsAndBridges();
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.ArbitrumOne(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxUnichain.controller)
         );
     }
 

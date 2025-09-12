@@ -463,7 +463,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             _currentCap,
         bool                _hasPending,
         uint256             _pendingCap
-    ) internal view {
+    ) private view {
         Id id = MarketParamsLib.id(_config);
         assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
         PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
@@ -481,7 +481,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         MarketParams memory _config,
         uint256             _currentCap,
         uint256             _pendingCap
-    ) internal view {
+    ) private view {
         _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
     }
 
@@ -489,7 +489,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address             _vault,
         MarketParams memory _config,
         uint256             _currentCap
-    ) internal view {
+    ) private view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
 

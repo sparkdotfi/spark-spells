@@ -35,7 +35,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-12T08:51:00Z");
+        setupDomains("2025-09-12T16:53:00Z");
 
         deployPayloads();
 
@@ -144,18 +144,20 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
-        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 proxySpDaiBalanceBefore     = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 proxySpUsdsBalanceBefore    = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 treasurySpDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY);
+        uint256 treasurySpUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY);
 
-        assertEq(spDaiBalanceBefore,  404_313_265.311117663974834230e18);
-        assertEq(spUsdsBalanceBefore, 586_299_205.366096922123679383e18);
+        assertGt(treasurySpDaiBalanceBefore,  0);
+        assertGt(treasurySpUsdsBalanceBefore, 0);
 
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    404_331_094.262734373042941285e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   586_321_839.304374567842378500e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    proxySpDaiBalanceBefore + treasurySpDaiBalanceBefore);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   proxySpUsdsBalanceBefore + treasurySpUsdsBalanceBefore);
     }
 
     function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
