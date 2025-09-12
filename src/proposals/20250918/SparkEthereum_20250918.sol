@@ -70,15 +70,11 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
             18
         );
 
-        SLLHelpers.setRateLimitData(
+        IRateLimits(Ethereum.ALM_RATE_LIMITS).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 MainnetController(NEW_ALM_CONTROLLER).LIMIT_FARM_WITHDRAW(),
                 USDS_SPK_FARM
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            type(uint256).max,
-            0,
-            18
+            )
         );
 
         // Onboard December PT-USDS-SPK

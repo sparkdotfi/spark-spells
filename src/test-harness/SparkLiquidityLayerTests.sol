@@ -69,6 +69,10 @@ interface ICurvePoolLike is IERC20 {
     function stored_rates() external view returns (uint256[] memory);
 }
 
+interface IFarmLike {
+    function earned(address account) external view returns (uint256);
+}
+
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
@@ -670,6 +674,107 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
+    }
+
+    function _testTransferAssetIntegration(
+        address token,
+        address destination,
+        address controller_,
+        uint256 expectedRateLimit,
+        uint256 transferAmount
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(controller_);
+
+        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
+            controller.LIMIT_ASSET_TRANSFER(),
+            token,
+            destination
+        );
+
+        deal(token, address(ctx.proxy), transferAmount);
+
+        assertEq(IERC20(token).balanceOf(destination),      0);
+        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
+
+        vm.prank(ctx.relayer);
+        controller.transferAsset(token, destination, transferAmount / 2);
+
+        assertEq(IERC20(token).balanceOf(destination),      transferAmount / 2);
+        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        vm.prank(ctx.relayer);
+        controller.transferAsset(token, destination, transferAmount / 2);
+
+        assertEq(IERC20(token).balanceOf(destination),      transferAmount);
+        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
+    }
+
+    function _testFarmingIntegration(
+        address farm,
+        address controller_,
+        uint256 expectedDepositLimit,
+        uint256 depositAmount
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(controller_);
+
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_FARM_DEPOSIT(),
+            farm
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_FARM_WITHDRAW(),
+            farm
+        );
+
+        IERC20 underlying = IERC20(Ethereum.USDS);
+
+        uint256 initialFarmBalance = underlying.balanceOf(farm);
+
+        deal(address(underlying), address(ctx.proxy), depositAmount);
+
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)), 0);
+
+        vm.prank(ctx.relayer);
+        controller.depositToFarm(farm, depositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit - depositAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       depositAmount);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
+        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), 0);
+        assertEq(underlying.balanceOf(farm),                       initialFarmBalance + depositAmount);
+
+        skip(1 days);
+
+        uint256 rewards = IFarmLike(farm).earned(address(ctx.proxy));
+
+        assertGt(rewards, 0);
+
+        vm.prank(ctx.relayer);
+        controller.withdrawFromFarm(farm, depositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
+        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       0);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),           depositAmount);
+        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), rewards);
+        assertEq(underlying.balanceOf(farm),                       initialFarmBalance);
     }
 
     function _testE2ESLLCrossChainForDomain(

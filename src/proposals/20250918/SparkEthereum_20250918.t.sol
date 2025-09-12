@@ -87,7 +87,8 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         _testFarmingIntegration(
             USDS_SPK_FARM,
             NEW_ALM_CONTROLLER_ETHEREUM,
-            250_000_000e18
+            250_000_000e18,
+            1_000_000e18
         );
     }
 
@@ -192,7 +193,8 @@ contract SparkEthereum_20250918Test is SparkTestBase {
             MORPHO_TOKEN_BASE,
             SPARK_MULTISIG_BASE,
             NEW_ALM_CONTROLLER_BASE,
-            Base.ALM_PROXY
+            100_000e18,
+            100_000e18
         );
     }
 
