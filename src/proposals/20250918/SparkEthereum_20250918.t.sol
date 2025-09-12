@@ -39,6 +39,12 @@ contract SparkEthereum_20250918Test is SparkTestBase {
 
         deployPayloads();
 
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER_ETHEREUM;
+
+        chainData[ChainIdUtils.Base()].prevController = Base.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Base()].newController  = NEW_ALM_CONTROLLER_BASE;
+
         // chainData[ChainIdUtils.Ethereum()].payload = 0xe7782847eF825FF37662Ef2F426f2D8c5D904121;
     }
 
