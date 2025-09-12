@@ -220,7 +220,7 @@ abstract contract SparkPayloadEthereum is
             ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
                 collector: treasury,
                 token:     aTokens[i],
-                recipient: Ethereum.SPARK_PROXY,
+                recipient: Ethereum.ALM_PROXY,
                 amount:    IERC20(aTokens[i]).balanceOf(treasury)
             });
         }
