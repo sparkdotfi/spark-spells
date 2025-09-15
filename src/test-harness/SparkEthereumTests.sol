@@ -712,7 +712,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         vm.warp(blockTime + 1 days);
 
-        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * assetConversion / 365, 0.005e36 * assetConversion);
+        assertApproxEqAbs(uint256(_oracle.price() - price) / 1e18, uint256(0.15e18) / 365, 1);
 
         vm.warp(maturity - 1 seconds);
 
