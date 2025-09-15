@@ -103,8 +103,8 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         _testCurveOnboarding({
             controller:                  NEW_ALM_CONTROLLER_ETHEREUM,
             pool:                        Ethereum.CURVE_PYUSDUSDS,
-            expectedDepositAmountToken0: 1e6,
-            expectedSwapAmountToken0:    1e6,
+            expectedDepositAmountToken0: 1_000_000e6,
+            expectedSwapAmountToken0:    100_000e6,
             maxSlippage:                 0.998e18,
             swapLimit:                   RateLimitData(5_000_000e18, 50_000_000e18 / uint256(1 days)),
             depositLimit:                RateLimitData(5_000_000e18, 50_000_000e18 / uint256(1 days)),
