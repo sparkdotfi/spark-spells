@@ -144,20 +144,18 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
-        uint256 proxySpDaiBalanceBefore     = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 proxySpUsdsBalanceBefore    = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 treasurySpDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY);
-        uint256 treasurySpUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY);
+        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertGt(treasurySpDaiBalanceBefore,  0);
-        assertGt(treasurySpUsdsBalanceBefore, 0);
+        assertEq(spDaiBalanceBefore,  404_326_928.731127717998248993e18);
+        assertEq(spUsdsBalanceBefore, 587_007_409.186383132540026531e18);
 
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    proxySpDaiBalanceBefore + treasurySpDaiBalanceBefore);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   proxySpUsdsBalanceBefore + treasurySpUsdsBalanceBefore);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 18_868.853838558788468057e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 24_818.769586825955574053e18);
     }
 
     function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {

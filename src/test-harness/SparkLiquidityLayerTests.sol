@@ -980,7 +980,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         executeAllPayloadsAndBridges();
 
         _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.ArbitrumOne(),
+            ChainIdUtils.Optimism(),
             MainnetController(ctxMainnet.controller),
             ForeignController(ctxOptimism.controller)
         );
@@ -999,7 +999,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         executeAllPayloadsAndBridges();
 
         _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.ArbitrumOne(),
+            ChainIdUtils.Unichain(),
             MainnetController(ctxMainnet.controller),
             ForeignController(ctxUnichain.controller)
         );
