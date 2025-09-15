@@ -776,7 +776,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IERC20(farm).balanceOf(address(ctx.proxy)), 0);
         assertEq(underlying.balanceOf(farm),                 initialFarmBalance);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),     depositAmount);
+        assertEq(underlying.balanceOf(address(ctx.proxy)),   depositAmount);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
