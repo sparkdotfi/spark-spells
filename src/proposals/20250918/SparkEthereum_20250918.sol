@@ -46,6 +46,10 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
     address internal constant PT_USDS_SPK_18DEC2025            = 0xA2a420230A5cb045db052E377D20b9c156805b95;
     address internal constant PT_USDS_SPK_18DEC2025_PRICE_FEED = 0x2bDA5e778fA40109b3C9fe9AF42332017810492B;
 
+    constructor() {
+        PAYLOAD_BASE = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
+    }
+
     function _postExecute() internal override {
         // Upgrade ALM Controller to v1.7
         _upgradeController(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER);

@@ -19,6 +19,8 @@ import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
 
 import { SparkLiquidityLayerContext, RateLimitData, ICurvePoolLike } from 'src/test-harness/SparkLiquidityLayerTests.sol';
 
+import { console } from 'forge-std/console.sol';
+
 contract SparkEthereum_20250918Test is SparkTestBase {
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
@@ -36,7 +38,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-15T15:27:00Z");
+        setupDomains("2025-09-15T16:42:00Z");
 
         deployPayloads();
 
@@ -46,7 +48,8 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         chainData[ChainIdUtils.Base()].prevController = Base.ALM_CONTROLLER;
         chainData[ChainIdUtils.Base()].newController  = NEW_ALM_CONTROLLER_BASE;
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xe7782847eF825FF37662Ef2F426f2D8c5D904121;
+        chainData[ChainIdUtils.Base()].payload     = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x7B28F4Bdd7208fe80916EBC58611Eb72Fb6A09Ed;
     }
 
     function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
@@ -155,15 +158,15 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  404_318_034.546569515588602776e18);
-        assertEq(spUsdsBalanceBefore, 592_421_782.636054512411163480e18);
- 
+        assertEq(spDaiBalanceBefore,  404_320_160.818926086778450517e18);
+        assertEq(spUsdsBalanceBefore, 592_424_783.583591603436341145e18);
+
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 32_952.940421236469659541e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_625.964455945032159833e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 33_225.584380788531641492e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_626.185445845175175216e18);
     }
 
     function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
