@@ -45,6 +45,7 @@ struct RateLimitData {
 }
 
 interface ICurvePoolLike is IERC20 {
+    function A() external view returns (uint256);
     function add_liquidity(
         uint256[] memory amounts,
         uint256 minMintAmount,
@@ -59,8 +60,10 @@ interface ICurvePoolLike is IERC20 {
         uint256 minAmountOut,
         address receiver
     ) external returns (uint256 tokensOut);
+    function fee() external view returns (uint256);
     function get_virtual_price() external view returns (uint256);
     function N_COINS() external view returns (uint256);
+    function offpeg_fee_multiplier() external view returns (uint256);
     function remove_liquidity(
         uint256 burnAmount,
         uint256[] memory minAmounts,

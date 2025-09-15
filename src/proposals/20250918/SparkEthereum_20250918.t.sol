@@ -14,9 +14,10 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { ChainIdUtils }                              from 'src/libraries/ChainId.sol';
-import { SparkLiquidityLayerContext, RateLimitData } from 'src/test-harness/SparkLiquidityLayerTests.sol';
-import { SparkTestBase }                             from 'src/test-harness/SparkTestBase.sol';
+import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
+import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
+
+import { SparkLiquidityLayerContext, RateLimitData, ICurvePoolLike } from 'src/test-harness/SparkLiquidityLayerTests.sol';
 
 contract SparkEthereum_20250918Test is SparkTestBase {
 
@@ -109,6 +110,13 @@ contract SparkEthereum_20250918Test is SparkTestBase {
             depositLimit:                RateLimitData(5_000_000e18, 50_000_000e18 / uint256(1 days)),
             withdrawLimit:               RateLimitData(5_000_000e18, 100_000_000e18 / uint256(1 days))
         });
+
+        ICurvePoolLike pool = ICurvePoolLike(Ethereum.CURVE_PYUSDUSDS);
+
+        assertEq(pool.A(),   10_000);
+        assertEq(pool.fee(), 0.00001e10);  // 0.001%
+
+        assertEq(pool.offpeg_fee_multiplier(), 5e10);
     }
 
     function test_ETHEREUM_morpho_onboardPTUSDSSPK18Dec2025() public onChain(ChainIdUtils.Ethereum()) {
