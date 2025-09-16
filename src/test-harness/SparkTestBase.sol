@@ -105,41 +105,39 @@ abstract contract SparkTestBase is SparkEthereumTests {
     MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
     function test_test() public {
-        // populateRateLimitKeys(false);
+        populateRateLimitKeys(false);
         loadPreExecutionIntegrations();
 
-        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         // TODO: Find more robust way to do this, this is a hack to use the old controller in getSparkLiquidityLayerContext()
         delete chainData[ChainIdUtils.Ethereum()].prevController;
         delete chainData[ChainIdUtils.Base()].prevController;
 
-        _runSLLE2ETests(ethereumSllIntegrations[29]);
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _runSLLE2ETests(ethereumSllIntegrations[i]);
+        }
 
-        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
-        // }
+        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        // executeAllPayloadsAndBridges();
+        executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
 
-        // // executeAllPayloadsAndBridges();
-        // executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
+        // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
 
-        // // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
-        // chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
-        // chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
+        // Overwrite mainnetController with the new controller for the rest of the tests
+        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        // // Overwrite mainnetController with the new controller for the rest of the tests
-        // mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+        populateRateLimitKeys(true);
+        loadPostExecutionIntegrations();
 
-        // populateRateLimitKeys(true);
-        // loadPostExecutionIntegrations();
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
-        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
-
-        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
-        // }
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _runSLLE2ETests(ethereumSllIntegrations[i]);
+        }
     }
 
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
@@ -255,23 +253,28 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
-        else if (integration.category == Category.CCTP) {
-            // console2.log("Running SLL E2E test for", integration.label);
+        // else if (integration.category == Category.CCTP) {
+        //     // console2.log("Running SLL E2E test for", integration.label);
 
-            // TODO: Add back in once multichain is configured
-            // ChainId domainId;
+        //     // TODO: Add back in once multichain is configured
+        //     // ChainId domainId;
 
-            // if      (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE))) domainId = ChainIdUtils.ArbitrumOne();
-            // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE)))         domainId = ChainIdUtils.Base();
-            // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM)))     domainId = ChainIdUtils.Optimism();
-            // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN)))     domainId = ChainIdUtils.Unichain();
-            // else revert("Invalid domain ID");
+        //     // if      (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE))) domainId = ChainIdUtils.ArbitrumOne();
+        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE)))         domainId = ChainIdUtils.Base();
+        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM)))     domainId = ChainIdUtils.Optimism();
+        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN)))     domainId = ChainIdUtils.Unichain();
+        //     // else revert("Invalid domain ID");
 
-            // _testE2ESLLCrossChainForDomain(
-            //     domainId,
-            //     MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).controller),
-            //     ForeignController(_getSparkLiquidityLayerContext(domainId).controller)
-            // );
+        //     // _testE2ESLLCrossChainForDomain(
+        //     //     domainId,
+        //     //     MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).controller),
+        //     //     ForeignController(_getSparkLiquidityLayerContext(domainId).controller)
+        //     // );
+        // }
+
+        else {
+            console2.log("NOT running SLL E2E test for", integration.label);
+            return;
         }
     }
 

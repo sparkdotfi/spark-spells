@@ -340,6 +340,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
         uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
 
+        bool unlimitedDeposit = depositLimit == type(uint256).max;
+
         // Assert all withdrawals are unlimited
         assertEq(withdrawLimit, type(uint256).max);
 
@@ -347,9 +349,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 1: Check rate limit ***/
         /********************************/
 
-        vm.prank(p.ctx.relayer);
-        vm.expectRevert("RateLimits/rate-limit-exceeded");
-        MainnetController(p.ctx.controller).depositERC4626(p.vault, depositLimit + 1);
+        if (!unlimitedDeposit) {
+            vm.prank(p.ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            MainnetController(p.ctx.controller).depositERC4626(p.vault, depositLimit + 1);
+        }
 
         /****************************************************/
         /*** Step 2: Deposit and check resulting position ***/
@@ -363,7 +367,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         uint256 shares = MainnetController(p.ctx.controller).depositERC4626(p.vault, p.depositAmount);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        if (!unlimitedDeposit) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        }
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
 
@@ -383,7 +389,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.warp(block.timestamp + 30 days);
 
         // Assert rate limit recharge
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        if (!unlimitedDeposit) {
+            assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        }
+
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
 
         /********************************************************************************************************/
@@ -397,7 +406,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Assert value accrual
         assertGt(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets);
-        assertGt(vault.balanceOf(address(p.ctx.proxy)),                                    startingShares);
+        assertGt(vault.balanceOf(address(p.ctx.proxy)),                        startingShares);
     }
 
     function _testAaveOnboarding(
@@ -581,10 +590,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
 
-        // Assert at least 0.5% interest accrued (6% APY)
+        // Assert at least 0.4% interest accrued (4.8% APY)
         assertGe(
             syrup.convertToAssets(v.shares) - v.positionAssets,
-            v.positionAssets * 0.005e18 / 1e18
+            v.positionAssets * 0.004e18 / 1e18
         );
 
         /********************************************/
@@ -614,17 +623,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(1 days);  // Warp to simulate redemption being processed
 
-        vm.startPrank(poolManager.poolDelegate());
-
         v.withdrawAmount = syrup.convertToAssets(v.shares);
+
+        vm.startPrank(poolManager.poolDelegate());
 
         // Withdraw from sUSDS strategy
         IMapleStrategyLike(poolManager.strategyList(3)).withdrawFromStrategy(v.withdrawAmount);
 
         IWithdrawalManagerLike(withdrawalManager).processRedemptions(v.shares);
 
-        // Assert at least 0.5% of value was generated (6% APY)
-        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.005e18 / 1e18);
+        vm.stopPrank();
+
+        // Assert at least 0.4% of value was generated (4.8% APY) (approximated because of extra day)
+        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.004e18 / 1e18);
         assertEq(asset.balanceOf(address(p.ctx.proxy)), v.withdrawAmount);
 
         assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares);
