@@ -443,11 +443,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
 
         if (!unlimitedDeposit) {
-
-            console2.log("p.ctx.relayer", p.ctx.relayer);
-            console2.log("p.ctx.controller", p.ctx.controller);
-            console2.log("hasRole", MainnetController(p.ctx.controller).hasRole(MainnetController(p.ctx.controller).RELAYER(), p.ctx.relayer));
-
             vm.prank(p.ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
             MainnetController(p.ctx.controller).depositAave(p.vault, depositLimit + 1);
@@ -949,7 +944,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);  // NOTE: New slippage not in oldController, part of the payload to onboard a new pool. 
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);  // NOTE: New slippage not in oldController, part of the payload to onboard a new pool.
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));

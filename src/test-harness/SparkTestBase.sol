@@ -85,6 +85,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         address  integration;
         bytes32  entryId;
         bytes32  exitId;
+        bytes32  exitId2;
     }
 
     SLLIntegration[] public arbitrumSllIntegrations;
@@ -107,22 +108,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
         populateRateLimitKeys(false);
         loadPreExecutionIntegrations();
 
-        // For each integration, check that all non-zero keys are present in the rate limit keys, and remove them from the set to ensure completeness
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            require(
-                ethereumSllIntegrations[i].entryId != bytes32(0) ||
-                ethereumSllIntegrations[i].exitId  != bytes32(0),
-                "Empty integration"
-            );
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
-            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
-            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId)  || ethereumSllIntegrations[i].exitId  == bytes32(0));
-
-            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
-            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
-        }
-
-        assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+        // TODO: Find more robust way to do this, this is a hack to use the old controller in getSparkLiquidityLayerContext()
+        delete chainData[ChainIdUtils.Ethereum()].prevController;
+        delete chainData[ChainIdUtils.Base()].prevController;
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
@@ -133,8 +123,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // executeAllPayloadsAndBridges();
         executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
 
+        // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
-        chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER_ETHEREUM;
+        chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
 
         // Overwrite mainnetController with the new controller for the rest of the tests
         mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
@@ -142,34 +133,42 @@ abstract contract SparkTestBase is SparkEthereumTests {
         populateRateLimitKeys(true);
         loadPostExecutionIntegrations();
 
-        // For each integration, check that all non-zero keys are present in the rate limit keys, and remove them from the set to ensure completeness
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            require(
-                ethereumSllIntegrations[i].entryId != bytes32(0) ||
-                ethereumSllIntegrations[i].exitId  != bytes32(0),
-                "Empty integration"
-            );
-
-            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].entryId) || ethereumSllIntegrations[i].entryId == bytes32(0));
-            assertTrue(_ethereumRateLimitKeys.contains(ethereumSllIntegrations[i].exitId)  || ethereumSllIntegrations[i].exitId  == bytes32(0));
-
-            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].entryId);
-            _ethereumRateLimitKeys.remove(ethereumSllIntegrations[i].exitId);
-        }
-
-        assertTrue(_ethereumRateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
         }
     }
 
-    function _runSLLE2ETests(SLLIntegration memory integration) internal {
-        console2.log("Running SLL E2E test for", integration.label);
+    function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            require(
+                integrations[i].entryId != bytes32(0) ||
+                integrations[i].exitId  != bytes32(0) ||
+                integrations[i].exitId2 != bytes32(0),
+                "Empty integration"
+            );
+        }
 
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            assertTrue(rateLimitKeys.contains(integrations[i].entryId) || integrations[i].entryId == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].exitId)  || integrations[i].exitId  == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].exitId2) || integrations[i].exitId2 == bytes32(0));
+
+            rateLimitKeys.remove(integrations[i].entryId);
+            rateLimitKeys.remove(integrations[i].exitId);
+            rateLimitKeys.remove(integrations[i].exitId2);
+        }
+
+        assertTrue(rateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+    }
+
+    function _runSLLE2ETests(SLLIntegration memory integration) internal {
         skip(10 days);  // Ensure rate limits are recharged
 
         if (integration.category == Category.AAVE) {
+            console2.log("Running SLL E2E test for", integration.label);
+
             uint256 decimals = IERC20(IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS()).decimals();
             if (integration.integration == USDE_ATOKEN || integration.integration == Ethereum.USDT_SPTOKEN) return; // TODO: Hack to get around supply cap issues
             _testAaveIntegration(E2ETestParams({
@@ -183,8 +182,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.ERC4626) {
+            console2.log("Running SLL E2E test for", integration.label);
+
             // TODO: Remove this, these integrations are broken
-            if (integration.integration == Ethereum.FLUID_SUSDS || integration.integration == Ethereum.SYRUP_USDC) return;
+            if (integration.integration == Ethereum.FLUID_SUSDS) return;
 
             uint256 decimals = IERC20(IERC4626(integration.integration).asset()).decimals();
             _testERC4626Integration(E2ETestParams({
@@ -198,11 +199,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.CCTP_GENERAL) {
-            // Must be set
-            assertGt(IRateLimits(_getSparkLiquidityLayerContext().rateLimits).getCurrentRateLimit(integration.entryId), 0);
+            console2.log("Running SLL E2E test for", integration.label);
+
+            // Must be set to infinite
+            assertEq(IRateLimits(_getSparkLiquidityLayerContext().rateLimits).getCurrentRateLimit(integration.entryId), type(uint256).max);
         }
 
         else if (integration.category == Category.CURVE_LP) {
+            console2.log("Running SLL E2E test for", integration.label);
+
             address asset0 = ICurvePoolLike(integration.integration).coins(0);
             address asset1 = ICurvePoolLike(integration.integration).coins(1);
 
@@ -219,6 +224,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.CURVE_SWAP) {
+            console2.log("Running SLL E2E test for", integration.label);
+
             address asset0 = ICurvePoolLike(integration.integration).coins(0);
             address asset1 = ICurvePoolLike(integration.integration).coins(1);
 
@@ -233,7 +240,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.CCTP) {
-            // TODO: Figure out domainId mismatch
+            // console2.log("Running SLL E2E test for", integration.label);
+
+            // TODO: Add back in once multichain is configured
             // ChainId domainId;
 
             // if      (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE))) domainId = ChainIdUtils.ArbitrumOne();
@@ -244,8 +253,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
             // _testE2ESLLCrossChainForDomain(
             //     domainId,
-            //     MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).prevController),
-            //     ForeignController(_getSparkLiquidityLayerContext(domainId).prevController)
+            //     MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).controller),
+            //     ForeignController(_getSparkLiquidityLayerContext(domainId).controller)
             // );
         }
     }
@@ -320,12 +329,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT));
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT));
 
-
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC",         Category.ERC4626, Ethereum.SYRUP_USDC));   // TODO: Move to maple test
+        // ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC",         Category.ERC4626, Ethereum.SYRUP_USDC));   // TODO: Move to maple test
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS));  // TODO: Fix FluidLiquidityError
 
         ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_SUSDE-SUSDE", Category.ETHENA_SUSDE, Ethereum.SUSDE));
@@ -349,8 +357,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
     }
 
     function _createSLLIntegration(string memory label, Category category, address integration) internal returns (SLLIntegration memory) {
-        bytes32 entryId;
-        bytes32 exitId;
+        bytes32 entryId = bytes32(0);
+        bytes32 exitId  = bytes32(0);
+        bytes32 exitId2 = bytes32(0);
 
         mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
@@ -375,8 +384,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_WITHDRAW(), integration);
         }
         else if (category == Category.MAPLE) {
-            entryId = bytes32(0);  // NOTE: Deposit/withdraw are covered by ERC4626 type (TODO: Make extraId?)
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_MAPLE_REDEEM(), integration);
+            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
+            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration);
+            exitId2 = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration);
         }
         else if (category == Category.CORE) {
             entryId = mainnetController.LIMIT_USDS_MINT();
@@ -412,17 +422,18 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: integration,
             entryId:     entryId,
-            exitId:      exitId
+            exitId:      exitId,
+            exitId2:     exitId2
         });
     }
 
     function _createSLLIntegration(string memory label, Category category, uint32 domain) internal view returns (SLLIntegration memory) {
-        bytes32 entryId;
-        bytes32 exitId;
+        bytes32 entryId = bytes32(0);
+        bytes32 exitId  = bytes32(0);
+        bytes32 exitId2 = bytes32(0);
 
         if (category == Category.CCTP) {
             entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
-            exitId  = bytes32(0);
         }
 
         return SLLIntegration({
@@ -430,7 +441,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: address(uint160(domain)),  // Unique ID
             entryId:     entryId,
-            exitId:      exitId
+            exitId:      exitId,
+            exitId2:     exitId2
         });
     }
 
@@ -444,20 +456,19 @@ abstract contract SparkTestBase is SparkEthereumTests {
     )
         internal view returns (SLLIntegration memory)
     {
-        bytes32 entryId;
-        bytes32 exitId;
+        bytes32 entryId = bytes32(0);
+        bytes32 exitId  = bytes32(0);
+        bytes32 exitId2 = bytes32(0);
 
         if (category == Category.BUIDL) {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
             exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
         }
         else if (category == Category.SUPERSTATE_OFFCHAIN) {
-            entryId = bytes32(0);
             exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
         }
         else if (category == Category.REWARDS_TRANSFER) {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
-            exitId  = bytes32(0);
         }
 
         return SLLIntegration({
@@ -465,7 +476,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: assetIn,  // TODO: Refactor this for testing, integration + underlying?
             entryId:     entryId,
-            exitId:      exitId
+            exitId:      exitId,
+            exitId2:     exitId2
         });
     }
+
 }
