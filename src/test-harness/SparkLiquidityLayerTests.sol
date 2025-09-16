@@ -594,6 +594,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(1 days);  // Warp to simulate redemption being processed
 
+        console2.log("syrup.manager()", syrup.manager());
+
         vm.prank(IPoolManagerLike(syrup.manager()).poolDelegate());
         IWithdrawalManagerLike(withdrawalManager).processRedemptions(shares);
 
