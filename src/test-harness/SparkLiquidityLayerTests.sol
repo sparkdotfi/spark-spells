@@ -77,8 +77,13 @@ interface ICurvePoolLike is IERC20 {
 }
 
 interface IPoolManagerLike {
-    function withdrawalManager() external view returns (address);
     function poolDelegate() external view returns (address);
+    function strategyList(uint256 index) external view returns (address);
+    function withdrawalManager() external view returns (address);
+}
+
+interface IMapleStrategyLike {
+    function withdrawFromStrategy(uint256 amount) external;
 }
 
 interface IWithdrawalManagerLike {
@@ -499,21 +504,36 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 tolerance;
     }
 
+    struct MapleE2ETestVars {
+        uint256 depositLimit;
+        uint256 redeemLimit;
+        uint256 withdrawLimit;
+        uint256 positionAssets;
+        uint256 startingShares;
+        uint256 startingAssets;
+        uint256 shares;
+        uint256 withdrawAmount;
+        uint256 totalEscrowedShares;
+    }
+
     function _testMapleIntegration(MapleE2ETestParams memory p) internal {
         ISyrupLike syrup = ISyrupLike(p.vault);
         IERC20     asset = IERC20(syrup.asset());
 
-        MainnetController controller = MainnetController(p.ctx.controller);
+        MainnetController controller  = MainnetController(p.ctx.controller);
+        IPoolManagerLike  poolManager = IPoolManagerLike(syrup.manager());
+
+        MapleE2ETestVars memory v;
 
         deal(address(asset), address(p.ctx.proxy), p.depositAmount);
 
-        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
-        uint256 redeemLimit   = p.ctx.rateLimits.getCurrentRateLimit(p.redeemKey);
-        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+        v.depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        v.redeemLimit   = p.ctx.rateLimits.getCurrentRateLimit(p.redeemKey);
+        v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
 
         // Assert all withdrawals and redemption requests are unlimited
-        assertEq(withdrawLimit, type(uint256).max);
-        assertEq(redeemLimit,   type(uint256).max);
+        assertEq(v.withdrawLimit, type(uint256).max);
+        assertEq(v.redeemLimit,   type(uint256).max);
 
         /********************************/
         /*** Step 1: Check rate limit ***/
@@ -521,7 +541,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
-        controller.depositERC4626(p.vault, depositLimit + 1);
+        controller.depositERC4626(p.vault, v.depositLimit + 1);
 
         /****************************************************/
         /*** Step 2: Deposit and check resulting position ***/
@@ -529,28 +549,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
 
-        uint256 startingShares = syrup.balanceOf(address(p.ctx.proxy));
-        uint256 startingAssets = syrup.convertToAssets(startingShares);
+        v.startingShares = syrup.balanceOf(address(p.ctx.proxy));
+        v.startingAssets = syrup.convertToAssets(v.startingShares);
 
         vm.prank(p.ctx.relayer);
-        uint256 shares = controller.depositERC4626(p.vault, p.depositAmount);
+        v.shares = controller.depositERC4626(p.vault, p.depositAmount);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
 
-        assertApproxEqAbs(syrup.balanceOf(address(p.ctx.proxy)), startingShares + shares, p.tolerance);
+        assertApproxEqAbs(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares, p.tolerance);
 
         assertApproxEqAbs(
             syrup.convertToAssets(syrup.balanceOf(address(p.ctx.proxy))),
-            startingAssets + p.depositAmount,
+            v.startingAssets + p.depositAmount,
             p.tolerance
         );
 
-        uint256 positionAssets = syrup.convertToAssets(shares);
+        v.positionAssets = syrup.convertToAssets(v.shares);
 
         // Assert assets deposited are reflected in new position
-        assertApproxEqAbs(positionAssets, p.depositAmount, p.tolerance);
+        assertApproxEqAbs(v.positionAssets, p.depositAmount, p.tolerance);
 
         /**********************************************************************/
         /*** Step 3: Warp to check rate limit recharge and interest accrual ***/
@@ -558,33 +578,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.warp(block.timestamp + 30 days);
 
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
 
         // Assert at least 0.5% interest accrued (6% APY)
         assertGe(
-            syrup.convertToAssets(shares) - positionAssets,
-            positionAssets * 0.005e18 / 1e18
+            syrup.convertToAssets(v.shares) - v.positionAssets,
+            v.positionAssets * 0.005e18 / 1e18
         );
 
         /********************************************/
         /*** Step 4: Request redemption of shares ***/
         /********************************************/
 
-        address withdrawalManager = IPoolManagerLike(syrup.manager()).withdrawalManager();
+        address withdrawalManager = poolManager.withdrawalManager();
 
-        uint256 totalEscrowedShares = syrup.balanceOf(withdrawalManager);
+        v.totalEscrowedShares = syrup.balanceOf(withdrawalManager);
 
-        assertEq(syrup.balanceOf(address(withdrawalManager)), totalEscrowedShares);
-        assertEq(syrup.balanceOf(address(p.ctx.proxy)),       startingShares + shares);
+        assertEq(syrup.balanceOf(address(withdrawalManager)), v.totalEscrowedShares);
+        assertEq(syrup.balanceOf(address(p.ctx.proxy)),       v.startingShares + v.shares);
 
         assertEq(syrup.allowance(address(p.ctx.proxy), withdrawalManager), 0);
 
         vm.prank(p.ctx.relayer);
-        controller.requestMapleRedemption(address(syrup), shares);
+        controller.requestMapleRedemption(address(syrup), v.shares);
 
-        assertEq(syrup.balanceOf(address(withdrawalManager)), totalEscrowedShares + shares);
-        assertEq(syrup.balanceOf(address(p.ctx.proxy)),       startingShares);
+        assertEq(syrup.balanceOf(address(withdrawalManager)), v.totalEscrowedShares + v.shares);
+        assertEq(syrup.balanceOf(address(p.ctx.proxy)),       v.startingShares);
 
         assertEq(syrup.allowance(address(p.ctx.proxy), withdrawalManager), 0);
 
@@ -594,15 +614,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(1 days);  // Warp to simulate redemption being processed
 
-        console2.log("syrup.manager()", syrup.manager());
+        vm.startPrank(poolManager.poolDelegate());
 
-        vm.prank(IPoolManagerLike(syrup.manager()).poolDelegate());
-        IWithdrawalManagerLike(withdrawalManager).processRedemptions(shares);
+        v.withdrawAmount = syrup.convertToAssets(v.shares);
+
+        // Withdraw from sUSDS strategy
+        IMapleStrategyLike(poolManager.strategyList(3)).withdrawFromStrategy(v.withdrawAmount);
+
+        IWithdrawalManagerLike(withdrawalManager).processRedemptions(v.shares);
 
         // Assert at least 0.5% of value was generated (6% APY)
         assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.005e18 / 1e18);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), v.withdrawAmount);
 
-        assertEq(syrup.balanceOf(address(p.ctx.proxy)), startingShares);
+        assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares);
     }
 
     struct CurveOnboardingVars {
