@@ -56,27 +56,26 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
-    // TODO: Finish
     enum Category {
-        ERC4626,
-        ETHENA_USDE,
-        ETHENA_SUSDE,
         AAVE,
-        CCTP,
-        CCTP_GENERAL,
-        FARM,
         BUIDL,
-        SUPERSTATE,
+        CCTP_GENERAL,
+        CCTP,
         CENTRIFUGE,
-        MAPLE,
-        TREASURY,
         CORE,
-        PSM,
         CURVE_LP,
         CURVE_SWAP,
+        ERC4626,
+        ETHENA_SUSDE,
+        ETHENA_USDE,
+        FARM,
+        MAPLE,
+        PSM,
+        REWARDS_TRANSFER,
         SUPERSTATE_OFFCHAIN,
         SUPERSTATE_ONCHAIN,
-        REWARDS_TRANSFER
+        SUPERSTATE,
+        TREASURY
     }
 
     struct SLLIntegration {
@@ -104,9 +103,13 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
-    function test_test() public {
-        populateRateLimitKeys(false);
-        loadPreExecutionIntegrations();
+    /**********************************************************************************************/
+    /*** Tests                                                                                  ***/
+    /**********************************************************************************************/
+
+    function test_ETHEREUM_E2E_sparkLiquidityLayer() public {
+        _populateRateLimitKeys(false);
+        _loadPreExecutionIntegrations();
 
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
@@ -120,8 +123,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // executeAllPayloadsAndBridges();
-        executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
+        // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
+        executeMainnetPayload();
 
         // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
@@ -130,8 +133,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // Overwrite mainnetController with the new controller for the rest of the tests
         mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        populateRateLimitKeys(true);
-        loadPostExecutionIntegrations();
+        _populateRateLimitKeys(true);
+        _loadPostExecutionIntegrations();
 
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
@@ -140,28 +143,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
     }
 
-    function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            require(
-                integrations[i].entryId != bytes32(0) ||
-                integrations[i].exitId  != bytes32(0) ||
-                integrations[i].exitId2 != bytes32(0),
-                "Empty integration"
-            );
-        }
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            assertTrue(rateLimitKeys.contains(integrations[i].entryId) || integrations[i].entryId == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].exitId)  || integrations[i].exitId  == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].exitId2) || integrations[i].exitId2 == bytes32(0));
-
-            rateLimitKeys.remove(integrations[i].entryId);
-            rateLimitKeys.remove(integrations[i].exitId);
-            rateLimitKeys.remove(integrations[i].exitId2);
-        }
-
-        assertTrue(rateLimitKeys.length() == 0, "Rate limit keys not fully covered");
-    }
+    /**********************************************************************************************/
+    /*** E2E test helper functions                                                              ***/
+    /**********************************************************************************************/
 
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
         skip(10 days);  // Ensure rate limits are recharged
@@ -278,7 +262,38 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
     }
 
-    function populateRateLimitKeys(bool isPostExecution) public returns (bytes32[] memory uniqueKeys) {
+    /**********************************************************************************************/
+    /*** Assertion helper functions                                                             ***/
+    /**********************************************************************************************/
+
+    function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            require(
+                integrations[i].entryId != bytes32(0) ||
+                integrations[i].exitId  != bytes32(0) ||
+                integrations[i].exitId2 != bytes32(0),
+                "Empty integration"
+            );
+        }
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            assertTrue(rateLimitKeys.contains(integrations[i].entryId) || integrations[i].entryId == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].exitId)  || integrations[i].exitId  == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].exitId2) || integrations[i].exitId2 == bytes32(0));
+
+            rateLimitKeys.remove(integrations[i].entryId);
+            rateLimitKeys.remove(integrations[i].exitId);
+            rateLimitKeys.remove(integrations[i].exitId2);
+        }
+
+        assertTrue(rateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+    }
+
+    /**********************************************************************************************/
+    /*** Data populating helper functions                                                       ***/
+    /**********************************************************************************************/
+
+    function _populateRateLimitKeys(bool isPostExecution) internal returns (bytes32[] memory uniqueKeys) {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
@@ -317,7 +332,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         console2.log("Rate limit keys", _ethereumRateLimitKeys.length());
     }
 
-    function loadPreExecutionIntegrations() internal {
+    function _loadPreExecutionIntegrations() internal {
         ethereumSllIntegrations.push(_createSLLIntegration("AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT));
         ethereumSllIntegrations.push(_createSLLIntegration("AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN));
         ethereumSllIntegrations.push(_createSLLIntegration("AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS));
@@ -369,11 +384,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_ONCHAIN-USTB", Category.SUPERSTATE_ONCHAIN,  Ethereum.USTB));
     }
 
-    function loadPostExecutionIntegrations() internal {
+    function _loadPostExecutionIntegrations() internal {
         ethereumSllIntegrations.push(_createSLLIntegration("FARM-USDS_SPK_FARM",   Category.FARM,       USDS_SPK_FARM));
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, CURVE_PYUSDUSDS));
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-PYUSDUSDS",   Category.CURVE_LP,   CURVE_PYUSDUSDS));
     }
+
+    /**********************************************************************************************/
+    /*** Data processing helper functions                                                       ***/
+    /**********************************************************************************************/
 
     function _createSLLIntegration(string memory label, Category category, address integration) internal returns (SLLIntegration memory) {
         bytes32 entryId = bytes32(0);
