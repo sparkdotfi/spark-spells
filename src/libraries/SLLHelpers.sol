@@ -90,56 +90,36 @@ library SLLHelpers {
         );
 
         // PSM USDS
-        setRateLimitData(
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 usds
-            ),
-            rateLimits,
-            type(uint256).max,
-            0,
-            18
+            )
         );
-        setRateLimitData(
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 usds
-            ),
-            rateLimits,
-            type(uint256).max,
-            0,
-            18
+            )
         );
 
         // PSM sUSDS
-        setRateLimitData(
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_DEPOSIT,
                 susds
-            ),
-            rateLimits,
-            type(uint256).max,
-            0,
-            18
+            )
         );
-        setRateLimitData(
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
                 susds
-            ),
-            rateLimits,
-            type(uint256).max,
-            0,
-            18
+            )
         );
 
         // CCTP
-        setRateLimitData(
-            LIMIT_USDC_TO_CCTP,
-            rateLimits,
-            type(uint256).max,
-            0,
-            6
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
+            LIMIT_USDC_TO_CCTP
         );
         setRateLimitData(
             RateLimitHelpers.makeDomainKey(
@@ -176,15 +156,11 @@ library SLLHelpers {
             depositSlope,
             underlying.decimals()
         );
-        setRateLimitData(
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_AAVE_WITHDRAW,
                 token
-            ),
-            rateLimits,
-            type(uint256).max,
-            0,
-            underlying.decimals()
+            )
         );
     }
 
@@ -211,15 +187,11 @@ library SLLHelpers {
             depositSlope,
             asset.decimals()
         );
-        setRateLimitData(
+        IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_4626_WITHDRAW,
                 vault
-            ),
-            rateLimits,
-            type(uint256).max,
-            0,
-            asset.decimals()
+            )
         );
     }
 

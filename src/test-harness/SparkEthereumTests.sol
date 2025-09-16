@@ -14,6 +14,8 @@ import { IMorphoChainlinkOracleV2 } from 'morpho-blue-oracles/morpho-chainlink/i
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
+import { MorphoUpgradableOracle } from "sparklend-advanced/src/MorphoUpgradableOracle.sol";
+
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
@@ -32,7 +34,7 @@ import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
 
-import { SparkLiquidityLayerTests, SparkLiquidityLayerContext } from "./SparkLiquidityLayerTests.sol";
+import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
 
 import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
 import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
@@ -53,10 +55,6 @@ interface ICustomIRM {
 
 interface IExecutable {
     function execute() external;
-}
-
-interface IFarmLike {
-    function earned(address account) external view returns (uint256);
 }
 
 interface IMorpho {
@@ -82,9 +80,14 @@ interface IMorphoOracleFactory {
 
 interface IPendleLinearDiscountOracle {
     function baseDiscountPerYear() external view returns (uint256);
+    function decimals() external view returns (uint256);
     function getDiscount(uint256 timeLeft) external view returns (uint256);
     function maturity() external view returns (uint256);
     function PT() external view returns (address);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 interface IRateSource {
@@ -460,7 +463,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             _currentCap,
         bool                _hasPending,
         uint256             _pendingCap
-    ) internal view {
+    ) private view {
         Id id = MarketParamsLib.id(_config);
         assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
         PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
@@ -478,7 +481,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         MarketParams memory _config,
         uint256             _currentCap,
         uint256             _pendingCap
-    ) internal view {
+    ) private view {
         _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
     }
 
@@ -486,7 +489,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address             _vault,
         MarketParams memory _config,
         uint256             _currentCap
-    ) internal view {
+    ) private view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
 
@@ -651,9 +654,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             _assertMorphoCap(vault, config, newCap);
         }
 
+        // Check total assets in the morpho market are greater than 1 unit of the loan token
         ( uint256 totalSupplyAssets_,,,,, ) = IMorpho(Ethereum.MORPHO).market(MarketParamsLib.id(config));
         assertGe(totalSupplyAssets_, 10 ** IERC20(config.loanToken).decimals());
 
+        // Check shares of address(1) are greater or equal to 1e6 * 10 ** loanTokenDecimals (1 unit)
         Position memory position = IMorpho(Ethereum.MORPHO).position(MarketParamsLib.id(config), address(1));
         assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
@@ -669,7 +674,9 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     {
         IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
 
-        IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
+        MorphoUpgradableOracle baseFeed = MorphoUpgradableOracle(address(_oracle.BASE_FEED_1()));
+
+        IPendleLinearDiscountOracle pendleOracle = IPendleLinearDiscountOracle(address(baseFeed.source()));
 
         // TODO: This assumes loanTokenDecimals >= ptDecimals, fix for the other case.
         uint256 assetConversion = 10 ** (IERC20(loanToken).decimals() - IERC20(pt).decimals());
@@ -685,11 +692,19 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertGe(_oracle.price(),                         0.01e36);
         assertLe(_oracle.price(),                         1e36 * assetConversion);
 
-        assertEq(baseFeed.PT(),                  pt);
-        assertEq(baseFeed.baseDiscountPerYear(), discount);
-        assertEq(baseFeed.maturity(),            maturity);
+        assertEq(pendleOracle.PT(),                  pt);
+        assertEq(pendleOracle.baseDiscountPerYear(), discount);
+        assertEq(pendleOracle.maturity(),            maturity);
+        assertEq(pendleOracle.getDiscount(365 days), discount);
 
-        assertEq(baseFeed.getDiscount(365 days), discount);
+        assertEq(baseFeed.owner(),           Ethereum.SPARK_PROXY);
+        assertEq(address(baseFeed.source()), address(pendleOracle));
+        assertEq(baseFeed.decimals(),        pendleOracle.decimals());
+
+        ( , int256 pendlePrice,,, )   = pendleOracle.latestRoundData();
+        ( , int256 baseFeedPrice,,, ) = baseFeed.latestRoundData();
+
+        assertEq(baseFeedPrice, pendlePrice);
 
         uint256 blockTime = block.timestamp;
 
@@ -697,7 +712,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         vm.warp(blockTime + 1 days);
 
-        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * assetConversion / 365, 0.005e36 * assetConversion);
+        assertApproxEqAbs(uint256(_oracle.price() - price) / 1e18, uint256(0.15e18) / 365, 1);
 
         vm.warp(maturity - 1 seconds);
 
@@ -711,7 +726,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
 
-        _assertBytecodeMatches(expectedPendleOracle, address(baseFeed));
+        _assertBytecodeMatches(expectedPendleOracle, address(pendleOracle));
+
+        address expectedBaseFeed = address(new MorphoUpgradableOracle{salt: bytes32(0)}(Ethereum.SPARK_PROXY, address(pendleOracle)));
+
+        _assertBytecodeMatches(expectedBaseFeed, address(baseFeed));
     }
 
     function _testRateTargetBaseIRMUpdate(
@@ -901,99 +920,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
         }
-    }
-
-    function _testTransferAssetIntegration(
-        address token,
-        address destination,
-        address controller,
-        address proxy
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(controller);
-
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(controller).LIMIT_ASSET_TRANSFER(),
-            token,
-            destination
-        );
-
-        deal(token, proxy, 200_000e18);
-
-        assertEq(IERC20(token).balanceOf(destination), 0);
-        assertEq(IERC20(token).balanceOf(proxy),       200_000e18);
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(token, destination, 100_000e18);
-
-        assertEq(IERC20(token).balanceOf(destination),         100_000e18);
-        assertEq(IERC20(token).balanceOf(proxy),               100_000e18);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(token, destination, 100_000e18);
-
-        assertEq(IERC20(token).balanceOf(destination),         200_000e18);
-        assertEq(IERC20(token).balanceOf(proxy),               0);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 100_000e18);
-    }
-
-    function _testFarmingIntegration(
-        address farm,
-        address controller,
-        uint256 depositMax
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(controller);
-
-        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(controller).LIMIT_FARM_DEPOSIT(),
-            farm
-        );
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(controller).LIMIT_FARM_WITHDRAW(),
-            farm
-        );
-
-        IERC20 underlying = IERC20(Ethereum.USDS);
-
-        uint256 expectedDepositAmount = 1_000_000e18;
-
-        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
-
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)), 0);
-
-        vm.prank(ctx.relayer);
-        controller.depositToFarm(farm, expectedDepositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax - expectedDepositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       expectedDepositAmount);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
-        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), 0);
-
-        skip(1 days);
-
-        uint256 rewards = IFarmLike(farm).earned(address(ctx.proxy));
-
-        assertGt(rewards, 0);
-
-        vm.prank(ctx.relayer);
-        controller.withdrawFromFarm(farm, expectedDepositAmount / 2);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),       expectedDepositAmount / 2);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),           expectedDepositAmount / 2);
-        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), rewards);
     }
 
 }
