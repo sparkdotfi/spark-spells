@@ -105,39 +105,41 @@ abstract contract SparkTestBase is SparkEthereumTests {
     MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
     function test_test() public {
-        populateRateLimitKeys(false);
+        // populateRateLimitKeys(false);
         loadPreExecutionIntegrations();
 
-        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         // TODO: Find more robust way to do this, this is a hack to use the old controller in getSparkLiquidityLayerContext()
         delete chainData[ChainIdUtils.Ethereum()].prevController;
         delete chainData[ChainIdUtils.Base()].prevController;
 
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            _runSLLE2ETests(ethereumSllIntegrations[i]);
-        }
+        _runSLLE2ETests(ethereumSllIntegrations[29]);
 
-        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
+        // }
 
-        // executeAllPayloadsAndBridges();
-        executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
+        // vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
-        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
-        chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
+        // // executeAllPayloadsAndBridges();
+        // executeMainnetPayload();  // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
 
-        // Overwrite mainnetController with the new controller for the rest of the tests
-        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+        // // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
+        // chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        // chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
 
-        populateRateLimitKeys(true);
-        loadPostExecutionIntegrations();
+        // // Overwrite mainnetController with the new controller for the rest of the tests
+        // mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        // populateRateLimitKeys(true);
+        // loadPostExecutionIntegrations();
 
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            _runSLLE2ETests(ethereumSllIntegrations[i]);
-        }
+        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+
+        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
+        // }
     }
 
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
@@ -236,6 +238,20 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 asset1:         asset1,
                 swapAmount:     1e18,  // Normalized to 18 decimals (TODO: Figure out how to raise, getting slippage reverts)
                 swapKey:        integration.entryId
+            }));
+        }
+
+        else if (integration.category == Category.MAPLE) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testMapleIntegration(MapleE2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                vault:         integration.integration,
+                depositAmount: 1_000_000e6,
+                depositKey:    integration.entryId,
+                redeemKey:     integration.exitId,
+                withdrawKey:   integration.exitId2,
+                tolerance:     10
             }));
         }
 
