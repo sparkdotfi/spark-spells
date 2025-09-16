@@ -248,6 +248,18 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
+        else if (integration.category == Category.FARM) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testFarmIntegration(FarmE2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                farm:          integration.integration,
+                depositAmount: 100_000_000e6,
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId
+            }));
+        }
+
         // else if (integration.category == Category.CCTP) {
         //     // console2.log("Running SLL E2E test for", integration.label);
 
