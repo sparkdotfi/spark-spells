@@ -82,6 +82,10 @@ interface IPoolManagerLike {
     function withdrawalManager() external view returns (address);
 }
 
+interface IPsmLike {
+    function pocket() external view returns (address);
+}
+
 interface IMapleStrategyLike {
     function withdrawFromStrategy(uint256 amount) external;
 }
@@ -1027,6 +1031,107 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         skip(10 days);
 
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+    }
+
+    struct PSMSwapE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address psm;
+        uint256 swapAmount;
+        bytes32 swapKey;
+    }
+
+    function _testPSMIntegration(PSMSwapE2ETestParams memory p) internal {
+        skip(10 days);  // Recharge rate limits
+
+        IERC20 usdc = IERC20(Ethereum.USDC);
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        address pocket = IPsmLike(p.psm).pocket();
+
+        uint256 usdsSwapAmount = p.swapAmount * 1e12;  // Convert USDC to USDS
+
+        deal(address(usds), address(p.ctx.proxy), usdsSwapAmount);  // 2 swaps will be done
+
+        uint256 swapToUsdcLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+
+        assertNotEq(swapToUsdcLimit, type(uint256).max);
+
+        /**************************************************************/
+        /*** Step 1: Swap USDS to USDC and check resulting position ***/
+        /**************************************************************/
+
+        uint256 psmUsdcBalance   = usdc.balanceOf(pocket);
+        uint256 proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        uint256 usdsTotalSupply  = usds.totalSupply();
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsSwapAmount);  // Set by deal
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).swapUSDSToUSDC(p.swapAmount);  // Use USDC precision
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance   - p.swapAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance + p.swapAmount);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply - usdsSwapAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), 0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit - p.swapAmount);
+
+        /********************************************************/
+        /*** Step 2: Warp to recharge rate limits, not to max ***/
+        /********************************************************/
+
+        skip(10 minutes);
+
+        uint256 newSwapToUsdcLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+
+        assertGt(newSwapToUsdcLimit, swapToUsdcLimit - p.swapAmount);
+
+        /***************************************************************************************/
+        /*** Step 3: Swap 10% of the USDC to USDS and check that the rate limit is increased ***/
+        /***************************************************************************************/
+
+        psmUsdcBalance   = usdc.balanceOf(pocket);
+        proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        usdsTotalSupply  = usds.totalSupply();
+
+        // Do a 10% swap to increase the rate limit without hittig the max
+        p.swapAmount   = p.swapAmount / 10;
+        usdsSwapAmount = usdsSwapAmount / 10;
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), 0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).swapUSDCToUSDS(p.swapAmount);
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance   + p.swapAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance - p.swapAmount);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply + usdsSwapAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsSwapAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
+
+        /**************************************************/
+        /*** Step 4: Warp to recharge rate limits fully ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
     }
 
