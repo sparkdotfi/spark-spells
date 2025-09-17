@@ -13,8 +13,12 @@ import { SLLHelpers } from './libraries/SLLHelpers.sol';
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadBase {
-    
+
     function _upgradeController(address oldController, address newController) internal {
+        address[] memory relayers = new address[](2);
+        relayers[0] = Base.ALM_RELAYER;
+        relayers[1] = Base.ALM_RELAYER2;
+
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
                 almProxy:    Base.ALM_PROXY,
@@ -23,7 +27,7 @@ abstract contract SparkPayloadBase {
             }),
             ForeignControllerInit.ConfigAddressParams({
                 freezer:       Base.ALM_FREEZER,
-                relayer:       Base.ALM_RELAYER,
+                relayers:      relayers,
                 oldController: oldController
             }),
             ForeignControllerInit.CheckAddressParams({

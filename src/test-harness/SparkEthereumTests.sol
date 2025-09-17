@@ -14,6 +14,11 @@ import { IMorphoChainlinkOracleV2 } from 'morpho-blue-oracles/morpho-chainlink/i
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
+import { MorphoUpgradableOracle } from "sparklend-advanced/src/MorphoUpgradableOracle.sol";
+
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+
 import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol';
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
@@ -43,25 +48,51 @@ interface IAuthority {
     function lift(address target) external;
 }
 
-interface IExecutable {
-    function execute() external;
-}
-
 interface ICustomIRM {
     function RATE_SOURCE() external view returns (address);
     function getBaseVariableBorrowRateSpread() external view returns (uint256);
 }
 
-interface IRateSource {
-    function getAPR() external view returns (int256);
-    function decimals() external view returns (uint256);
+interface IExecutable {
+    function execute() external;
+}
+
+interface IMorpho {
+    function position(Id id, address user) external view returns (Position memory p);
+
+    function market(Id id)
+        external
+        view
+        returns (
+            uint128 totalSupplyAssets,
+            uint128 totalSupplyShares,
+            uint128 totalBorrowAssets,
+            uint128 totalBorrowShares,
+            uint128 lastUpdate,
+            uint128 fee
+        );
+}
+
+interface IMorphoOracleFactory {
+    // NOTE: This applies to all oracles deployed by the factory
+    function isMorphoChainlinkOracleV2(address) external view returns (bool);
 }
 
 interface IPendleLinearDiscountOracle {
     function baseDiscountPerYear() external view returns (uint256);
+    function decimals() external view returns (uint256);
     function getDiscount(uint256 timeLeft) external view returns (uint256);
     function maturity() external view returns (uint256);
     function PT() external view returns (address);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+}
+
+interface IRateSource {
+    function getAPR() external view returns (int256);
+    function decimals() external view returns (uint256);
 }
 
 interface ISparkProxy {
@@ -76,9 +107,10 @@ interface ITargetKinkIRM {
     function getVariableRateSlope1Spread() external view returns (uint256);
 }
 
-interface IMorphoOracleFactory {
-    // NOTE: This applies to all oracles deployed by the factory
-    function isMorphoChainlinkOracleV2(address) external view returns (bool);
+struct Position {
+    uint256 supplyShares;
+    uint128 borrowShares;
+    uint128 collateral;
 }
 
 /// @dev assertions specific to mainnet
@@ -431,7 +463,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             _currentCap,
         bool                _hasPending,
         uint256             _pendingCap
-    ) internal view {
+    ) private view {
         Id id = MarketParamsLib.id(_config);
         assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
         PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
@@ -449,7 +481,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         MarketParams memory _config,
         uint256             _currentCap,
         uint256             _pendingCap
-    ) internal view {
+    ) private view {
         _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
     }
 
@@ -457,7 +489,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address             _vault,
         MarketParams memory _config,
         uint256             _currentCap
-    ) internal view {
+    ) private view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
 
@@ -622,6 +654,13 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             _assertMorphoCap(vault, config, newCap);
         }
 
+        // Check total assets in the morpho market are greater than 1 unit of the loan token
+        ( uint256 totalSupplyAssets_,,,,, ) = IMorpho(Ethereum.MORPHO).market(MarketParamsLib.id(config));
+        assertGe(totalSupplyAssets_, 10 ** IERC20(config.loanToken).decimals());
+
+        // Check shares of address(1) are greater or equal to 1e6 * 10 ** loanTokenDecimals (1 unit)
+        Position memory position = IMorpho(Ethereum.MORPHO).position(MarketParamsLib.id(config), address(1));
+        assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
 
     function _testMorphoPendlePTOracleConfig(
@@ -635,7 +674,9 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     {
         IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
 
-        IPendleLinearDiscountOracle baseFeed = IPendleLinearDiscountOracle(address(_oracle.BASE_FEED_1()));
+        MorphoUpgradableOracle baseFeed = MorphoUpgradableOracle(address(_oracle.BASE_FEED_1()));
+
+        IPendleLinearDiscountOracle pendleOracle = IPendleLinearDiscountOracle(address(baseFeed.source()));
 
         // TODO: This assumes loanTokenDecimals >= ptDecimals, fix for the other case.
         uint256 assetConversion = 10 ** (IERC20(loanToken).decimals() - IERC20(pt).decimals());
@@ -651,11 +692,19 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertGe(_oracle.price(),                         0.01e36);
         assertLe(_oracle.price(),                         1e36 * assetConversion);
 
-        assertEq(baseFeed.PT(),                  pt);
-        assertEq(baseFeed.baseDiscountPerYear(), discount);
-        assertEq(baseFeed.maturity(),            maturity);
+        assertEq(pendleOracle.PT(),                  pt);
+        assertEq(pendleOracle.baseDiscountPerYear(), discount);
+        assertEq(pendleOracle.maturity(),            maturity);
+        assertEq(pendleOracle.getDiscount(365 days), discount);
 
-        assertEq(baseFeed.getDiscount(365 days), discount);
+        assertEq(baseFeed.owner(),           Ethereum.SPARK_PROXY);
+        assertEq(address(baseFeed.source()), address(pendleOracle));
+        assertEq(baseFeed.decimals(),        pendleOracle.decimals());
+
+        ( , int256 pendlePrice,,, )   = pendleOracle.latestRoundData();
+        ( , int256 baseFeedPrice,,, ) = baseFeed.latestRoundData();
+
+        assertEq(baseFeedPrice, pendlePrice);
 
         uint256 blockTime = block.timestamp;
 
@@ -663,7 +712,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         vm.warp(blockTime + 1 days);
 
-        assertApproxEqAbs(_oracle.price() - price, 0.15e36 * assetConversion / 365, 0.005e36 * assetConversion);
+        assertApproxEqAbs(uint256(_oracle.price() - price) / 1e18, uint256(0.15e18) / 365, 1);
 
         vm.warp(maturity - 1 seconds);
 
@@ -677,7 +726,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
 
-        _assertBytecodeMatches(expectedPendleOracle, address(baseFeed));
+        _assertBytecodeMatches(expectedPendleOracle, address(pendleOracle));
+
+        address expectedBaseFeed = address(new MorphoUpgradableOracle{salt: bytes32(0)}(Ethereum.SPARK_PROXY, address(pendleOracle)));
+
+        _assertBytecodeMatches(expectedBaseFeed, address(baseFeed));
     }
 
     function _testRateTargetBaseIRMUpdate(
