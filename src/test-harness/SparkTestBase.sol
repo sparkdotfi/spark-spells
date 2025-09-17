@@ -454,6 +454,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
             exitId  = bytes32(0);
         }
+        else {
+            revert("Invalid category");
+        }
 
         return SLLIntegration({
             label:       label,
@@ -472,6 +475,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         if (category == Category.CCTP) {
             entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
+        }
+        else {
+            revert("Invalid category");
         }
 
         return SLLIntegration({
@@ -507,6 +513,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.REWARDS_TRANSFER) {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
+        }
+        else {
+            revert("Invalid category");
         }
 
         return SLLIntegration({
