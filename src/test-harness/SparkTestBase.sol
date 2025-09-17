@@ -32,8 +32,8 @@ interface ICurvePoolLike {
     function coins(uint256) external view returns (address);
 }
 
-/// @dev convenience contract meant to be the single point of entry for all
-/// spell-specifictest contracts
+/// @dev Convenience contract meant to be the single point of entry for all
+///      spell-specific test contracts
 abstract contract SparkTestBase is SparkEthereumTests {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
