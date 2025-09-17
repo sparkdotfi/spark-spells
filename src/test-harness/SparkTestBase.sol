@@ -33,7 +33,7 @@ interface ICurvePoolLike {
 }
 
 /// @dev convenience contract meant to be the single point of entry for all
-/// spell-specifictest contracts
+/// spell-specific test contracts
 abstract contract SparkTestBase is SparkEthereumTests {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -475,6 +475,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (category == Category.CCTP_GENERAL) {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
             exitId  = bytes32(0);
+        }
+        else {
+            revert("Invalid category");
         }
 
         return SLLIntegration({
