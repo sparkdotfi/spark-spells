@@ -1413,9 +1413,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usde.balanceOf(address(silo)),        siloBalance);
         assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance + underlyingUsde);
 
-        /*********************************/
-        /*** Step 9: Prepare USDE burn ***/
-        /*********************************/
+        /*************************************/
+        /*** Step 9: Check burn rate limit ***/
+        /*************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).prepareUSDeBurn(v.burnLimit + 1);
+
+        /**********************************/
+        /*** Step 10: Prepare USDE burn ***/
+        /**********************************/
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit);
 
@@ -1431,7 +1439,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), underlyingUsde);
 
         /***********************************************/
-        /*** Step 10: Simulate USDE burn from Ethena ***/
+        /*** Step 11: Simulate USDE burn from Ethena ***/
         /***********************************************/
 
         uint256 usdcAmount = underlyingUsde / 1e12;
@@ -1449,6 +1457,87 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usdc.balanceOf(Ethereum.ETHENA_MINTER), 0);  // Balance set by deal so should go to zero
 
         assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), 0);
+
+        /**************************************************/
+        /*** Step 12: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), v.mintLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.usdeAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUsde);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), p.ctx.rateLimits.getRateLimitData(p.burnKey).maxAmount);
+    }
+
+    struct CoreE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256 mintAmount;
+        uint256 burnAmount;
+        bytes32 mintKey;
+    }
+
+    function _testCoreIntegration(CoreE2ETestParams memory p) internal {
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        require(p.mintAmount > p.burnAmount, "Invalid burn amount");
+
+        uint256 totalSupply      = usds.totalSupply();
+        uint256 usdsProxyBalance = usds.balanceOf(address(p.ctx.proxy));
+
+        uint256 mintLimit = p.ctx.rateLimits.getCurrentRateLimit(p.mintKey);
+
+        /*************************************/
+        /*** Step 1: Check burn rate limit ***/
+        /*************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).mintUSDS(mintLimit + 1);
+
+        /*************************/
+        /*** Step 2: Mint USDS ***/
+        /*************************/
+
+        assertEq(usds.totalSupply(),                   totalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).mintUSDS(p.mintAmount);
+
+        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount);
+
+        /*************************/
+        /*** Step 3: Burn USDS ***/
+        /*************************/
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).burnUSDS(p.burnAmount);
+
+        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount - p.burnAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount - p.burnAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
+
+        /**************************************************/
+        /*** Step 4: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
