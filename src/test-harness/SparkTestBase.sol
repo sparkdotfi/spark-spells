@@ -32,8 +32,8 @@ interface ICurvePoolLike {
     function coins(uint256) external view returns (address);
 }
 
-/// @dev convenience contract meant to be the single point of entry for all
-/// spell-specific test contracts
+/// @dev Convenience contract meant to be the single point of entry for all
+///      spell-specific test contracts
 abstract contract SparkTestBase is SparkEthereumTests {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -458,7 +458,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.PSM) {
             entryId = mainnetController.LIMIT_USDS_TO_USDC();
-            exitId  = bytes32(0);  // There is no exitId, the entryId gets increased and reduced
         }
         else if (category == Category.CURVE_LP) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_DEPOSIT(),  integration);
@@ -498,6 +497,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         if (category == Category.CCTP) {
             entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
         }
+        else {
+            revert("Invalid category");
+        }
 
         return SLLIntegration({
             label:       label,
@@ -532,6 +534,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.REWARDS_TRANSFER) {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
+        }
+        else {
+            revert("Invalid category");
         }
 
         return SLLIntegration({
