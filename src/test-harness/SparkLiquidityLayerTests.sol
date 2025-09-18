@@ -108,8 +108,8 @@ interface ICurveStableswapFactory {
 
 interface IFarmLike {
     function earned(address account) external view returns (uint256);
-    function stakingToken() external view returns (address);
     function rewardsToken() external view returns (address);
+    function stakingToken() external view returns (address);
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -1049,7 +1049,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testPSMIntegration(PSMSwapE2ETestParams memory p) internal {
-        skip(10 days);  // Recharge rate limits
+        skip(10 days);  // Recharge rate limits (TODO: Remove all of these uniformly)
 
         IERC20 usdc = IERC20(Ethereum.USDC);
         IERC20 usds = IERC20(Ethereum.USDS);
@@ -1064,10 +1064,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertNotEq(swapToUsdcLimit, type(uint256).max);
 
-        // TODO: Add rate limit boundary
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).swapUSDSToUSDC(swapToUsdcLimit + 1);
 
         /**************************************************************/
-        /*** Step 1: Swap USDS to USDC and check resulting position ***/
+        /*** Step 2: Swap USDS to USDC and check resulting position ***/
         /**************************************************************/
 
         uint256 psmUsdcBalance   = usdc.balanceOf(pocket);
@@ -1094,7 +1100,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit - p.swapAmount);
 
         /********************************************************/
-        /*** Step 2: Warp to recharge rate limits, not to max ***/
+        /*** Step 3: Warp to recharge rate limits, not to max ***/
         /********************************************************/
 
         skip(10 minutes);
@@ -1104,7 +1110,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(newSwapToUsdcLimit, swapToUsdcLimit - p.swapAmount);
 
         /***************************************************************************************/
-        /*** Step 3: Swap 10% of the USDC to USDS and check that the rate limit is increased ***/
+        /*** Step 4: Swap 10% of the USDC to USDS and check that the rate limit is increased ***/
         /***************************************************************************************/
 
         psmUsdcBalance   = usdc.balanceOf(pocket);
@@ -1135,7 +1141,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
 
         /**************************************************/
-        /*** Step 4: Warp to recharge rate limits fully ***/
+        /*** Step 5: Warp to recharge rate limits fully ***/
         /**************************************************/
 
         skip(10 days);
@@ -1235,7 +1241,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);
         assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance - p.depositAmount);
 
-        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance - earned);
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance  - earned);
         assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance + earned);
     }
 
