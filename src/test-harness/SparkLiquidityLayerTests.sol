@@ -82,6 +82,10 @@ interface IPoolManagerLike {
     function withdrawalManager() external view returns (address);
 }
 
+interface IPsmLike {
+    function pocket() external view returns (address);
+}
+
 interface IMapleStrategyLike {
     function withdrawFromStrategy(uint256 amount) external;
 }
@@ -94,12 +98,18 @@ interface ISyrupLike is IERC4626 {
     function manager() external view returns (address);
 }
 
+interface ISUSDELike is IERC4626 {
+    function silo() external view returns (address);
+}
+
 interface ICurveStableswapFactory {
     function get_implementation_address(address pool) external view returns (address);
 }
 
 interface IFarmLike {
     function earned(address account) external view returns (uint256);
+    function rewardsToken() external view returns (address);
+    function stakingToken() external view returns (address);
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -663,6 +673,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return impl != address(0);
     }
 
+    // TODO: Refactor to use helpers
     function _testCurveOnboarding(
         address controller,
         address pool,
@@ -1030,6 +1041,511 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
     }
 
+    struct PSMSwapE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address psm;
+        uint256 swapAmount;
+        bytes32 swapKey;
+    }
+
+    function _testPSMIntegration(PSMSwapE2ETestParams memory p) internal {
+        skip(10 days);  // Recharge rate limits (TODO: Remove all of these uniformly)
+
+        IERC20 usdc = IERC20(Ethereum.USDC);
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        address pocket = IPsmLike(p.psm).pocket();
+
+        uint256 usdsSwapAmount = p.swapAmount * 1e12;  // Convert USDC to USDS
+
+        deal(address(usds), address(p.ctx.proxy), usdsSwapAmount);  // 2 swaps will be done
+
+        uint256 swapToUsdcLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+
+        assertNotEq(swapToUsdcLimit, type(uint256).max);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).swapUSDSToUSDC(swapToUsdcLimit + 1);
+
+        /**************************************************************/
+        /*** Step 2: Swap USDS to USDC and check resulting position ***/
+        /**************************************************************/
+
+        uint256 psmUsdcBalance   = usdc.balanceOf(pocket);
+        uint256 proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        uint256 usdsTotalSupply  = usds.totalSupply();
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsSwapAmount);  // Set by deal
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).swapUSDSToUSDC(p.swapAmount);  // Use USDC precision
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance   - p.swapAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance + p.swapAmount);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply - usdsSwapAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), 0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit - p.swapAmount);
+
+        /********************************************************/
+        /*** Step 3: Warp to recharge rate limits, not to max ***/
+        /********************************************************/
+
+        skip(10 minutes);
+
+        uint256 newSwapToUsdcLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+
+        assertGt(newSwapToUsdcLimit, swapToUsdcLimit - p.swapAmount);
+
+        /***************************************************************************************/
+        /*** Step 4: Swap 10% of the USDC to USDS and check that the rate limit is increased ***/
+        /***************************************************************************************/
+
+        psmUsdcBalance   = usdc.balanceOf(pocket);
+        proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        usdsTotalSupply  = usds.totalSupply();
+
+        // Do a 10% swap to increase the rate limit without hittig the max
+        p.swapAmount   = p.swapAmount / 10;
+        usdsSwapAmount = usdsSwapAmount / 10;
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), 0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).swapUSDCToUSDS(p.swapAmount);
+
+        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance   + p.swapAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance - p.swapAmount);
+
+        assertEq(usds.totalSupply(),                   usdsTotalSupply + usdsSwapAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsSwapAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
+
+        /**************************************************/
+        /*** Step 5: Warp to recharge rate limits fully ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+    }
+
+    struct FarmE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address farm;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+    }
+
+    function _testFarmIntegration(FarmE2ETestParams memory p) internal {
+        IERC20 stakingToken = IERC20(IFarmLike(p.farm).stakingToken());
+        IERC20 rewardsToken = IERC20(IFarmLike(p.farm).rewardsToken());
+
+        deal(address(stakingToken), address(p.ctx.proxy), p.depositAmount);
+
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        // Assert all withdrawals are unlimited
+        assertEq(withdrawLimit, type(uint256).max);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).depositToFarm(p.farm, depositLimit + 1);
+
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
+
+        uint256 farmStakingTokenBalance  = stakingToken.balanceOf(p.farm);
+        uint256 farmRewardsTokenBalance  = rewardsToken.balanceOf(p.farm);
+        uint256 proxyRewardsTokenBalance = rewardsToken.balanceOf(address(p.ctx.proxy));
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).depositToFarm(p.farm, p.depositAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance + p.depositAmount);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+
+        /*************************************************/
+        /*** Step 3: Warp to check rate limit recharge ***/
+        /*************************************************/
+
+        vm.warp(block.timestamp + 30 days);
+
+        // Assert rate limit recharge
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+
+        /********************************************************************************************************/
+        /*** Step 4: Withdraw and check resulting position, ensuring value accrual and appropriate withdrawal ***/
+        /********************************************************************************************************/
+
+        farmStakingTokenBalance  = stakingToken.balanceOf(p.farm);
+        farmRewardsTokenBalance  = rewardsToken.balanceOf(p.farm);
+        proxyRewardsTokenBalance = rewardsToken.balanceOf(address(p.ctx.proxy));
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
+
+        uint256 earned = IFarmLike(p.farm).earned(address(p.ctx.proxy));
+
+        assertGe(earned, 0);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).withdrawFromFarm(p.farm, p.depositAmount);
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance - p.depositAmount);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance  - earned);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance + earned);
+    }
+
+    struct EthenaE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256 depositAmount;
+        bytes32 mintKey;
+        bytes32 depositKey;
+        bytes32 cooldownKey;
+        bytes32 burnKey;
+        uint256 tolerance;
+    }
+
+    struct EthenaE2ETestVars {
+        uint256 mintLimit;
+        uint256 depositLimit;
+        uint256 cooldownLimit;
+        uint256 burnLimit;
+        uint256 usdeAmount;
+        uint256 proxyUsdeBalance;
+        uint256 proxyUsdcBalance;
+        uint256 startingShares;
+        uint256 startingAssets;
+        uint256 shares;
+    }
+
+    function _testEthenaIntegration(EthenaE2ETestParams memory p) internal {
+        IERC20 usdc = IERC20(Ethereum.USDC);
+        IERC20 usde = IERC20(Ethereum.USDE);
+
+        ISUSDELike susde = ISUSDELike(Ethereum.SUSDE);
+
+        EthenaE2ETestVars memory v;
+
+        deal(address(usdc), address(p.ctx.proxy), p.depositAmount);
+
+        v.mintLimit     = p.ctx.rateLimits.getCurrentRateLimit(p.mintKey);
+        v.depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        v.cooldownLimit = p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey);
+        v.burnLimit     = p.ctx.rateLimits.getCurrentRateLimit(p.burnKey);
+
+        // Assert cooldown is unlimited
+        assertEq(v.cooldownLimit, type(uint256).max);
+
+        /*************************************/
+        /*** Step 1: Check mint rate limit ***/
+        /*************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).prepareUSDeMint(v.mintLimit + 1);
+
+        /*********************************/
+        /*** Step 2: Prepare USDE mint ***/
+        /*********************************/
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), v.mintLimit);
+
+        assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), 0);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).prepareUSDeMint(p.depositAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), v.mintLimit - p.depositAmount);
+
+        assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), p.depositAmount);
+
+        /**********************************************/
+        /*** Step 3: Simulate USDE mint from Ethena ***/
+        /**********************************************/
+
+        v.usdeAmount = p.depositAmount * 1e12;
+
+        deal(address(usde), Ethereum.ETHENA_MINTER, v.usdeAmount);
+
+        v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
+
+        vm.startPrank(Ethereum.ETHENA_MINTER);
+        usdc.transferFrom(address(p.ctx.proxy), Ethereum.ETHENA_MINTER, p.depositAmount);
+        usde.transfer(address(p.ctx.proxy), v.usdeAmount);
+        vm.stopPrank();
+
+        assertEq(usde.balanceOf(address(p.ctx.proxy)),   v.proxyUsdeBalance + v.usdeAmount);
+        assertEq(usde.balanceOf(Ethereum.ETHENA_MINTER), 0);  // Balance set by deal so should go to zero
+
+        assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), 0);
+
+        /****************************************/
+        /*** Step 4: Check deposit rate limit ***/
+        /****************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).depositERC4626(Ethereum.SUSDE, v.depositLimit + 1);
+
+        /****************************************************/
+        /*** Step 5: Deposit and check resulting position ***/
+        /****************************************************/
+
+        v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
+
+        v.startingShares = susde.balanceOf(address(p.ctx.proxy));
+        v.startingAssets = susde.convertToAssets(v.startingShares);
+
+        vm.prank(p.ctx.relayer);
+        v.shares = MainnetController(p.ctx.controller).depositERC4626(address(susde), v.usdeAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.usdeAmount);
+
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance - v.usdeAmount);
+
+        assertApproxEqAbs(susde.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares, p.tolerance);
+
+        // Assert assets deposited are reflected in position
+        assertApproxEqAbs(
+            susde.convertToAssets(susde.balanceOf(address(p.ctx.proxy))),
+            v.startingAssets + v.usdeAmount,
+            p.tolerance
+        );
+
+        /******************************************************/
+        /*** Step 6: Cooldown sUSDE using shares (snapshot) ***/
+        /******************************************************/
+
+        address silo = susde.silo();
+
+        uint256 siloBalance    = usde.balanceOf(silo);
+        uint256 underlyingUsde = susde.convertToAssets(v.shares);
+
+        assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
+
+        uint256 snapshot = vm.snapshot();
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).cooldownSharesSUSDe(v.shares);
+
+        assertEq(usde.balanceOf(silo),                  siloBalance + underlyingUsde);
+        assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
+
+        vm.revertTo(snapshot);
+
+        /*********************************************************/
+        /*** Step 7: Cooldown sUSDE using assets (same result) ***/
+        /*********************************************************/
+
+        assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).cooldownAssetsSUSDe(underlyingUsde);
+
+        assertEq(usde.balanceOf(silo),                  siloBalance + underlyingUsde);
+        assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
+
+        /**************************************/
+        /*** Step 8: Warp and unstake sUSDE ***/
+        /**************************************/
+
+        skip(7 days);
+
+        v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
+
+        assertEq(usde.balanceOf(address(silo)), siloBalance + underlyingUsde);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).unstakeSUSDe();
+
+        assertEq(usde.balanceOf(address(silo)),        siloBalance);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance + underlyingUsde);
+
+        /*************************************/
+        /*** Step 9: Check burn rate limit ***/
+        /*************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).prepareUSDeBurn(v.burnLimit + 1);
+
+        /**********************************/
+        /*** Step 10: Prepare USDE burn ***/
+        /**********************************/
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit);
+
+        uint256 usdeAllowance = usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER);
+
+        assertEq(usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), usdeAllowance);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).prepareUSDeBurn(underlyingUsde);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUsde);
+
+        assertEq(usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), underlyingUsde);
+
+        /***********************************************/
+        /*** Step 11: Simulate USDE burn from Ethena ***/
+        /***********************************************/
+
+        uint256 usdcAmount = underlyingUsde / 1e12;
+
+        deal(address(usdc), Ethereum.ETHENA_MINTER, usdcAmount);
+
+        v.proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+
+        vm.startPrank(Ethereum.ETHENA_MINTER);
+        usde.transferFrom(address(p.ctx.proxy), Ethereum.ETHENA_MINTER, underlyingUsde);
+        usdc.transfer(address(p.ctx.proxy), usdcAmount);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)),   v.proxyUsdcBalance + usdcAmount);
+        assertEq(usdc.balanceOf(Ethereum.ETHENA_MINTER), 0);  // Balance set by deal so should go to zero
+
+        assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), 0);
+
+        /**************************************************/
+        /*** Step 12: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), v.mintLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.usdeAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUsde);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), p.ctx.rateLimits.getRateLimitData(p.burnKey).maxAmount);
+    }
+
+    struct CoreE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256 mintAmount;
+        uint256 burnAmount;
+        bytes32 mintKey;
+    }
+
+    function _testCoreIntegration(CoreE2ETestParams memory p) internal {
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        require(p.mintAmount > p.burnAmount, "Invalid burn amount");
+
+        uint256 totalSupply      = usds.totalSupply();
+        uint256 usdsProxyBalance = usds.balanceOf(address(p.ctx.proxy));
+
+        uint256 mintLimit = p.ctx.rateLimits.getCurrentRateLimit(p.mintKey);
+
+        /*************************************/
+        /*** Step 1: Check burn rate limit ***/
+        /*************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).mintUSDS(mintLimit + 1);
+
+        /*************************/
+        /*** Step 2: Mint USDS ***/
+        /*************************/
+
+        assertEq(usds.totalSupply(),                   totalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).mintUSDS(p.mintAmount);
+
+        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount);
+
+        /*************************/
+        /*** Step 3: Burn USDS ***/
+        /*************************/
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).burnUSDS(p.burnAmount);
+
+        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount - p.burnAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount - p.burnAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
+
+        /**************************************************/
+        /*** Step 4: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
+    }
+
     function _testControllerUpgrade(address oldController, address newController) internal {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
 
@@ -1219,70 +1735,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         skip(1 days + 1 seconds);  // +1 second due to rounding
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
-    }
-
-    function _testFarmingIntegration(
-        address farm,
-        address controller_,
-        uint256 expectedDepositLimit,
-        uint256 depositAmount
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(controller_);
-
-        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
-            controller.LIMIT_FARM_DEPOSIT(),
-            farm
-        );
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
-            controller.LIMIT_FARM_WITHDRAW(),
-            farm
-        );
-
-        IERC20 underlying = IERC20(Ethereum.USDS);
-
-        uint256 initialFarmBalance = underlying.balanceOf(farm);
-
-        deal(address(underlying), address(ctx.proxy), depositAmount);
-
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)), 0);
-        assertEq(underlying.balanceOf(farm),                 initialFarmBalance);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),   depositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        vm.prank(ctx.relayer);
-        controller.depositToFarm(farm, depositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit - depositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),         depositAmount);
-        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), 0);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),           0);
-        assertEq(underlying.balanceOf(farm),                         initialFarmBalance + depositAmount);
-
-        uint256 rewards = IFarmLike(farm).earned(address(ctx.proxy));
-
-        assertEq(rewards, 0);
-
-        skip(1 days);
-
-        rewards = IFarmLike(farm).earned(address(ctx.proxy));
-
-        assertGt(rewards, 0);
-
-        vm.prank(ctx.relayer);
-        controller.withdrawFromFarm(farm, depositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  expectedDepositLimit);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(IERC20(farm).balanceOf(address(ctx.proxy)),         0);
-        assertEq(underlying.balanceOf(address(ctx.proxy)),           depositAmount);
-        assertEq(IERC20(Ethereum.SPK).balanceOf(address(ctx.proxy)), rewards);
-        assertEq(underlying.balanceOf(farm),                         initialFarmBalance);
     }
 
     function _testE2ESLLCrossChainForDomain(

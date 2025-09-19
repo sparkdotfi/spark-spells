@@ -66,8 +66,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         CURVE_LP,
         CURVE_SWAP,
         ERC4626,
-        ETHENA_SUSDE,
-        ETHENA_USDE,
+        ETHENA,
         FARM,
         MAPLE,
         PSM,
@@ -83,6 +82,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         Category category;
         address  integration;
         bytes32  entryId;
+        bytes32  entryId2;
         bytes32  exitId;
         bytes32  exitId2;
     }
@@ -148,6 +148,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /**********************************************************************************************/
 
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
+        uint256 snapshot = vm.snapshot();
+
         skip(10 days);  // Ensure rate limits are recharged
 
         if (integration.category == Category.AAVE) {
@@ -237,6 +239,54 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
+        else if (integration.category == Category.PSM) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testPSMIntegration(PSMSwapE2ETestParams({
+                ctx:        _getSparkLiquidityLayerContext(),
+                psm:        integration.integration,
+                swapAmount: 100_000_000e6,
+                swapKey:    integration.entryId
+            }));
+        }
+
+        else if (integration.category == Category.FARM) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testFarmIntegration(FarmE2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                farm:          integration.integration,
+                depositAmount: 100_000_000e6,
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId
+            }));
+        }
+
+        else if (integration.category == Category.ETHENA) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testEthenaIntegration(EthenaE2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                depositAmount: 1_000_000e6,
+                mintKey:       integration.entryId,
+                depositKey:    integration.entryId2,
+                cooldownKey:   integration.exitId,
+                burnKey:       integration.exitId2,
+                tolerance:     10
+            }));
+        }
+
+        else if (integration.category == Category.CORE) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testCoreIntegration(CoreE2ETestParams({
+                ctx:        _getSparkLiquidityLayerContext(),
+                mintAmount: 100_000_000e6,
+                burnAmount: 50_000_000e6,
+                mintKey:    integration.entryId
+            }));
+        }
+
         // else if (integration.category == Category.CCTP) {
         //     // console2.log("Running SLL E2E test for", integration.label);
 
@@ -258,8 +308,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         else {
             console2.log("NOT running SLL E2E test for", integration.label);
-            return;
         }
+
+        vm.revertTo(snapshot);
     }
 
     /**********************************************************************************************/
@@ -269,19 +320,22 @@ abstract contract SparkTestBase is SparkEthereumTests {
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
         for (uint256 i = 0; i < integrations.length; ++i) {
             require(
-                integrations[i].entryId != bytes32(0) ||
-                integrations[i].exitId  != bytes32(0) ||
-                integrations[i].exitId2 != bytes32(0),
+                integrations[i].entryId  != bytes32(0) ||
+                integrations[i].entryId2 != bytes32(0) ||
+                integrations[i].exitId   != bytes32(0) ||
+                integrations[i].exitId2  != bytes32(0),
                 "Empty integration"
             );
         }
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            assertTrue(rateLimitKeys.contains(integrations[i].entryId) || integrations[i].entryId == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].exitId)  || integrations[i].exitId  == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].exitId2) || integrations[i].exitId2 == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].entryId)  || integrations[i].entryId  == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].entryId2) || integrations[i].entryId2 == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].exitId)   || integrations[i].exitId   == bytes32(0));
+            assertTrue(rateLimitKeys.contains(integrations[i].exitId2)  || integrations[i].exitId2  == bytes32(0));
 
             rateLimitKeys.remove(integrations[i].entryId);
+            rateLimitKeys.remove(integrations[i].entryId2);
             rateLimitKeys.remove(integrations[i].exitId);
             rateLimitKeys.remove(integrations[i].exitId2);
         }
@@ -367,18 +421,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS));
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS));
-        // ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-SYRUP_USDC",         Category.ERC4626, Ethereum.SYRUP_USDC));   // TODO: Move to maple test
         ethereumSllIntegrations.push(_createSLLIntegration("ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS));  // TODO: Fix FluidLiquidityError
 
-        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_SUSDE-SUSDE", Category.ETHENA_SUSDE, Ethereum.SUSDE));
-        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA_USDE-USDE",   Category.ETHENA_USDE,  Ethereum.USDE));
+        ethereumSllIntegrations.push(_createSLLIntegration("ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE));
 
         ethereumSllIntegrations.push(_createSLLIntegration("MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("PSM-USDS", Category.PSM, Ethereum.USDS));
+        ethereumSllIntegrations.push(_createSLLIntegration("PSM-USDS", Category.PSM, Ethereum.PSM));
 
         ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0)));
 
+        // TODO: Combine
         ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_OFFCHAIN-USTB", Category.SUPERSTATE_OFFCHAIN, address(0), Ethereum.USTB, address(0), Ethereum.USTB));
 
         ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_ONCHAIN-USTB", Category.SUPERSTATE_ONCHAIN,  Ethereum.USTB));
@@ -395,9 +448,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /**********************************************************************************************/
 
     function _createSLLIntegration(string memory label, Category category, address integration) internal returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
-        bytes32 exitId  = bytes32(0);
-        bytes32 exitId2 = bytes32(0);
+        bytes32 entryId  = bytes32(0);
+        bytes32 entryId2 = bytes32(0);
+        bytes32 exitId   = bytes32(0);
+        bytes32 exitId2  = bytes32(0);
 
         mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
@@ -405,17 +459,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration);
         }
-        else if (category == Category.ETHENA_USDE) {
-            entryId = mainnetController.LIMIT_USDE_MINT();
-            exitId  = mainnetController.LIMIT_USDE_BURN();
+        else if (category == Category.ETHENA) {
+            entryId  = mainnetController.LIMIT_USDE_MINT();
+            entryId2 = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration);
+            exitId   = mainnetController.LIMIT_SUSDE_COOLDOWN();
+            exitId2  = mainnetController.LIMIT_USDE_BURN();
         }
         else if (category == Category.FARM) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration);
-        }
-        else if (category == Category.ETHENA_SUSDE) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
-            exitId  = mainnetController.LIMIT_SUSDE_COOLDOWN();
         }
         else if (category == Category.AAVE) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_DEPOSIT(),  integration);
@@ -436,7 +488,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.PSM) {
             entryId = mainnetController.LIMIT_USDS_TO_USDC();
-            exitId  = bytes32(0);
         }
         else if (category == Category.CURVE_LP) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_DEPOSIT(),  integration);
@@ -463,15 +514,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: integration,
             entryId:     entryId,
+            entryId2:    entryId2,
             exitId:      exitId,
             exitId2:     exitId2
         });
     }
 
     function _createSLLIntegration(string memory label, Category category, uint32 domain) internal view returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
-        bytes32 exitId  = bytes32(0);
-        bytes32 exitId2 = bytes32(0);
+        bytes32 entryId  = bytes32(0);
+        bytes32 entryId2 = bytes32(0);
+        bytes32 exitId   = bytes32(0);
+        bytes32 exitId2  = bytes32(0);
 
         if (category == Category.CCTP) {
             entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
@@ -485,6 +538,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: address(uint160(domain)),  // Unique ID
             entryId:     entryId,
+            entryId2:    entryId2,
             exitId:      exitId,
             exitId2:     exitId2
         });
@@ -500,9 +554,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
     )
         internal view returns (SLLIntegration memory)
     {
-        bytes32 entryId = bytes32(0);
-        bytes32 exitId  = bytes32(0);
-        bytes32 exitId2 = bytes32(0);
+        bytes32 entryId  = bytes32(0);
+        bytes32 entryId2 = bytes32(0);
+        bytes32 exitId   = bytes32(0);
+        bytes32 exitId2  = bytes32(0);
 
         if (category == Category.BUIDL) {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
@@ -523,6 +578,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: assetIn,  // TODO: Refactor this for testing, integration + underlying?
             entryId:     entryId,
+            entryId2:    entryId2,
             exitId:      exitId,
             exitId2:     exitId2
         });
