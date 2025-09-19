@@ -1321,6 +1321,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
+        skip(1 days);  // Skip 1 day to ensure the rate limit is recharged
+
         // --- Step 1: Mint and bridge 10m USDC to Base ---
 
         uint256 usdcAmount = 10_000_000e6;
