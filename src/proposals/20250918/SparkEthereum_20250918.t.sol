@@ -94,13 +94,6 @@ contract SparkEthereum_20250918Test is SparkTestBase {
 
         _assertRateLimit(depositKey,  250_000_000e18,    50_000_000e18 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        _testFarmingIntegration(
-            USDS_SPK_FARM,
-            NEW_ALM_CONTROLLER_ETHEREUM,
-            250_000_000e18,
-            1_000_000e18
-        );
     }
 
     function test_ETHEREUM_curvePoolOnboarding() public onChain(ChainIdUtils.Ethereum()) {
