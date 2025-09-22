@@ -391,7 +391,7 @@ contract ProtocolV3TestBase is CommonTestBase {
         //         accrued debt
 
         uint256 totalCollateral = IERC20(collateralConfig.aToken).balanceOf(borrower);
-        uint256 remainingDebt       = IERC20(borrowConfig.variableDebtToken).balanceOf(borrower);
+        uint256 remainingDebt   = IERC20(borrowConfig.variableDebtToken).balanceOf(borrower);
 
         // Handle edge case for for low LTV collaterals at under 1% causing rounding errors here, preventing failure.
         if (collateralConfig.ltv > 100) {
@@ -763,7 +763,7 @@ contract ProtocolV3TestBase is CommonTestBase {
             uint256 netCollateralChange = (totalCollateralToLiquidate - amountToProtocol) - balances.debtBefore;
 
             assertApproxEqAbs(balances.borrowLiquidatorAfter - balances.borrowLiquidatorBefore, netCollateralChange, 2);  // Liquidator nets the expected amount of borrowAsset
-            assertApproxEqAbs(balances.borrowATokenBefore    - balances.borrowATokenAfter,     netCollateralChange, 2);   // aToken liquidity increases by same amount
+            assertApproxEqAbs(balances.borrowATokenBefore    - balances.borrowATokenAfter,      netCollateralChange, 2);   // aToken liquidity increases by same amount
 
             // Same values but adding to be comprehensive
             assertApproxEqAbs(balances.collateralLiquidatorAfter - balances.collateralLiquidatorBefore, netCollateralChange, 2);  // Liquidator receives expected collateral
