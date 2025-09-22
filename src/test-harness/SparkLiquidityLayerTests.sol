@@ -1267,9 +1267,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(rewards, 0);
 
+        console2.log("block.timestamp", block.timestamp);
+
         skip(1 days);
 
         rewards = IFarmLike(farm).earned(address(ctx.proxy));
+
+        console2.log("block.timestamp", block.timestamp);
 
         assertGt(rewards, 0);
 
@@ -1285,6 +1289,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(underlying.balanceOf(farm),                         initialFarmBalance);
     }
 
+    function _logValues(string memory step, SparkLiquidityLayerContext memory ctx) internal {
+        console2.log("--- STEP", step, "---");
+        console2.log("block.timestamp", block.timestamp);
+        console2.log("rateLimits LU  ", ctx.rateLimits.getRateLimitData(MainnetController(ctx.controller).LIMIT_USDS_MINT()).lastUpdated);
+    }
+
+    struct DomainInfo {
+        IERC20 usdc;
+        address psm3;
+        uint32 cctpId;
+    }
+
     function _testE2ESLLCrossChainForDomain(
         ChainId           domainId,
         MainnetController mainnetController,
@@ -1292,27 +1308,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     )
         internal onChain(ChainIdUtils.Ethereum())
     {
-        IERC20  domainUsdc;
-        address domainPsm3;
-        uint32  domainCctpId;
+        DomainInfo memory domain;
         Bridge storage bridge = chainData[domainId].bridges[1];
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
-            domainUsdc   = IERC20(Arbitrum.USDC);
-            domainPsm3   = Arbitrum.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE;
+            domain = DomainInfo({
+                usdc   : IERC20(Arbitrum.USDC),
+                psm3   : Arbitrum.PSM3,
+                cctpId : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE
+            });
         } else if (domainId == ChainIdUtils.Base()) {
-            domainUsdc   = IERC20(Base.USDC);
-            domainPsm3   = Base.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
+            domain = DomainInfo({
+                usdc   : IERC20(Base.USDC),
+                psm3   : Base.PSM3,
+                cctpId : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE
+            });
         } else if (domainId == ChainIdUtils.Optimism()) {
-            domainUsdc   = IERC20(Optimism.USDC);
-            domainPsm3   = Optimism.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
+            domain = DomainInfo({
+                usdc   : IERC20(Optimism.USDC),
+                psm3   : Optimism.PSM3,
+                cctpId : CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM
+            });
         } else if (domainId == ChainIdUtils.Unichain()) {
-            domainUsdc   = IERC20(Unichain.USDC);
-            domainPsm3   = Unichain.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
+            domain = DomainInfo({
+                usdc   : IERC20(Unichain.USDC),
+                psm3   : Unichain.PSM3,
+                cctpId : CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN
+            });
         } else {
             revert("SLL/unknown domain");
         }
@@ -1323,51 +1345,59 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(1 days);  // Skip 1 day to ensure the rate limit is recharged
 
+        uint256 mainnetTimestamp = block.timestamp;
+
         // --- Step 1: Mint and bridge 10m USDC to Base ---
 
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
         uint256 usdcAmount = 10_000_000e6;
+
+        // _logValues("Step 1a", ctx);
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
         mainnetController.swapUSDSToUSDC(usdcAmount);
-        mainnetController.transferUSDCToCCTP(usdcAmount, domainCctpId);
+        mainnetController.transferUSDCToCCTP(usdcAmount, domain.cctpId);
         vm.stopPrank();
+
+        // _logValues("Step 1b", ctx);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
         chainData[domainId].domain.selectFork();
 
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        ctx = _getSparkLiquidityLayerContext();
 
         address domainAlmProxy = address(ctx.proxy);
 
-        uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
-        uint256 domainUsdcPsmBalance   = domainUsdc.balanceOf(domainPsm3);
+        uint256 domainUsdcProxyBalance = domain.usdc.balanceOf(domainAlmProxy);
+        uint256 domainUsdcPsmBalance   = domain.usdc.balanceOf(domain.psm3);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domain.usdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
-        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+        assertEq(domain.usdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
+        assertEq(domain.usdc.balanceOf(domain.psm3),     domainUsdcPsmBalance);
 
         // --- Step 3: Deposit USDC into PSM3 ---
 
         vm.prank(ctx.relayer);
-        foreignController.depositPSM(address(domainUsdc), usdcAmount);
+        foreignController.depositPSM(address(domain.usdc), usdcAmount);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
-        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
+        assertEq(domain.usdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domain.usdc.balanceOf(domain.psm3),    domainUsdcPsmBalance + usdcAmount);
 
         // --- Step 4: Withdraw all assets from PSM3 ---
 
         vm.prank(ctx.relayer);
-        foreignController.withdrawPSM(address(domainUsdc), usdcAmount);
+        foreignController.withdrawPSM(address(domain.usdc), usdcAmount);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
-        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+        assertEq(domain.usdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
+        assertEq(domain.usdc.balanceOf(domain.psm3),    domainUsdcPsmBalance);
 
         // --- Step 5: Bridge USDC back to mainnet ---
 
@@ -1376,7 +1406,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         foreignController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domain.usdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -1386,9 +1416,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToSource(bridge, true);
 
+        vm.warp(mainnetTimestamp);  // Ensure mainnet timestamp is used
+
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 
         // --- Step 6: Swap USDC to USDS and burn ---
+
+        ctx = _getSparkLiquidityLayerContext();
+
+        // _logValues("Step 6", ctx);
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.swapUSDCToUSDS(usdcAmount);

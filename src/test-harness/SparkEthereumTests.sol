@@ -246,7 +246,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         IAuthority authority = IAuthority(Ethereum.CHIEF);
 
         address skyWhale = makeAddr("skyWhale");
-        uint256 amount = 100_000_000_000 ether + 1;  // +1 to get hat after executing Sky spell with 100b
+        uint256 amount = 200_000_000_000 ether;  // Higher to get hat after executing Sky spell with 100b
 
         deal(Ethereum.SKY, skyWhale, amount);
 

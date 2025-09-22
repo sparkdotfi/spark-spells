@@ -110,16 +110,21 @@ abstract contract SparkTestBase is SparkEthereumTests {
     function test_ETHEREUM_E2E_sparkLiquidityLayer() public {
         _populateRateLimitKeys(false);
         _loadPreExecutionIntegrations();
-
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         // TODO: Find more robust way to do this, this is a hack to use the old controller in getSparkLiquidityLayerContext()
         delete chainData[ChainIdUtils.Ethereum()].prevController;
         delete chainData[ChainIdUtils.Base()].prevController;
 
+        uint256 snapshot = vm.snapshot();
+
+        skip(10 days);  // Ensure rate limits are recharged
+
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
         }
+
+        vm.revertTo(snapshot);
 
         vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
@@ -148,8 +153,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /**********************************************************************************************/
 
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
-        skip(10 days);  // Ensure rate limits are recharged
-
         if (integration.category == Category.AAVE) {
             console2.log("Running SLL E2E test for", integration.label);
 
