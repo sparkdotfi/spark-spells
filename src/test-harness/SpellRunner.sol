@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import { Test }      from "forge-std/Test.sol";
-import { StdChains } from "forge-std/StdChains.sol";
 import { console }   from "forge-std/console.sol";
+import { IERC20 }    from "forge-std/interfaces/IERC20.sol";
+import { StdChains } from "forge-std/StdChains.sol";
+import { Test }      from "forge-std/Test.sol";
 
 import { Address } from '../libraries/Address.sol';
 
@@ -27,12 +28,26 @@ import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { SparkPayloadEthereum }  from "../SparkPayloadEthereum.sol";
 
+interface IChiefLike {
+    function hat() external view returns (address);
+    function lock(uint256 amount) external;
+    function vote(address[] calldata slate) external;
+    function lift(address target) external;
+}
+
+interface IDssSpellLike {
+    function schedule() external;
+    function nextCastTime() external view returns (uint256);
+    function cast() external;
+}
+
 abstract contract SpellRunner is Test {
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
 
     // ChainData is already taken in StdChains
     struct DomainData {
+        address                        skySpell;
         address                        payload;
         IExecutor                      executor;
         Domain                         domain;
@@ -61,17 +76,17 @@ abstract contract SpellRunner is Test {
     /// @dev maximum 3 chains in 1 query
     function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
         blocks = new uint256[](chains.length);
-        
+
         // Process chains in batches of 3
         for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
             uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
             string[] memory batchChains = new string[](batchSize);
-            
+
             // Create batch of chains
             for (uint256 i = 0; i < batchSize; i++) {
                 batchChains[i] = chains[batchStart + i];
             }
-            
+
             // Build networks parameter for this batch
             string memory networks = "";
             for (uint256 i = 0; i < batchSize; i++) {
@@ -81,7 +96,7 @@ abstract contract SpellRunner is Test {
                     networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
                 }
             }
-            
+
             string[] memory inputs = new string[](8);
             inputs[0] = "curl";
             inputs[1] = "-s";
@@ -93,7 +108,7 @@ abstract contract SpellRunner is Test {
             inputs[7] = "accept: application/json";
 
             string memory response = string(vm.ffi(inputs));
-            
+
             // Store results in the correct positions of the final blocks array
             for (uint256 i = 0; i < batchSize; i++) {
                 blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
@@ -126,7 +141,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(27201711);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(27541311);
     }
 
     /// @dev to be called in setUp
@@ -321,6 +336,13 @@ abstract contract SpellRunner is Test {
     }
 
     function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
+        // If Sky spell is deployed, execute through full callstack
+        if (chainData[ChainIdUtils.Ethereum()].skySpell != address(0)) {
+            _vote(chainData[ChainIdUtils.Ethereum()].skySpell);
+            _scheduleWaitAndCast(chainData[ChainIdUtils.Ethereum()].skySpell);
+            return;
+        }
+
         address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
         IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
@@ -332,6 +354,51 @@ abstract contract SpellRunner is Test {
             abi.encodeWithSignature('execute()')
         ));
         require(success, "FAILED TO EXECUTE PAYLOAD");
+    }
+
+    function _vote(address spell_) internal {
+        IChiefLike chief = IChiefLike(Ethereum.CHIEF);
+        IERC20     sky   = IERC20(Ethereum.SKY);
+
+        if (chief.hat() != spell_) {
+            deal(address(sky), address(this), 100_000_000_000e18);
+            sky.approve(address(chief), type(uint256).max);
+            chief.lock(100_000_000_000e18);
+            address[] memory slate = new address[](1);
+            slate[0] = spell_;
+            chief.vote(slate);
+            chief.lift(spell_);
+        }
+        assertEq(chief.hat(), spell_, "TestError/spell-is-not-hat");
+    }
+
+    // NOTE: This function does
+    function _scheduleWaitAndCast(address spell_) internal {
+        IDssSpellLike(spell_).schedule();
+
+        vm.warp(IDssSpellLike(spell_).nextCastTime());
+
+        IDssSpellLike(spell_).cast();
+
+        _fixChronicleStaleness();
+    }
+
+    function _fixChronicleStaleness(address oracle) internal {
+        bytes32 pokeDataSlot = bytes32(uint256(4));
+        bytes32 pokeData     = vm.load(oracle, pokeDataSlot);
+        uint128 pokePrice    = uint128(bytes16(pokeData << 128));
+
+        uint256 expiresAt = 365 days * 100;
+
+        vm.store(oracle, pokeDataSlot, bytes32(expiresAt << 128 | uint256(pokePrice)));
+    }
+
+    function _fixChronicleStaleness() internal {
+        address chronicleBtc = 0x24C392CDbF32Cf911B258981a66d5541d85269ce;
+        address chronicleEth = 0x46ef0071b1E2fF6B42d36e5A177EA43Ae5917f4E;
+
+        _fixChronicleStaleness(chronicleBtc);
+        _fixChronicleStaleness(chronicleEth);
     }
 
     function _clearLogs() internal {

@@ -39,7 +39,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-15T16:42:00Z");
+        setupDomains("2025-09-19T13:48:00Z");
 
         deployPayloads();
 
@@ -51,6 +51,8 @@ contract SparkEthereum_20250918Test is SparkTestBase {
 
         chainData[ChainIdUtils.Base()].payload     = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
         chainData[ChainIdUtils.Ethereum()].payload = 0x7B28F4Bdd7208fe80916EBC58611Eb72Fb6A09Ed;
+
+        chainData[ChainIdUtils.Ethereum()].skySpell = 0x98B876F9E8Aa2d32A85042F5fe8E860d3a7B8d3B;
     }
 
     function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
