@@ -1290,9 +1290,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _logValues(string memory step, SparkLiquidityLayerContext memory ctx) internal {
+        bytes32 ilk = 0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000;
+        (, uint256 rho) = IJugLike(0x19c0976f590D67707E62397C87829d896Dc0f1F1).ilks(ilk);
+
         console2.log("--- STEP", step, "---");
         console2.log("block.timestamp", block.timestamp);
         console2.log("rateLimits LU  ", ctx.rateLimits.getRateLimitData(MainnetController(ctx.controller).LIMIT_USDS_MINT()).lastUpdated);
+        console2.log("jug rho        ", rho);
     }
 
     struct DomainInfo {
@@ -1343,7 +1347,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
-        skip(1 days);  // Skip 1 day to ensure the rate limit is recharged
+        vm.warp(block.timestamp + 1 days);
 
         uint256 mainnetTimestamp = block.timestamp;
 
@@ -1353,7 +1357,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 usdcAmount = 10_000_000e6;
 
-        // _logValues("Step 1a", ctx);
+        _logValues("Step 1a", ctx);
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
@@ -1361,7 +1365,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         mainnetController.transferUSDCToCCTP(usdcAmount, domain.cctpId);
         vm.stopPrank();
 
-        // _logValues("Step 1b", ctx);
+        _logValues("Step 1b", ctx);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
@@ -1418,13 +1422,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.warp(mainnetTimestamp);  // Ensure mainnet timestamp is used
 
+        console2.log("Mainnet timestamp", mainnetTimestamp);
+        console2.log("Block timestamp", block.timestamp);
+
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 
         // --- Step 6: Swap USDC to USDS and burn ---
 
         ctx = _getSparkLiquidityLayerContext();
 
-        // _logValues("Step 6", ctx);
+        _logValues("Step 6", ctx);
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.swapUSDCToUSDS(usdcAmount);
@@ -1514,4 +1521,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
+}
+
+interface IJugLike {
+    function ilks(bytes32 ilk) external view returns (uint256, uint256);
 }
