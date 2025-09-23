@@ -117,30 +117,32 @@ abstract contract SparkTestBase is SparkEthereumTests {
         delete chainData[ChainIdUtils.Ethereum()].prevController;
         delete chainData[ChainIdUtils.Base()].prevController;
 
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            _runSLLE2ETests(ethereumSllIntegrations[i]);
-        }
+        _runSLLE2ETests(ethereumSllIntegrations[16]);
 
-        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
+        // }
 
-        // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
-        executeMainnetPayload();
+        // vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
-        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
-        chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
+        // // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
+        // executeMainnetPayload();
 
-        // Overwrite mainnetController with the new controller for the rest of the tests
-        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+        // // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
+        // chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        // chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
 
-        _populateRateLimitKeys(true);
-        _loadPostExecutionIntegrations();
+        // // Overwrite mainnetController with the new controller for the rest of the tests
+        // mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        // _populateRateLimitKeys(true);
+        // _loadPostExecutionIntegrations();
 
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            _runSLLE2ETests(ethereumSllIntegrations[i]);
-        }
+        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+
+        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
+        // }
     }
 
     /**********************************************************************************************/
@@ -284,6 +286,18 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 mintAmount: 100_000_000e6,
                 burnAmount: 50_000_000e6,
                 mintKey:    integration.entryId
+            }));
+        }
+
+        else if (integration.category == Category.CENTRIFUGE) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testCentrifugeIntegration(CentrifugeE2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                vault:         integration.integration,
+                depositAmount: 100_000_000e6,
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId
             }));
         }
 

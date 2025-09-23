@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
+import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
@@ -110,6 +111,57 @@ interface IFarmLike {
     function earned(address account) external view returns (uint256);
     function rewardsToken() external view returns (address);
     function stakingToken() external view returns (address);
+}
+
+interface IInvestmentManager {
+    function fulfillCancelDepositRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 fulfillment
+    ) external;
+    function fulfillCancelRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 shares
+    ) external;
+    function fulfillDepositRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) external;
+    function fulfillRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) external;
+    function escrow() external view returns (address);
+}
+
+interface ICentrifugeToken is IERC7540 {
+    function claimableCancelDepositRequest(uint256 requestId, address controller)
+        external view returns (uint256 claimableAssets);
+    function claimableCancelRedeemRequest(uint256 requestId, address controller)
+        external view returns (uint256 claimableShares);
+    function pendingCancelDepositRequest(uint256 requestId, address controller)
+        external view returns (bool isPending);
+    function pendingCancelRedeemRequest(uint256 requestId, address controller)
+        external view returns (bool isPending);
+    function manager() external view returns (address);
+    function share() external view returns (address);
+    function root() external view returns (address);
+    function trancheId() external view returns (bytes16);
+    function poolId() external view returns (uint64);
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -1544,6 +1596,118 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
+    }
+
+    struct CentrifugeE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+    }
+
+    struct CentrifugeE2ETestVars {
+        IInvestmentManager manager;
+        ICentrifugeToken vault;
+        address escrow;
+        address root;
+        bytes16 trancheId;
+        uint128 assetId;
+        uint64 poolId;
+        IERC20 token;
+        IERC20 asset;
+        uint256 depositLimit;
+        uint256 withdrawLimit;
+        uint256 escrowBalance;
+    }
+
+    function _testCentrifugeIntegration(CentrifugeE2ETestParams memory p) internal {
+        CentrifugeE2ETestVars memory v;
+
+        v.vault     = ICentrifugeToken(p.vault);
+        v.manager   = IInvestmentManager(v.vault.manager());
+        v.escrow    = v.manager.escrow();
+        v.root      = v.vault.root();
+        v.trancheId = v.vault.trancheId();
+        v.assetId   = 242333941209166991950178742833476896417;  // TODO: Figure out how to load dynamically
+        v.poolId    = v.vault.poolId();
+        v.token     = IERC20(v.vault.share());
+        v.asset     = IERC20(v.vault.asset());
+
+        v.depositLimit = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        assertEq(v.withdrawLimit, type(uint256).max);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).requestDepositERC7540(address(v.vault), v.depositLimit + 1);
+
+        /************************************************************/
+        /*** Step 2: Request deposit and check resulting position ***/
+        /************************************************************/
+
+        deal(address(v.asset), address(p.ctx.proxy), p.depositAmount);
+
+        v.escrowBalance = v.asset.balanceOf(v.escrow);
+
+        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance);
+        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+
+        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)), 0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).requestDepositERC7540(address(v.vault), p.depositAmount);
+
+        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance + p.depositAmount);
+        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), 0);
+
+        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)), p.depositAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
+
+        /***************************************************************/
+        /*** Step 3: Snapshot and prove that request can be canceled ***/
+        /***************************************************************/
+
+        uint256 snapshot = vm.snapshot();
+
+        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         p.depositAmount);
+        assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   false);
+        assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), 0);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).cancelCentrifugeDepositRequest(address(v.vault));
+
+        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         p.depositAmount);
+        assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   true);
+        assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), p.depositAmount);
+
+        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance + p.depositAmount);
+        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), 0);
+
+        vm.prank(v.root);
+        v.manager.fulfillCancelDepositRequest(
+            v.poolId,
+            v.trancheId,
+            address(p.ctx.proxy),
+            v.assetId,
+            uint128(p.depositAmount),
+            uint128(p.depositAmount)
+        );
+
+        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance);
+        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+
+        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         0);
+        assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   false);
+        assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), 0);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
