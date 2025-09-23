@@ -1431,10 +1431,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.warp(mainnetTimestamp);  // Ensure mainnet timestamp is used
 
-        console2.log("Mainnet timestamp", mainnetTimestamp);
-        console2.log("Block timestamp", block.timestamp);
-        console2.log("VM timestamp", vm.getBlockTimestamp());
-
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 
         // --- Step 6: Swap USDC to USDS and burn ---

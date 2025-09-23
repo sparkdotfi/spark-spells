@@ -254,14 +254,27 @@ abstract contract SpellRunner is Test {
         }
     }
 
+    function logTimestamps(string memory label) internal {
+        uint256 blockTimestampValue = block.timestamp        > 1758289691 ? block.timestamp        - 1758289691 : block.timestamp;
+        uint256 vmTimestampValue    = vm.getBlockTimestamp() > 1758289691 ? vm.getBlockTimestamp() - 1758289691 : vm.getBlockTimestamp();
+        console.log("-------------", label, "---");
+        console.log("block.timestamp", blockTimestampValue);
+        console.log("VM timestamp   ", vmTimestampValue);
+        console.log("");
+    }
+
     /// @dev takes care to revert the selected fork to what was chosen before
     function executeAllPayloadsAndBridges() internal {
+        logTimestamps("PRE EXECUTE");
         // only execute mainnet payload
         executeMainnetPayload();
+        logTimestamps("PRE RELAY");
         // then use bridges to execute other chains' payloads
         _relayMessageOverBridges();
+        logTimestamps("PRE FOREIGN EXECUTE");
         // execute the foreign payloads (either by simulation or real execute)
         _executeForeignPayloads();
+        logTimestamps("POST FOREIGN EXECUTE");
     }
 
     /// @dev bridge contracts themselves are stored on mainnet
@@ -269,27 +282,37 @@ abstract contract SpellRunner is Test {
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
+                console.log("Executing bridge for chain: ", chainId.toDomainString());
+                logTimestamps("PRE BRIDGE");
                 _executeBridge(chainData[chainId].bridges[j]);
+                logTimestamps("POST BRIDGE");
             }
         }
     }
 
     /// @dev this does not relay messages from L2s to mainnet except in the case of USDC
-    function _executeBridge(Bridge storage bridge) private {
+    function _executeBridge(Bridge storage bridge) private onChain(ChainIdUtils.Ethereum()) {
         if (bridge.bridgeType == BridgeType.OPTIMISM) {
             OptimismBridgeTesting.relayMessagesToDestination(bridge, false);
+            logTimestamps("Optimism");
         } else if (bridge.bridgeType == BridgeType.CCTP) {
             CCTPBridgeTesting.relayMessagesToDestination(bridge, false);
-            CCTPBridgeTesting.relayMessagesToSource(bridge, false);
+            logTimestamps("CCTP To");
+            // CCTPBridgeTesting.relayMessagesToSource(bridge, false);
+            logTimestamps("CCTP From");
         } else if (bridge.bridgeType == BridgeType.AMB) {
             AMBBridgeTesting.relayMessagesToDestination(bridge, false);
+            logTimestamps("AMB");
         } else if (bridge.bridgeType == BridgeType.ARBITRUM) {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
+            logTimestamps("Arbitrum");
         }
     }
 
     function _executeForeignPayloads() private onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; i++) {
+            console.log("Executing foreign payload for chain: ", allChains[i].toDomainString());
+            logTimestamps("PRE FOREIGN EXECUTE");
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
             address mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
@@ -316,8 +339,9 @@ abstract contract SpellRunner is Test {
                     console.log("simulating execution payload for network: ", chainId.toDomainString());
                 }
             }
-
+            logTimestamps("POST FOREIGN EXECUTE");
         }
+        logTimestamps("POST FOREIGN EXECUTE LOOP");
     }
 
     function _getForeignPayloadFromMainnetSpell(ChainId chainId) internal onChain(ChainIdUtils.Ethereum()) returns (address) {
