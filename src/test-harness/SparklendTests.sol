@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { StdChains } from 'forge-std/Test.sol';
 
-import { ProtocolV3TestBase } from './ProtocolV3TestBase.sol';
+import { ProtocolV3TestBase, ReserveConfig, InterestStrategyValues } from './ProtocolV3TestBase.sol';
 
 import { Address } from '../libraries/Address.sol';
 
@@ -12,12 +12,20 @@ import { IACLManager }                           from 'sparklend-v1-core/interfa
 import { IPoolConfigurator }                     from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
 import { ReserveConfiguration }                  from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { IPoolAddressesProvider }                from 'sparklend-v1-core/interfaces/IPoolAddressesProvider.sol';
+import { IPool }                                 from 'sparklend-v1-core/interfaces/IPool.sol';
+import { IAaveOracle }                           from 'sparklend-v1-core/interfaces/IAaveOracle.sol';
+import { DataTypes }                             from 'sparklend-v1-core/protocol/libraries/types/DataTypes.sol';
+import { IDefaultInterestRateStrategy }          from 'sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol';
+
+import { Base }     from 'spark-address-registry/Base.sol';
+import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
+
+import { IERC20 }    from 'erc20-helpers/interfaces/IERC20.sol';
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-
-import { CommonSpellAssertions } from "./CommonSpellAssertions.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
 
@@ -31,7 +39,7 @@ struct SparkLendContext {
 
 /// @dev assertions specific to sparklend, which are not run on chains where
 /// it is not deployed
-abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner, CommonSpellAssertions {
+abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using DomainHelpers for StdChains.Chain;
     using DomainHelpers for Domain;
@@ -259,6 +267,32 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner, CommonSpell
                 variableRateSlope2:            newSlope2
             })
         );
+    }
+
+    /** Common Tests **/
+
+    function test_ETHEREUM_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Ethereum());
+    }
+
+    function test_BASE_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Base());
+    }
+
+    function test_GNOSIS_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Gnosis());
+    }
+
+    function test_ARBITRUM_ONE_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
+    }
+
+    function test_OPTIMISM_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Optimism());
+    }
+
+    function test_UNICHAIN_PayloadBytecodeMatches() public {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Unichain());
     }
 
     /** Utils **/

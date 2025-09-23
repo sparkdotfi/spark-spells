@@ -61,17 +61,17 @@ abstract contract SpellRunner is Test {
     /// @dev maximum 3 chains in 1 query
     function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
         blocks = new uint256[](chains.length);
-        
+
         // Process chains in batches of 3
         for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
             uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
             string[] memory batchChains = new string[](batchSize);
-            
+
             // Create batch of chains
             for (uint256 i = 0; i < batchSize; i++) {
                 batchChains[i] = chains[batchStart + i];
             }
-            
+
             // Build networks parameter for this batch
             string memory networks = "";
             for (uint256 i = 0; i < batchSize; i++) {
@@ -81,7 +81,7 @@ abstract contract SpellRunner is Test {
                     networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
                 }
             }
-            
+
             string[] memory inputs = new string[](8);
             inputs[0] = "curl";
             inputs[1] = "-s";
@@ -93,7 +93,7 @@ abstract contract SpellRunner is Test {
             inputs[7] = "accept: application/json";
 
             string memory response = string(vm.ffi(inputs));
-            
+
             // Store results in the correct positions of the final blocks array
             for (uint256 i = 0; i < batchSize; i++) {
                 blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
@@ -344,6 +344,63 @@ abstract contract SpellRunner is Test {
                 chainData[chainId].bridges[j].lastSourceLogIndex = 0;
                 chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
+        }
+    }
+
+    /** Utils **/
+
+    function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
+        address actualPayload = chainData[chainId].payload;
+        vm.skip(actualPayload == address(0));
+        require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
+        address expectedPayload = deployPayload(chainId);
+
+        _assertBytecodeMatches(expectedPayload, actualPayload);
+    }
+
+    function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {
+        uint256 expectedBytecodeSize = expectedPayload.code.length;
+        uint256 actualBytecodeSize   = actualPayload.code.length;
+
+        uint256 metadataLength = _getBytecodeMetadataLength(expectedPayload);
+        assertTrue(metadataLength <= expectedBytecodeSize);
+        expectedBytecodeSize -= metadataLength;
+
+        metadataLength = _getBytecodeMetadataLength(actualPayload);
+        assertTrue(metadataLength <= actualBytecodeSize);
+        actualBytecodeSize -= metadataLength;
+
+        assertEq(actualBytecodeSize, expectedBytecodeSize);
+
+        uint256 size = actualBytecodeSize;
+        uint256 expectedHash;
+        uint256 actualHash;
+
+        assembly {
+            let ptr := mload(0x40)
+
+            extcodecopy(expectedPayload, ptr, 0, size)
+            expectedHash := keccak256(ptr, size)
+
+            extcodecopy(actualPayload, ptr, 0, size)
+            actualHash := keccak256(ptr, size)
+        }
+
+        assertEq(actualHash, expectedHash);
+    }
+
+    function _getBytecodeMetadataLength(address a) internal view returns (uint256 length) {
+        // The Solidity compiler encodes the metadata length in the last two bytes of the contract bytecode.
+        assembly {
+            let ptr  := mload(0x40)
+            let size := extcodesize(a)
+            if iszero(lt(size, 2)) {
+                extcodecopy(a, ptr, sub(size, 2), 2)
+                length := mload(ptr)
+                length := shr(240, length)
+                length := add(length, 2)  // The two bytes used to specify the length are not counted in the length
+            }
+            // Return zero if the bytecode is shorter than two bytes.
         }
     }
 
