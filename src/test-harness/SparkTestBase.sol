@@ -103,6 +103,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
+    // TODO: Move to misc helpers contract
+    function skip(uint256 time) internal override {
+        vm.warp(vm.getBlockTimestamp() + time);
+    }
+
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/

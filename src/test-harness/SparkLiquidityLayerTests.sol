@@ -1295,6 +1295,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         console2.log("--- STEP", step, "---");
         console2.log("block.timestamp", block.timestamp);
+        console2.log("VM timestamp   ", vm.getBlockTimestamp());
         console2.log("rateLimits LU  ", ctx.rateLimits.getRateLimitData(MainnetController(ctx.controller).LIMIT_USDS_MINT()).lastUpdated);
         console2.log("jug rho        ", rho);
     }
@@ -1347,9 +1348,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
-        vm.warp(block.timestamp + 1 days);
+        skip(1 days);
 
-        uint256 mainnetTimestamp = block.timestamp;
+        uint256 mainnetTimestamp = vm.getBlockTimestamp();
 
         // --- Step 1: Mint and bridge 10m USDC to Base ---
 
@@ -1424,6 +1425,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         console2.log("Mainnet timestamp", mainnetTimestamp);
         console2.log("Block timestamp", block.timestamp);
+        console2.log("VM timestamp", vm.getBlockTimestamp());
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 

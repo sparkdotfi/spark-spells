@@ -68,9 +68,11 @@ abstract contract SpellRunner is Test {
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
+        uint256 currentTimestamp = vm.getBlockTimestamp();
         if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
         _;
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
+        vm.warp(currentTimestamp);
     }
 
     /// @dev maximum 3 chains in 1 query
@@ -125,8 +127,8 @@ abstract contract SpellRunner is Test {
 
         uint256[] memory blocks = getBlocksFromDate(date, chains);
 
-        console.log("Mainnet block: ", blocks[0]);
-        console.log("Base block: ", blocks[1]);
+        console.log("Mainnet block:  ", blocks[0]);
+        console.log("Base block:     ", blocks[1]);
         console.log("Arbitrum block: ", blocks[2]);
         console.log("Optimism block: ", blocks[3]);
 
@@ -372,7 +374,6 @@ abstract contract SpellRunner is Test {
         assertEq(chief.hat(), spell_, "TestError/spell-is-not-hat");
     }
 
-    // NOTE: This function does
     function _scheduleWaitAndCast(address spell_) internal {
         IDssSpellLike(spell_).schedule();
 
