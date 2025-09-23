@@ -25,7 +25,7 @@ interface ISparkVaultV2 {
  *         SparkLend:
  *         - Claim Accrued Reserves for USDS and DAI
  * @author Phoenix Labs
- * Forum:  https://forum.sky.money/t/september-18-2025-proposed-changes-to-spark-for-upcoming-spell/27153
+ * Forum:  https://forum.sky.money/t/october-2-2025-proposed-changes-to-spark-for-upcoming-spell/27191
  * Vote:   
  */
 contract SparkEthereum_20251002 is SparkPayloadEthereum {
