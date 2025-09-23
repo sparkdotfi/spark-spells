@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import './AaveV3PayloadBase.sol';
+import { AaveV3PayloadBase, IEngine } from './AaveV3PayloadBase.sol';
 
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
@@ -126,7 +126,7 @@ abstract contract SparkPayloadEthereum is
             withDelegatecalls
         ));
     }
-    
+
     function _upgradeController(address oldController, address newController) internal {
         SLLHelpers.upgradeMainnetController(
             oldController,

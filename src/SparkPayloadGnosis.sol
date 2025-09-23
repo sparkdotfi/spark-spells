@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import './AaveV3PayloadBase.sol';
+import { AaveV3PayloadBase, IEngine } from './AaveV3PayloadBase.sol';
 
 import { Gnosis } from 'spark-address-registry/Gnosis.sol';
 

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import './ProtocolV3TestBase.sol';
+import { StdChains } from 'forge-std/Test.sol';
+
+import { ProtocolV3TestBase } from './ProtocolV3TestBase.sol';
 
 import { Address } from '../libraries/Address.sol';
 
@@ -9,6 +11,7 @@ import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/depende
 import { IACLManager }                           from 'sparklend-v1-core/interfaces/IACLManager.sol';
 import { IPoolConfigurator }                     from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
 import { ReserveConfiguration }                  from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
+import { IPoolAddressesProvider }                from 'sparklend-v1-core/interfaces/IPoolAddressesProvider.sol';
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
@@ -256,6 +259,31 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner, CommonSpell
                 variableRateSlope2:            newSlope2
             })
         );
+    }
+
+    /** Utils **/
+
+    /**
+     * @dev generates the diff between two reports
+     */
+    function diffReports(string memory reportBefore, string memory reportAfter) internal {
+        string memory outPath = string(
+            abi.encodePacked('./diffs/', reportBefore, '_', reportAfter, '.md')
+        );
+
+        string memory beforePath = string(abi.encodePacked('./reports/', reportBefore, '.json'));
+        string memory afterPath = string(abi.encodePacked('./reports/', reportAfter, '.json'));
+
+        string[] memory inputs = new string[](7);
+        inputs[0] = 'npx';
+        inputs[1] = '@marsfoundation/aave-cli';
+        inputs[2] = 'diff-snapshots';
+        inputs[3] = beforePath;
+        inputs[4] = afterPath;
+        inputs[5] = '-o';
+        inputs[6] = outPath;
+
+        vm.ffi(inputs);
     }
 
 }

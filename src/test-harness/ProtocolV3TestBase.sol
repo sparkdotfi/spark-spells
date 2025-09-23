@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.7.5 <0.9.0;
 
-import 'forge-std/Test.sol';
+import { Test, console } from 'forge-std/Test.sol';
 
 import { IAaveOracle }                  from 'sparklend-v1-core/interfaces/IAaveOracle.sol';
 import { IAToken }                      from 'sparklend-v1-core/interfaces/IAToken.sol';
@@ -26,7 +26,7 @@ import { SafeERC20 } from 'erc20-helpers/SafeERC20.sol';
 import { ICapAutomator } from 'sparklend-cap-automator/interfaces/ICapAutomator.sol';
 
 import { ProxyHelpers }   from '../libraries/ProxyHelpers.sol';
-import { CommonTestBase } from './CommonTestBase.sol';
+import { DealUtils } from '../utils/DealUtils.sol';
 
 interface IProxyLike {
     function implementation() external view returns (address);
@@ -109,7 +109,7 @@ struct ReserveTokens {
     address variableDebtToken;
 }
 
-contract ProtocolV3TestBase is CommonTestBase {
+contract ProtocolV3TestBase is Test {
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using SafeERC20 for IERC20;
     using WadRayMath for uint256;
@@ -561,9 +561,16 @@ contract ProtocolV3TestBase is CommonTestBase {
         address pool = abi.decode(params, (address));
         assertEq(IERC20(asset).balanceOf(address(this)), amount, 'UNDERLYING_NOT_AMOUNT');
 
+        // TODO: MDL, is this fixed?
         // Temporary measure while USDC/EURe/USDC.e deal gets fixed, set the balance to amount + premium either way
-        uint256 dealAmount = asset == USDC_MAINNET || asset == EURE_GNOSIS || asset == USDCE_GNOSIS ? premium : amount + premium;
-        deal2(asset, address(this), dealAmount);
+        uint256 dealAmount =
+            asset == DealUtils.USDC_MAINNET ||
+            asset == DealUtils.EURE_GNOSIS ||
+            asset == DealUtils.USDCE_GNOSIS
+                ? premium
+                : amount + premium;
+
+        DealUtils.deal(asset, address(this), dealAmount);
 
         vm.startPrank(address(this));
         SafeERC20.safeApprove(IERC20(asset), pool, amount + premium);
@@ -591,7 +598,7 @@ contract ProtocolV3TestBase is CommonTestBase {
         require( config.isActive, 'SUPPLY(): INACTIVE_RESERVE');
         require(!config.isPaused, 'SUPPLY(): PAUSED_RESERVE');
 
-        deal2(config.underlying, user, amount);
+        DealUtils.deal(config.underlying, user, amount);
 
         uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
@@ -673,7 +680,7 @@ contract ProtocolV3TestBase is CommonTestBase {
     ) internal {
         address debtToken = stable ? config.stableDebtToken : config.variableDebtToken;
 
-        deal2(config.underlying, user, amount);
+        DealUtils.deal(config.underlying, user, amount);
 
         uint256 debtBefore             = IERC20(debtToken).balanceOf(user);
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
@@ -707,7 +714,7 @@ contract ProtocolV3TestBase is CommonTestBase {
 
         balances.debtBefore = IERC20(debtToken).balanceOf(user);
 
-        deal2(borrow.underlying, liquidator, balances.debtBefore);
+        DealUtils.deal(borrow.underlying, liquidator, balances.debtBefore);
 
         balances.aTokenBorrowerBefore = IERC20(collateral.aToken).balanceOf(user);
         balances.aTokenTreasuryBefore = IERC20(collateral.aToken).balanceOf(IAToken(collateral.aToken).RESERVE_TREASURY_ADDRESS());
@@ -1629,6 +1636,30 @@ contract ProtocolV3TestBase is CommonTestBase {
         if (countCategory < expectedAssets.length) {
             revert('_getAssetOnEmodeCategory(): LESS_ASSETS_IN_CATEGORY_THAN_EXPECTED');
         }
+    }
+
+    /** Utils **/
+
+    function _isInUint256Array(
+        uint256[] memory haystack,
+        uint256 needle
+    ) internal pure returns (bool) {
+        for (uint256 i = 0; i < haystack.length; ++i) {
+            if (haystack[i] == needle) return true;
+        }
+
+        return false;
+    }
+
+    function _isInAddressArray(
+        address[] memory haystack,
+        address needle
+    ) internal pure returns (bool) {
+        for (uint256 i = 0; i < haystack.length; ++i) {
+            if (haystack[i] == needle) return true;
+        }
+
+        return false;
     }
 }
 
