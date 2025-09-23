@@ -30,19 +30,36 @@ interface ISparkVaultV2 {
  */
 contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
+    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
+
+    // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
+    //   1.000000001547125957863212448
+    uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
+
     function _postExecute() internal override {
         // Launch Savings v2 Vaults for USDC, USDT, and ETH
+        _configureVaultsV2({
+            vault_    : Ethereum.SPARK_VAULT_V2_SPUSDC,
+            supplyCap : 50_000_000e6,
+            minVsr    : 1e27,
+            maxVsr    : TEN_PCT_APY
+        });
 
-        // NOTE: 10% APY for SPUSDC and SPUSDT 
-        // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
-        //   1.000000003022265980097387650
-        _configureVaultsV2(Ethereum.SPARK_VAULT_V2_SPUSDC, 50_000_000e6, 1e27, 1.000000003022265980097387650e27);
-        _configureVaultsV2(Ethereum.SPARK_VAULT_V2_SPUSDT, 50_000_000e6, 1e27, 1.000000003022265980097387650e27);
+        _configureVaultsV2({
+            vault_    : Ethereum.SPARK_VAULT_V2_SPUSDT,
+            supplyCap : 50_000_000e6,
+            minVsr    : 1e27,
+            maxVsr    : TEN_PCT_APY
+        });
 
-        // NOTE: 5% APY for SPETH
-        // ❯ bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
-        // 1.000000001547125957863212448
-        _configureVaultsV2(Ethereum.SPARK_VAULT_V2_SPETH,  10_000e18, 1e27, 1.000000001547125957863212448e27);
+        _configureVaultsV2({
+            vault_    : Ethereum.SPARK_VAULT_V2_SPETH,
+            supplyCap : 10_000e18,
+            minVsr    : 1e27,
+            maxVsr    : FIVE_PCT_APY
+        });
 
         // Withdraw USDS and DAI Reserves from SparkLend
         address[] memory aTokens = new address[](2);
@@ -53,35 +70,39 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
     }
 
     function _configureVaultsV2(
-        address vault,
+        address vault_,
         uint256 supplyCap,
         uint256 minVsr,
         uint256 maxVsr
     ) internal {
+        ISparkVaultV2     vault      = ISparkVaultV2(vault_);
+        IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+
         // Grant SETTER_ROLE to Spark Operations Safe
-        ISparkVaultV2(vault).grantRole(ISparkVaultV2(vault).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
 
         // Grant TAKER_ROLE to Alm Proxy
-        ISparkVaultV2(vault).grantRole(ISparkVaultV2(vault).TAKER_ROLE(), Ethereum.ALM_PROXY);
+        vault.grantRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY);
 
         // Set VSR bounds
-        ISparkVaultV2(vault).setVsrBounds(minVsr, maxVsr);
+        vault.setVsrBounds(minVsr, maxVsr);
 
         // Set the supply cap
-        ISparkVaultV2(vault).setDepositCap(supplyCap);
+        vault.setDepositCap(supplyCap);
 
-        IRateLimits(Ethereum.ALM_RATE_LIMITS).setUnlimitedRateLimitData(
+        rateLimits.setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
-                vault
+                controller.LIMIT_SPARK_VAULT_TAKE(),
+                address(vault)
             )
         );
 
-        IRateLimits(Ethereum.ALM_RATE_LIMITS).setUnlimitedRateLimitData(
+        rateLimits.setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                ISparkVaultV2(vault).asset(),
-                vault
+                controller.LIMIT_ASSET_TRANSFER(),
+                vault.asset(),
+                address(vault)
             )
         );
     }
