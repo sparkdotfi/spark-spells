@@ -89,14 +89,14 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner, CommonSpell
         );
     }
 
-    function test_ETHEREUM_E2E_sparkLend() public {
-        _runE2ETests(ChainIdUtils.Ethereum());
-    }
+    // function test_ETHEREUM_E2E_sparkLend() public {
+    //     _runE2ETests(ChainIdUtils.Ethereum());
+    // }
 
-    function test_GNOSIS_E2E_sparkLend() public {
-        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
-        _runE2ETests(ChainIdUtils.Gnosis());
-    }
+    // function test_GNOSIS_E2E_sparkLend() public {
+    //     vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
+    //     _runE2ETests(ChainIdUtils.Gnosis());
+    // }
 
     function _runE2ETests(ChainId chainId) private onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();

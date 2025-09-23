@@ -1293,11 +1293,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 ilk = 0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000;
         (, uint256 rho) = IJugLike(0x19c0976f590D67707E62397C87829d896Dc0f1F1).ilks(ilk);
 
+        uint256 testTimestamp = 1758289691;
+
+        uint256 lastUpdated = ctx.rateLimits.getRateLimitData(MainnetController(ctx.controller).LIMIT_USDS_MINT()).lastUpdated;
+
+        uint256 rhoValue         = rho         > testTimestamp ? rho         - testTimestamp : rho;
+        uint256 lastUpdatedValue = lastUpdated > testTimestamp ? lastUpdated - testTimestamp : lastUpdated;
+
         console2.log("--- STEP", step, "---");
-        console2.log("block.timestamp", block.timestamp);
-        console2.log("VM timestamp   ", vm.getBlockTimestamp());
-        console2.log("rateLimits LU  ", ctx.rateLimits.getRateLimitData(MainnetController(ctx.controller).LIMIT_USDS_MINT()).lastUpdated);
-        console2.log("jug rho        ", rho);
+        console2.log("block.timestamp", block.timestamp - testTimestamp);
+        console2.log("VM timestamp   ", vm.getBlockTimestamp() - testTimestamp);
+        console2.log("jug rho        ", rhoValue);
+        console2.log("rateLimits LU  ", lastUpdatedValue);
+        console2.log("");
     }
 
     struct DomainInfo {
@@ -1451,19 +1459,39 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
 
+        console2.log("------------------------------- PRE E2E 1 --");
+        console2.log("block.timestamp", block.timestamp - 1758289691);
+        console2.log("VM timestamp   ", vm.getBlockTimestamp() - 1758289691);
+        console2.log("");
+
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Base(),
             MainnetController(ctxMainnet.prevController),
             ForeignController(ctxBase.prevController)
         );
 
+        console2.log("------------------------------- POST E2E 1 --");
+        console2.log("block.timestamp", block.timestamp - 1758289691);
+        console2.log("VM timestamp   ", vm.getBlockTimestamp() - 1758289691);
+        console2.log("");
+
         executeAllPayloadsAndBridges();
+
+        console2.log("------------------------------- PRE E2E 2 --");
+        console2.log("block.timestamp", block.timestamp - 1758289691);
+        console2.log("VM timestamp   ", vm.getBlockTimestamp() - 1758289691);
+        console2.log("");
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Base(),
             MainnetController(ctxMainnet.controller),
             ForeignController(ctxBase.controller)
         );
+
+        console2.log("------------------------------- PRE E2E 2 --");
+        console2.log("block.timestamp", block.timestamp - 1758289691);
+        console2.log("VM timestamp   ", vm.getBlockTimestamp() - 1758289691);
+        console2.log("");
     }
 
     function test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() public {

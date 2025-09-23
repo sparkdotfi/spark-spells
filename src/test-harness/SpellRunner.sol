@@ -68,11 +68,11 @@ abstract contract SpellRunner is Test {
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
-        uint256 currentTimestamp = vm.getBlockTimestamp();
+        // uint256 currentTimestamp = vm.getBlockTimestamp();
         if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
         _;
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
-        vm.warp(currentTimestamp);
+        // vm.warp(currentTimestamp);
     }
 
     /// @dev maximum 3 chains in 1 query
