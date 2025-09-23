@@ -100,6 +100,7 @@ interface ICurveStableswapFactory {
 
 interface IFarmLike {
     function earned(address account) external view returns (uint256);
+    function periodFinish() external view returns (uint256);
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -1267,15 +1268,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(rewards, 0);
 
-        console2.log("block.timestamp", block.timestamp);
+        uint256 timestamp = block.timestamp;
 
         skip(1 days);
 
-        rewards = IFarmLike(farm).earned(address(ctx.proxy));
-
-        console2.log("block.timestamp", block.timestamp);
-
-        assertGt(rewards, 0);
+        // Sky spell will sometimes warp past the end of tha rewards period
+        if (timestamp < IFarmLike(farm).periodFinish()) {
+            rewards = IFarmLike(farm).earned(address(ctx.proxy));
+            assertGt(rewards, 0);
+        }
 
         vm.prank(ctx.relayer);
         controller.withdrawFromFarm(farm, depositAmount);
