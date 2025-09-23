@@ -278,7 +278,7 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev bridge contracts themselves are stored on mainnet
-    function _relayMessageOverBridges() internal onChain(ChainIdUtils.Ethereum()) {
+    function _relayMessageOverBridges() internal {
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
@@ -291,7 +291,8 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev this does not relay messages from L2s to mainnet except in the case of USDC
-    function _executeBridge(Bridge storage bridge) private onChain(ChainIdUtils.Ethereum()) {
+    function _executeBridge(Bridge storage bridge) private {
+        uint256 prevTimestamp = block.timestamp;
         if (bridge.bridgeType == BridgeType.OPTIMISM) {
             OptimismBridgeTesting.relayMessagesToDestination(bridge, false);
             logTimestamps("Optimism");
@@ -307,9 +308,10 @@ abstract contract SpellRunner is Test {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
             logTimestamps("Arbitrum");
         }
+        vm.warp(prevTimestamp);
     }
 
-    function _executeForeignPayloads() private onChain(ChainIdUtils.Ethereum()) {
+    function _executeForeignPayloads() private {
         for (uint256 i = 0; i < allChains.length; i++) {
             console.log("Executing foreign payload for chain: ", allChains[i].toDomainString());
             logTimestamps("PRE FOREIGN EXECUTE");
@@ -317,6 +319,8 @@ abstract contract SpellRunner is Test {
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
             address mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
             IExecutor executor = chainData[chainId].executor;
+            console.log("simulating execution payload for network: ", chainId.toDomainString());
+            console.log("mainnetSpellPayload", mainnetSpellPayload);
             if (mainnetSpellPayload != address(0)) {
                 // We assume the payload has been queued in the executor (will revert otherwise)
                 chainData[chainId].domain.selectFork();
@@ -342,6 +346,8 @@ abstract contract SpellRunner is Test {
             logTimestamps("POST FOREIGN EXECUTE");
         }
         logTimestamps("POST FOREIGN EXECUTE LOOP");
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
     }
 
     function _getForeignPayloadFromMainnetSpell(ChainId chainId) internal onChain(ChainIdUtils.Ethereum()) returns (address) {
@@ -361,7 +367,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
+    function executeMainnetPayload() internal {
         // If Sky spell is deployed, execute through full callstack
         if (chainData[ChainIdUtils.Ethereum()].skySpell != address(0)) {
             _vote(chainData[ChainIdUtils.Ethereum()].skySpell);
