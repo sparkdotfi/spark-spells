@@ -17,9 +17,8 @@ import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
 
-import { SparkLiquidityLayerContext, RateLimitData, ICurvePoolLike } from 'src/test-harness/SparkLiquidityLayerTests.sol';
-
-import { console } from 'forge-std/console.sol';
+// TODO: MDL, import from source.
+import { ICurvePoolLike } from 'src/test-harness/SparkLiquidityLayerTests.sol';
 
 contract SparkEthereum_20250918Test is SparkTestBase {
 
@@ -53,6 +52,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         chainData[ChainIdUtils.Ethereum()].payload = 0x7B28F4Bdd7208fe80916EBC58611Eb72Fb6A09Ed;
     }
 
+    // TODO: MDL, does not seem unique to this proposal.
     function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
         _testControllerUpgrade(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER_ETHEREUM);
     }
@@ -163,6 +163,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_626.185445845175175216e18);
     }
 
+    // TODO: MDL, does not seem unique to this proposal.
     function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
         _testControllerUpgrade(Base.ALM_CONTROLLER, NEW_ALM_CONTROLLER_BASE);
     }

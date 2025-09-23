@@ -5,7 +5,6 @@ import { Base } from "spark-address-registry/Base.sol";
 
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 

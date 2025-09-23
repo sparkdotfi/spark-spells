@@ -7,7 +7,6 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
@@ -113,6 +112,7 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
             gap:              1_000_000_000,
             increaseCooldown: 12 hours
         });
+
         ICapAutomator(Ethereum.CAP_AUTOMATOR).setBorrowCapConfig({
             asset:            Ethereum.USDT,
             max:              5_000_000_000,

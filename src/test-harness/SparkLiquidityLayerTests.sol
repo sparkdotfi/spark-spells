@@ -43,11 +43,7 @@ struct SparkLiquidityLayerContext {
     address     freezer;
 }
 
-struct RateLimitData {
-    uint256 maxAmount;
-    uint256 slope;
-}
-
+// TODO: MDL, move to shared interfaces.
 interface ICurvePoolLike is IERC20 {
     function A() external view returns (uint256);
     function add_liquidity(
@@ -112,8 +108,13 @@ interface IFarmLike {
     function stakingToken() external view returns (address);
 }
 
+// TODO: MDL, only used by `SparkEthereumTests`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
+    struct RateLimitData {
+        uint256 maxAmount;
+        uint256 slope;
+    }
 
     using DomainHelpers for Domain;
 
@@ -195,11 +196,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** Assertion helpers                                                                      ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, seems like unnecessary overload bloat.
     function _assertRateLimit(
        bytes32 key,
        RateLimitData memory data
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         _assertRateLimit(
             key,
             data.maxAmount,
@@ -215,6 +218,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
        uint256 slope
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         _assertRateLimit(
             key,
             maxAmount,
@@ -224,10 +228,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-   function _assertUnlimitedRateLimit(
+    function _assertUnlimitedRateLimit(
        bytes32 key
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         _assertRateLimit(
             key,
             type(uint256).max,
@@ -237,7 +242,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-   function _assertRateLimit(
+    function _assertRateLimit(
        bytes32 key,
        uint256 maxAmount,
        uint256 slope,
@@ -245,6 +250,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
        uint256 lastUpdated
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         assertEq(rateLimit.maxAmount,   maxAmount);
         assertEq(rateLimit.slope,       slope);
         assertEq(rateLimit.lastAmount,  lastAmount);

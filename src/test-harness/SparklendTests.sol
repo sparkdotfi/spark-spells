@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { StdChains } from 'forge-std/Test.sol';
 
-import { ProtocolV3TestBase, ReserveConfig, InterestStrategyValues } from './ProtocolV3TestBase.sol';
+import { ProtocolV3TestBase } from './ProtocolV3TestBase.sol';
 
 import { Address } from '../libraries/Address.sol';
 
@@ -37,8 +37,8 @@ struct SparkLendContext {
     IAaveOracle            priceOracle;
 }
 
-/// @dev assertions specific to sparklend, which are not run on chains where
-/// it is not deployed
+// TODO: MDL, only used by `SparkEthereumTests`.
+/// @dev assertions specific to sparklend, which are not run on chains where it is not deployed
 abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using DomainHelpers for StdChains.Chain;

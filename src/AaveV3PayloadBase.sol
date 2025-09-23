@@ -5,6 +5,7 @@ import { Address } from './libraries/Address.sol';
 import { IAaveV3ConfigEngine as IEngine } from './interfaces/IAaveV3ConfigEngine.sol';
 import { IV3RateStrategyFactory as Rates } from './interfaces/IV3RateStrategyFactory.sol';
 
+// TODO: MDL, seems unused.
 library EngineFlags {
   /// @dev magic value to be used as flag to keep unchanged any current configuration
   /// Strongly assumes that the value `type(uint256).max - 42` will never be used, which seems reasonable
@@ -27,7 +28,6 @@ library EngineFlags {
     return isTrue ? ENABLED : DISABLED;
   }
 }
-
 
 /**
  * @dev Base smart contract for an Aave v3.0.1 configs update.

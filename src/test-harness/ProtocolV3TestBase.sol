@@ -41,51 +41,6 @@ interface IOracleLike {
     function latestAnswer() external view returns (int256);
 }
 
-struct ReserveConfig {
-    string symbol;
-    address underlying;
-    address aToken;
-    address stableDebtToken;
-    address variableDebtToken;
-    uint256 decimals;
-    uint256 ltv;
-    uint256 liquidationThreshold;
-    uint256 liquidationBonus;
-    uint256 liquidationProtocolFee;
-    uint256 reserveFactor;
-    bool usageAsCollateralEnabled;
-    bool borrowingEnabled;
-    address interestRateStrategy;
-    bool stableBorrowRateEnabled;
-    bool isPaused;
-    bool isActive;
-    bool isFrozen;
-    bool isSiloed;
-    bool isBorrowableInIsolation;
-    bool isFlashloanable;
-    uint256 supplyCap;
-    uint256 borrowCap;
-    uint256 debtCeiling;
-    uint256 eModeCategory;
-}
-
-struct LocalVars {
-    IPoolDataProvider.TokenData[] reserves;
-    ReserveConfig[] configs;
-}
-
-struct InterestStrategyValues {
-    address addressesProvider;
-    uint256 optimalUsageRatio;
-    uint256 optimalStableToTotalDebtRatio;
-    uint256 baseStableBorrowRate;
-    uint256 stableRateSlope1;
-    uint256 stableRateSlope2;
-    uint256 baseVariableBorrowRate;
-    uint256 variableRateSlope1;
-    uint256 variableRateSlope2;
-}
-
 struct LiquidationBalanceAssertions {
     uint256 aTokenBorrowerBefore;
     uint256 collateralATokenBefore;
@@ -109,7 +64,53 @@ struct ReserveTokens {
     address variableDebtToken;
 }
 
+// TODO: MDL, only used by `SparklendTests`.
 contract ProtocolV3TestBase is Test {
+    struct InterestStrategyValues {
+        address addressesProvider;
+        uint256 optimalUsageRatio;
+        uint256 optimalStableToTotalDebtRatio;
+        uint256 baseStableBorrowRate;
+        uint256 stableRateSlope1;
+        uint256 stableRateSlope2;
+        uint256 baseVariableBorrowRate;
+        uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+    }
+
+    struct ReserveConfig {
+        string symbol;
+        address underlying;
+        address aToken;
+        address stableDebtToken;
+        address variableDebtToken;
+        uint256 decimals;
+        uint256 ltv;
+        uint256 liquidationThreshold;
+        uint256 liquidationBonus;
+        uint256 liquidationProtocolFee;
+        uint256 reserveFactor;
+        bool usageAsCollateralEnabled;
+        bool borrowingEnabled;
+        address interestRateStrategy;
+        bool stableBorrowRateEnabled;
+        bool isPaused;
+        bool isActive;
+        bool isFrozen;
+        bool isSiloed;
+        bool isBorrowableInIsolation;
+        bool isFlashloanable;
+        uint256 supplyCap;
+        uint256 borrowCap;
+        uint256 debtCeiling;
+        uint256 eModeCategory;
+    }
+
+    struct LocalVars {
+        IPoolDataProvider.TokenData[] reserves;
+        ReserveConfig[] configs;
+    }
+
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using SafeERC20 for IERC20;
     using WadRayMath for uint256;
@@ -1663,6 +1664,7 @@ contract ProtocolV3TestBase is Test {
     }
 }
 
+// TODO: MDL, seems unused.
 /**
  * only applicable to v3 harmony at this point
  */

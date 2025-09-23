@@ -38,7 +38,6 @@ import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
 
 import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
 import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
-import { InterestStrategyValues, ReserveConfig } from 'src/test-harness/ProtocolV3TestBase.sol';
 
 interface IAuthority {
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);
@@ -113,6 +112,7 @@ struct Position {
     uint128 collateral;
 }
 
+// TODO: MDL, only used by `SparkTestBase`.
 /// @dev assertions specific to mainnet
 /// TODO: separate tests related to sparklend from the rest (eg: morpho)
 ///       also separate mainnet-specific sparklend tests from those we should
@@ -142,7 +142,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
-    function test_ETHEREUM_FreezerMom() public virtual onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_FreezerMom() public onChain(ChainIdUtils.Ethereum()){
         uint256 snapshot = vm.snapshot();
 
         _runFreezerMomTests();
@@ -153,7 +153,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _runFreezerMomTests();
     }
 
-    function test_ETHEREUM_FreezerMom_Multisig() public virtual onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_FreezerMom_Multisig() public onChain(ChainIdUtils.Ethereum()){
         uint256 snapshot = vm.snapshot();
 
         _runFreezerMomTestsMultisig();
@@ -494,7 +494,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     /******************************************************************************************************************/
-    /*** Internal testing helper funcitons                                                                         ****/
+    /*** Internal testing helper functions                                                                         ****/
     /******************************************************************************************************************/
 
     struct SparkLendAssetOnboardingParams {

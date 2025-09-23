@@ -32,6 +32,7 @@ interface ICurvePoolLike {
     function coins(uint256) external view returns (address);
 }
 
+// TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
 /// @dev Convenience contract meant to be the single point of entry for all
 ///      spell-specific test contracts
 abstract contract SparkTestBase is SparkEthereumTests {
