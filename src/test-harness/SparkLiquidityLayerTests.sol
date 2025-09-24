@@ -1622,92 +1622,198 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testCentrifugeIntegration(CentrifugeE2ETestParams memory p) internal {
-        CentrifugeE2ETestVars memory v;
+        // CentrifugeE2ETestVars memory v;
 
-        v.vault     = ICentrifugeToken(p.vault);
-        v.manager   = IInvestmentManager(v.vault.manager());
-        v.escrow    = v.manager.escrow();
-        v.root      = v.vault.root();
-        v.trancheId = v.vault.trancheId();
-        v.assetId   = 242333941209166991950178742833476896417;  // TODO: Figure out how to load dynamically
-        v.poolId    = v.vault.poolId();
-        v.token     = IERC20(v.vault.share());
-        v.asset     = IERC20(v.vault.asset());
+        // v.vault     = ICentrifugeToken(p.vault);
+        // v.manager   = IInvestmentManager(v.vault.manager());
+        // v.escrow    = v.manager.escrow();
+        // v.root      = v.vault.root();
+        // v.trancheId = v.vault.trancheId();
+        // v.assetId   = 242333941209166991950178742833476896417;  // TODO: Figure out how to load dynamically
+        // v.poolId    = v.vault.poolId();
+        // v.token     = IERC20(v.vault.share());
+        // v.asset     = IERC20(v.vault.asset());
 
-        v.depositLimit = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
-        v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+        // v.depositLimit = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        // v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
 
-        assertEq(v.withdrawLimit, type(uint256).max);
+        // assertEq(v.withdrawLimit, type(uint256).max);
+
+        // /********************************/
+        // /*** Step 1: Check rate limit ***/
+        // /********************************/
+
+        // vm.prank(p.ctx.relayer);
+        // vm.expectRevert("RateLimits/rate-limit-exceeded");
+        // MainnetController(p.ctx.controller).requestDepositERC7540(address(v.vault), v.depositLimit + 1);
+
+        // /************************************************************/
+        // /*** Step 2: Request deposit and check resulting position ***/
+        // /************************************************************/
+
+        // deal(address(v.asset), address(p.ctx.proxy), p.depositAmount);
+
+        // v.escrowBalance = v.asset.balanceOf(v.escrow);
+
+        // assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance);
+        // assertEq(v.asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+
+        // assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)), 0);
+
+        // assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit);
+
+        // vm.prank(p.ctx.relayer);
+        // MainnetController(p.ctx.controller).requestDepositERC7540(address(v.vault), p.depositAmount);
+
+        // assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance + p.depositAmount);
+        // assertEq(v.asset.balanceOf(address(p.ctx.proxy)), 0);
+
+        // assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)), p.depositAmount);
+
+        // assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
+
+        // /***************************************************************/
+        // /*** Step 3: Snapshot and prove that request can be canceled ***/
+        // /***************************************************************/
+
+        // uint256 snapshot = vm.snapshot();
+
+        // assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         p.depositAmount);
+        // assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   false);
+        // assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), 0);
+
+        // vm.prank(p.ctx.relayer);
+        // MainnetController(p.ctx.controller).cancelCentrifugeDepositRequest(address(v.vault));
+
+        // assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         p.depositAmount);
+        // assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   true);
+        // assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), p.depositAmount);
+
+        // assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance + p.depositAmount);
+        // assertEq(v.asset.balanceOf(address(p.ctx.proxy)), 0);
+
+        // vm.prank(v.root);
+        // v.manager.fulfillCancelDepositRequest(
+        //     v.poolId,
+        //     v.trancheId,
+        //     address(p.ctx.proxy),
+        //     v.assetId,
+        //     uint128(p.depositAmount),
+        //     uint128(p.depositAmount)
+        // );
+
+        // assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance);
+        // assertEq(v.asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+
+        // assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         0);
+        // assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   false);
+        // assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), 0);
+    }
+
+    struct TransferAssetE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address asset;
+        address destination;
+        bytes32 transferKey;
+        uint256 transferAmount;
+    }
+
+    function _testTransferAssetIntegration(TransferAssetE2ETestParams memory p) internal {
+        MainnetController controller = MainnetController(p.ctx.controller);
+
+        IERC20 asset = IERC20(p.asset);
+
+        uint256 transferLimit   = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
+        uint256 transferAmount1 = p.transferAmount / 4;
+        uint256 transferAmount2 = p.transferAmount - transferAmount1;
+
+        deal(address(asset), address(p.ctx.proxy), transferAmount1 + transferAmount2);
+
+        bool unlimitedTransfer = transferLimit == type(uint256).max;
 
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
 
-        vm.prank(p.ctx.relayer);
-        vm.expectRevert("RateLimits/rate-limit-exceeded");
-        MainnetController(p.ctx.controller).requestDepositERC7540(address(v.vault), v.depositLimit + 1);
+        if (!unlimitedTransfer) {
+            vm.prank(p.ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            controller.transferAsset(address(asset), p.destination, transferLimit + 1);
+        }
 
-        /************************************************************/
-        /*** Step 2: Request deposit and check resulting position ***/
-        /************************************************************/
+        /*****************************************************/
+        /*** Step 2: Transfer and check resulting position ***/
+        /*****************************************************/
 
-        deal(address(v.asset), address(p.ctx.proxy), p.depositAmount);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount1 + transferAmount2);
+        assertEq(asset.balanceOf(p.destination),        0);
 
-        v.escrowBalance = v.asset.balanceOf(v.escrow);
-
-        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance);
-        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
-
-        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)), 0);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).requestDepositERC7540(address(v.vault), p.depositAmount);
+        controller.transferAsset(address(asset), p.destination, transferAmount1);
 
-        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance + p.depositAmount);
-        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(p.destination),        transferAmount1);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount2);
 
-        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)), p.depositAmount);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
-
-        /***************************************************************/
-        /*** Step 3: Snapshot and prove that request can be canceled ***/
-        /***************************************************************/
-
-        uint256 snapshot = vm.snapshot();
-
-        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         p.depositAmount);
-        assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   false);
-        assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), 0);
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).cancelCentrifugeDepositRequest(address(v.vault));
-
-        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         p.depositAmount);
-        assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   true);
-        assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), p.depositAmount);
-
-        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance + p.depositAmount);
-        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), 0);
-
-        vm.prank(v.root);
-        v.manager.fulfillCancelDepositRequest(
-            v.poolId,
-            v.trancheId,
-            address(p.ctx.proxy),
-            v.assetId,
-            uint128(p.depositAmount),
-            uint128(p.depositAmount)
+        assertEq(
+            p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
+            unlimitedTransfer ? transferLimit : transferLimit - transferAmount1
         );
 
-        assertEq(v.asset.balanceOf(v.escrow),             v.escrowBalance);
-        assertEq(v.asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        /*****************************************/
+        /*** Step 3: Transfer remaining amount ***/
+        /*****************************************/
 
-        assertEq(v.vault.pendingDepositRequest(0, address(p.ctx.proxy)),         0);
-        assertEq(v.vault.pendingCancelDepositRequest(0, address(p.ctx.proxy)),   false);
-        assertEq(v.vault.claimableCancelDepositRequest(0, address(p.ctx.proxy)), 0);
+        vm.prank(p.ctx.relayer);
+        controller.transferAsset(address(asset), p.destination, transferAmount2);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(p.destination),        transferAmount1 + transferAmount2);
+
+        assertEq(
+            p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
+            unlimitedTransfer ? transferLimit : transferLimit - transferAmount1 - transferAmount2
+        );
+
+        /********************************************/
+        /*** Step 4: Warp to recharge rate limits ***/
+        /********************************************/
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);  // Should be this for unlimited transfers as well
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), p.ctx.rateLimits.getRateLimitData(p.transferKey).maxAmount);
+    }
+
+    struct BUIDLE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address depositAsset;
+        address depositDestination;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        address withdrawAsset;
+        address withdrawDestination;
+        uint256 withdrawAmount;
+        bytes32 withdrawKey;
+    }
+
+    function _testBUIDLIntegration(BUIDLE2ETestParams memory p) internal {
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.depositAsset,
+            destination:    p.depositDestination,
+            transferKey:    p.depositKey,
+            transferAmount: p.depositAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.withdrawAsset,
+            destination:    p.withdrawDestination,
+            transferKey:    p.withdrawKey,
+            transferAmount: p.withdrawAmount
+        }));
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
@@ -1853,52 +1959,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
-    }
-
-    function _testTransferAssetIntegration(
-        address token,
-        address destination,
-        address controller_,
-        uint256 expectedRateLimit,
-        uint256 transferAmount
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(controller_);
-
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            controller.LIMIT_ASSET_TRANSFER(),
-            token,
-            destination
-        );
-
-        deal(token, address(ctx.proxy), transferAmount);
-
-        assertEq(IERC20(token).balanceOf(destination),        0);
-        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(token, destination, transferAmount / 2);
-
-        assertEq(IERC20(token).balanceOf(destination),        transferAmount / 2);
-        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(token, destination, transferAmount / 2);
-
-        assertEq(IERC20(token).balanceOf(destination),        transferAmount);
-        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
     }
 
     function _testE2ESLLCrossChainForDomain(

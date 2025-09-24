@@ -71,8 +71,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         MAPLE,
         PSM,
         REWARDS_TRANSFER,
-        SUPERSTATE_OFFCHAIN,
-        SUPERSTATE_ONCHAIN,
         SUPERSTATE,
         TREASURY
     }
@@ -117,32 +115,32 @@ abstract contract SparkTestBase is SparkEthereumTests {
         delete chainData[ChainIdUtils.Ethereum()].prevController;
         delete chainData[ChainIdUtils.Base()].prevController;
 
-        _runSLLE2ETests(ethereumSllIntegrations[16]);
+        // _runSLLE2ETests(ethereumSllIntegrations[16]);
 
-        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
-        // }
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _runSLLE2ETests(ethereumSllIntegrations[i]);
+        }
 
-        // vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
-        // executeMainnetPayload();
+        // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
+        executeMainnetPayload();
 
-        // // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
-        // chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
-        // chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
+        // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
 
-        // // Overwrite mainnetController with the new controller for the rest of the tests
-        // mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+        // Overwrite mainnetController with the new controller for the rest of the tests
+        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        // _populateRateLimitKeys(true);
-        // _loadPostExecutionIntegrations();
+        _populateRateLimitKeys(true);
+        _loadPostExecutionIntegrations();
 
-        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
-        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
-        // }
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _runSLLE2ETests(ethereumSllIntegrations[i]);
+        }
     }
 
     /**********************************************************************************************/
@@ -301,6 +299,22 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
+        else if (integration.category == Category.BUIDL) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            _testBUIDLIntegration(BUIDLE2ETestParams({
+                ctx:                 _getSparkLiquidityLayerContext(),
+                depositAsset:        Ethereum.USDC,
+                depositDestination:  BUIDL_DEPOSIT,
+                depositAmount:       100_000_000e6,
+                depositKey:          integration.entryId,
+                withdrawAsset:       Ethereum.BUIDLI,
+                withdrawDestination: BUIDL_REDEEM,
+                withdrawAmount:      100_000_000e6,
+                withdrawKey:         integration.exitId
+            }));
+        }
+
         // else if (integration.category == Category.CCTP) {
         //     // console2.log("Running SLL E2E test for", integration.label);
 
@@ -445,10 +459,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0)));
 
-        // TODO: Combine
-        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_OFFCHAIN-USTB", Category.SUPERSTATE_OFFCHAIN, address(0), Ethereum.USTB, address(0), Ethereum.USTB));
-
-        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE_ONCHAIN-USTB", Category.SUPERSTATE_ONCHAIN,  Ethereum.USTB));
+        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE-USTB", Category.SUPERSTATE, address(0), Ethereum.USTB, address(0), Ethereum.USTB));
     }
 
     function _loadPostExecutionIntegrations() internal {
@@ -510,10 +521,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (category == Category.CURVE_SWAP) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_SWAP(), integration);
             exitId  = bytes32(0);
-        }
-        else if (category == Category.SUPERSTATE_ONCHAIN) {
-            entryId = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
-            exitId  = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
         }
         else if (category == Category.CCTP_GENERAL) {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
@@ -577,8 +584,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
             exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
         }
-        else if (category == Category.SUPERSTATE_OFFCHAIN) {
-            exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+        else if (category == Category.SUPERSTATE) {
+            entryId = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
+            exitId  = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
+            exitId2 = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
         }
         else if (category == Category.REWARDS_TRANSFER) {
             entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
