@@ -13,7 +13,6 @@ import { SLLHelpers } from './libraries/SLLHelpers.sol';
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadBase {
-
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
         relayers[0] = Base.ALM_RELAYER;
@@ -65,5 +64,4 @@ abstract contract SparkPayloadBase {
             Base.ALM_RELAYER
         );
     }
-
 }

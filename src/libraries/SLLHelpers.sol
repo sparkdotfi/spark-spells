@@ -21,11 +21,10 @@ import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerIns
 import { MainnetControllerInit } from "spark-alm-controller/deploy/MainnetControllerInit.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 import { MainnetController }     from "spark-alm-controller/src/MainnetController.sol";
-import { ForeignController }     from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers }      from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { IRateLimits }           from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 
-import { CCTPForwarder }from "xchain-helpers/forwarders/CCTPForwarder.sol";
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 /**
  * @notice Helper functions for Spark Liquidity Layer
@@ -481,5 +480,4 @@ library SLLHelpers {
 
         IRateLimits(rateLimits).setRateLimitData(key, maxAmount, slope);
     }
-
 }

@@ -6,7 +6,6 @@ import { VmSafe } from "forge-std/Vm.sol";
 
 import { PendleSparkLinearDiscountOracle } from 'lib/pendle-core-v2-public/contracts/oracles/internal/PendleSparkLinearDiscountOracle.sol';
 
-
 import { IMetaMorpho, MarketParams, PendingUint192, Id } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { MarketParamsLib }          from 'morpho-blue/src/libraries/MarketParamsLib.sol';
@@ -15,9 +14,6 @@ import { IMorphoChainlinkOracleV2 } from 'morpho-blue-oracles/morpho-chainlink/i
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
 import { MorphoUpgradableOracle } from "sparklend-advanced/src/MorphoUpgradableOracle.sol";
-
-import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from 'sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol';
 
@@ -32,85 +28,25 @@ import { WadRayMath }                      from "sparklend-v1-core/protocol/libr
 
 import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
-import { SparklendTests, SparkLendContext } from "./SparklendTests.sol";
+import {
+    IAuthorityLike,
+    ICustomIRMLike,
+    IExecutableLike,
+    IMorphoLike,
+    IMorphoOracleFactoryLike,
+    IPendleLinearDiscountOracleLike,
+    IRateSourceLike,
+    ISparkProxyLike,
+    ITargetBaseIRMLike,
+    ITargetKinkIRMLike
+} from "../interfaces/Interfaces.sol";
+
+import { SparklendTests } from "./SparklendTests.sol";
 
 import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
 
-import { ChainIdUtils, ChainId }                 from "src/libraries/ChainId.sol";
-import { SLLHelpers }                            from "src/libraries/SLLHelpers.sol";
-
-interface IAuthority {
-    function canCall(address src, address dst, bytes4 sig) external view returns (bool);
-    function hat() external view returns (address);
-    function lock(uint256 amount) external;
-    function vote(address[] calldata slate) external;
-    function lift(address target) external;
-}
-
-interface ICustomIRM {
-    function RATE_SOURCE() external view returns (address);
-    function getBaseVariableBorrowRateSpread() external view returns (uint256);
-}
-
-interface IExecutable {
-    function execute() external;
-}
-
-interface IMorpho {
-    function position(Id id, address user) external view returns (Position memory p);
-
-    function market(Id id)
-        external
-        view
-        returns (
-            uint128 totalSupplyAssets,
-            uint128 totalSupplyShares,
-            uint128 totalBorrowAssets,
-            uint128 totalBorrowShares,
-            uint128 lastUpdate,
-            uint128 fee
-        );
-}
-
-interface IMorphoOracleFactory {
-    // NOTE: This applies to all oracles deployed by the factory
-    function isMorphoChainlinkOracleV2(address) external view returns (bool);
-}
-
-interface IPendleLinearDiscountOracle {
-    function baseDiscountPerYear() external view returns (uint256);
-    function decimals() external view returns (uint256);
-    function getDiscount(uint256 timeLeft) external view returns (uint256);
-    function maturity() external view returns (uint256);
-    function PT() external view returns (address);
-    function latestRoundData()
-        external
-        view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
-}
-
-interface IRateSource {
-    function getAPR() external view returns (int256);
-    function decimals() external view returns (uint256);
-}
-
-interface ISparkProxy {
-    function wards(address) external view returns (uint256);
-}
-
-interface ITargetBaseIRM {
-    function getBaseVariableBorrowRateSpread() external view returns (uint256);
-}
-
-interface ITargetKinkIRM {
-    function getVariableRateSlope1Spread() external view returns (uint256);
-}
-
-struct Position {
-    uint256 supplyShares;
-    uint128 borrowShares;
-    uint128 collateral;
-}
+import { ChainIdUtils, ChainId } from "src/libraries/ChainId.sol";
+import { SLLHelpers }            from "src/libraries/SLLHelpers.sol";
 
 // TODO: MDL, only used by `SparkTestBase`.
 /// @dev assertions specific to mainnet
@@ -118,7 +54,6 @@ struct Position {
 ///       also separate mainnet-specific sparklend tests from those we should
 ///       run on Gnosis as well
 abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests {
-
     using RecordedLogs for *;
 
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
@@ -165,7 +100,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     function test_ETHEREUM_SparkProxyStorage() public onChain(ChainIdUtils.Ethereum()){
-        ISparkProxy proxy = ISparkProxy(Ethereum.SPARK_PROXY);
+        ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
         address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
 
         assertEq(proxy.wards(ESM),                  1);
@@ -243,7 +178,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     function _voteAndCast(address _spell) internal {
-        IAuthority authority = IAuthority(Ethereum.CHIEF);
+        IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
 
         address skyWhale = makeAddr("skyWhale");
         uint256 amount = 10_000_000_000 ether;
@@ -268,7 +203,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(authority.hat(), _spell);
 
         vm.prank(makeAddr("randomUser"));
-        IExecutable(_spell).execute();
+        IExecutableLike(_spell).execute();
     }
 
     function _runFreezerMomTestsMultisig() internal {
@@ -655,11 +590,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         }
 
         // Check total assets in the morpho market are greater than 1 unit of the loan token
-        ( uint256 totalSupplyAssets_,,,,, ) = IMorpho(Ethereum.MORPHO).market(MarketParamsLib.id(config));
+        ( uint256 totalSupplyAssets_,,,,, ) = IMorphoLike(Ethereum.MORPHO).market(MarketParamsLib.id(config));
         assertGe(totalSupplyAssets_, 10 ** IERC20(config.loanToken).decimals());
 
         // Check shares of address(1) are greater or equal to 1e6 * 10 ** loanTokenDecimals (1 unit)
-        Position memory position = IMorpho(Ethereum.MORPHO).position(MarketParamsLib.id(config), address(1));
+        IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(MarketParamsLib.id(config), address(1));
         assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
 
@@ -676,7 +611,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         MorphoUpgradableOracle baseFeed = MorphoUpgradableOracle(address(_oracle.BASE_FEED_1()));
 
-        IPendleLinearDiscountOracle pendleOracle = IPendleLinearDiscountOracle(address(baseFeed.source()));
+        IPendleLinearDiscountOracleLike pendleOracle = IPendleLinearDiscountOracleLike(address(baseFeed.source()));
 
         // TODO: This assumes loanTokenDecimals >= ptDecimals, fix for the other case.
         uint256 assetConversion = 10 ** (IERC20(loanToken).decimals() - IERC20(pt).decimals());
@@ -722,7 +657,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         assertEq(_oracle.price(), 1e36 * assetConversion);
 
-        assertEq(IMorphoOracleFactory(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
+        assertEq(IMorphoOracleFactoryLike(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
 
         address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
 
@@ -743,9 +678,9 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         SparkLendContext memory ctx = _getSparkLendContext();
 
         // Rate source should be the same
-        assertEq(ICustomIRM(newParams.irm).RATE_SOURCE(), ICustomIRM(oldParams.irm).RATE_SOURCE());
+        assertEq(ICustomIRMLike(newParams.irm).RATE_SOURCE(), ICustomIRMLike(oldParams.irm).RATE_SOURCE());
 
-        uint256 ssrRate = uint256(IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).getAPR());
+        uint256 ssrRate = uint256(IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR());
 
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
 
@@ -765,7 +700,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             })
         );
 
-        assertEq(ITargetBaseIRM(configBefore.interestRateStrategy).getBaseVariableBorrowRateSpread(), oldParams.baseRateSpread);
+        assertEq(ITargetBaseIRMLike(configBefore.interestRateStrategy).getBaseVariableBorrowRateSpread(), oldParams.baseRateSpread);
 
         executeAllPayloadsAndBridges();
 
@@ -787,7 +722,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             })
         );
 
-        assertEq(ITargetBaseIRM(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
+        assertEq(ITargetBaseIRMLike(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
     }
 
     function _testRateTargetKinkIRMUpdate(
@@ -800,10 +735,10 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         SparkLendContext memory ctx = _getSparkLendContext();
 
         // Rate source should be the same
-        assertEq(ICustomIRM(newParams.irm).RATE_SOURCE(), ICustomIRM(oldParams.irm).RATE_SOURCE());
+        assertEq(ICustomIRMLike(newParams.irm).RATE_SOURCE(), ICustomIRMLike(oldParams.irm).RATE_SOURCE());
 
-        uint256 ssrRateDecimals = IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).decimals();
-        int256 ssrRate = IRateSource(ICustomIRM(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
+        uint256 ssrRateDecimals = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).decimals();
+        int256 ssrRate = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
 
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
 
@@ -823,7 +758,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             })
         );
 
-        assertEq(uint256(ITargetKinkIRM(configBefore.interestRateStrategy).getVariableRateSlope1Spread()), uint256(oldParams.variableRateSlope1Spread));
+        assertEq(uint256(ITargetKinkIRMLike(configBefore.interestRateStrategy).getVariableRateSlope1Spread()), uint256(oldParams.variableRateSlope1Spread));
 
         executeAllPayloadsAndBridges();
 
@@ -845,11 +780,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             })
         );
 
-        assertEq(uint256(ITargetKinkIRM(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
+        assertEq(uint256(ITargetKinkIRMLike(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
 
         address expectedIRM = address(new RateTargetKinkInterestRateStrategy(
             IPoolAddressesProvider(address(ctx.poolAddressesProvider)),
-            ICustomIRM(newParams.irm).RATE_SOURCE(),
+            ICustomIRMLike(newParams.irm).RATE_SOURCE(),
             newParams.optimalUsageRatio,
             newParams.baseRate,
             newParams.variableRateSlope1Spread,
@@ -874,7 +809,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     {
         require(markets.length == caps.length, "Markets and caps length mismatch");
 
-        bytes32 CREATE_METAMORPHO_SIG = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
+        // TODO: make constant.
+        bytes32 createMetaMorphoSig = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
 
         // Start the recorder
         RecordedLogs.init();
@@ -886,7 +822,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address vault;
 
         for (uint256 i = 0; i < allLogs.length; i++) {
-            if (allLogs[i].topics[0] == CREATE_METAMORPHO_SIG) {
+            if (allLogs[i].topics[0] == createMetaMorphoSig) {
                 vault = address(uint160(uint256(allLogs[i].topics[1])));
                 break;
             }
@@ -921,5 +857,4 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
         }
     }
-
 }

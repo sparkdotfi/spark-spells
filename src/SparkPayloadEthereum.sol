@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import { AaveV3PayloadBase, IEngine } from './AaveV3PayloadBase.sol';
-
 import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
 
 import { IMetaMorpho, MarketParams, Id, IERC4626 } from 'metamorpho/interfaces/IMetaMorpho.sol';
@@ -29,25 +27,17 @@ import { AMBForwarder }      from 'xchain-helpers/forwarders/AMBForwarder.sol';
 import { ArbitrumForwarder } from 'xchain-helpers/forwarders/ArbitrumForwarder.sol';
 import { OptimismForwarder } from 'xchain-helpers/forwarders/OptimismForwarder.sol';
 
+import { ITreasuryControllerLike } from './interfaces/Interfaces.sol';
+
 import { SLLHelpers } from './libraries/SLLHelpers.sol';
 
-interface ITreasuryController {
-    function transfer(
-        address collector,
-        address token,
-        address recipient,
-        uint256 amount
-    ) external;
-}
+import { AaveV3PayloadBase, IEngine } from './AaveV3PayloadBase.sol';
 
 /**
  * @dev Base smart contract for Ethereum.
  * @author Phoenix Labs
  */
-abstract contract SparkPayloadEthereum is
-    AaveV3PayloadBase(IEngine(Ethereum.CONFIG_ENGINE))
-{
-
+abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGINE) {
     // These need to be immutable (delegatecall) and can only be set in constructor
     address public immutable PAYLOAD_ARBITRUM;
     address public immutable PAYLOAD_BASE;
@@ -217,7 +207,7 @@ abstract contract SparkPayloadEthereum is
                 ? Ethereum.DAI_TREASURY
                 : Ethereum.TREASURY;
 
-            ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
+            ITreasuryControllerLike(Ethereum.TREASURY_CONTROLLER).transfer({
                 collector: treasury,
                 token:     aTokens[i],
                 recipient: Ethereum.ALM_PROXY,
@@ -289,5 +279,4 @@ abstract contract SparkPayloadEthereum is
             );
         }
     }
-
 }

@@ -5,8 +5,6 @@ import { StdChains } from 'forge-std/Test.sol';
 
 import { ProtocolV3TestBase } from './ProtocolV3TestBase.sol';
 
-import { Address } from '../libraries/Address.sol';
-
 import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
 import { IACLManager }                           from 'sparklend-v1-core/interfaces/IACLManager.sol';
 import { IPoolConfigurator }                     from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
@@ -17,7 +15,6 @@ import { IAaveOracle }                           from 'sparklend-v1-core/interfa
 import { DataTypes }                             from 'sparklend-v1-core/protocol/libraries/types/DataTypes.sol';
 import { IDefaultInterestRateStrategy }          from 'sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol';
 
-import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
 
@@ -29,17 +26,17 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-struct SparkLendContext {
-    IPoolAddressesProvider poolAddressesProvider;
-    IPool                  pool;
-    IPoolConfigurator      poolConfigurator;
-    IACLManager            aclManager;
-    IAaveOracle            priceOracle;
-}
-
 // TODO: MDL, only used by `SparkEthereumTests`.
 /// @dev assertions specific to sparklend, which are not run on chains where it is not deployed
 abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
+    struct SparkLendContext {
+        IPoolAddressesProvider poolAddressesProvider;
+        IPool                  pool;
+        IPoolConfigurator      poolConfigurator;
+        IACLManager            aclManager;
+        IAaveOracle            priceOracle;
+    }
+
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using DomainHelpers for StdChains.Chain;
     using DomainHelpers for Domain;
@@ -319,5 +316,4 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         vm.ffi(inputs);
     }
-
 }

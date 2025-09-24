@@ -5,8 +5,6 @@ import { Test }      from "forge-std/Test.sol";
 import { StdChains } from "forge-std/StdChains.sol";
 import { console }   from "forge-std/console.sol";
 
-import { Address } from '../libraries/Address.sol';
-
 import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
 import { Base }     from 'spark-address-registry/Base.sol';
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -24,8 +22,10 @@ import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridge
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
+import { Address }               from '../libraries/Address.sol';
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { SparkPayloadEthereum }  from "../SparkPayloadEthereum.sol";
+
+import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
 
 // TODO: MDL, Use by `SparklendTests` and `SparkLiquidityLayerTests`.
 abstract contract SpellRunner is Test {
@@ -338,7 +338,7 @@ abstract contract SpellRunner is Test {
     function _clearLogs() internal {
         RecordedLogs.clearLogs();
 
-        // Need to also reset all bridge indicies
+        // Need to also reset all bridge indices
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){

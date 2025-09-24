@@ -38,7 +38,6 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  *         https://vote.sky.money/polling/QmX3Lfa6
  */
 contract SparkEthereum_20250918 is SparkPayloadEthereum {
-
     address internal constant NEW_ALM_CONTROLLER = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
@@ -127,5 +126,4 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
 
         _transferFromSparkLendTreasury(aTokens);
     }
-
 }

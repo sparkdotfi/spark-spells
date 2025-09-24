@@ -79,5 +79,4 @@ library DealUtils {
 
         deal(asset, user, amount);
     }
-
 }

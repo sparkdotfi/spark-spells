@@ -2,6 +2,8 @@
 pragma solidity ^0.8.23;
 import { Domain } from "xchain-helpers/testing/Domain.sol";
 
+// TODO: MDL, check if this custom type is even worth it.
+
 type ChainId is uint256;
 using ChainIdUtils for ChainId global;
 using { equals as == } for ChainId global;
@@ -17,27 +19,28 @@ function notEquals(ChainId left, ChainId right) pure returns(bool) {
 
 library ChainIdUtils {
     function fromDomain(Domain memory domain) internal pure returns (ChainId) {
-        uint256 id = domain.chain.chainId;
-        return fromUint(id);
+        return fromUint(domain.chain.chainId);
     }
 
     function fromUint(uint256 id) internal pure returns (ChainId chainId) {
         if (id == 1) return ChainId.wrap(id);
-        else if (id == 100) return ChainId.wrap(id);
-        else if (id == 8453) return ChainId.wrap(id);
-        else if (id == 42161) return ChainId.wrap(id);
-        else if (id == 10) return ChainId.wrap(id);
-        else if (id == 130) return ChainId.wrap(id);
+        if (id == 100) return ChainId.wrap(id);
+        if (id == 8453) return ChainId.wrap(id);
+        if (id == 42161) return ChainId.wrap(id);
+        if (id == 10) return ChainId.wrap(id);
+        if (id == 130) return ChainId.wrap(id);
+
         require(false, "ChainIdUtils/invalid-chain-id");
     }
 
     function toDomainString(ChainId id) internal pure returns (string memory domainString) {
         if (ChainId.unwrap(id) == 1) return "Ethereum";
-        else if (ChainId.unwrap(id) == 100) return "Gnosis";
-        else if (ChainId.unwrap(id) == 8453) return "Base";
-        else if (ChainId.unwrap(id) == 42161) return "ArbitrumOne";
-        else if (ChainId.unwrap(id) == 10) return "Optimism";
-        else if (ChainId.unwrap(id) == 130) return "Unichain";
+        if (ChainId.unwrap(id) == 100) return "Gnosis";
+        if (ChainId.unwrap(id) == 8453) return "Base";
+        if (ChainId.unwrap(id) == 42161) return "ArbitrumOne";
+        if (ChainId.unwrap(id) == 10) return "Optimism";
+        if (ChainId.unwrap(id) == 130) return "Unichain";
+
         require(false, "ChainIdUtils/invalid-chain-id");
     }
 

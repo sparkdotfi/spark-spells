@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import { Address } from './libraries/Address.sol';
+
 import { IAaveV3ConfigEngine as IEngine } from './interfaces/IAaveV3ConfigEngine.sol';
-import { IV3RateStrategyFactory as Rates } from './interfaces/IV3RateStrategyFactory.sol';
 
 // TODO: MDL, seems unused.
 library EngineFlags {
@@ -48,14 +48,14 @@ abstract contract AaveV3PayloadBase {
 
   IEngine public immutable LISTING_ENGINE;
 
-  constructor(IEngine engine) {
-    LISTING_ENGINE = engine;
+  constructor(address engine) {
+    LISTING_ENGINE = IEngine(engine);
   }
 
-  /// @dev to be overriden on the child if any extra logic is needed pre-listing
+  /// @dev to be overridden on the child if any extra logic is needed pre-listing
   function _preExecute() internal virtual {}
 
-  /// @dev to be overriden on the child if any extra logic is needed post-listing
+  /// @dev to be overridden on the child if any extra logic is needed post-listing
   function _postExecute() internal virtual {}
 
   function execute() public virtual {

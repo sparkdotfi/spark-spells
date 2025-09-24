@@ -9,9 +9,7 @@ import { Gnosis } from 'spark-address-registry/Gnosis.sol';
  * @dev Base smart contract for Gnosis Chain.
  * @author Phoenix Labs
  */
-abstract contract SparkPayloadGnosis is
-    AaveV3PayloadBase(IEngine(Gnosis.CONFIG_ENGINE))
-{
+abstract contract SparkPayloadGnosis is  AaveV3PayloadBase(Gnosis.CONFIG_ENGINE) {
     function getPoolContext() public pure override returns (IEngine.PoolContext memory) {
         return IEngine.PoolContext({networkName: 'Gnosis Chain', networkAbbreviation: 'Gno'});
     }
