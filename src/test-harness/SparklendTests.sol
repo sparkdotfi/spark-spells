@@ -77,25 +77,25 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) private {
-        string memory prefix = string(abi.encodePacked(id, '-', chainId.toDomainString()));
+        string memory prefix = string(abi.encodePacked(id, "-", chainId.toDomainString()));
 
         IPool pool = _getSparkLendContext().pool;
 
         createConfigurationSnapshot(
-            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-pre')),
+            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
             pool
         );
 
         executeAllPayloadsAndBridges();
 
         createConfigurationSnapshot(
-            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-post')),
+            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post")),
             pool
         );
 
         diffReports(
-            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-pre')),
-            string(abi.encodePacked(prefix, '-', vm.toString(address(pool)), '-post'))
+            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
+            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post"))
         );
     }
 
@@ -195,7 +195,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
                 continue;
             }
 
-            require(IERC20(aToken).totalSupply() >= 1e4, 'RESERVE_NOT_SEEDED');
+            require(IERC20(aToken).totalSupply() >= 1e4, "RESERVE_NOT_SEEDED");
         }
     }
 
@@ -205,8 +205,8 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         address[] memory reserves = ctx.pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      '_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW');
-            require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,'_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH');
+            require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
+            require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
         }
     }
 
@@ -226,7 +226,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         uint256 newSlope1,
         uint256 newSlope2
     ) internal {
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', _getSparkLendContext().pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot("", _getSparkLendContext().pool);
         ReserveConfig   memory config           = _findReserveConfig(allConfigsBefore, asset);
 
         IDefaultInterestRateStrategy prevIRM = IDefaultInterestRateStrategy(config.interestRateStrategy);
@@ -248,7 +248,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         executeAllPayloadsAndBridges();
 
-        address newIRM = _findReserveConfig(createConfigurationSnapshot('', _getSparkLendContext().pool), asset).interestRateStrategy;
+        address newIRM = _findReserveConfig(createConfigurationSnapshot("", _getSparkLendContext().pool), asset).interestRateStrategy;
         assertNotEq(newIRM, address(prevIRM));
 
         _validateInterestRateStrategy(
@@ -301,19 +301,19 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
      */
     function diffReports(string memory reportBefore, string memory reportAfter) internal {
         string memory outPath = string(
-            abi.encodePacked('./diffs/', reportBefore, '_', reportAfter, '.md')
+            abi.encodePacked("./diffs/", reportBefore, "_", reportAfter, ".md")
         );
 
-        string memory beforePath = string(abi.encodePacked('./reports/', reportBefore, '.json'));
-        string memory afterPath = string(abi.encodePacked('./reports/', reportAfter, '.json'));
+        string memory beforePath = string(abi.encodePacked("./reports/", reportBefore, ".json"));
+        string memory afterPath = string(abi.encodePacked("./reports/", reportAfter, ".json"));
 
         string[] memory inputs = new string[](7);
-        inputs[0] = 'npx';
-        inputs[1] = '@marsfoundation/aave-cli';
-        inputs[2] = 'diff-snapshots';
+        inputs[0] = "npx";
+        inputs[1] = "@marsfoundation/aave-cli";
+        inputs[2] = "diff-snapshots";
         inputs[3] = beforePath;
         inputs[4] = afterPath;
-        inputs[5] = '-o';
+        inputs[5] = "-o";
         inputs[6] = outPath;
 
         vm.ffi(inputs);

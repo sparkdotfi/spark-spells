@@ -296,7 +296,7 @@ abstract contract SpellRunner is Test {
                     vm.prank(address(executor));
                     executor.executeDelegateCall(
                         payload,
-                        abi.encodeWithSignature('execute()')
+                        abi.encodeWithSignature("execute()")
                     );
 
                     console.log("simulating execution payload for network: ", chainId.toDomainString());
@@ -330,9 +330,9 @@ abstract contract SpellRunner is Test {
 
         vm.prank(Ethereum.PAUSE_PROXY);
         (bool success,) = address(executor).call(abi.encodeWithSignature(
-            'exec(address,bytes)',
+            "exec(address,bytes)",
             payloadAddress,
-            abi.encodeWithSignature('execute()')
+            abi.encodeWithSignature("execute()")
         ));
         require(success, "FAILED TO EXECUTE PAYLOAD");
     }

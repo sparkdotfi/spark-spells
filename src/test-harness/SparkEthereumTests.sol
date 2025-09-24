@@ -473,13 +473,13 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
         SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
+        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot("", ctx.pool);
 
         uint256 startingReserveLength = allConfigsBefore.length;
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
+        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot("", ctx.pool);
 
         assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
 
@@ -558,7 +558,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         require(
             ctx.priceOracle.getSourceOfAsset(params.tokenAddress) == params.oracleAddress,
-            '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE'
+            "_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE"
         );
     }
 
@@ -682,7 +682,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         uint256 ssrRate = uint256(IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR());
 
-        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configBefore.interestRateStrategy,
@@ -704,7 +704,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configAfter.interestRateStrategy,
@@ -740,7 +740,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256 ssrRateDecimals = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).decimals();
         int256 ssrRate = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
 
-        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configBefore.interestRateStrategy,
@@ -762,7 +762,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         executeAllPayloadsAndBridges();
 
-        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot('', ctx.pool), symbol);
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configAfter.interestRateStrategy,

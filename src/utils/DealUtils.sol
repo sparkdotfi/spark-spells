@@ -4,8 +4,6 @@ pragma solidity >=0.7.5 <0.9.0;
 
 import { Vm } from "forge-std/Vm.sol";
 
-
-
 import { IERC20 } from "erc20-helpers/interfaces/IERC20.sol";
 
 library DealUtils {

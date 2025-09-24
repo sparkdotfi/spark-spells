@@ -125,15 +125,15 @@ contract ProtocolV3TestBase is Test {
         bool eModeConfigs,
         bool poolConfigs
     ) public returns (ReserveConfig[] memory) {
-        string memory path = string(abi.encodePacked('./reports/', reportName, '.json'));
+        string memory path = string(abi.encodePacked("./reports/", reportName, ".json"));
 
         // overwrite with empty json to later be extended
         vm.writeFile(
             path,
-            '{ "eModes": {}, "reserves": {}, "strategies": {}, "poolConfiguration": {} }'
+            "{ 'eModes': {}, 'reserves': {}, 'strategies': {}, 'poolConfiguration': {} }"
         );
 
-        vm.serializeUint('root', 'chainId', block.chainid);
+        vm.serializeUint("root", "chainId", block.chainid);
 
         // TODO: return argument can be named and used directly.
         ReserveConfig[] memory configs = _getReservesConfigs(pool);
@@ -158,13 +158,13 @@ contract ProtocolV3TestBase is Test {
 
         for (uint256 i = 0; i < configs.length; i++) {
             if (!_includeCollateralAssetInE2e(configs[i])) {
-                console.log('Skip collateral: %s, not configured', configs[i].symbol);
+                console.log("Skip collateral: %s, not configured", configs[i].symbol);
                 continue;
             }
 
             for(uint256 j; j < configs.length; j++) {
                 if (!_includeBorrowAssetInE2e(configs[j])) {
-                    console.log('Skip borrow: %s, not configured', configs[i].symbol);
+                    console.log("Skip borrow: %s, not configured", configs[i].symbol);
                     continue;
                 }
 
@@ -180,7 +180,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig memory borrowConfig
     ) public {
         console.log(
-            '\n\nE2E: Collateral %s, borrow %s',
+            "\n\nE2E: Collateral %s, borrow %s",
             collateralConfig.symbol,
             borrowConfig.symbol
         );
@@ -205,26 +205,26 @@ contract ProtocolV3TestBase is Test {
             : collateralAmount * 2;
 
         if (_isAboveSupplyCap(collateralConfig, totalCollateralAssetSupplied)) {
-            console.log('Skip collateral: %s, supply cap fully utilized', collateralConfig.symbol);
+            console.log("Skip collateral: %s, supply cap fully utilized", collateralConfig.symbol);
             return;
         }
 
         if (
             _isAboveSupplyCap(borrowConfig, totalBorrowAssetSupplied)
         ) {
-            console.log('Skip borrow: %s, supply cap fully utilized', borrowConfig.symbol);
+            console.log("Skip borrow: %s, supply cap fully utilized", borrowConfig.symbol);
             return;
         }
 
         if (
             _isAboveBorrowCap(pool, borrowConfig, maxBorrowAmount)
         ) {
-            console.log('Skip borrow: %s, borrow cap fully utilized', borrowConfig.symbol);
+            console.log("Skip borrow: %s, borrow cap fully utilized", borrowConfig.symbol);
             return;
         }
 
         if (collateralConfig.debtCeiling > 0 && !borrowConfig.isBorrowableInIsolation) {
-            console.log('Skip: %s-%s combo, asset not supported for isolated borrow', collateralConfig.symbol, borrowConfig.symbol);
+            console.log("Skip: %s-%s combo, asset not supported for isolated borrow", collateralConfig.symbol, borrowConfig.symbol);
             return;
         }
 
@@ -538,7 +538,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig memory testAssetConfig,
         uint256 amount
     ) internal {
-        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, 'UNDERLYING_NOT_ZERO');
+        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
 
         pool.flashLoanSimple(
             address(this),
@@ -548,7 +548,7 @@ contract ProtocolV3TestBase is Test {
             0
         );
 
-        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, 'UNDERLYING_NOT_ZERO');
+        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
     }
 
     // Called back from the flashloan
@@ -560,7 +560,7 @@ contract ProtocolV3TestBase is Test {
         bytes calldata params
     ) external returns (bool) {
         address pool = abi.decode(params, (address));
-        assertEq(IERC20(asset).balanceOf(address(this)), amount, 'UNDERLYING_NOT_AMOUNT');
+        assertEq(IERC20(asset).balanceOf(address(this)), amount, "UNDERLYING_NOT_AMOUNT");
 
         // TODO: MDL, is this fixed?
         // Temporary measure while USDC/EURe/USDC.e deal gets fixed, set the balance to amount + premium either way
@@ -597,9 +597,9 @@ contract ProtocolV3TestBase is Test {
         address user,
         uint256 amount
     ) internal {
-        require(!config.isFrozen, 'SUPPLY(): FROZEN_RESERVE');
-        require( config.isActive, 'SUPPLY(): INACTIVE_RESERVE');
-        require(!config.isPaused, 'SUPPLY(): PAUSED_RESERVE');
+        require(!config.isFrozen, "SUPPLY(): FROZEN_RESERVE");
+        require( config.isActive, "SUPPLY(): INACTIVE_RESERVE");
+        require(!config.isPaused, "SUPPLY(): PAUSED_RESERVE");
 
         if (!DealUtils.patchedDeal(config.underlying, user, amount)) {
             deal(config.underlying, user, amount);
@@ -609,7 +609,7 @@ contract ProtocolV3TestBase is Test {
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
         uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
 
-        console.log('SUPPLY: %s, Amount: %s', config.symbol, _formattedAmount(amount, config.decimals));
+        console.log("SUPPLY: %s, Amount: %s", config.symbol, _formattedAmount(amount, config.decimals));
 
         vm.startPrank(user);
         IERC20(config.underlying).safeApprove(address(pool), amount);
@@ -638,7 +638,7 @@ contract ProtocolV3TestBase is Test {
         vm.prank(user);
         uint256 amountOut = pool.withdraw(config.underlying, amount, user);
 
-        console.log('WITHDRAW: %s, Amount: %s', config.symbol, _formattedAmount(amountOut, config.decimals));
+        console.log("WITHDRAW: %s, Amount: %s", config.symbol, _formattedAmount(amountOut, config.decimals));
 
         uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
         uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
@@ -665,7 +665,7 @@ contract ProtocolV3TestBase is Test {
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
         uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
 
-        console.log('BORROW: %s, Amount %s, Stable: %s', config.symbol, _formattedAmount(amount, config.decimals), stable);
+        console.log("BORROW: %s, Amount %s, Stable: %s", config.symbol, _formattedAmount(amount, config.decimals), stable);
 
         vm.prank(user);
         pool.borrow(config.underlying, amount, stable ? 1 : 2, 0, user);
@@ -696,7 +696,7 @@ contract ProtocolV3TestBase is Test {
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
         uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
 
-        console.log('REPAY: %s, Amount: %s', config.symbol, _formattedAmount(amount, config.decimals));
+        console.log("REPAY: %s, Amount: %s", config.symbol, _formattedAmount(amount, config.decimals));
 
         vm.startPrank(user);
         IERC20(config.underlying).safeApprove(address(pool), amount);
@@ -743,7 +743,7 @@ contract ProtocolV3TestBase is Test {
         vm.startPrank(liquidator);
         SafeERC20.safeApprove(IERC20(borrow.underlying), address(pool), balances.debtBefore);
 
-        console.log('LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s', collateral.symbol, borrow.symbol, _formattedAmount(balances.debtBefore, borrow.decimals));
+        console.log("LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s", collateral.symbol, borrow.symbol, _formattedAmount(balances.debtBefore, borrow.decimals));
 
         pool.liquidationCall(collateral.underlying, borrow.underlying, user, balances.debtBefore, false);
         vm.stopPrank();
@@ -875,8 +875,8 @@ contract ProtocolV3TestBase is Test {
         IPool pool
     ) internal {
         // keys for json stringification
-        string memory eModesKey = 'emodes';
-        string memory content = '{}';
+        string memory eModesKey = "emodes";
+        string memory content = "{}";
 
         uint256[] memory usedCategories = new uint256[](configs.length);
 
@@ -890,24 +890,24 @@ contract ProtocolV3TestBase is Test {
             );
 
             string memory key = vm.toString(configs[i].eModeCategory);
-            vm.serializeUint(key, 'eModeCategory', configs[i].eModeCategory);
-            vm.serializeString(key, 'label', category.label);
-            vm.serializeUint(key, 'ltv', category.ltv);
-            vm.serializeUint(key, 'liquidationThreshold', category.liquidationThreshold);
-            vm.serializeUint(key, 'liquidationBonus', category.liquidationBonus);
+            vm.serializeUint(key, "eModeCategory", configs[i].eModeCategory);
+            vm.serializeString(key, "label", category.label);
+            vm.serializeUint(key, "ltv", category.ltv);
+            vm.serializeUint(key, "liquidationThreshold", category.liquidationThreshold);
+            vm.serializeUint(key, "liquidationBonus", category.liquidationBonus);
 
-            string memory object = vm.serializeAddress(key, 'priceSource', category.priceSource);
+            string memory object = vm.serializeAddress(key, "priceSource", category.priceSource);
             content = vm.serializeString(eModesKey, key, object);
         }
 
-        string memory output = vm.serializeString('root', 'eModes', content);
+        string memory output = vm.serializeString("root", "eModes", content);
         vm.writeJson(output, path);
     }
 
     function _writeStrategyConfigs(string memory path, ReserveConfig[] memory configs) internal {
         // keys for json stringification
-        string memory strategiesKey = 'strategies';
-        string memory content = '{}';
+        string memory strategiesKey = "strategies";
+        string memory content = "{}";
 
         address[] memory usedStrategies = new address[](configs.length);
 
@@ -918,7 +918,7 @@ contract ProtocolV3TestBase is Test {
             content = _writeStrategyConfig(strategiesKey, configs[i].interestRateStrategy);
         }
 
-        string memory output = vm.serializeString('root', 'strategies', content);
+        string memory output = vm.serializeString("root", "strategies", content);
         vm.writeJson(output, path);
     }
 
@@ -931,49 +931,49 @@ contract ProtocolV3TestBase is Test {
 
         vm.serializeString(
             key,
-            'baseStableBorrowRate',
+            "baseStableBorrowRate",
             vm.toString(strategy.getBaseStableBorrowRate())
         );
 
-        vm.serializeString(key, 'stableRateSlope1', vm.toString(strategy.getStableRateSlope1()));
+        vm.serializeString(key, "stableRateSlope1", vm.toString(strategy.getStableRateSlope1()));
 
-        vm.serializeString(key, 'stableRateSlope2', vm.toString(strategy.getStableRateSlope2()));
+        vm.serializeString(key, "stableRateSlope2", vm.toString(strategy.getStableRateSlope2()));
 
         vm.serializeString(
             key,
-            'baseVariableBorrowRate',
+            "baseVariableBorrowRate",
             vm.toString(strategy.getBaseVariableBorrowRate())
         );
 
         vm.serializeString(
             key,
-            'variableRateSlope1',
+            "variableRateSlope1",
             vm.toString(strategy.getVariableRateSlope1())
         );
 
         vm.serializeString(
             key,
-            'variableRateSlope2',
+            "variableRateSlope2",
             vm.toString(strategy.getVariableRateSlope2())
         );
 
         vm.serializeString(
             key,
-            'optimalStableToTotalDebtRatio',
+            "optimalStableToTotalDebtRatio",
             vm.toString(strategy.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO())
         );
 
         vm.serializeString(
             key,
-            'maxExcessStableToTotalDebtRatio',
+            "maxExcessStableToTotalDebtRatio",
             vm.toString(strategy.MAX_EXCESS_STABLE_TO_TOTAL_DEBT_RATIO())
         );
 
-        vm.serializeString(key, 'optimalUsageRatio', vm.toString(strategy.OPTIMAL_USAGE_RATIO()));
+        vm.serializeString(key, "optimalUsageRatio", vm.toString(strategy.OPTIMAL_USAGE_RATIO()));
 
         string memory object = vm.serializeString(
             key,
-            'maxExcessUsageRatio',
+            "maxExcessUsageRatio",
             vm.toString(strategy.MAX_EXCESS_USAGE_RATIO())
         );
 
@@ -986,8 +986,8 @@ contract ProtocolV3TestBase is Test {
         IPool pool
     ) internal {
         // keys for json stringification
-        string memory reservesKey = 'reserves';
-        string memory content = '{}';
+        string memory reservesKey = "reserves";
+        string memory content = "{}";
 
         IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
         IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
@@ -997,41 +997,41 @@ contract ProtocolV3TestBase is Test {
             IOracleLike assetOracle = IOracleLike(oracle.getSourceOfAsset(config.underlying));
 
             string memory key = vm.toString(config.underlying);
-            vm.serializeString(key, 'symbol', config.symbol);
-            vm.serializeUint(key, 'ltv', config.ltv);
-            vm.serializeUint(key, 'liquidationThreshold', config.liquidationThreshold);
-            vm.serializeUint(key, 'liquidationBonus', config.liquidationBonus);
-            vm.serializeUint(key, 'liquidationProtocolFee', config.liquidationProtocolFee);
-            vm.serializeUint(key, 'reserveFactor', config.reserveFactor);
-            vm.serializeUint(key, 'decimals', config.decimals);
-            vm.serializeUint(key, 'borrowCap', config.borrowCap);
-            vm.serializeUint(key, 'supplyCap', config.supplyCap);
-            vm.serializeUint(key, 'debtCeiling', config.debtCeiling);
-            vm.serializeUint(key, 'eModeCategory', config.eModeCategory);
-            vm.serializeBool(key, 'usageAsCollateralEnabled', config.usageAsCollateralEnabled);
-            vm.serializeBool(key, 'borrowingEnabled', config.borrowingEnabled);
-            vm.serializeBool(key, 'stableBorrowRateEnabled', config.stableBorrowRateEnabled);
-            vm.serializeBool(key, 'isPaused', config.isPaused);
-            vm.serializeBool(key, 'isActive', config.isActive);
-            vm.serializeBool(key, 'isFrozen', config.isFrozen);
-            vm.serializeBool(key, 'isSiloed', config.isSiloed);
-            vm.serializeBool(key, 'isBorrowableInIsolation', config.isBorrowableInIsolation);
-            vm.serializeBool(key, 'isFlashloanable', config.isFlashloanable);
-            vm.serializeAddress(key, 'interestRateStrategy', config.interestRateStrategy);
-            vm.serializeAddress(key, 'underlying', config.underlying);
-            vm.serializeAddress(key, 'aToken', config.aToken);
-            vm.serializeAddress(key, 'stableDebtToken', config.stableDebtToken);
-            vm.serializeAddress(key, 'variableDebtToken', config.variableDebtToken);
+            vm.serializeString(key, "symbol", config.symbol);
+            vm.serializeUint(key, "ltv", config.ltv);
+            vm.serializeUint(key, "liquidationThreshold", config.liquidationThreshold);
+            vm.serializeUint(key, "liquidationBonus", config.liquidationBonus);
+            vm.serializeUint(key, "liquidationProtocolFee", config.liquidationProtocolFee);
+            vm.serializeUint(key, "reserveFactor", config.reserveFactor);
+            vm.serializeUint(key, "decimals", config.decimals);
+            vm.serializeUint(key, "borrowCap", config.borrowCap);
+            vm.serializeUint(key, "supplyCap", config.supplyCap);
+            vm.serializeUint(key, "debtCeiling", config.debtCeiling);
+            vm.serializeUint(key, "eModeCategory", config.eModeCategory);
+            vm.serializeBool(key, "usageAsCollateralEnabled", config.usageAsCollateralEnabled);
+            vm.serializeBool(key, "borrowingEnabled", config.borrowingEnabled);
+            vm.serializeBool(key, "stableBorrowRateEnabled", config.stableBorrowRateEnabled);
+            vm.serializeBool(key, "isPaused", config.isPaused);
+            vm.serializeBool(key, "isActive", config.isActive);
+            vm.serializeBool(key, "isFrozen", config.isFrozen);
+            vm.serializeBool(key, "isSiloed", config.isSiloed);
+            vm.serializeBool(key, "isBorrowableInIsolation", config.isBorrowableInIsolation);
+            vm.serializeBool(key, "isFlashloanable", config.isFlashloanable);
+            vm.serializeAddress(key, "interestRateStrategy", config.interestRateStrategy);
+            vm.serializeAddress(key, "underlying", config.underlying);
+            vm.serializeAddress(key, "aToken", config.aToken);
+            vm.serializeAddress(key, "stableDebtToken", config.stableDebtToken);
+            vm.serializeAddress(key, "variableDebtToken", config.variableDebtToken);
             vm.serializeAddress(
                 key,
-                'aTokenImpl',
+                "aTokenImpl",
                 ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(vm, config.aToken)
             );
-            vm.serializeString(key, 'aTokenSymbol', IERC20(config.aToken).symbol());
-            vm.serializeString(key, 'aTokenName', IERC20(config.aToken).name());
+            vm.serializeString(key, "aTokenSymbol", IERC20(config.aToken).symbol());
+            vm.serializeString(key, "aTokenName", IERC20(config.aToken).name());
             vm.serializeAddress(
                 key,
-                'stableDebtTokenImpl',
+                "stableDebtTokenImpl",
                 ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(
                     vm,
                     config.stableDebtToken
@@ -1039,13 +1039,13 @@ contract ProtocolV3TestBase is Test {
             );
             vm.serializeString(
                 key,
-                'stableDebtTokenSymbol',
+                "stableDebtTokenSymbol",
                 IERC20(config.stableDebtToken).symbol()
             );
-            vm.serializeString(key, 'stableDebtTokenName', IERC20(config.stableDebtToken).name());
+            vm.serializeString(key, "stableDebtTokenName", IERC20(config.stableDebtToken).name());
             vm.serializeAddress(
                 key,
-                'variableDebtTokenImpl',
+                "variableDebtTokenImpl",
                 ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(
                     vm,
                     config.variableDebtToken
@@ -1053,99 +1053,99 @@ contract ProtocolV3TestBase is Test {
             );
             vm.serializeString(
                 key,
-                'variableDebtTokenSymbol',
+                "variableDebtTokenSymbol",
                 IERC20(config.variableDebtToken).symbol()
             );
             vm.serializeString(
                 key,
-                'variableDebtTokenName',
+                "variableDebtTokenName",
                 IERC20(config.variableDebtToken).name()
             );
 
             if (block.chainid == 1) {
                 ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
                 (uint48 maxBorrowCap, uint48 borrowCapGap, uint48 borrowCapIncreaseCooldown,, ) = capAutomator.borrowCapConfigs(config.underlying);
-                vm.serializeUint(key, 'maxBorrowCap', maxBorrowCap);
-                vm.serializeUint(key, 'borrowCapGap', borrowCapGap);
-                vm.serializeUint(key, 'borrowCapIncreaseCooldown', borrowCapIncreaseCooldown);
+                vm.serializeUint(key, "maxBorrowCap", maxBorrowCap);
+                vm.serializeUint(key, "borrowCapGap", borrowCapGap);
+                vm.serializeUint(key, "borrowCapIncreaseCooldown", borrowCapIncreaseCooldown);
 
                 (uint48 maxSupplyCap, uint48 supplyCapGap, uint48 supplyCapIncreaseCooldown,, ) = capAutomator.supplyCapConfigs(config.underlying);
-                vm.serializeUint(key, 'maxSupplyCap', maxSupplyCap);
-                vm.serializeUint(key, 'supplyCapGap', supplyCapGap);
-                vm.serializeUint(key, 'supplyCapIncreaseCooldown', supplyCapIncreaseCooldown);
+                vm.serializeUint(key, "maxSupplyCap", maxSupplyCap);
+                vm.serializeUint(key, "supplyCapGap", supplyCapGap);
+                vm.serializeUint(key, "supplyCapIncreaseCooldown", supplyCapIncreaseCooldown);
             }
 
-            vm.serializeAddress(key, 'oracle', address(assetOracle));
+            vm.serializeAddress(key, "oracle", address(assetOracle));
 
             if (address(assetOracle) != address(0)) {
                 try assetOracle.description() returns (string memory name) {
-                    vm.serializeString(key, 'oracleDescription', name);
+                    vm.serializeString(key, "oracleDescription", name);
                 } catch {
                     try assetOracle.name() returns (string memory name) {
-                        vm.serializeString(key, 'oracleName', name);
+                        vm.serializeString(key, "oracleName", name);
                     } catch {}
                 }
 
                 try assetOracle.decimals() returns (uint8 decimals) {
-                    vm.serializeUint(key, 'oracleDecimals', decimals);
+                    vm.serializeUint(key, "oracleDecimals", decimals);
                 } catch {
                     try assetOracle.DECIMALS() returns (uint8 decimals) {
-                        vm.serializeUint(key, 'oracleDecimals', decimals);
+                        vm.serializeUint(key, "oracleDecimals", decimals);
                     } catch {}
                 }
             }
 
             string memory out = vm.serializeUint(
                 key,
-                'oracleLatestAnswer',
+                "oracleLatestAnswer",
                 uint256(oracle.getAssetPrice(config.underlying))
             );
 
             content = vm.serializeString(reservesKey, key, out);
         }
 
-        string memory output = vm.serializeString('root', 'reserves', content);
+        string memory output = vm.serializeString("root", "reserves", content);
         vm.writeJson(output, path);
     }
 
     function _writePoolConfiguration(string memory path, IPool pool) internal {
         // keys for json stringification
-        string memory poolConfigKey = 'poolConfig';
+        string memory poolConfigKey = "poolConfig";
 
         // addresses provider
         IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
-        vm.serializeAddress(poolConfigKey, 'poolAddressesProvider', address(addressesProvider));
+        vm.serializeAddress(poolConfigKey, "poolAddressesProvider", address(addressesProvider));
 
         // oracles
-        vm.serializeAddress(poolConfigKey, 'oracle', addressesProvider.getPriceOracle());
+        vm.serializeAddress(poolConfigKey, "oracle", addressesProvider.getPriceOracle());
         vm.serializeAddress(
             poolConfigKey,
-            'priceOracleSentinel',
+            "priceOracleSentinel",
             addressesProvider.getPriceOracleSentinel()
         );
 
         // pool configurator
         IPoolConfigurator configurator = IPoolConfigurator(addressesProvider.getPoolConfigurator());
-        vm.serializeAddress(poolConfigKey, 'poolConfigurator', address(configurator));
+        vm.serializeAddress(poolConfigKey, "poolConfigurator", address(configurator));
         vm.serializeAddress(
             poolConfigKey,
-            'poolConfiguratorImpl',
+            "poolConfiguratorImpl",
             ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(vm, address(configurator))
         );
 
         // PoolDataProvider
         IPoolDataProvider pdp = IPoolDataProvider(addressesProvider.getPoolDataProvider());
-        vm.serializeAddress(poolConfigKey, 'protocolDataProvider', address(pdp));
+        vm.serializeAddress(poolConfigKey, "protocolDataProvider", address(pdp));
 
         // pool
         vm.serializeAddress(
             poolConfigKey,
-            'poolImpl',
+            "poolImpl",
             ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(vm, address(pool))
         );
-        string memory content = vm.serializeAddress(poolConfigKey, 'pool', address(pool));
+        string memory content = vm.serializeAddress(poolConfigKey, "pool", address(pool));
 
-        string memory output = vm.serializeString('root', 'poolConfig', content);
+        string memory output = vm.serializeString("root", "poolConfig", content);
         vm.writeJson(output, path);
     }
 
@@ -1265,7 +1265,7 @@ contract ProtocolV3TestBase is Test {
             return _clone(configs[i]);
         }
 
-        revert('RESERVE_CONFIG_NOT_FOUND');
+        revert("RESERVE_CONFIG_NOT_FOUND");
     }
 
     function _findReserveConfigBySymbol(
@@ -1280,36 +1280,36 @@ contract ProtocolV3TestBase is Test {
             return _clone(configs[i]);
         }
 
-        revert('RESERVE_CONFIG_NOT_FOUND');
+        revert("RESERVE_CONFIG_NOT_FOUND");
     }
 
     function _logReserveConfig(ReserveConfig memory config) internal pure {
-        console.log('Symbol ', config.symbol);
-        console.log('Underlying address ', config.underlying);
-        console.log('AToken address ', config.aToken);
-        console.log('Stable debt token address ', config.stableDebtToken);
-        console.log('Variable debt token address ', config.variableDebtToken);
-        console.log('Decimals ', config.decimals);
-        console.log('LTV ', config.ltv);
-        console.log('Liquidation Threshold ', config.liquidationThreshold);
-        console.log('Liquidation Bonus ', config.liquidationBonus);
-        console.log('Liquidation protocol fee ', config.liquidationProtocolFee);
-        console.log('Reserve Factor ', config.reserveFactor);
-        console.log('Usage as collateral enabled ', (config.usageAsCollateralEnabled) ? 'Yes' : 'No');
-        console.log('Borrowing enabled ', (config.borrowingEnabled) ? 'Yes' : 'No');
-        console.log('Stable borrow rate enabled ', (config.stableBorrowRateEnabled) ? 'Yes' : 'No');
-        console.log('Supply cap ', config.supplyCap);
-        console.log('Borrow cap ', config.borrowCap);
-        console.log('Debt ceiling ', config.debtCeiling);
-        console.log('eMode category ', config.eModeCategory);
-        console.log('Interest rate strategy ', config.interestRateStrategy);
-        console.log('Is active ', (config.isActive) ? 'Yes' : 'No');
-        console.log('Is frozen ', (config.isFrozen) ? 'Yes' : 'No');
-        console.log('Is siloed ', (config.isSiloed) ? 'Yes' : 'No');
-        console.log('Is borrowable in isolation ', (config.isBorrowableInIsolation) ? 'Yes' : 'No');
-        console.log('Is flashloanable ', (config.isFlashloanable) ? 'Yes' : 'No');
-        console.log('-----');
-        console.log('-----');
+        console.log("Symbol ", config.symbol);
+        console.log("Underlying address ", config.underlying);
+        console.log("AToken address ", config.aToken);
+        console.log("Stable debt token address ", config.stableDebtToken);
+        console.log("Variable debt token address ", config.variableDebtToken);
+        console.log("Decimals ", config.decimals);
+        console.log("LTV ", config.ltv);
+        console.log("Liquidation Threshold ", config.liquidationThreshold);
+        console.log("Liquidation Bonus ", config.liquidationBonus);
+        console.log("Liquidation protocol fee ", config.liquidationProtocolFee);
+        console.log("Reserve Factor ", config.reserveFactor);
+        console.log("Usage as collateral enabled ", (config.usageAsCollateralEnabled) ? "Yes" : "No");
+        console.log("Borrowing enabled ", (config.borrowingEnabled) ? "Yes" : "No");
+        console.log("Stable borrow rate enabled ", (config.stableBorrowRateEnabled) ? "Yes" : "No");
+        console.log("Supply cap ", config.supplyCap);
+        console.log("Borrow cap ", config.borrowCap);
+        console.log("Debt ceiling ", config.debtCeiling);
+        console.log("eMode category ", config.eModeCategory);
+        console.log("Interest rate strategy ", config.interestRateStrategy);
+        console.log("Is active ", (config.isActive) ? "Yes" : "No");
+        console.log("Is frozen ", (config.isFrozen) ? "Yes" : "No");
+        console.log("Is siloed ", (config.isSiloed) ? "Yes" : "No");
+        console.log("Is borrowable in isolation ", (config.isBorrowableInIsolation) ? "Yes" : "No");
+        console.log("Is flashloanable ", (config.isFlashloanable) ? "Yes" : "No");
+        console.log("-----");
+        console.log("-----");
     }
 
     function _validateReserveConfig(
@@ -1320,101 +1320,101 @@ contract ProtocolV3TestBase is Test {
 
         require(
             keccak256(bytes(config.symbol)) == keccak256(bytes(expectedConfig.symbol)),
-            '_validateConfigsInAave() : INVALID_SYMBOL'
+            "_validateConfigsInAave() : INVALID_SYMBOL"
         );
 
         require(
             config.underlying == expectedConfig.underlying,
-            '_validateConfigsInAave() : INVALID_UNDERLYING'
+            "_validateConfigsInAave() : INVALID_UNDERLYING"
         );
 
-        require(config.decimals == expectedConfig.decimals, '_validateConfigsInAave: INVALID_DECIMALS');
+        require(config.decimals == expectedConfig.decimals, "_validateConfigsInAave: INVALID_DECIMALS");
 
-        require(config.ltv == expectedConfig.ltv, '_validateConfigsInAave: INVALID_LTV');
+        require(config.ltv == expectedConfig.ltv, "_validateConfigsInAave: INVALID_LTV");
 
         require(
             config.liquidationThreshold == expectedConfig.liquidationThreshold,
-            '_validateConfigsInAave: INVALID_LIQ_THRESHOLD'
+            "_validateConfigsInAave: INVALID_LIQ_THRESHOLD"
         );
 
         require(
             config.liquidationBonus == expectedConfig.liquidationBonus,
-            '_validateConfigsInAave: INVALID_LIQ_BONUS'
+            "_validateConfigsInAave: INVALID_LIQ_BONUS"
         );
 
         require(
             config.liquidationProtocolFee == expectedConfig.liquidationProtocolFee,
-            '_validateConfigsInAave: INVALID_LIQUIDATION_PROTOCOL_FEE'
+            "_validateConfigsInAave: INVALID_LIQUIDATION_PROTOCOL_FEE"
         );
 
         require(
             config.reserveFactor == expectedConfig.reserveFactor,
-            '_validateConfigsInAave: INVALID_RESERVE_FACTOR'
+            "_validateConfigsInAave: INVALID_RESERVE_FACTOR"
         );
 
         require(
             config.usageAsCollateralEnabled == expectedConfig.usageAsCollateralEnabled,
-            '_validateConfigsInAave: INVALID_USAGE_AS_COLLATERAL'
+            "_validateConfigsInAave: INVALID_USAGE_AS_COLLATERAL"
         );
 
         require(
             config.borrowingEnabled == expectedConfig.borrowingEnabled,
-            '_validateConfigsInAave: INVALID_BORROWING_ENABLED'
+            "_validateConfigsInAave: INVALID_BORROWING_ENABLED"
         );
 
         require(
             config.stableBorrowRateEnabled == expectedConfig.stableBorrowRateEnabled,
-            '_validateConfigsInAave: INVALID_STABLE_BORROW_ENABLED'
+            "_validateConfigsInAave: INVALID_STABLE_BORROW_ENABLED"
         );
 
         require(
             config.isActive == expectedConfig.isActive,
-            '_validateConfigsInAave: INVALID_IS_ACTIVE'
+            "_validateConfigsInAave: INVALID_IS_ACTIVE"
         );
 
         require(
             config.isFrozen == expectedConfig.isFrozen,
-            '_validateConfigsInAave: INVALID_IS_FROZEN'
+            "_validateConfigsInAave: INVALID_IS_FROZEN"
         );
 
         require(
             config.isSiloed == expectedConfig.isSiloed,
-            '_validateConfigsInAave: INVALID_IS_SILOED'
+            "_validateConfigsInAave: INVALID_IS_SILOED"
         );
 
         require(
             config.isBorrowableInIsolation == expectedConfig.isBorrowableInIsolation,
-            '_validateConfigsInAave: INVALID_IS_BORROWABLE_IN_ISOLATION'
+            "_validateConfigsInAave: INVALID_IS_BORROWABLE_IN_ISOLATION"
         );
 
         require(
             config.isFlashloanable == expectedConfig.isFlashloanable,
-            '_validateConfigsInAave: INVALID_IS_FLASHLOANABLE'
+            "_validateConfigsInAave: INVALID_IS_FLASHLOANABLE"
         );
 
         require(
             config.supplyCap == expectedConfig.supplyCap,
-            '_validateConfigsInAave: INVALID_SUPPLY_CAP'
+            "_validateConfigsInAave: INVALID_SUPPLY_CAP"
         );
 
         require(
             config.borrowCap == expectedConfig.borrowCap,
-            '_validateConfigsInAave: INVALID_BORROW_CAP'
+            "_validateConfigsInAave: INVALID_BORROW_CAP"
         );
 
         require(
             config.debtCeiling == expectedConfig.debtCeiling,
-            '_validateConfigsInAave: INVALID_DEBT_CEILING'
+            "_validateConfigsInAave: INVALID_DEBT_CEILING"
         );
 
         require(
             config.eModeCategory == expectedConfig.eModeCategory,
-            '_validateConfigsInAave: INVALID_EMODE_CATEGORY'
+            "_validateConfigsInAave: INVALID_EMODE_CATEGORY"
         );
 
         require(
             config.interestRateStrategy == expectedConfig.interestRateStrategy,
-            '_validateConfigsInAave: INVALID_INTEREST_RATE_STRATEGY'
+            "_validateConfigsInAave: INVALID_INTEREST_RATE_STRATEGY"
         );
     }
 
@@ -1429,53 +1429,53 @@ contract ProtocolV3TestBase is Test {
 
         require(
             address(strategy) == expectedStrategy,
-            '_validateInterestRateStrategy() : INVALID_STRATEGY_ADDRESS'
+            "_validateInterestRateStrategy() : INVALID_STRATEGY_ADDRESS"
         );
 
         require(
             strategy.OPTIMAL_USAGE_RATIO() == expectedStrategyValues.optimalUsageRatio,
-            '_validateInterestRateStrategy() : INVALID_OPTIMAL_RATIO'
+            "_validateInterestRateStrategy() : INVALID_OPTIMAL_RATIO"
         );
 
         require(
             strategy.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO() ==
                 expectedStrategyValues.optimalStableToTotalDebtRatio,
-            '_validateInterestRateStrategy() : INVALID_OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO'
+            "_validateInterestRateStrategy() : INVALID_OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO"
         );
 
         require(
             address(strategy.ADDRESSES_PROVIDER()) == expectedStrategyValues.addressesProvider,
-            '_validateInterestRateStrategy() : INVALID_ADDRESSES_PROVIDER'
+            "_validateInterestRateStrategy() : INVALID_ADDRESSES_PROVIDER"
         );
 
         require(
             strategy.getBaseVariableBorrowRate() == expectedStrategyValues.baseVariableBorrowRate,
-            '_validateInterestRateStrategy() : INVALID_BASE_VARIABLE_BORROW'
+            "_validateInterestRateStrategy() : INVALID_BASE_VARIABLE_BORROW"
         );
 
         require(
             strategy.getBaseStableBorrowRate() == expectedStrategyValues.baseStableBorrowRate,
-            '_validateInterestRateStrategy() : INVALID_BASE_STABLE_BORROW'
+            "_validateInterestRateStrategy() : INVALID_BASE_STABLE_BORROW"
         );
 
         require(
             strategy.getStableRateSlope1() == expectedStrategyValues.stableRateSlope1,
-            '_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_1'
+            "_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_1"
         );
 
         require(
             strategy.getStableRateSlope2() == expectedStrategyValues.stableRateSlope2,
-            '_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_2'
+            "_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_2"
         );
 
         require(
             strategy.getVariableRateSlope1() == expectedStrategyValues.variableRateSlope1,
-            '_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_1'
+            "_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_1"
         );
 
         require(
             strategy.getVariableRateSlope2() == expectedStrategyValues.variableRateSlope2,
-            '_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_2'
+            "_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_2"
         );
     }
 
@@ -1493,7 +1493,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig[] memory allConfigsAfter,
         address assetChangedUnderlying
     ) internal pure {
-        require(allConfigsBefore.length == allConfigsAfter.length, 'A_UNEXPECTED_NEW_LISTING_HAPPENED');
+        require(allConfigsBefore.length == allConfigsAfter.length, "A_UNEXPECTED_NEW_LISTING_HAPPENED");
 
         for (uint256 i = 0; i < allConfigsBefore.length; i++) {
             if (assetChangedUnderlying == allConfigsBefore[i].underlying) continue;
@@ -1508,7 +1508,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig[] memory allConfigsAfter,
         address[] memory assetChangedUnderlying
     ) internal pure {
-        require(allConfigsBefore.length == allConfigsAfter.length, 'A_UNEXPECTED_NEW_LISTING_HAPPENED');
+        require(allConfigsBefore.length == allConfigsAfter.length, "A_UNEXPECTED_NEW_LISTING_HAPPENED");
 
         for (uint256 i = 0; i < allConfigsBefore.length; i++) {
             bool isAssetExpectedToChange;
@@ -1532,121 +1532,121 @@ contract ProtocolV3TestBase is Test {
     ) internal pure {
         require(
             keccak256(abi.encodePacked(config1.symbol)) == keccak256(abi.encodePacked(config2.symbol)),
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED"
         );
 
         require(
             config1.underlying == config2.underlying,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_UNDERLYING_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_UNDERLYING_CHANGED"
         );
 
         require(
             config1.aToken == config2.aToken,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_A_TOKEN_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_A_TOKEN_CHANGED"
         );
 
         require(
             config1.stableDebtToken == config2.stableDebtToken,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_DEBT_TOKEN_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_DEBT_TOKEN_CHANGED"
         );
 
         require(
             config1.variableDebtToken == config2.variableDebtToken,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_VARIABLE_DEBT_TOKEN_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_VARIABLE_DEBT_TOKEN_CHANGED"
         );
 
         require(
             config1.decimals == config2.decimals,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_DECIMALS_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_DECIMALS_CHANGED"
         );
 
         require(
             config1.ltv == config2.ltv,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LTV_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LTV_CHANGED"
         );
 
         require(
             config1.liquidationThreshold == config2.liquidationThreshold,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_THRESHOLD_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_THRESHOLD_CHANGED"
         );
 
         require(
             config1.liquidationBonus == config2.liquidationBonus,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_BONUS_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_BONUS_CHANGED"
         );
 
         require(
             config1.liquidationProtocolFee == config2.liquidationProtocolFee,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_PROTOCOL_FEE_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_PROTOCOL_FEE_CHANGED"
         );
 
         require(
             config1.reserveFactor == config2.reserveFactor,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_RESERVE_FACTOR_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_RESERVE_FACTOR_CHANGED"
         );
 
         require(
             config1.usageAsCollateralEnabled == config2.usageAsCollateralEnabled,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_USAGE_AS_COLLATERAL_ENABLED_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_USAGE_AS_COLLATERAL_ENABLED_CHANGED"
         );
 
         require(
             config1.borrowingEnabled == config2.borrowingEnabled,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROWING_ENABLED_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROWING_ENABLED_CHANGED"
         );
         require(
             config1.interestRateStrategy == config2.interestRateStrategy,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_INTEREST_RATE_STRATEGY_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_INTEREST_RATE_STRATEGY_CHANGED"
         );
 
         require(
             config1.stableBorrowRateEnabled == config2.stableBorrowRateEnabled,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_BORROWING_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_BORROWING_CHANGED"
         );
 
         require(
             config1.isActive == config2.isActive,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_ACTIVE_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_ACTIVE_CHANGED"
         );
 
         require(
             config1.isFrozen == config2.isFrozen,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FROZEN_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FROZEN_CHANGED"
         );
 
         require(
             config1.isSiloed == config2.isSiloed,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_SILOED_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_SILOED_CHANGED"
         );
 
         require(
             config1.isBorrowableInIsolation == config2.isBorrowableInIsolation,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_BORROWABLE_IN_ISOLATION_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_BORROWABLE_IN_ISOLATION_CHANGED"
         );
 
         require(
             config1.isFlashloanable == config2.isFlashloanable,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FLASHLOANABLE_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FLASHLOANABLE_CHANGED"
         );
 
         require(
             config1.supplyCap == config2.supplyCap,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_SUPPLY_CAP_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_SUPPLY_CAP_CHANGED"
         );
 
         require(
             config1.borrowCap == config2.borrowCap,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROW_CAP_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROW_CAP_CHANGED"
         );
 
         require(
             config1.debtCeiling == config2.debtCeiling,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_DEBT_CEILING_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_DEBT_CEILING_CHANGED"
         );
 
         require(
             config1.eModeCategory == config2.eModeCategory,
-            '_noReservesConfigsChangesApartNewListings() : UNEXPECTED_E_MODE_CATEGORY_CHANGED'
+            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_E_MODE_CATEGORY_CHANGED"
         );
     }
 
@@ -1657,7 +1657,7 @@ contract ProtocolV3TestBase is Test {
     ) internal pure {
         require(
             allConfigsBefore.length == allConfigsAfter.length - count,
-            '_validateCountOfListings() : INVALID_COUNT_OF_LISTINGS'
+            "_validateCountOfListings() : INVALID_COUNT_OF_LISTINGS"
         );
     }
 
@@ -1673,19 +1673,19 @@ contract ProtocolV3TestBase is Test {
         require(
             IProxyLike(config.aToken).implementation() ==
                 expectedImplementations.aToken,
-            '_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL'
+            "_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL"
         );
 
         require(
             IProxyLike(config.variableDebtToken).implementation() ==
                 expectedImplementations.variableDebtToken,
-            '_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL'
+            "_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL"
         );
 
         require(
             IProxyLike(config.stableDebtToken).implementation() ==
                 expectedImplementations.stableDebtToken,
-            '_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL'
+            "_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL"
         );
 
         vm.stopPrank();
@@ -1700,12 +1700,12 @@ contract ProtocolV3TestBase is Test {
 
         require(
             oracle.getSourceOfAsset(asset) == expectedSource,
-            '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE'
+            "_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE"
         );
 
         require(
             IOracleLike(oracle.getSourceOfAsset(asset)).decimals() == 8,
-            '_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE_DECIMALS'
+            "_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE_DECIMALS"
         );
     }
 
@@ -1725,19 +1725,19 @@ contract ProtocolV3TestBase is Test {
             require(
                 keccak256(bytes(assetsInCategory[countCategory])) ==
                     keccak256(bytes(expectedAssets[countCategory])),
-                '_getAssetOnEmodeCategory(): INCONSISTENT_ASSETS'
+                "_getAssetOnEmodeCategory(): INCONSISTENT_ASSETS"
             );
 
             countCategory++;
 
             if (countCategory > expectedAssets.length) {
-                revert('_getAssetOnEmodeCategory(): MORE_ASSETS_IN_CATEGORY_THAN_EXPECTED');
+                revert("_getAssetOnEmodeCategory(): MORE_ASSETS_IN_CATEGORY_THAN_EXPECTED");
             }
         }
 
         // TODO: MDL, review the double check here (in and after the for loop).
         if (countCategory < expectedAssets.length) {
-            revert('_getAssetOnEmodeCategory(): LESS_ASSETS_IN_CATEGORY_THAN_EXPECTED');
+            revert("_getAssetOnEmodeCategory(): LESS_ASSETS_IN_CATEGORY_THAN_EXPECTED");
         }
     }
 

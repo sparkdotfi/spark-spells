@@ -94,7 +94,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
     }
 
     function getPoolContext() public pure override returns (IEngine.PoolContext memory) {
-        return IEngine.PoolContext({networkName: 'Ethereum', networkAbbreviation: 'Eth'});
+        return IEngine.PoolContext({networkName: "Ethereum", networkAbbreviation: "Eth"});
     }
 
     function _encodePayloadQueue(address _payload) internal pure returns (bytes memory) {
@@ -106,8 +106,8 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
 
         targets[0]           = _payload;
         values[0]            = 0;
-        signatures[0]        = 'execute()';
-        calldatas[0]         = '';
+        signatures[0]        = "execute()";
+        calldatas[0]         = "";
         withDelegatecalls[0] = true;
 
         return abi.encodeCall(IExecutor.queue, (

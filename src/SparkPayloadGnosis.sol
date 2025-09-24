@@ -13,7 +13,7 @@ import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 abstract contract SparkPayloadGnosis is AaveV3PayloadBase(Gnosis.CONFIG_ENGINE) {
 
     function getPoolContext() public pure override returns (IEngine.PoolContext memory) {
-        return IEngine.PoolContext({networkName: 'Gnosis Chain', networkAbbreviation: 'Gno'});
+        return IEngine.PoolContext({networkName: "Gnosis Chain", networkAbbreviation: "Gno"});
     }
 
 }
