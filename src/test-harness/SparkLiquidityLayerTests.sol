@@ -77,6 +77,12 @@ interface ICurvePoolLike is IERC20 {
     function stored_rates() external view returns (uint256[] memory);
 }
 
+interface ISuperstateToken is IERC20 {
+    function calculateSuperstateTokenOut(uint256, address)
+        external view returns (uint256, uint256, uint256);
+    function supportedStablecoins(address stablecoin) external view returns (address sweepDestination, uint256 fee);
+}
+
 interface IPoolManagerLike {
     function poolDelegate() external view returns (address);
     function strategyList(uint256 index) external view returns (address);
@@ -111,6 +117,11 @@ interface IFarmLike {
     function earned(address account) external view returns (uint256);
     function rewardsToken() external view returns (address);
     function stakingToken() external view returns (address);
+}
+
+interface ISSRedemptionLike {
+    function calculateUsdcOut(uint256 ustbAmount) external view returns (uint256 usdcOutAmount, uint256 usdPerUstbChainlinkRaw);
+    function calculateUstbIn(uint256 usdcOutAmount) external view returns (uint256 ustbInAmount, uint256 usdPerUstbChainlinkRaw);
 }
 
 interface IInvestmentManager {
@@ -1814,6 +1825,84 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             transferKey:    p.withdrawKey,
             transferAmount: p.withdrawAmount
         }));
+    }
+
+    struct SuperstateE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        address depositAsset;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        address withdrawAsset;
+        address withdrawDestination;
+        uint256 withdrawAmount;
+        bytes32 withdrawKey;
+    }
+
+    function _testSuperstateIntegration(SuperstateE2ETestParams memory p) internal {
+        MainnetController controller = MainnetController(p.ctx.controller);
+
+        deal(address(p.depositAsset), address(p.ctx.proxy), p.depositAmount);
+
+        IERC20           asset = IERC20(p.depositAsset);
+        ISuperstateToken token = ISuperstateToken(p.vault);
+
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        controller.subscribeSuperstate(depositLimit + 1);
+
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
+
+        ( address sweepDestination, ) = token.supportedStablecoins(address(asset));
+
+        ( uint256 expectedToken, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount )
+            = token.calculateSuperstateTokenOut(p.depositAmount, address(asset));
+
+        uint256 totalSupply = token.totalSupply();
+
+        assertEq(stablecoinInAmountAfterFee, p.depositAmount);
+        assertEq(feeOnStablecoinInAmount,    0);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        assertEq(asset.balanceOf(sweepDestination),     0);
+
+        assertEq(asset.allowance(address(p.ctx.proxy), address(token)), 0);
+
+        assertEq(token.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(token.totalSupply(),                   totalSupply);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+
+        vm.prank(p.ctx.relayer);
+        controller.subscribeSuperstate(p.depositAmount);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(sweepDestination),     p.depositAmount);
+
+        assertEq(asset.allowance(address(p.ctx.proxy), address(token)), 0);
+
+        assertEq(token.balanceOf(address(p.ctx.proxy)), expectedToken);
+        assertEq(token.totalSupply(),                   totalSupply + expectedToken);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+
+        /**************************************************/
+        /*** Step 3: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {

@@ -118,6 +118,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         // _runSLLE2ETests(ethereumSllIntegrations[16]);
 
+        skip(2 days);  // Ensure rate limits are recharged
+
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
         }
@@ -150,8 +152,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
         uint256 snapshot = vm.snapshot();
-
-        skip(10 days);  // Ensure rate limits are recharged
 
         if (integration.category == Category.AAVE) {
             console2.log("Running SLL E2E test for", integration.label);
@@ -341,6 +341,28 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
+        else if (integration.category == Category.SUPERSTATE) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            (
+                address depositAsset,
+                address withdrawAsset,
+                address withdrawDestination
+            ) = abi.decode(integration.extraData, (address, address, address));
+
+            _testSuperstateIntegration(SuperstateE2ETestParams({
+                ctx:                 _getSparkLiquidityLayerContext(),
+                vault:               integration.integration,
+                depositAsset:        depositAsset,
+                depositAmount:       100_000_000e6,
+                depositKey:          integration.entryId,
+                withdrawAsset:       withdrawAsset,
+                withdrawDestination: withdrawDestination,
+                withdrawAmount:      100_000_000e6,
+                withdrawKey:         integration.exitId
+            }));
+        }
+
         // else if (integration.category == Category.CCTP) {
         //     // console2.log("Running SLL E2E test for", integration.label);
 
@@ -485,7 +507,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0)));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE-USTB", Category.SUPERSTATE, address(0), Ethereum.USTB, address(0), Ethereum.USTB));
+        ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB));
     }
 
     function _loadPostExecutionIntegrations() internal {
@@ -613,7 +635,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId   = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
             exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
             exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
-            extraData = abi.encode(assetOut, withdrawDestination);
+            extraData = abi.encode(assetIn, assetOut, withdrawDestination);
         }
         else if (category == Category.REWARDS_TRANSFER) {
             entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
@@ -626,7 +648,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         return SLLIntegration({
             label:       label,
             category:    category,
-            integration: assetIn,  // TODO: Refactor this for testing, integration + underlying?
+            integration: assetOut,  // Default to assetOut for transferAsset type integrations because this is the LP token
             entryId:     entryId,
             entryId2:    entryId2,
             exitId:      exitId,
