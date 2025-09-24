@@ -452,7 +452,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        _testERC4626Integration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
     }
 
     function _testAaveIntegration(E2ETestParams memory p) internal {
@@ -1709,7 +1709,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         deal(token, address(ctx.proxy), transferAmount);
 
-        assertEq(IERC20(token).balanceOf(destination),        0);
+        uint256 desitnationBalance = IERC20(token).balanceOf(destination);
+
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
@@ -1717,7 +1718,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         controller.transferAsset(token, destination, transferAmount / 2);
 
-        assertEq(IERC20(token).balanceOf(destination),        transferAmount / 2);
+        assertEq(IERC20(token).balanceOf(destination),        desitnationBalance + transferAmount / 2);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
@@ -1727,7 +1728,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         controller.transferAsset(token, destination, transferAmount / 2);
 
-        assertEq(IERC20(token).balanceOf(destination),        transferAmount);
+        assertEq(IERC20(token).balanceOf(destination),        desitnationBalance + transferAmount);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
