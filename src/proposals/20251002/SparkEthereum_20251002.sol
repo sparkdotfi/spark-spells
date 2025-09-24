@@ -10,10 +10,17 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
+
+interface IAaveIncentiveController {
+    function claimAllRewardsToSelf(
+        address[] calldata assets
+    ) external returns (address[] memory rewardsList, uint256[] memory claimedAmounts);
+}
 
 interface INetworkRegistry {
     function registerNetwork() external;
@@ -63,7 +70,7 @@ interface IVetoSlasher {
  *         - Claim Accrued Reserves for USDS and DAI
  *         Spark Liquidity Layer:
  *         - Onboard SparkLend ETH
- *         - Onboard B2C2 Penny for OTC Services
+ *         - Claim Aave Core aUSDS Rewards
  *         - Add transferAsset Rate Limit for SYRUP
  *         Spark Treasury:
  *         - Transfer Share of Ethena Direct Allocation Net Profit to Grove
@@ -72,7 +79,13 @@ interface IVetoSlasher {
  *         - Configure Symbiotic Instance
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/october-2-2025-proposed-changes-to-spark-for-upcoming-spell/27191
- * Vote:   
+ * Vote:   https://vote.sky.money/polling/QmUn84ag
+ *         https://vote.sky.money/polling/QmSaMJWy
+ *         https://vote.sky.money/polling/QmdY24Cm
+ *         https://vote.sky.money/polling/QmREvn1i
+ *         https://vote.sky.money/polling/QmerdKkX
+ *         https://vote.sky.money/polling/QmXYRjmQ
+ *         https://vote.sky.money/polling/QmeKTbg6
  */
 contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
@@ -84,9 +97,10 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
     //   1.000000001547125957863212448
     uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
 
-    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
-    address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
-    address internal constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
+    address internal constant AAVE_INCENTIVE_CONTROLLER = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
+    address internal constant GROVE_SUBDAO_PROXY        = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
+    address internal constant PYUSD                     = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+    address internal constant SYRUP                     = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
 
     address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
     address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
@@ -152,41 +166,26 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         // Onboard SparkLend ETH
         _configureAaveToken(Ethereum.WETH_SPTOKEN, 50_000e18, 10_000e18 / uint256(1 days));
 
-        // Onboard B2C2 Penny for OTC Services
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                address(0xdead) // TODO Destination
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            1_000_000e6,
-            20_000_000e6 / uint256(1 days),
-            6
+        // Claim Aave Core aUSDS Rewards
+        MainnetController(Ethereum.ALM_PROXY).grantRole(
+            IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
+            Ethereum.SPARK_PROXY
         );
 
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDT,
-                address(0xdead) // TODO Destination
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            1_000_000e6,
-            20_000_000e6 / uint256(1 days),
-            6
+        address[] memory assets = new address[](1);
+        assets[0] = Ethereum.ATOKEN_CORE_USDS;
+
+        IALMProxy(Ethereum.ALM_PROXY).doCall(
+            AAVE_INCENTIVE_CONTROLLER,
+            abi.encodeCall(
+                IAaveIncentiveController(AAVE_INCENTIVE_CONTROLLER).claimAllRewardsToSelf,
+                (assets)
+            )
         );
 
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                PYUSD,
-                address(0xdead) // TODO Destination
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            1_000_000e6,
-            20_000_000e6 / uint256(1 days),
-            6
+        MainnetController(Ethereum.ALM_PROXY).revokeRole(
+            IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
+            Ethereum.SPARK_PROXY
         );
 
         // Add transferAsset Rate Limit for SYRUP
@@ -226,19 +225,17 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
         bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
-        IVetoSlasher      slasher          = IVetoSlasher(VETO_SLASHER);
+        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
         INetworkRegistry  networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
         IOperatorRegistry operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
-        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+        IVetoSlasher      slasher          = IVetoSlasher(VETO_SLASHER);
 
         // --- Step 1: Do configurations as network, DO NOT SET middleware, max network limit, and resolver
-
         networkRegistry.registerNetwork();
         delegator.setMaxNetworkLimit(0, type(uint256).max);
         slasher.setResolver(0, OWNER, "");
 
         // --- Step 2: Configure the network and operator to take control of stake as the vault owner
-
         delegator.setNetworkLimit(subnetwork, type(uint256).max);
         delegator.setOperatorNetworkShares(
             subnetwork,
@@ -249,7 +246,6 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         delegator.grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK);
 
         // --- Step 3: Opt in to the vault as the operator
-
         operatorRegistry.registerOperator();
         IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).optIn(NETWORK);
         IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(STAKED_SPK_VAULT);

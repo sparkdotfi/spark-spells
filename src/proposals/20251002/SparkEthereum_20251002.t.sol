@@ -93,70 +93,14 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         );
     }
 
-    function test_ETHEREUM_sll_transferAssetB2C2USDC() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            Ethereum.USDC,
-            address(0xdead) // TODO change
-        );
+    function test_ETHEREUM_claimAaveRewards() public onChain(ChainIdUtils.Ethereum()) {
+        uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
 
-        _assertRateLimit(transferKey, 0, 0);
+        assertEq(aUSDSBalanceBefore, 0.003722350232385604e18);
 
         executeAllPayloadsAndBridges();
 
-        _assertRateLimit(transferKey, 1_000_000e6, 20_000_000e6 / uint256(1 days));
-
-        _testTransferAssetIntegration(
-            Ethereum.USDC,
-            address(0xdead), // TODO change
-            Ethereum.ALM_CONTROLLER,
-            1_000_000e6,
-            1_000_000e6
-        );
-    }
-
-    function test_ETHEREUM_sll_transferAssetB2C2USDT() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            Ethereum.USDT,
-            address(0xdead) // TODO change
-        );
-
-        _assertRateLimit(transferKey, 0, 0);
-
-        executeAllPayloadsAndBridges();
-
-        _assertRateLimit(transferKey, 1_000_000e6, 20_000_000e6 / uint256(1 days));
-
-        _testTransferAssetIntegration(
-            Ethereum.USDT,
-            address(0xdead), // TODO change
-            Ethereum.ALM_CONTROLLER,
-            1_000_000e6,
-            1_000_000e6
-        );
-    }
-
-    function test_ETHEREUM_sll_transferAssetB2C2PYUSD() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            PYUSD,
-            address(0xdead) // TODO change
-        );
-
-        _assertRateLimit(transferKey, 0, 0);
-
-        executeAllPayloadsAndBridges();
-
-        _assertRateLimit(transferKey, 1_000_000e6, 20_000_000e6 / uint256(1 days));
-
-        _testTransferAssetIntegration(
-            PYUSD,
-            address(0xdead), // TODO change
-            Ethereum.ALM_CONTROLLER,
-            1_000_000e6,
-            1_000_000e6
-        );
+        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547362527277079545e18);
     }
 
     function test_ETHEREUM_sll_transferAssetSYRUP() public onChain(ChainIdUtils.Ethereum()) {
@@ -201,15 +145,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  404_320_160.818926086778450517e18);
-        assertEq(spUsdsBalanceBefore, 592_424_783.583591603436341145e18);
+        assertEq(spDaiBalanceBefore,  446_756_954.903747305236702025e18);
+        assertEq(spUsdsBalanceBefore, 533_866_585.285220791565254216e18);
 
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 33_225.584380788531641492e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_626.185445845175175216e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 9_402.155256707448903492e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 12_633.767612739349578615e18);
     }
 
 }
