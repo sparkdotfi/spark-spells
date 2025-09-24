@@ -1632,6 +1632,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 escrowBalance;
     }
 
+    // TODO: Remove this after confirmation from the business team that we're offboarding Centrifuge
     function _testCentrifugeIntegration(CentrifugeE2ETestParams memory p) internal {
         // CentrifugeE2ETestVars memory v;
 

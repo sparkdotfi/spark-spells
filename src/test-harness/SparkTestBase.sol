@@ -157,7 +157,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             console2.log("Running SLL E2E test for", integration.label);
 
             uint256 decimals = IERC20(IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS()).decimals();
-            if (integration.integration == USDE_ATOKEN || integration.integration == Ethereum.USDT_SPTOKEN) return; // TODO: Hack to get around supply cap issues
+
             _testAaveIntegration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
                 vault:         integration.integration,
@@ -170,9 +170,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         else if (integration.category == Category.ERC4626) {
             console2.log("Running SLL E2E test for", integration.label);
-
-            // TODO: Remove this, these integrations are broken
-            if (integration.integration == Ethereum.FLUID_SUSDS) return;
 
             uint256 decimals = IERC20(IERC4626(integration.integration).asset()).decimals();
             _testERC4626Integration(E2ETestParams({
@@ -310,7 +307,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 address withdrawDestination
             ) = abi.decode(integration.extraData, (address, address, address, address));
 
-            // TODO: Figure out data structure
             _testBUIDLIntegration(BUIDLE2ETestParams({
                 ctx:                 _getSparkLiquidityLayerContext(),
                 depositAsset:        depositAsset,
@@ -337,7 +333,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 asset:          asset,
                 destination:    destination,
                 transferKey:    integration.entryId,
-                transferAmount: 100_000_000e6
+                transferAmount: 100_000 * 10 ** IERC20(asset).decimals()
             }));
         }
 
