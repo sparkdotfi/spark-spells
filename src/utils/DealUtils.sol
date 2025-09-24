@@ -4,6 +4,8 @@ pragma solidity >=0.7.5 <0.9.0;
 
 import { Vm } from "forge-std/Vm.sol";
 
+
+
 import { IERC20 } from "erc20-helpers/interfaces/IERC20.sol";
 
 library DealUtils {
@@ -41,7 +43,7 @@ library DealUtils {
      * @param  amount The amount to deal
      * @return bool   True if the caller has changed due to prank usage
      */
-    function _patchedDeal(address asset, address user, uint256 amount) internal returns (bool) {
+    function patchedDeal(address asset, address user, uint256 amount) internal returns (bool) {
         uint256 startingBalance = IERC20(asset).balanceOf(user);
 
         if (startingBalance == amount) return true;
@@ -77,18 +79,6 @@ library DealUtils {
         }
 
         return false;
-    }
-
-    /**
-     * Patched version of deal
-     * @param asset  The asset to deal
-     * @param user   The user to deal to
-     * @param amount The amount to deal
-     */
-    function deal(address asset, address user, uint256 amount) internal {
-        if (_patchedDeal(asset, user, amount)) return;
-
-        deal(asset, user, amount);
     }
 
 }

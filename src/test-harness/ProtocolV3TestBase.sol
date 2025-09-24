@@ -571,7 +571,9 @@ contract ProtocolV3TestBase is Test {
                 ? premium
                 : amount + premium;
 
-        DealUtils.deal(asset, address(this), dealAmount);
+        if (!DealUtils.patchedDeal(asset, address(this), dealAmount)) {
+            deal(asset, address(this), dealAmount);
+        }
 
         vm.startPrank(address(this));
         SafeERC20.safeApprove(IERC20(asset), pool, amount + premium);
@@ -599,7 +601,9 @@ contract ProtocolV3TestBase is Test {
         require( config.isActive, 'SUPPLY(): INACTIVE_RESERVE');
         require(!config.isPaused, 'SUPPLY(): PAUSED_RESERVE');
 
-        DealUtils.deal(config.underlying, user, amount);
+        if (!DealUtils.patchedDeal(config.underlying, user, amount)) {
+            deal(config.underlying, user, amount);
+        }
 
         uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
@@ -684,7 +688,9 @@ contract ProtocolV3TestBase is Test {
     ) internal {
         address debtToken = stable ? config.stableDebtToken : config.variableDebtToken;
 
-        DealUtils.deal(config.underlying, user, amount);
+        if (!DealUtils.patchedDeal(config.underlying, user, amount)) {
+            deal(config.underlying, user, amount);
+        }
 
         uint256 debtBefore             = IERC20(debtToken).balanceOf(user);
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
@@ -719,7 +725,9 @@ contract ProtocolV3TestBase is Test {
 
         balances.debtBefore = IERC20(debtToken).balanceOf(user);
 
-        DealUtils.deal(borrow.underlying, liquidator, balances.debtBefore);
+        if (!DealUtils.patchedDeal(borrow.underlying, liquidator, balances.debtBefore)) {
+            deal(borrow.underlying, liquidator, balances.debtBefore);
+        }
 
         balances.aTokenBorrowerBefore = IERC20(collateral.aToken).balanceOf(user);
         balances.aTokenTreasuryBefore = IERC20(collateral.aToken).balanceOf(IAToken(collateral.aToken).RESERVE_TREASURY_ADDRESS());
