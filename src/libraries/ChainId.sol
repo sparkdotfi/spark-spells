@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.23;
+
 import { Domain } from "xchain-helpers/testing/Domain.sol";
 
 // TODO: MDL, check if this custom type is even worth it.
@@ -18,6 +20,7 @@ function notEquals(ChainId left, ChainId right) pure returns(bool) {
 }
 
 library ChainIdUtils {
+
     function fromDomain(Domain memory domain) internal pure returns (ChainId) {
         return fromUint(domain.chain.chainId);
     }
@@ -67,4 +70,5 @@ library ChainIdUtils {
     function Unichain() internal pure returns (ChainId) {
         return ChainId.wrap(130);
     }
+
 }

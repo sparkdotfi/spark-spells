@@ -5,9 +5,10 @@
 pragma solidity ^0.8.1;
 
 /**
- * @dev Collection of functions related to the address type
+ * @dev Collection of functions related to the address type.
  */
 library Address {
+
     /**
      * @dev Returns true if `account` is a contract.
      *
@@ -246,4 +247,5 @@ library Address {
             revert(errorMessage);
         }
     }
+
 }

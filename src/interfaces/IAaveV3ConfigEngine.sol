@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
-import {IPool}             from 'sparklend-v1-core/interfaces/IPool.sol';
-import {IPoolConfigurator} from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
-import {IAaveOracle}       from 'sparklend-v1-core/interfaces/IAaveOracle.sol';
+import { IAaveOracle }       from "sparklend-v1-core/interfaces/IAaveOracle.sol";
+import { IPool }             from "sparklend-v1-core/interfaces/IPool.sol";
+import { IPoolConfigurator } from "sparklend-v1-core/interfaces/IPoolConfigurator.sol";
 
-import {IV3RateStrategyFactory} from './IV3RateStrategyFactory.sol';
+import { IV3RateStrategyFactory } from "./IV3RateStrategyFactory.sol";
 
-/// @dev Examples here assume the usage of the `AaveV3PayloadBase` base contracts
-/// contained in this same repository
+/// @dev Examples here assume the usage of the `AaveV3PayloadBase` base contracts contained in this same repository.
 interface IAaveV3ConfigEngine {
+
     /**
      * @dev Required for naming of a/v/s tokens
      * Example (mock):
@@ -256,4 +257,5 @@ interface IAaveV3ConfigEngine {
     function REWARDS_CONTROLLER() external view returns (address);
 
     function COLLECTOR() external view returns (address);
+
 }

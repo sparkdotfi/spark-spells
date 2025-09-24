@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.25;
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, SLLHelpers } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  September 18, 2025 Spark Ethereum Proposal
@@ -38,6 +39,7 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  *         https://vote.sky.money/polling/QmX3Lfa6
  */
 contract SparkEthereum_20250918 is SparkPayloadEthereum {
+
     address internal constant NEW_ALM_CONTROLLER = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
@@ -126,4 +128,5 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
 
         _transferFromSparkLendTreasury(aTokens);
     }
+
 }

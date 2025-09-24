@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
-import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
+import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 
-import { SLLHelpers } from './libraries/SLLHelpers.sol';
+import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
 /**
- * @dev Base smart contract for Arbitrum One.
+ * @dev    Base smart contract for Arbitrum One.
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadArbitrumOne {
+
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
         relayers[0] = Arbitrum.ALM_RELAYER;
@@ -64,4 +66,5 @@ abstract contract SparkPayloadArbitrumOne {
             Arbitrum.ALM_RELAYER
         );
     }
+
 }

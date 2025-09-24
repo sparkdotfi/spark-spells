@@ -1,36 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity >=0.7.5 <0.9.0;
 
-import { Test, console } from 'forge-std/Test.sol';
+import { Test, console } from "forge-std/Test.sol";
 
-import { IAaveOracle }                  from 'sparklend-v1-core/interfaces/IAaveOracle.sol';
-import { IAToken }                      from 'sparklend-v1-core/interfaces/IAToken.sol';
-import { IDefaultInterestRateStrategy } from 'sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol';
-import { IPool }                        from 'sparklend-v1-core/interfaces/IPool.sol';
-import { IPoolAddressesProvider }       from 'sparklend-v1-core/interfaces/IPoolAddressesProvider.sol';
-import { IPoolConfigurator }            from 'sparklend-v1-core/interfaces/IPoolConfigurator.sol';
-import { IPoolDataProvider }            from 'sparklend-v1-core/interfaces/IPoolDataProvider.sol';
-import { IStableDebtToken }             from 'sparklend-v1-core/interfaces/IStableDebtToken.sol';
-import { IVariableDebtToken }           from 'sparklend-v1-core/interfaces/IVariableDebtToken.sol';
+import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
+import { WadRayMath }           from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
+import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 
-import { ReserveConfiguration } from 'sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol';
-import { WadRayMath }           from 'sparklend-v1-core/protocol/libraries/math/WadRayMath.sol';
-import { DataTypes }            from 'sparklend-v1-core/protocol/libraries/types/DataTypes.sol';
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { IAaveOracle }                  from "sparklend-v1-core/interfaces/IAaveOracle.sol";
+import { IAToken }                      from "sparklend-v1-core/interfaces/IAToken.sol";
+import { IDefaultInterestRateStrategy } from "sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol";
+import { IPool }                        from "sparklend-v1-core/interfaces/IPool.sol";
+import { IPoolAddressesProvider }       from "sparklend-v1-core/interfaces/IPoolAddressesProvider.sol";
+import { IPoolConfigurator }            from "sparklend-v1-core/interfaces/IPoolConfigurator.sol";
+import { IPoolDataProvider }            from "sparklend-v1-core/interfaces/IPoolDataProvider.sol";
+import { IStableDebtToken }             from "sparklend-v1-core/interfaces/IStableDebtToken.sol";
+import { IVariableDebtToken }           from "sparklend-v1-core/interfaces/IVariableDebtToken.sol";
 
-import { IERC20 }    from 'erc20-helpers/interfaces/IERC20.sol';
-import { SafeERC20 } from 'erc20-helpers/SafeERC20.sol';
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { ICapAutomator } from 'sparklend-cap-automator/interfaces/ICapAutomator.sol';
+import { IERC20 }    from "erc20-helpers/interfaces/IERC20.sol";
+import { SafeERC20 } from "erc20-helpers/SafeERC20.sol";
 
-import { IProxyLike, IOracleLike } from '../interfaces/Interfaces.sol';
-
-import { ProxyHelpers } from '../libraries/ProxyHelpers.sol';
-import { DealUtils }    from '../utils/DealUtils.sol';
+import { IProxyLike, IOracleLike } from "../interfaces/Interfaces.sol";
+import { ProxyHelpers }            from "../libraries/ProxyHelpers.sol";
+import { DealUtils }               from "../utils/DealUtils.sol";
 
 // TODO: MDL, only used by `SparklendTests`.
 contract ProtocolV3TestBase is Test {
+
     struct InterestStrategyValues {
         address addressesProvider;
         uint256 optimalUsageRatio;
@@ -1755,6 +1756,7 @@ contract ProtocolV3TestBase is Test {
 
         return false;
     }
+
 }
 
 // TODO: MDL, seems unused.
@@ -1762,6 +1764,7 @@ contract ProtocolV3TestBase is Test {
  * only applicable to v3 harmony at this point
  */
 contract ProtocolV3LegacyTestBase is ProtocolV3TestBase {
+
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
 
     function _getStructReserveConfig(

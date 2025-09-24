@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
-import {IPoolAddressesProvider}       from 'sparklend-v1-core/interfaces/IPoolAddressesProvider.sol';
-import {IDefaultInterestRateStrategy} from 'sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol';
+import { IDefaultInterestRateStrategy } from "sparklend-v1-core/interfaces/IDefaultInterestRateStrategy.sol";
+import { IPoolAddressesProvider }       from "sparklend-v1-core/interfaces/IPoolAddressesProvider.sol";
 
 interface IV3RateStrategyFactory {
+
     event RateStrategyCreated(
         address indexed strategy,
         bytes32 indexed hashedParam,
@@ -73,4 +75,5 @@ interface IV3RateStrategyFactory {
     ) external view returns (RateStrategyParams memory);
 
     function ADDRESSES_PROVIDER() external view returns (IPoolAddressesProvider);
+
 }

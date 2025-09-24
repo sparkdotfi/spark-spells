@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.25;
 
 import { Base } from "spark-address-registry/Base.sol";
@@ -8,7 +9,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { SparkPayloadBase, SLLHelpers } from "src/SparkPayloadBase.sol";
+import { SparkPayloadBase, SLLHelpers } from "../../SparkPayloadBase.sol";
 
 /**
  * @title  Sep 18, 2025 Spark Base Proposal
@@ -23,6 +24,7 @@ import { SparkPayloadBase, SLLHelpers } from "src/SparkPayloadBase.sol";
  *         https://vote.sky.money/polling/QmUaV3Xj
  */
 contract SparkBase_20250918 is SparkPayloadBase {
+
     address internal constant NEW_ALM_CONTROLLER = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
     address internal constant MORPHO_TOKEN       = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
     address internal constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
@@ -55,4 +57,5 @@ contract SparkBase_20250918 is SparkPayloadBase {
             18
         );
     }
+
 }
