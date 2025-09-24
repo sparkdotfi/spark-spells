@@ -83,6 +83,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes32  entryId2;
         bytes32  exitId;
         bytes32  exitId2;
+        bytes    extraData;
     }
 
     SLLIntegration[] public arbitrumSllIntegrations;
@@ -302,16 +303,41 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (integration.category == Category.BUIDL) {
             console2.log("Running SLL E2E test for", integration.label);
 
+            (
+                address depositAsset,
+                address depositDestination,
+                address withdrawAsset,
+                address withdrawDestination
+            ) = abi.decode(integration.extraData, (address, address, address, address));
+
+            // TODO: Figure out data structure
             _testBUIDLIntegration(BUIDLE2ETestParams({
                 ctx:                 _getSparkLiquidityLayerContext(),
-                depositAsset:        Ethereum.USDC,
-                depositDestination:  BUIDL_DEPOSIT,
+                depositAsset:        depositAsset,
+                depositDestination:  depositDestination,
                 depositAmount:       100_000_000e6,
                 depositKey:          integration.entryId,
-                withdrawAsset:       Ethereum.BUIDLI,
-                withdrawDestination: BUIDL_REDEEM,
+                withdrawAsset:       withdrawAsset,
+                withdrawDestination: withdrawDestination,
                 withdrawAmount:      100_000_000e6,
                 withdrawKey:         integration.exitId
+            }));
+        }
+
+        else if (integration.category == Category.REWARDS_TRANSFER) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            (
+                address asset,
+                address destination
+            ) = abi.decode(integration.extraData, (address, address));
+
+            _testTransferAssetIntegration(TransferAssetE2ETestParams({
+                ctx:            _getSparkLiquidityLayerContext(),
+                asset:          asset,
+                destination:    destination,
+                transferKey:    integration.entryId,
+                transferAmount: 100_000_000e6
             }));
         }
 
@@ -505,7 +531,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.CORE) {
             entryId = mainnetController.LIMIT_USDS_MINT();
-            exitId  = bytes32(0);
         }
         else if (category == Category.CENTRIFUGE) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_DEPOSIT(), integration);
@@ -520,11 +545,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.CURVE_SWAP) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_SWAP(), integration);
-            exitId  = bytes32(0);
         }
         else if (category == Category.CCTP_GENERAL) {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
-            exitId  = bytes32(0);
         }
         else {
             revert("Invalid category");
@@ -537,15 +560,13 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId:     entryId,
             entryId2:    entryId2,
             exitId:      exitId,
-            exitId2:     exitId2
+            exitId2:     exitId2,
+            extraData:   new bytes(0)
         });
     }
 
     function _createSLLIntegration(string memory label, Category category, uint32 domain) internal view returns (SLLIntegration memory) {
-        bytes32 entryId  = bytes32(0);
-        bytes32 entryId2 = bytes32(0);
-        bytes32 exitId   = bytes32(0);
-        bytes32 exitId2  = bytes32(0);
+        bytes32 entryId = bytes32(0);
 
         if (category == Category.CCTP) {
             entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
@@ -559,9 +580,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
             category:    category,
             integration: address(uint160(domain)),  // Unique ID
             entryId:     entryId,
-            entryId2:    entryId2,
-            exitId:      exitId,
-            exitId2:     exitId2
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   new bytes(0)
         });
     }
 
@@ -580,17 +602,22 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes32 exitId   = bytes32(0);
         bytes32 exitId2  = bytes32(0);
 
+        bytes memory extraData = new bytes(0);
+
         if (category == Category.BUIDL) {
-            entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
-            exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
+            exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
         }
         else if (category == Category.SUPERSTATE) {
-            entryId = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
-            exitId  = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
-            exitId2 = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            entryId   = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
+            exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
+            exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            extraData = abi.encode(assetOut, withdrawDestination);
         }
         else if (category == Category.REWARDS_TRANSFER) {
-            entryId = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
+            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
+            extraData = abi.encode(assetIn, depositDestination);
         }
         else {
             revert("Invalid category");
@@ -603,7 +630,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId:     entryId,
             entryId2:    entryId2,
             exitId:      exitId,
-            exitId2:     exitId2
+            exitId2:     exitId2,
+            extraData:   extraData
         });
     }
 
