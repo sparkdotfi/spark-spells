@@ -81,14 +81,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    /**********************************************************************************************/
-    /*** State-Modifying Functions                                                              ***/
-    /**********************************************************************************************/
-
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
     function test_ETHEREUM_FreezerMom() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
@@ -160,6 +152,14 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             }
         }
     }
+
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
 
     function _checkStorageSlot(address target, uint256 limit) internal view {
         for (uint256 slot; slot < limit; ++slot) {
@@ -439,10 +439,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
-
-    /******************************************************************************************************************/
-    /*** Internal testing helper functions                                                                         ****/
-    /******************************************************************************************************************/
 
     struct SparkLendAssetOnboardingParams {
         // General

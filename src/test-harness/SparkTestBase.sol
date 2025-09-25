@@ -130,7 +130,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     }
 
     /**********************************************************************************************/
-    /*** E2E test helper functions                                                              ***/
+    /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
@@ -379,10 +379,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         vm.revertTo(snapshot);
     }
-
-    /**********************************************************************************************/
-    /*** Assertion helper functions                                                             ***/
-    /**********************************************************************************************/
 
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
         for (uint256 i = 0; i < integrations.length; ++i) {

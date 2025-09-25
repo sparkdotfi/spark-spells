@@ -65,53 +65,6 @@ abstract contract SpellRunner is Test {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    /// @dev maximum 3 chains in 1 query
-    function _getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
-        blocks = new uint256[](chains.length);
-
-        // Process chains in batches of 3
-        for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
-            uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
-            string[] memory batchChains = new string[](batchSize);
-
-            // Create batch of chains
-            for (uint256 i = 0; i < batchSize; i++) {
-                batchChains[i] = chains[batchStart + i];
-            }
-
-            // Build networks parameter for this batch
-            string memory networks = "";
-            for (uint256 i = 0; i < batchSize; i++) {
-                if (i == 0) {
-                    networks = string(abi.encodePacked("networks=", batchChains[i]));
-                } else {
-                    networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
-                }
-            }
-
-            string[] memory inputs = new string[](8);
-            inputs[0] = "curl";
-            inputs[1] = "-s";
-            inputs[2] = "--request";
-            inputs[3] = "GET";
-            inputs[4] = "--url";
-            inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
-            inputs[6] = "--header";
-            inputs[7] = "accept: application/json";
-
-            string memory response = string(vm.ffi(inputs));
-
-            // Store results in the correct positions of the final blocks array
-            for (uint256 i = 0; i < batchSize; i++) {
-                blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
-            }
-        }
-    }
-
     function _setupBlocksFromDate(string memory date) internal {
         string[] memory chains = new string[](4);
         chains[0] = "eth-mainnet";
@@ -225,6 +178,53 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.ArbitrumOne());
         allChains.push(ChainIdUtils.Optimism());
         allChains.push(ChainIdUtils.Unichain());
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    /// @dev maximum 3 chains in 1 query
+    function _getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
+        blocks = new uint256[](chains.length);
+
+        // Process chains in batches of 3
+        for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
+            uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
+            string[] memory batchChains = new string[](batchSize);
+
+            // Create batch of chains
+            for (uint256 i = 0; i < batchSize; i++) {
+                batchChains[i] = chains[batchStart + i];
+            }
+
+            // Build networks parameter for this batch
+            string memory networks = "";
+            for (uint256 i = 0; i < batchSize; i++) {
+                if (i == 0) {
+                    networks = string(abi.encodePacked("networks=", batchChains[i]));
+                } else {
+                    networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
+                }
+            }
+
+            string[] memory inputs = new string[](8);
+            inputs[0] = "curl";
+            inputs[1] = "-s";
+            inputs[2] = "--request";
+            inputs[3] = "GET";
+            inputs[4] = "--url";
+            inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
+            inputs[6] = "--header";
+            inputs[7] = "accept: application/json";
+
+            string memory response = string(vm.ffi(inputs));
+
+            // Store results in the correct positions of the final blocks array
+            for (uint256 i = 0; i < batchSize; i++) {
+                blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
+            }
+        }
     }
 
     function _spellIdentifier(ChainId chainId) internal view returns (string memory) {

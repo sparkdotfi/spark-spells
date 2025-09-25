@@ -108,10 +108,6 @@ contract ProtocolV3TestBase is Test {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
     /**
      * @dev Generates a markdown compatible snapshot of the whole pool configuration into `/reports`.
      * @param reportName filename suffix for the generated reports.
@@ -283,6 +279,10 @@ contract ProtocolV3TestBase is Test {
         _e2eTestMintToTreasury(pool, borrowConfig);
         vm.revertTo(snapshot);
     }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
 
     /**
      * Reserves that are frozen or not active should not be included in e2e test suite

@@ -150,12 +150,84 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    /**********************************************************************************************/
-    /*** State-Modifying Functions                                                              ***/
-    /**********************************************************************************************/
+    function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() external {
+        SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Base(),
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxBase.prevController)
+        );
+
+        _executeAllPayloadsAndBridges();
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Base(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxBase.controller)
+        );
+    }
+
+    function test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() external {
+        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxArbitrum = _getSparkLiquidityLayerContext(ChainIdUtils.ArbitrumOne());
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.ArbitrumOne(),
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxArbitrum.prevController)
+        );
+
+        _executeAllPayloadsAndBridges();
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.ArbitrumOne(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxArbitrum.controller)
+        );
+    }
+
+    function test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() external {
+        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxOptimism = _getSparkLiquidityLayerContext(ChainIdUtils.Optimism());
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Optimism(),
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxOptimism.prevController)
+        );
+
+        _executeAllPayloadsAndBridges();
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Optimism(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxOptimism.controller)
+        );
+    }
+
+    function test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() external {
+        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        SparkLiquidityLayerContext memory ctxUnichain = _getSparkLiquidityLayerContext(ChainIdUtils.Unichain());
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Unichain(),
+            MainnetController(ctxMainnet.prevController),
+            ForeignController(ctxUnichain.prevController)
+        );
+
+        _executeAllPayloadsAndBridges();
+
+        _testE2ESLLCrossChainForDomain(
+            ChainIdUtils.Unichain(),
+            MainnetController(ctxMainnet.controller),
+            ForeignController(ctxUnichain.controller)
+        );
+    }
 
     /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
+    /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
     function _setControllerUpgrade(ChainId chain, address prevController, address newController) internal {
@@ -164,7 +236,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     /**********************************************************************************************/
-    /*** State loading helpers                                                                  ***/
+    /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
     function _getSparkLiquidityLayerContext(ChainId chain) internal view returns (SparkLiquidityLayerContext memory ctx) {
@@ -229,10 +301,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
         return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
     }
-
-    /**********************************************************************************************/
-    /*** Assertion helpers                                                                      ***/
-    /**********************************************************************************************/
 
     // TODO: MDL, seems like unnecessary overload bloat.
     function _assertRateLimit(
@@ -307,10 +375,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
     }
-
-    /**********************************************************************************************/
-    /*** Standardized testing helpers                                                           ***/
-    /**********************************************************************************************/
 
     function _testERC4626Onboarding(
         address vault,
@@ -2188,86 +2252,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
-    }
-
-    /**********************************************************************************************/
-    /*** E2E tests to be run on every spell                                                     ***/
-    /**********************************************************************************************/
-
-    function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() external {
-        SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
-        SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Base(),
-            MainnetController(ctxMainnet.prevController),
-            ForeignController(ctxBase.prevController)
-        );
-
-        _executeAllPayloadsAndBridges();
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Base(),
-            MainnetController(ctxMainnet.controller),
-            ForeignController(ctxBase.controller)
-        );
-    }
-
-    function test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() external {
-        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
-        SparkLiquidityLayerContext memory ctxArbitrum = _getSparkLiquidityLayerContext(ChainIdUtils.ArbitrumOne());
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.ArbitrumOne(),
-            MainnetController(ctxMainnet.prevController),
-            ForeignController(ctxArbitrum.prevController)
-        );
-
-        _executeAllPayloadsAndBridges();
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.ArbitrumOne(),
-            MainnetController(ctxMainnet.controller),
-            ForeignController(ctxArbitrum.controller)
-        );
-    }
-
-    function test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() external {
-        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
-        SparkLiquidityLayerContext memory ctxOptimism = _getSparkLiquidityLayerContext(ChainIdUtils.Optimism());
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Optimism(),
-            MainnetController(ctxMainnet.prevController),
-            ForeignController(ctxOptimism.prevController)
-        );
-
-        _executeAllPayloadsAndBridges();
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Optimism(),
-            MainnetController(ctxMainnet.controller),
-            ForeignController(ctxOptimism.controller)
-        );
-    }
-
-    function test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() external {
-        SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
-        SparkLiquidityLayerContext memory ctxUnichain = _getSparkLiquidityLayerContext(ChainIdUtils.Unichain());
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Unichain(),
-            MainnetController(ctxMainnet.prevController),
-            ForeignController(ctxUnichain.prevController)
-        );
-
-        _executeAllPayloadsAndBridges();
-
-        _testE2ESLLCrossChainForDomain(
-            ChainIdUtils.Unichain(),
-            MainnetController(ctxMainnet.controller),
-            ForeignController(ctxUnichain.controller)
-        );
     }
 
 }

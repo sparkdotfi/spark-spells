@@ -47,6 +47,15 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
+    function test_ETHEREUM_SpellExecutionDiff() external {
+        _runSpellExecutionDiff(ChainIdUtils.Ethereum());
+    }
+
+    function test_GNOSIS_SpellExecutionDiff() external {
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
+        _runSpellExecutionDiff(ChainIdUtils.Gnosis());
+    }
+
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
@@ -77,15 +86,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _getSparkLendContext() internal view returns (SparkLendContext memory) {
         return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
-    }
-
-    function test_ETHEREUM_SpellExecutionDiff() external {
-        _runSpellExecutionDiff(ChainIdUtils.Ethereum());
-    }
-
-    function test_GNOSIS_SpellExecutionDiff() external {
-        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
-        _runSpellExecutionDiff(ChainIdUtils.Gnosis());
     }
 
     function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) internal {
@@ -280,8 +280,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         );
     }
 
-    /** Common Tests **/
-
     function test_ETHEREUM_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Ethereum());
     }
@@ -305,8 +303,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     function test_UNICHAIN_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Unichain());
     }
-
-    /** Utils **/
 
     /**
      * @dev generates the diff between two reports
