@@ -10,12 +10,27 @@ import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { ChainIdUtils }     from 'src/libraries/ChainId.sol';
-import { SparkTestBase }    from 'src/test-harness/SparkTestBase.sol';
-import { ReserveConfig }    from 'src/test-harness/ProtocolV3TestBase.sol';
-import { SparkLendContext } from 'src/test-harness/SparklendTests.sol';
+import { ChainIdUtils }               from 'src/libraries/ChainId.sol';
+import { SparkTestBase }              from 'src/test-harness/SparkTestBase.sol';
+import { ReserveConfig }              from 'src/test-harness/ProtocolV3TestBase.sol';
+import { SparkLendContext }           from 'src/test-harness/SparklendTests.sol';
+import { SparkLiquidityLayerContext } from 'src/test-harness/SparkLiquidityLayerTests.sol';
+
+interface ISparkVaultV2 {
+    function asset() external view returns (address);
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+    function depositCap() external view returns (uint256);
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function SETTER_ROLE() external view returns (bytes32);
+    function minVsr() external view returns (uint256);
+    function maxVsr() external view returns (uint256);
+    function TAKER_ROLE() external view returns (bytes32);
+}
 
 contract SparkEthereum_20251002Test is SparkTestBase {
+
+    uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
+    uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
     address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
     address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
@@ -82,6 +97,97 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
+    }
+
+    function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() public onChain(ChainIdUtils.Ethereum()) {
+        _testVaultConfiguration({
+            vault_:     Ethereum.SPARK_VAULT_V2_SPUSDC,
+            minVsr:     1e27,
+            maxVsr:     TEN_PCT_APY,
+            depositCap: 50_000_000e6,
+            amount:     1_000_000e6
+        });
+    }
+
+    function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() public onChain(ChainIdUtils.Ethereum()) {
+        _testVaultConfiguration({
+            vault_:     Ethereum.SPARK_VAULT_V2_SPUSDT,
+            minVsr:     1e27,
+            maxVsr:     TEN_PCT_APY,
+            depositCap: 50_000_000e6,
+            amount:     1_000_000e6
+        });
+    }
+
+    function test_ETHEREUM_sparkVaultsV2_configureSPETH() public onChain(ChainIdUtils.Ethereum()) {
+        _testVaultConfiguration({
+            vault_:     Ethereum.SPARK_VAULT_V2_SPETH,
+            minVsr:     1e27,
+            maxVsr:     FIVE_PCT_APY,
+            depositCap: 10_000e18,
+            amount:     1_000e18
+        });
+    }
+
+    function _testVaultConfiguration(
+        address vault_,
+        uint256 minVsr,
+        uint256 maxVsr,
+        uint256 depositCap,
+        uint256 amount
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        ISparkVaultV2 vault = ISparkVaultV2(vault_);
+
+        bytes32 takeKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
+            vault_
+        );
+        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            vault.asset(),
+            vault_
+        );
+
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY), true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG),   false);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY),           false);
+
+        assertEq(vault.minVsr(),     1e27);
+        assertEq(vault.maxVsr(),     1e27);
+        assertEq(vault.depositCap(), 0);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+
+        executeAllPayloadsAndBridges();
+
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY), true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG),   true);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY),           true);
+
+        assertEq(vault.minVsr(),     minVsr);
+        assertEq(vault.maxVsr(),     maxVsr);
+        assertEq(vault.depositCap(), depositCap);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+
+        _testVaultTakeIntegration({
+            asset:      vault.asset(),
+            vault:      vault_,
+            rateLimit:  type(uint256).max,
+            takeAmount: amount
+        });
+
+        _testTransferAssetIntegration({
+            token:             vault.asset(),
+            destination:       vault_,
+            controller_:       Ethereum.ALM_CONTROLLER,
+            expectedRateLimit: type(uint256).max,
+            transferAmount:    amount
+        });
     }
 
     function test_ETHEREUM_sll_onboardSparklendETH() public onChain(ChainIdUtils.Ethereum()) {

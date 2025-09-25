@@ -1721,7 +1721,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(token).balanceOf(destination),        desitnationBalance + transferAmount / 2);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
+        if (expectedRateLimit != type(uint256).max) {
+            assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
+        } else {
+            assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+        }
 
         skip(1 days + 1 seconds);  // +1 second due to rounding
 
@@ -1731,11 +1735,49 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(token).balanceOf(destination),        desitnationBalance + transferAmount);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
+        if (expectedRateLimit != type(uint256).max) {
+            assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount);
+        } else {
+            assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+        }
 
         skip(1 days + 1 seconds);  // +1 second due to rounding
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
+    }
+
+    function _testVaultTakeIntegration(
+        address asset,
+        address vault,
+        uint256 rateLimit,
+        uint256 takeAmount
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController controller = MainnetController(ctx.controller);
+
+        bytes32 takeKey = RateLimitHelpers.makeAssetKey(
+            controller.LIMIT_SPARK_VAULT_TAKE(),
+            vault
+        );
+
+        deal(asset, vault, takeAmount);
+
+        uint256 sparkBalance = IERC20(asset).balanceOf(address(ctx.proxy));
+        uint256 vaultBalance = IERC20(asset).balanceOf(vault);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), rateLimit);
+
+        vm.prank(ctx.relayer);
+        controller.takeFromSparkVault(vault, takeAmount / 2);
+
+        assertEq(IERC20(asset).balanceOf(address(ctx.proxy)), sparkBalance + takeAmount / 2);
+        assertEq(IERC20(asset).balanceOf(vault),              vaultBalance - takeAmount / 2);
+
+        if (rateLimit != type(uint256).max) {
+            assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), rateLimit - takeAmount / 2);
+        } else {
+            assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), type(uint256).max);
+        }
     }
 
     function _testE2ESLLCrossChainForDomain(
