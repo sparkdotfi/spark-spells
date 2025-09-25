@@ -233,6 +233,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 swapKey;
     }
 
+    struct FarmE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address farm;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -1129,6 +1137,93 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
     }
 
+    function _testFarmIntegration(FarmE2ETestParams memory p) internal {
+        IERC20 stakingToken = IERC20(IFarmLike(p.farm).stakingToken());
+        IERC20 rewardsToken = IERC20(IFarmLike(p.farm).rewardsToken());
+
+        deal(address(stakingToken), address(p.ctx.proxy), p.depositAmount);
+
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        // Assert all withdrawals are unlimited
+        assertEq(withdrawLimit, type(uint256).max);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).depositToFarm(p.farm, depositLimit + 1);
+
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
+
+        uint256 farmStakingTokenBalance  = stakingToken.balanceOf(p.farm);
+        uint256 farmRewardsTokenBalance  = rewardsToken.balanceOf(p.farm);
+        uint256 proxyRewardsTokenBalance = rewardsToken.balanceOf(address(p.ctx.proxy));
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).depositToFarm(p.farm, p.depositAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance + p.depositAmount);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+
+        /*************************************************/
+        /*** Step 3: Warp to check rate limit recharge ***/
+        /*************************************************/
+
+        vm.warp(block.timestamp + 30 days);
+
+        // Assert rate limit recharge
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+
+        /********************************************************************************************************/
+        /*** Step 4: Withdraw and check resulting position, ensuring value accrual and appropriate withdrawal ***/
+        /********************************************************************************************************/
+
+        farmStakingTokenBalance  = stakingToken.balanceOf(p.farm);
+        farmRewardsTokenBalance  = rewardsToken.balanceOf(p.farm);
+        proxyRewardsTokenBalance = rewardsToken.balanceOf(address(p.ctx.proxy));
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
+
+        uint256 earned = IFarmLike(p.farm).earned(address(p.ctx.proxy));
+
+        assertGe(earned, 0);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).withdrawFromFarm(p.farm, p.depositAmount);
+
+        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance - p.depositAmount);
+
+        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance  - earned);
+        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance + earned);
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -1273,101 +1368,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _isDeployedByFactory(address pool) internal view returns (bool) {
         address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
-    }
-
-    struct FarmE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address farm;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-    }
-
-    function _testFarmIntegration(FarmE2ETestParams memory p) internal {
-        IERC20 stakingToken = IERC20(IFarmLike(p.farm).stakingToken());
-        IERC20 rewardsToken = IERC20(IFarmLike(p.farm).rewardsToken());
-
-        deal(address(stakingToken), address(p.ctx.proxy), p.depositAmount);
-
-        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
-        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
-
-        // Assert all withdrawals are unlimited
-        assertEq(withdrawLimit, type(uint256).max);
-
-        /********************************/
-        /*** Step 1: Check rate limit ***/
-        /********************************/
-
-        vm.prank(p.ctx.relayer);
-        vm.expectRevert("RateLimits/rate-limit-exceeded");
-        MainnetController(p.ctx.controller).depositToFarm(p.farm, depositLimit + 1);
-
-        /****************************************************/
-        /*** Step 2: Deposit and check resulting position ***/
-        /****************************************************/
-
-        uint256 farmStakingTokenBalance  = stakingToken.balanceOf(p.farm);
-        uint256 farmRewardsTokenBalance  = rewardsToken.balanceOf(p.farm);
-        uint256 proxyRewardsTokenBalance = rewardsToken.balanceOf(address(p.ctx.proxy));
-
-        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
-        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance);
-
-        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
-        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).depositToFarm(p.farm, p.depositAmount);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
-
-        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance + p.depositAmount);
-
-        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
-        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
-
-        /*************************************************/
-        /*** Step 3: Warp to check rate limit recharge ***/
-        /*************************************************/
-
-        vm.warp(block.timestamp + 30 days);
-
-        // Assert rate limit recharge
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
-
-        /********************************************************************************************************/
-        /*** Step 4: Withdraw and check resulting position, ensuring value accrual and appropriate withdrawal ***/
-        /********************************************************************************************************/
-
-        farmStakingTokenBalance  = stakingToken.balanceOf(p.farm);
-        farmRewardsTokenBalance  = rewardsToken.balanceOf(p.farm);
-        proxyRewardsTokenBalance = rewardsToken.balanceOf(address(p.ctx.proxy));
-
-        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance);
-
-        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance);
-        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance);
-
-        uint256 earned = IFarmLike(p.farm).earned(address(p.ctx.proxy));
-
-        assertGe(earned, 0);
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).withdrawFromFarm(p.farm, p.depositAmount);
-
-        assertEq(stakingToken.balanceOf(address(p.ctx.proxy)), p.depositAmount);
-        assertEq(stakingToken.balanceOf(p.farm),               farmStakingTokenBalance - p.depositAmount);
-
-        assertEq(rewardsToken.balanceOf(p.farm),               farmRewardsTokenBalance  - earned);
-        assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance + earned);
     }
 
     struct EthenaE2ETestParams {
