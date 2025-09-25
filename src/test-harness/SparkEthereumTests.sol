@@ -157,38 +157,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    function _checkStorageSlot(address target, uint256 limit) internal view {
-        for (uint256 slot; slot < limit; ++slot) {
-            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
-            require(result == bytes32(0), "Slot is not zero");
-        }
-    }
-
-    function _runRewardsConfigurationTests() internal view {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        address[] memory reserves = ctx.pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; i++) {
-            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
-
-            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
-            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
-        }
-    }
-
-    function _assertFrozen(address asset, bool frozen) internal view {
-        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
-    }
-
-    function _assertPaused(address asset, bool paused) internal view {
-        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
-    }
-
     function _voteAndCast(address _spell) internal {
         IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
 
@@ -366,6 +334,38 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         } else {
             assertEq(borrowCapAfter, borrowCapBefore);
         }
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _checkStorageSlot(address target, uint256 limit) internal view {
+        for (uint256 slot; slot < limit; ++slot) {
+            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
+            require(result == bytes32(0), "Slot is not zero");
+        }
+    }
+
+    function _runRewardsConfigurationTests() internal view {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        address[] memory reserves = ctx.pool.getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
+
+            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
+            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
+        }
+    }
+
+    function _assertFrozen(address asset, bool frozen) internal view {
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
+    }
+
+    function _assertPaused(address asset, bool paused) internal view {
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
     }
 
     function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {

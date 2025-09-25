@@ -280,71 +280,6 @@ contract ProtocolV3TestBase is Test {
         vm.revertTo(snapshot);
     }
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    /**
-     * Reserves that are frozen or not active should not be included in e2e test suite
-     */
-    function _includeBorrowAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
-        return !config.isFrozen && config.isActive && !config.isPaused && config.borrowingEnabled;
-    }
-
-    function _includeCollateralAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
-        return !config.isFrozen && config.isActive && !config.isPaused && config.usageAsCollateralEnabled && config.ltv > 0;
-    }
-
-    function _getTokenPrice(IPool pool, ReserveConfig memory config) internal view returns (uint256) {
-        IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
-        IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
-        return oracle.getAssetPrice(config.underlying);
-    }
-
-    function _getTokenAmountByDollarValue(
-        IPool pool,
-        ReserveConfig memory config,
-        uint256 dollarValue
-    ) internal view returns (uint256) {
-        return (dollarValue * 10 ** (8 + config.decimals)) / _getTokenPrice(pool, config);
-    }
-
-    function _getMaxBorrowAmount(
-        IPool pool,
-        ReserveConfig memory collateralConfig,
-        ReserveConfig memory borrowConfig,
-        uint256 collateralAmount
-    ) internal view returns (uint256) {
-        // Intentionally introducing a slight rounding error to not trigger the LTV edge case failure condition
-        return collateralAmount
-            * _getTokenPrice(pool, collateralConfig)
-            / _getTokenPrice(pool, borrowConfig)
-            * (10 ** borrowConfig.decimals)
-            / (10 ** collateralConfig.decimals)
-            * collateralConfig.ltv
-            / 100_00
-            - (10 ** borrowConfig.decimals / 1e6);  // Round down to be conservative
-    }
-
-    function _isAboveBorrowCap(
-        IPool pool,
-        ReserveConfig memory borrowConfig,
-        uint256 borrowAmount
-    ) internal view returns (bool) {
-        DataTypes.ReserveData memory reserveData = pool.getReserveData(borrowConfig.underlying);
-
-        uint256 scaledBorrowCap = borrowConfig.borrowCap * 10 ** borrowConfig.decimals;
-
-        if (scaledBorrowCap == 0) return false;
-
-        uint256 currScaledVariableDebt = IVariableDebtToken(borrowConfig.variableDebtToken).scaledTotalSupply();
-        (,uint256 currTotalStableDebt,,) = IStableDebtToken(borrowConfig.stableDebtToken).getSupplyData();
-
-        uint256 totalDebt = currTotalStableDebt + currScaledVariableDebt.rayMul(reserveData.variableBorrowIndex);
-
-        return (borrowAmount + totalDebt) > scaledBorrowCap;
-    }
-
     function _e2eTestBorrowAboveLTV(
         IPool pool,
         address borrower,
@@ -421,6 +356,71 @@ contract ProtocolV3TestBase is Test {
         uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 hours : 17 hours;
 
         _assertReserveChange(beforeReserve, afterReserve, -int256(amount), timePassed);
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    /**
+     * Reserves that are frozen or not active should not be included in e2e test suite
+     */
+    function _includeBorrowAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
+        return !config.isFrozen && config.isActive && !config.isPaused && config.borrowingEnabled;
+    }
+
+    function _includeCollateralAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
+        return !config.isFrozen && config.isActive && !config.isPaused && config.usageAsCollateralEnabled && config.ltv > 0;
+    }
+
+    function _getTokenPrice(IPool pool, ReserveConfig memory config) internal view returns (uint256) {
+        IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
+        IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
+        return oracle.getAssetPrice(config.underlying);
+    }
+
+    function _getTokenAmountByDollarValue(
+        IPool pool,
+        ReserveConfig memory config,
+        uint256 dollarValue
+    ) internal view returns (uint256) {
+        return (dollarValue * 10 ** (8 + config.decimals)) / _getTokenPrice(pool, config);
+    }
+
+    function _getMaxBorrowAmount(
+        IPool pool,
+        ReserveConfig memory collateralConfig,
+        ReserveConfig memory borrowConfig,
+        uint256 collateralAmount
+    ) internal view returns (uint256) {
+        // Intentionally introducing a slight rounding error to not trigger the LTV edge case failure condition
+        return collateralAmount
+            * _getTokenPrice(pool, collateralConfig)
+            / _getTokenPrice(pool, borrowConfig)
+            * (10 ** borrowConfig.decimals)
+            / (10 ** collateralConfig.decimals)
+            * collateralConfig.ltv
+            / 100_00
+            - (10 ** borrowConfig.decimals / 1e6);  // Round down to be conservative
+    }
+
+    function _isAboveBorrowCap(
+        IPool pool,
+        ReserveConfig memory borrowConfig,
+        uint256 borrowAmount
+    ) internal view returns (bool) {
+        DataTypes.ReserveData memory reserveData = pool.getReserveData(borrowConfig.underlying);
+
+        uint256 scaledBorrowCap = borrowConfig.borrowCap * 10 ** borrowConfig.decimals;
+
+        if (scaledBorrowCap == 0) return false;
+
+        uint256 currScaledVariableDebt = IVariableDebtToken(borrowConfig.variableDebtToken).scaledTotalSupply();
+        (,uint256 currTotalStableDebt,,) = IStableDebtToken(borrowConfig.stableDebtToken).getSupplyData();
+
+        uint256 totalDebt = currTotalStableDebt + currScaledVariableDebt.rayMul(reserveData.variableBorrowIndex);
+
+        return (borrowAmount + totalDebt) > scaledBorrowCap;
     }
 
     function _assertReserveChange(

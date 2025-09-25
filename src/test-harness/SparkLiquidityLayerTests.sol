@@ -235,6 +235,55 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         chainData[chain].newController  = newController;
     }
 
+    function _testERC4626Onboarding(
+        address vault,
+        uint256 expectedDepositAmount,
+        uint256 depositMax,
+        uint256 depositSlope
+    ) internal {
+        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, 10, false);
+    }
+
+    function _testERC4626Onboarding(
+        address vault,
+        uint256 expectedDepositAmount,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 tolerance,
+        bool    skipInitialCheck
+    ) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        IERC20 asset = IERC20(IERC4626(vault).asset());
+
+        // Note: ERC4626 signature is the same for mainnet and foreign
+        deal(address(asset), address(ctx.proxy), expectedDepositAmount);
+        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
+            vault
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+            MainnetController(ctx.controller).LIMIT_4626_WITHDRAW(),
+            vault
+        );
+
+        if (!skipInitialCheck) {
+            _assertRateLimit(depositKey,  0, 0);
+            _assertRateLimit(withdrawKey, 0, 0);
+
+            vm.prank(ctx.relayer);
+            vm.expectRevert("RateLimits/zero-maxAmount");
+            MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
+
+            _executeAllPayloadsAndBridges();
+        }
+
+        _assertRateLimit(depositKey,  depositMax,        depositSlope);
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        _testERC4626Integration(E2ETestParams(ctx, vault, expectedDepositAmount, depositKey, withdrawKey, tolerance));
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -374,55 +423,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 monthlySlope = slope * 30 days;
             assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
-    }
-
-    function _testERC4626Onboarding(
-        address vault,
-        uint256 expectedDepositAmount,
-        uint256 depositMax,
-        uint256 depositSlope
-    ) internal {
-        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, 10, false);
-    }
-
-    function _testERC4626Onboarding(
-        address vault,
-        uint256 expectedDepositAmount,
-        uint256 depositMax,
-        uint256 depositSlope,
-        uint256 tolerance,
-        bool    skipInitialCheck
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        IERC20 asset = IERC20(IERC4626(vault).asset());
-
-        // Note: ERC4626 signature is the same for mainnet and foreign
-        deal(address(asset), address(ctx.proxy), expectedDepositAmount);
-        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
-            vault
-        );
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(ctx.controller).LIMIT_4626_WITHDRAW(),
-            vault
-        );
-
-        if (!skipInitialCheck) {
-            _assertRateLimit(depositKey,  0, 0);
-            _assertRateLimit(withdrawKey, 0, 0);
-
-            vm.prank(ctx.relayer);
-            vm.expectRevert("RateLimits/zero-maxAmount");
-            MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
-
-            _executeAllPayloadsAndBridges();
-        }
-
-        _assertRateLimit(depositKey,  depositMax,        depositSlope);
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        _testERC4626Integration(E2ETestParams(ctx, vault, expectedDepositAmount, depositKey, withdrawKey, tolerance));
     }
 
     struct E2ETestParams {
