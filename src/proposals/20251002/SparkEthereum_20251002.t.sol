@@ -76,7 +76,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-24T13:31:00Z");
+        setupDomains("2025-09-25T13:52:00Z");
 
         deployPayloads();
 
@@ -231,11 +231,11 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     function test_ETHEREUM_claimAaveRewards() public onChain(ChainIdUtils.Ethereum()) {
         uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(aUSDSBalanceBefore, 0.003722350232385604e18);
+        assertEq(aUSDSBalanceBefore, 0.003722781194797747e18);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547362527277079545e18);
+        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547363045854376932e18);
     }
 
     function test_ETHEREUM_sll_transferAssetSYRUP() public onChain(ChainIdUtils.Ethereum()) {
@@ -338,15 +338,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  446_756_954.903747305236702025e18);
-        assertEq(spUsdsBalanceBefore, 533_866_585.285220791565254216e18);
+        assertEq(spDaiBalanceBefore,  443_937_656.865307379115187327e18);
+        assertEq(spUsdsBalanceBefore, 543_153_691.717336261025819683e18);
 
         executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 9_402.155256707448903492e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 12_633.767612739349578615e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 15_618.798986354393481355e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 18_577.961153027275471205e18);
     }
 
 }

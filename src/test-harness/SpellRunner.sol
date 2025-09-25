@@ -61,17 +61,17 @@ abstract contract SpellRunner is Test {
     /// @dev maximum 3 chains in 1 query
     function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
         blocks = new uint256[](chains.length);
-        
+
         // Process chains in batches of 3
         for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
             uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
             string[] memory batchChains = new string[](batchSize);
-            
+
             // Create batch of chains
             for (uint256 i = 0; i < batchSize; i++) {
                 batchChains[i] = chains[batchStart + i];
             }
-            
+
             // Build networks parameter for this batch
             string memory networks = "";
             for (uint256 i = 0; i < batchSize; i++) {
@@ -81,7 +81,7 @@ abstract contract SpellRunner is Test {
                     networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
                 }
             }
-            
+
             string[] memory inputs = new string[](8);
             inputs[0] = "curl";
             inputs[1] = "-s";
@@ -93,7 +93,7 @@ abstract contract SpellRunner is Test {
             inputs[7] = "accept: application/json";
 
             string memory response = string(vm.ffi(inputs));
-            
+
             // Store results in the correct positions of the final blocks array
             for (uint256 i = 0; i < batchSize; i++) {
                 blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
@@ -126,7 +126,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(27201711);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(28059961);
     }
 
     /// @dev to be called in setUp
