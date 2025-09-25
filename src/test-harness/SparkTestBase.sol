@@ -663,6 +663,20 @@ abstract contract SparkTestBase is SparkEthereumTests {
         if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", vm.toString(integration.exitId));
         if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", vm.toString(integration.entryId2));
         if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", vm.toString(integration.exitId2));
+
+        IRateLimits rateLimits = IRateLimits(_getSparkLiquidityLayerContext().rateLimits);
+
+        console2.log("--- MAX AMOUNTS ---");
+        if (bytes(entryLabel).length > 0)    console2.log(entryLabel,    ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).maxAmount));
+        if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).maxAmount));
+        if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).maxAmount));
+        if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).maxAmount));
+
+        console2.log("--- SLOPES ---");
+        if (bytes(entryLabel).length > 0)    console2.log(entryLabel,    ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).slope * 1 days));
+        if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).slope * 1 days));
+        if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).slope * 1 days));
+        if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).slope * 1 days));
     }
 
     function _formattedAmount(uint256 maxAmount) internal pure returns (string memory) {
@@ -694,20 +708,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         if (integration.category == Category.PSM)              _printKeys(integration, "PSM deposit",          "PSM withdraw",         "",                "");
         if (integration.category == Category.REWARDS_TRANSFER) _printKeys(integration, "Rewards transfer",     "",                     "",                "");
         if (integration.category == Category.SUPERSTATE)       _printKeys(integration, "Superstate subscribe", "Superstate redeem",    "",                "");
-
-        IRateLimits rateLimits = IRateLimits(_getSparkLiquidityLayerContext().rateLimits);
-
-        console2.log("--- MAX AMOUNTS ---");
-        console2.log("Entry ID:   ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).maxAmount));
-        console2.log("Exit ID:    ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).maxAmount));
-        console2.log("Entry ID 2: ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).maxAmount));
-        console2.log("Exit ID 2:  ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).maxAmount));
-
-        console2.log("--- SLOPES ---");
-        console2.log("Entry ID:   ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).slope * 1 days));
-        console2.log("Exit ID:    ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).slope * 1 days));
-        console2.log("Entry ID 2: ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).slope * 1 days));
-        console2.log("Exit ID 2:  ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).slope * 1 days));
     }
 
 }
