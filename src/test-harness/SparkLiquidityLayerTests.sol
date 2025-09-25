@@ -264,6 +264,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 shares;
     }
 
+    struct CoreE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256 mintAmount;
+        uint256 burnAmount;
+        bytes32 mintKey;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -1467,6 +1474,63 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), p.ctx.rateLimits.getRateLimitData(p.burnKey).maxAmount);
     }
 
+    function _testCoreIntegration(CoreE2ETestParams memory p) internal {
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        require(p.mintAmount > p.burnAmount, "Invalid burn amount");
+
+        uint256 totalSupply      = usds.totalSupply();
+        uint256 usdsProxyBalance = usds.balanceOf(address(p.ctx.proxy));
+
+        uint256 mintLimit = p.ctx.rateLimits.getCurrentRateLimit(p.mintKey);
+
+        /*************************************/
+        /*** Step 1: Check burn rate limit ***/
+        /*************************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).mintUSDS(mintLimit + 1);
+
+        /*************************/
+        /*** Step 2: Mint USDS ***/
+        /*************************/
+
+        assertEq(usds.totalSupply(),                   totalSupply);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).mintUSDS(p.mintAmount);
+
+        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount);
+
+        /*************************/
+        /*** Step 3: Burn USDS ***/
+        /*************************/
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).burnUSDS(p.burnAmount);
+
+        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount - p.burnAmount);
+        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount - p.burnAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
+
+        /**************************************************/
+        /*** Step 4: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -1611,70 +1675,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _isDeployedByFactory(address pool) internal view returns (bool) {
         address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
-    }
-
-    struct CoreE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        uint256 mintAmount;
-        uint256 burnAmount;
-        bytes32 mintKey;
-    }
-
-    function _testCoreIntegration(CoreE2ETestParams memory p) internal {
-        IERC20 usds = IERC20(Ethereum.USDS);
-
-        require(p.mintAmount > p.burnAmount, "Invalid burn amount");
-
-        uint256 totalSupply      = usds.totalSupply();
-        uint256 usdsProxyBalance = usds.balanceOf(address(p.ctx.proxy));
-
-        uint256 mintLimit = p.ctx.rateLimits.getCurrentRateLimit(p.mintKey);
-
-        /*************************************/
-        /*** Step 1: Check burn rate limit ***/
-        /*************************************/
-
-        vm.prank(p.ctx.relayer);
-        vm.expectRevert("RateLimits/rate-limit-exceeded");
-        MainnetController(p.ctx.controller).mintUSDS(mintLimit + 1);
-
-        /*************************/
-        /*** Step 2: Mint USDS ***/
-        /*************************/
-
-        assertEq(usds.totalSupply(),                   totalSupply);
-        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit);
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).mintUSDS(p.mintAmount);
-
-        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount);
-        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount);
-
-        /*************************/
-        /*** Step 3: Burn USDS ***/
-        /*************************/
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).burnUSDS(p.burnAmount);
-
-        assertEq(usds.totalSupply(),                   totalSupply      + p.mintAmount - p.burnAmount);
-        assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsProxyBalance + p.mintAmount - p.burnAmount);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
-
-        /**************************************************/
-        /*** Step 4: Warp and recharge all rate limits ***/
-        /**************************************************/
-
-        skip(10 days);
-
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
     }
 
     struct TransferAssetE2ETestParams {
