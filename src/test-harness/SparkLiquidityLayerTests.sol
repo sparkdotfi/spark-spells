@@ -831,6 +831,112 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertLe(maxSlippage, 1e18,      "maxSlippage too high");
     }
 
+    function _testCurveLPIntegration(CurveLPE2ETestParams memory p) internal {
+        skip(10 days);  // Recharge rate limits
+
+        CurveE2ETestVars memory v;
+
+        ICurvePoolLike pool = ICurvePoolLike(p.pool);
+
+        v.rates = ICurvePoolLike(p.pool).stored_rates();
+
+        uint256 totalValue = (pool.balances(0) * v.rates[0] + pool.balances(1) * v.rates[1]) / 1e18;
+
+        // Calculate the value of each deposit in USD terms based on existing proportions in the pool
+        uint256 deposit0Value = p.depositAmount * (pool.balances(0) * v.rates[0] / totalValue) / 1e18;
+        uint256 deposit1Value = p.depositAmount * (pool.balances(1) * v.rates[1] / totalValue) / 1e18;
+
+        // Convert to asset value
+        v.depositAmount0 = deposit0Value * 1e36 / (v.rates[0] * 10 ** IERC20Metadata(p.asset0).decimals());
+        v.depositAmount1 = deposit1Value * 1e36 / (v.rates[1] * 10 ** IERC20Metadata(p.asset1).decimals());
+
+        // Convert to asset precision (TODO: Simplify mathematically with above)
+        v.depositAmount0 = v.depositAmount0 * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
+        v.depositAmount1 = v.depositAmount1 * 10 ** IERC20Metadata(p.asset1).decimals() / 1e18;
+
+        deal(address(p.asset0), address(p.ctx.proxy), v.depositAmount0);
+        deal(address(p.asset1), address(p.ctx.proxy), v.depositAmount1);
+
+        v.depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        // Curve rate limits should not be unlimited
+        assertTrue(v.depositLimit  != type(uint256).max);
+        assertTrue(v.withdrawLimit != type(uint256).max);
+
+        v.maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
+
+        v.depositAmounts = new uint256[](2);
+        v.depositAmounts[0] = v.depositAmount0;
+        v.depositAmounts[1] = v.depositAmount1;
+
+        v.totalDepositValue = (v.depositAmount0 * v.rates[0] + v.depositAmount1 * v.rates[1]) / 1e18;
+
+        v.minLPAmount = v.totalDepositValue * v.maxSlippage / pool.get_virtual_price();
+
+        /****************************************************/
+        /*** Step 1: Deposit and check resulting position ***/
+        /****************************************************/
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.depositAmount0);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
+
+        uint256 startingLpBalance = pool.balanceOf(address(p.ctx.proxy));
+
+        vm.prank(p.ctx.relayer);
+        uint256 shares = MainnetController(p.ctx.controller).addLiquidityCurve(p.pool, v.depositAmounts, v.minLPAmount);
+
+        assertGe(shares, v.minLPAmount);
+
+        totalValue = (pool.balances(0) * v.rates[0] + pool.balances(1) * v.rates[1]) / 1e18;
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLpBalance + shares);
+
+        /**************************************************************************************/
+        /*** Step 2: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
+        /**************************************************************************************/
+
+        // Withdraw slightly above maxSlippage
+        v.withdrawAmounts = new uint256[](2);
+        v.withdrawAmounts[0] = v.depositAmount0 * (v.maxSlippage + 0.001e18) / 1e18;
+        v.withdrawAmounts[1] = v.depositAmount1 * (v.maxSlippage + 0.001e18) / 1e18;
+
+        vm.prank(p.ctx.relayer);
+        v.withdrawnTokens = MainnetController(p.ctx.controller).removeLiquidityCurve(p.pool, shares, v.withdrawAmounts);
+
+        assertGe(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmounts[0]);
+        assertGe(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmounts[1]);
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawnTokens[0]);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawnTokens[1]);
+
+        v.totalWithdrawnValue = (v.withdrawnTokens[0] * v.rates[0] + v.withdrawnTokens[1] * v.rates[1]) / 1e18;
+
+        // Ensure that value withdrawn is greater than the value deposited * maxSlippage (18 decimal precision)
+        assertGe(v.totalWithdrawnValue, v.totalDepositValue * v.maxSlippage / 1e18);
+
+        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLpBalance);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
+
+        /************************************/
+        /*** Step 3: Recharge rate limits ***/
+        /************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), p.ctx.rateLimits.getRateLimitData(p.withdrawKey).maxAmount);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -975,112 +1081,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _isDeployedByFactory(address pool) internal view returns (bool) {
         address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
-    }
-
-    function _testCurveLPIntegration(CurveLPE2ETestParams memory p) internal {
-        skip(10 days);  // Recharge rate limits
-
-        CurveE2ETestVars memory v;
-
-        ICurvePoolLike pool = ICurvePoolLike(p.pool);
-
-        v.rates = ICurvePoolLike(p.pool).stored_rates();
-
-        uint256 totalValue = (pool.balances(0) * v.rates[0] + pool.balances(1) * v.rates[1]) / 1e18;
-
-        // Calculate the value of each deposit in USD terms based on existing proportions in the pool
-        uint256 deposit0Value = p.depositAmount * (pool.balances(0) * v.rates[0] / totalValue) / 1e18;
-        uint256 deposit1Value = p.depositAmount * (pool.balances(1) * v.rates[1] / totalValue) / 1e18;
-
-        // Convert to asset value
-        v.depositAmount0 = deposit0Value * 1e36 / (v.rates[0] * 10 ** IERC20Metadata(p.asset0).decimals());
-        v.depositAmount1 = deposit1Value * 1e36 / (v.rates[1] * 10 ** IERC20Metadata(p.asset1).decimals());
-
-        // Convert to asset precision (TODO: Simplify mathematically with above)
-        v.depositAmount0 = v.depositAmount0 * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
-        v.depositAmount1 = v.depositAmount1 * 10 ** IERC20Metadata(p.asset1).decimals() / 1e18;
-
-        deal(address(p.asset0), address(p.ctx.proxy), v.depositAmount0);
-        deal(address(p.asset1), address(p.ctx.proxy), v.depositAmount1);
-
-        v.depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
-        v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
-
-        // Curve rate limits should not be unlimited
-        assertTrue(v.depositLimit  != type(uint256).max);
-        assertTrue(v.withdrawLimit != type(uint256).max);
-
-        v.maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
-
-        v.depositAmounts = new uint256[](2);
-        v.depositAmounts[0] = v.depositAmount0;
-        v.depositAmounts[1] = v.depositAmount1;
-
-        v.totalDepositValue = (v.depositAmount0 * v.rates[0] + v.depositAmount1 * v.rates[1]) / 1e18;
-
-        v.minLPAmount = v.totalDepositValue * v.maxSlippage / pool.get_virtual_price();
-
-        /****************************************************/
-        /*** Step 1: Deposit and check resulting position ***/
-        /****************************************************/
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.depositAmount0);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
-
-        uint256 startingLpBalance = pool.balanceOf(address(p.ctx.proxy));
-
-        vm.prank(p.ctx.relayer);
-        uint256 shares = MainnetController(p.ctx.controller).addLiquidityCurve(p.pool, v.depositAmounts, v.minLPAmount);
-
-        assertGe(shares, v.minLPAmount);
-
-        totalValue = (pool.balances(0) * v.rates[0] + pool.balances(1) * v.rates[1]) / 1e18;
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
-
-        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLpBalance + shares);
-
-        /**************************************************************************************/
-        /*** Step 2: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
-        /**************************************************************************************/
-
-        // Withdraw slightly above maxSlippage
-        v.withdrawAmounts = new uint256[](2);
-        v.withdrawAmounts[0] = v.depositAmount0 * (v.maxSlippage + 0.001e18) / 1e18;
-        v.withdrawAmounts[1] = v.depositAmount1 * (v.maxSlippage + 0.001e18) / 1e18;
-
-        vm.prank(p.ctx.relayer);
-        v.withdrawnTokens = MainnetController(p.ctx.controller).removeLiquidityCurve(p.pool, shares, v.withdrawAmounts);
-
-        assertGe(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmounts[0]);
-        assertGe(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmounts[1]);
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawnTokens[0]);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawnTokens[1]);
-
-        v.totalWithdrawnValue = (v.withdrawnTokens[0] * v.rates[0] + v.withdrawnTokens[1] * v.rates[1]) / 1e18;
-
-        // Ensure that value withdrawn is greater than the value deposited * maxSlippage (18 decimal precision)
-        assertGe(v.totalWithdrawnValue, v.totalDepositValue * v.maxSlippage / 1e18);
-
-        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLpBalance);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
-
-        /************************************/
-        /*** Step 3: Recharge rate limits ***/
-        /************************************/
-
-        skip(10 days);
-
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), p.ctx.rateLimits.getRateLimitData(p.withdrawKey).maxAmount);
-
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
     struct CurveSwapE2ETestParams {

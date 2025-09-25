@@ -394,11 +394,6 @@ abstract contract SpellRunner is Test {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    function _getSpellIdentifier(ChainId chainId) internal view returns (string memory) {
-        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
-        return string(abi.encodePacked(slug, ".sol:", slug));
-    }
-
     function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {
         uint256 expectedBytecodeSize = expectedPayload.code.length;
         uint256 actualBytecodeSize   = actualPayload.code.length;
@@ -444,6 +439,11 @@ abstract contract SpellRunner is Test {
             }
             // Return zero if the bytecode is shorter than two bytes.
         }
+    }
+
+    function _getSpellIdentifier(ChainId chainId) internal view returns (string memory) {
+        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
+        return string(abi.encodePacked(slug, ".sol:", slug));
     }
 
 }

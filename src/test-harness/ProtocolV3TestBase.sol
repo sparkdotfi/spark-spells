@@ -44,6 +44,28 @@ contract ProtocolV3TestBase is Test {
         uint256 variableRateSlope2;
     }
 
+    struct LiquidationBalanceAssertions {
+        uint256 aTokenBorrowerBefore;
+        uint256 collateralATokenBefore;
+        uint256 aTokenTreasuryBefore;
+        uint256 collateralLiquidatorBefore;
+        uint256 debtBefore;
+        uint256 borrowATokenBefore;
+        uint256 borrowLiquidatorBefore;
+        uint256 aTokenBorrowerAfter;
+        uint256 collateralATokenAfter;
+        uint256 aTokenTreasuryAfter;
+        uint256 collateralLiquidatorAfter;
+        uint256 debtAfter;
+        uint256 borrowATokenAfter;
+        uint256 borrowLiquidatorAfter;
+    }
+
+    struct LocalVars {
+        IPoolDataProvider.TokenData[] reserves;
+        ReserveConfig[]               configs;
+    }
+
     struct ReserveConfig {
         string symbol;
         address underlying;
@@ -70,28 +92,6 @@ contract ProtocolV3TestBase is Test {
         uint256 borrowCap;
         uint256 debtCeiling;
         uint256 eModeCategory;
-    }
-
-    struct LocalVars {
-        IPoolDataProvider.TokenData[] reserves;
-        ReserveConfig[]               configs;
-    }
-
-    struct LiquidationBalanceAssertions {
-        uint256 aTokenBorrowerBefore;
-        uint256 collateralATokenBefore;
-        uint256 aTokenTreasuryBefore;
-        uint256 collateralLiquidatorBefore;
-        uint256 debtBefore;
-        uint256 borrowATokenBefore;
-        uint256 borrowLiquidatorBefore;
-        uint256 aTokenBorrowerAfter;
-        uint256 collateralATokenAfter;
-        uint256 aTokenTreasuryAfter;
-        uint256 collateralLiquidatorAfter;
-        uint256 debtAfter;
-        uint256 borrowATokenAfter;
-        uint256 borrowLiquidatorAfter;
     }
 
     struct ReserveTokens {
@@ -1511,7 +1511,7 @@ contract ProtocolV3TestBase is Test {
         );
     }
 
-    function _noReservesConfigsChangesApartNewListings(
+    function _requireNoReservesConfigsChangesApartNewListings(
         ReserveConfig[] memory allConfigsBefore,
         ReserveConfig[] memory allConfigsAfter
     ) internal pure {
@@ -1520,10 +1520,10 @@ contract ProtocolV3TestBase is Test {
         }
     }
 
-    function _noReservesConfigsChangesApartFrom(
+    function _requireNoReservesConfigsChangesApartFrom(
         ReserveConfig[] memory allConfigsBefore,
         ReserveConfig[] memory allConfigsAfter,
-        address assetChangedUnderlying
+        address                assetChangedUnderlying
     ) internal pure {
         require(allConfigsBefore.length == allConfigsAfter.length, "A_UNEXPECTED_NEW_LISTING_HAPPENED");
 
@@ -1535,10 +1535,10 @@ contract ProtocolV3TestBase is Test {
     }
 
     /// @dev Version in batch, useful when multiple asset changes are expected
-    function _noReservesConfigsChangesApartFrom(
+    function _requireNoReservesConfigsChangesApartFrom(
         ReserveConfig[] memory allConfigsBefore,
         ReserveConfig[] memory allConfigsAfter,
-        address[] memory assetChangedUnderlying
+        address[]       memory assetChangedUnderlying
     ) internal pure {
         require(allConfigsBefore.length == allConfigsAfter.length, "A_UNEXPECTED_NEW_LISTING_HAPPENED");
 
@@ -1564,121 +1564,121 @@ contract ProtocolV3TestBase is Test {
     ) internal pure {
         require(
             keccak256(abi.encodePacked(config1.symbol)) == keccak256(abi.encodePacked(config2.symbol)),
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED"
         );
 
         require(
             config1.underlying == config2.underlying,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_UNDERLYING_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_UNDERLYING_CHANGED"
         );
 
         require(
             config1.aToken == config2.aToken,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_A_TOKEN_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_A_TOKEN_CHANGED"
         );
 
         require(
             config1.stableDebtToken == config2.stableDebtToken,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_DEBT_TOKEN_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_DEBT_TOKEN_CHANGED"
         );
 
         require(
             config1.variableDebtToken == config2.variableDebtToken,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_VARIABLE_DEBT_TOKEN_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_VARIABLE_DEBT_TOKEN_CHANGED"
         );
 
         require(
             config1.decimals == config2.decimals,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_DECIMALS_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_DECIMALS_CHANGED"
         );
 
         require(
             config1.ltv == config2.ltv,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LTV_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_LTV_CHANGED"
         );
 
         require(
             config1.liquidationThreshold == config2.liquidationThreshold,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_THRESHOLD_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_THRESHOLD_CHANGED"
         );
 
         require(
             config1.liquidationBonus == config2.liquidationBonus,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_BONUS_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_BONUS_CHANGED"
         );
 
         require(
             config1.liquidationProtocolFee == config2.liquidationProtocolFee,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_PROTOCOL_FEE_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_LIQ_PROTOCOL_FEE_CHANGED"
         );
 
         require(
             config1.reserveFactor == config2.reserveFactor,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_RESERVE_FACTOR_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_RESERVE_FACTOR_CHANGED"
         );
 
         require(
             config1.usageAsCollateralEnabled == config2.usageAsCollateralEnabled,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_USAGE_AS_COLLATERAL_ENABLED_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_USAGE_AS_COLLATERAL_ENABLED_CHANGED"
         );
 
         require(
             config1.borrowingEnabled == config2.borrowingEnabled,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROWING_ENABLED_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROWING_ENABLED_CHANGED"
         );
         require(
             config1.interestRateStrategy == config2.interestRateStrategy,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_INTEREST_RATE_STRATEGY_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_INTEREST_RATE_STRATEGY_CHANGED"
         );
 
         require(
             config1.stableBorrowRateEnabled == config2.stableBorrowRateEnabled,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_BORROWING_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_STABLE_BORROWING_CHANGED"
         );
 
         require(
             config1.isActive == config2.isActive,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_ACTIVE_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_ACTIVE_CHANGED"
         );
 
         require(
             config1.isFrozen == config2.isFrozen,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FROZEN_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FROZEN_CHANGED"
         );
 
         require(
             config1.isSiloed == config2.isSiloed,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_SILOED_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_SILOED_CHANGED"
         );
 
         require(
             config1.isBorrowableInIsolation == config2.isBorrowableInIsolation,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_BORROWABLE_IN_ISOLATION_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_BORROWABLE_IN_ISOLATION_CHANGED"
         );
 
         require(
             config1.isFlashloanable == config2.isFlashloanable,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FLASHLOANABLE_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_IS_FLASHLOANABLE_CHANGED"
         );
 
         require(
             config1.supplyCap == config2.supplyCap,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_SUPPLY_CAP_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_SUPPLY_CAP_CHANGED"
         );
 
         require(
             config1.borrowCap == config2.borrowCap,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROW_CAP_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_BORROW_CAP_CHANGED"
         );
 
         require(
             config1.debtCeiling == config2.debtCeiling,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_DEBT_CEILING_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_DEBT_CEILING_CHANGED"
         );
 
         require(
             config1.eModeCategory == config2.eModeCategory,
-            "_noReservesConfigsChangesApartNewListings() : UNEXPECTED_E_MODE_CATEGORY_CHANGED"
+            "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_E_MODE_CATEGORY_CHANGED"
         );
     }
 

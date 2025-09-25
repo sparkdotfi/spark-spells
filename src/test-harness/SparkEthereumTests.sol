@@ -200,37 +200,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    function _voteAndCast(address spell) internal {
-        IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
-
-        address skyWhale = makeAddr("skyWhale");
-        uint256 amount   = 10_000_000_000 ether;
-
-        deal(Ethereum.SKY, skyWhale, amount);
-
-        vm.startPrank(skyWhale);
-
-        IERC20(Ethereum.SKY).approve(address(authority), amount);
-        authority.lock(amount);
-
-        address[] memory slate = new address[](1);
-        slate[0] = spell;
-
-        authority.vote(slate);
-
-        // Min amount of blocks to pass to vote again.
-        vm.roll(block.number + 11);
-
-        authority.lift(spell);
-
-        vm.stopPrank();
-
-        assertEq(authority.hat(), spell);
-
-        vm.prank(makeAddr("randomUser"));
-        IExecutableLike(spell).execute();
-    }
-
     function _runFreezerMomTestsMultisig() internal {
         ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
 
@@ -778,16 +747,40 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
+    function _voteAndCast(address spell) internal {
+        IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
+
+        address skyWhale = makeAddr("skyWhale");
+        uint256 amount   = 10_000_000_000 ether;
+
+        deal(Ethereum.SKY, skyWhale, amount);
+
+        vm.startPrank(skyWhale);
+
+        IERC20(Ethereum.SKY).approve(address(authority), amount);
+        authority.lock(amount);
+
+        address[] memory slate = new address[](1);
+        slate[0] = spell;
+
+        authority.vote(slate);
+
+        // Min amount of blocks to pass to vote again.
+        vm.roll(block.number + 11);
+
+        authority.lift(spell);
+
+        vm.stopPrank();
+
+        assertEq(authority.hat(), spell);
+
+        vm.prank(makeAddr("randomUser"));
+        IExecutableLike(spell).execute();
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
-
-    function _checkStorageSlot(address target, uint256 limit) internal view {
-        for (uint256 slot; slot < limit; ++slot) {
-            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
-            require(result == bytes32(0), "Slot is not zero");
-        }
-    }
 
     function _assertFrozen(address asset, bool frozen) internal view {
         assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
@@ -872,6 +865,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertMorphoCap(vault, config, currentCap, false, 0);
     }
 
+    // TODO: MDL, rename as this does not seem to be running anything, and is simply asserting.
     function _runRewardsConfigurationTests() internal view {
         SparkLendContext memory ctx      = _getSparkLendContext();
         address[]        memory reserves = ctx.pool.getReservesList();
@@ -881,6 +875,13 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
             assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
             assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
+        }
+    }
+
+    function _checkStorageSlot(address target, uint256 limit) internal view {
+        for (uint256 slot; slot < limit; ++slot) {
+            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
+            require(result == bytes32(0), "Slot is not zero");
         }
     }
 

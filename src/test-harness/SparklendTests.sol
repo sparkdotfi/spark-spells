@@ -185,9 +185,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _runOraclesTests(ChainId chainId) internal onChain(chainId) {
         _validateOracles();
-
         _executeAllPayloadsAndBridges();
-
         _validateOracles();
     }
 
