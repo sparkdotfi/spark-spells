@@ -483,7 +483,7 @@ contract ProtocolV3TestBase is Test {
     ) internal {
         vm.expectRevert(bytes("31")); // STABLE_BORROWING_NOT_ENABLED
 
-        _borrow(borrowConfig, pool, borrower, amount, true);
+        pool.borrow(borrowConfig.underlying, amount, 1, 0, borrower);
 
         vm.warp(block.timestamp + 1 hours);
 
