@@ -380,6 +380,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         vm.revertTo(snapshot);
     }
 
+    // TODO: MDL, rename as this is not just checking, but modifying storage.
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
         for (uint256 i = 0; i < integrations.length; ++i) {
             require(

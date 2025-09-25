@@ -208,13 +208,13 @@ contract ProtocolV3TestBase is Test {
 
         ReserveConfig[] memory configs = _getReservesConfigs(pool);
 
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i = 0; i < configs.length; ++i) {
             if (!_includeCollateralAssetInE2e(configs[i])) {
                 console.log("Skip collateral: %s, not configured", configs[i].symbol);
                 continue;
             }
 
-            for(uint256 j; j < configs.length; j++) {
+            for (uint256 j; j < configs.length; ++j) {
                 if (!_includeBorrowAssetInE2e(configs[j])) {
                     console.log("Skip borrow: %s, not configured", configs[i].symbol);
                     continue;
@@ -690,6 +690,33 @@ contract ProtocolV3TestBase is Test {
         );
     }
 
+    function _withdraw(
+        ReserveConfig memory config,
+        IPool                pool,
+        address              user,
+        uint256              amount
+    ) internal returns (uint256) {
+        uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
+        uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
+        uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
+
+        vm.prank(user);
+        uint256 amountOut = pool.withdraw(config.underlying, amount, user);
+
+        console.log("WITHDRAW: %s, Amount: %s", config.symbol, _formattedAmount(amountOut, config.decimals));
+
+        uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
+        uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
+        uint256 underlyingUserAfter   = IERC20(config.underlying).balanceOf(user);
+
+        assertApproxEqAbs(aTokenAfter, aTokenBefore < amount ? 0 : aTokenBefore - amount, 1);
+
+        assertApproxEqAbs(underlyingATokenAfter, underlyingATokenBefore - amountOut, 1);
+        assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   + amountOut, 1);
+
+        return amountOut;
+    }
+
     function _writeEModeConfigs(
         string          memory path,
         ReserveConfig[] memory configs,
@@ -1093,33 +1120,6 @@ contract ProtocolV3TestBase is Test {
 
     function _isAboveSupplyCap(ReserveConfig memory config, uint256 supplyAmount) internal view returns (bool) {
         return IERC20(config.aToken).totalSupply() + supplyAmount > (config.supplyCap * 10 ** config.decimals);
-    }
-
-    function _withdraw(
-        ReserveConfig memory config,
-        IPool                pool,
-        address              user,
-        uint256              amount
-    ) internal returns (uint256) {
-        uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
-        uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
-        uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
-
-        vm.prank(user);
-        uint256 amountOut = pool.withdraw(config.underlying, amount, user);
-
-        console.log("WITHDRAW: %s, Amount: %s", config.symbol, _formattedAmount(amountOut, config.decimals));
-
-        uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
-        uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
-        uint256 underlyingUserAfter   = IERC20(config.underlying).balanceOf(user);
-
-        assertApproxEqAbs(aTokenAfter, aTokenBefore < amount ? 0 : aTokenBefore - amount, 1);
-
-        assertApproxEqAbs(underlyingATokenAfter, underlyingATokenBefore - amountOut, 1);
-        assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   + amountOut, 1);
-
-        return amountOut;
     }
 
     function _getLiquidationAmounts(
@@ -1765,8 +1765,6 @@ contract ProtocolV3TestBase is Test {
             revert("_getAssetOnEmodeCategory(): LESS_ASSETS_IN_CATEGORY_THAN_EXPECTED");
         }
     }
-
-    /** Utils **/
 
     function _isInUint256Array(
         uint256[] memory haystack,

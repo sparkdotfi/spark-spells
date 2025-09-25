@@ -190,6 +190,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 smallerMaxSlippage;
     }
 
+    struct CurveLPE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address pool;
+        address asset0;
+        address asset1;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+        uint256 tolerance;
+    }
+
+    struct CurveE2ETestVars {
+        uint256 depositAmount0;
+        uint256 depositAmount1;
+        uint256 maxSlippage;
+        uint256 depositLimit;
+        uint256 withdrawLimit;
+        uint256[] rates;
+        uint256[] depositAmounts;
+        uint256 totalDepositValue;
+        uint256 minLPAmount;
+        uint256 shares;
+        uint256[] withdrawAmounts;
+        uint256[] withdrawnTokens;
+        uint256 totalWithdrawnValue;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -948,33 +975,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _isDeployedByFactory(address pool) internal view returns (bool) {
         address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
-    }
-
-    struct CurveLPE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address pool;
-        address asset0;
-        address asset1;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-        uint256 tolerance;
-    }
-
-    struct CurveE2ETestVars {
-        uint256 depositAmount0;
-        uint256 depositAmount1;
-        uint256 maxSlippage;
-        uint256 depositLimit;
-        uint256 withdrawLimit;
-        uint256[] rates;
-        uint256[] depositAmounts;
-        uint256 totalDepositValue;
-        uint256 minLPAmount;
-        uint256 shares;
-        uint256[] withdrawAmounts;
-        uint256[] withdrawnTokens;
-        uint256 totalWithdrawnValue;
     }
 
     function _testCurveLPIntegration(CurveLPE2ETestParams memory p) internal {

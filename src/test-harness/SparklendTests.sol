@@ -137,7 +137,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
             pool
         );
 
-        _diffReports(
+        _generateDiffReports(
             string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
             string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post"))
         );
@@ -156,6 +156,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _e2eTest(ctx.pool);
     }
 
+    // TODO: MDL, rename as it is not only asserting, but executing.
     function _assertTokenImplementationsMatch(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
@@ -168,6 +169,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         assertGt(reserves.length, 0);
 
         DataTypes.ReserveData memory data = ctx.pool.getReserveData(reserves[0]);
+
         address aTokenImpl            = _getImplementation(address(ctx.poolConfigurator), data.aTokenAddress);
         address stableDebtTokenImpl   = _getImplementation(address(ctx.poolConfigurator), data.stableDebtTokenAddress);
         address variableDebtTokenImpl = _getImplementation(address(ctx.poolConfigurator), data.variableDebtTokenAddress);
@@ -189,6 +191,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _validateOracles();
     }
 
+    // TODO: MDL, rename as it is not only asserting, but executing.
     function _assertAllReservesSeeded(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
@@ -263,7 +266,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /**
      * @dev generates the diff between two reports
      */
-    function _diffReports(string memory reportBefore, string memory reportAfter) internal {
+    function _generateDiffReports(string memory reportBefore, string memory reportAfter) internal {
         string memory outPath = string(
             abi.encodePacked("./diffs/", reportBefore, "_", reportAfter, ".md")
         );
@@ -286,6 +289,12 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
+
+    function _getImplementation(address admin, address proxy) internal returns (address) {
+        // TODO: MDL, very odd that this query requires a prank.
+        vm.prank(admin);
+        return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
+    }
 
     function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
         IPoolAddressesProvider poolAddressesProvider;
@@ -320,11 +329,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
             require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
             require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
         }
-    }
-
-    function _getImplementation(address admin, address proxy) internal returns (address) {
-        vm.prank(admin);
-        return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
     }
 
 }

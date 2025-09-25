@@ -188,14 +188,14 @@ abstract contract SpellRunner is Test {
     }
 
     function _deployPayload(ChainId chainId) internal onChain(chainId) returns (address) {
-        return deployCode(_spellIdentifier(chainId));
+        return deployCode(_getSpellIdentifier(chainId));
     }
 
     function _deployPayloads() internal {
         for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
 
-            string memory identifier = _spellIdentifier(chainId);
+            string memory identifier = _getSpellIdentifier(chainId);
 
             try vm.getCode(identifier) {
                 chainData[chainId].payload = _deployPayload(chainId);
@@ -377,6 +377,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
+    // TODO: MDL, rename as this is not just asserting, but deploying payload.
     function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
         address actualPayload = chainData[chainId].payload;
 
@@ -393,7 +394,7 @@ abstract contract SpellRunner is Test {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    function _spellIdentifier(ChainId chainId) internal view returns (string memory) {
+    function _getSpellIdentifier(ChainId chainId) internal view returns (string memory) {
         string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
         return string(abi.encodePacked(slug, ".sol:", slug));
     }
