@@ -241,6 +241,29 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 withdrawKey;
     }
 
+    struct EthenaE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256 depositAmount;
+        bytes32 mintKey;
+        bytes32 depositKey;
+        bytes32 cooldownKey;
+        bytes32 burnKey;
+        uint256 tolerance;
+    }
+
+    struct EthenaE2ETestVars {
+        uint256 mintLimit;
+        uint256 depositLimit;
+        uint256 cooldownLimit;
+        uint256 burnLimit;
+        uint256 usdeAmount;
+        uint256 proxyUsdeBalance;
+        uint256 proxyUsdcBalance;
+        uint256 startingShares;
+        uint256 startingAssets;
+        uint256 shares;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -1224,175 +1247,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(rewardsToken.balanceOf(address(p.ctx.proxy)), proxyRewardsTokenBalance + earned);
     }
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    function _getSparkLiquidityLayerContext(ChainId chain) internal view returns (SparkLiquidityLayerContext memory ctx) {
-        if (chain == ChainIdUtils.Ethereum()) {
-            ctx = SparkLiquidityLayerContext(
-                Ethereum.ALM_CONTROLLER,
-                address(0),
-                IALMProxy(Ethereum.ALM_PROXY),
-                IRateLimits(Ethereum.ALM_RATE_LIMITS),
-                Ethereum.ALM_RELAYER,
-                Ethereum.ALM_FREEZER
-            );
-        } else if (chain == ChainIdUtils.Base()) {
-            ctx = SparkLiquidityLayerContext(
-                Base.ALM_CONTROLLER,
-                address(0),
-                IALMProxy(Base.ALM_PROXY),
-                IRateLimits(Base.ALM_RATE_LIMITS),
-                Base.ALM_RELAYER,
-                Base.ALM_FREEZER
-            );
-        } else if (chain == ChainIdUtils.ArbitrumOne()) {
-            ctx = SparkLiquidityLayerContext(
-                Arbitrum.ALM_CONTROLLER,
-                address(0),
-                IALMProxy(Arbitrum.ALM_PROXY),
-                IRateLimits(Arbitrum.ALM_RATE_LIMITS),
-                Arbitrum.ALM_RELAYER,
-                Arbitrum.ALM_FREEZER
-            );
-        } else if (chain == ChainIdUtils.Optimism()) {
-            ctx = SparkLiquidityLayerContext(
-                Optimism.ALM_CONTROLLER,
-                address(0),
-                IALMProxy(Optimism.ALM_PROXY),
-                IRateLimits(Optimism.ALM_RATE_LIMITS),
-                Optimism.ALM_RELAYER,
-                Optimism.ALM_FREEZER
-            );
-        } else if (chain == ChainIdUtils.Unichain()) {
-            ctx = SparkLiquidityLayerContext(
-                Unichain.ALM_CONTROLLER,
-                address(0),
-                IALMProxy(Unichain.ALM_PROXY),
-                IRateLimits(Unichain.ALM_RATE_LIMITS),
-                Unichain.ALM_RELAYER,
-                Unichain.ALM_FREEZER
-            );
-        } else {
-            revert("SLL/executing on unknown chain");
-        }
-
-        // Override if there is controller upgrades
-        if (chainData[chain].prevController != address(0)) {
-            ctx.prevController = chainData[chain].prevController;
-            ctx.controller     = chainData[chain].newController;
-        } else {
-            ctx.prevController = ctx.controller;
-        }
-    }
-
-    function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
-        return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
-    }
-
-    // TODO: MDL, seems like unnecessary overload bloat.
-    function _assertRateLimit(
-       bytes32 key,
-       RateLimitData memory data
-    ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
-
-        _assertRateLimit(
-            key,
-            data.maxAmount,
-            data.slope,
-            rateLimit.lastAmount,
-            rateLimit.lastUpdated
-        );
-    }
-
-    function _assertRateLimit(
-       bytes32 key,
-       uint256 maxAmount,
-       uint256 slope
-    ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
-
-        _assertRateLimit(
-            key,
-            maxAmount,
-            slope,
-            rateLimit.lastAmount,
-            rateLimit.lastUpdated
-        );
-    }
-
-    function _assertUnlimitedRateLimit(
-       bytes32 key
-    ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
-
-        _assertRateLimit(
-            key,
-            type(uint256).max,
-            0,
-            rateLimit.lastAmount,
-            rateLimit.lastUpdated
-        );
-    }
-
-    function _assertRateLimit(
-       bytes32 key,
-       uint256 maxAmount,
-       uint256 slope,
-       uint256 lastAmount,
-       uint256 lastUpdated
-    ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
-
-        assertEq(rateLimit.maxAmount,   maxAmount);
-        assertEq(rateLimit.slope,       slope);
-        assertEq(rateLimit.lastAmount,  lastAmount);
-        assertEq(rateLimit.lastUpdated, lastUpdated);
-
-        if (maxAmount != 0 && maxAmount != type(uint256).max) {
-            // Do some sanity checks on the slope
-            // This is to catch things like forgetting to divide to a per-second time, etc
-
-            // We assume it takes at least 1 hours to recharge to max
-            uint256 oneHoursSlope = slope * 1 hours;
-            assertLe(oneHoursSlope, maxAmount, "slope range sanity check failed");
-
-            // It shouldn't take more than 30 days to recharge to max
-            uint256 monthlySlope = slope * 30 days;
-            assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
-        }
-    }
-
-    function _isDeployedByFactory(address pool) internal view returns (bool) {
-        address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
-        return impl != address(0);
-    }
-
-    struct EthenaE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        uint256 depositAmount;
-        bytes32 mintKey;
-        bytes32 depositKey;
-        bytes32 cooldownKey;
-        bytes32 burnKey;
-        uint256 tolerance;
-    }
-
-    struct EthenaE2ETestVars {
-        uint256 mintLimit;
-        uint256 depositLimit;
-        uint256 cooldownLimit;
-        uint256 burnLimit;
-        uint256 usdeAmount;
-        uint256 proxyUsdeBalance;
-        uint256 proxyUsdcBalance;
-        uint256 startingShares;
-        uint256 startingAssets;
-        uint256 shares;
-    }
-
     function _testEthenaIntegration(EthenaE2ETestParams memory p) internal {
         IERC20 usdc = IERC20(Ethereum.USDC);
         IERC20 usde = IERC20(Ethereum.USDE);
@@ -1611,6 +1465,152 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUsde);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), p.ctx.rateLimits.getRateLimitData(p.burnKey).maxAmount);
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _getSparkLiquidityLayerContext(ChainId chain) internal view returns (SparkLiquidityLayerContext memory ctx) {
+        if (chain == ChainIdUtils.Ethereum()) {
+            ctx = SparkLiquidityLayerContext(
+                Ethereum.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Ethereum.ALM_PROXY),
+                IRateLimits(Ethereum.ALM_RATE_LIMITS),
+                Ethereum.ALM_RELAYER,
+                Ethereum.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Base()) {
+            ctx = SparkLiquidityLayerContext(
+                Base.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Base.ALM_PROXY),
+                IRateLimits(Base.ALM_RATE_LIMITS),
+                Base.ALM_RELAYER,
+                Base.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.ArbitrumOne()) {
+            ctx = SparkLiquidityLayerContext(
+                Arbitrum.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Arbitrum.ALM_PROXY),
+                IRateLimits(Arbitrum.ALM_RATE_LIMITS),
+                Arbitrum.ALM_RELAYER,
+                Arbitrum.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Optimism()) {
+            ctx = SparkLiquidityLayerContext(
+                Optimism.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Optimism.ALM_PROXY),
+                IRateLimits(Optimism.ALM_RATE_LIMITS),
+                Optimism.ALM_RELAYER,
+                Optimism.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Unichain()) {
+            ctx = SparkLiquidityLayerContext(
+                Unichain.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Unichain.ALM_PROXY),
+                IRateLimits(Unichain.ALM_RATE_LIMITS),
+                Unichain.ALM_RELAYER,
+                Unichain.ALM_FREEZER
+            );
+        } else {
+            revert("SLL/executing on unknown chain");
+        }
+
+        // Override if there is controller upgrades
+        if (chainData[chain].prevController != address(0)) {
+            ctx.prevController = chainData[chain].prevController;
+            ctx.controller     = chainData[chain].newController;
+        } else {
+            ctx.prevController = ctx.controller;
+        }
+    }
+
+    function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
+        return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
+    }
+
+    // TODO: MDL, seems like unnecessary overload bloat.
+    function _assertRateLimit(
+       bytes32 key,
+       RateLimitData memory data
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
+        _assertRateLimit(
+            key,
+            data.maxAmount,
+            data.slope,
+            rateLimit.lastAmount,
+            rateLimit.lastUpdated
+        );
+    }
+
+    function _assertRateLimit(
+       bytes32 key,
+       uint256 maxAmount,
+       uint256 slope
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
+        _assertRateLimit(
+            key,
+            maxAmount,
+            slope,
+            rateLimit.lastAmount,
+            rateLimit.lastUpdated
+        );
+    }
+
+    function _assertUnlimitedRateLimit(
+       bytes32 key
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
+        _assertRateLimit(
+            key,
+            type(uint256).max,
+            0,
+            rateLimit.lastAmount,
+            rateLimit.lastUpdated
+        );
+    }
+
+    function _assertRateLimit(
+       bytes32 key,
+       uint256 maxAmount,
+       uint256 slope,
+       uint256 lastAmount,
+       uint256 lastUpdated
+    ) internal view {
+        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
+        assertEq(rateLimit.maxAmount,   maxAmount);
+        assertEq(rateLimit.slope,       slope);
+        assertEq(rateLimit.lastAmount,  lastAmount);
+        assertEq(rateLimit.lastUpdated, lastUpdated);
+
+        if (maxAmount != 0 && maxAmount != type(uint256).max) {
+            // Do some sanity checks on the slope
+            // This is to catch things like forgetting to divide to a per-second time, etc
+
+            // We assume it takes at least 1 hours to recharge to max
+            uint256 oneHoursSlope = slope * 1 hours;
+            assertLe(oneHoursSlope, maxAmount, "slope range sanity check failed");
+
+            // It shouldn't take more than 30 days to recharge to max
+            uint256 monthlySlope = slope * 30 days;
+            assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
+        }
+    }
+
+    function _isDeployedByFactory(address pool) internal view returns (bool) {
+        address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
+        return impl != address(0);
     }
 
     struct CoreE2ETestParams {
