@@ -1719,14 +1719,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), rateLimit);
 
-        vm.prank(ctx.relayer);
-        controller.takeFromSparkVault(vault, takeAmount / 2);
+        assertEq(IERC20(asset).balanceOf(vault),              vaultBalance);
+        assertEq(IERC20(asset).balanceOf(address(ctx.proxy)), sparkBalance);
 
-        assertEq(IERC20(asset).balanceOf(address(ctx.proxy)), sparkBalance + takeAmount / 2);
-        assertEq(IERC20(asset).balanceOf(vault),              vaultBalance - takeAmount / 2);
+        vm.prank(ctx.relayer);
+        controller.takeFromSparkVault(vault, takeAmount);
+
+        assertEq(IERC20(asset).balanceOf(vault),              vaultBalance - takeAmount);
+        assertEq(IERC20(asset).balanceOf(address(ctx.proxy)), sparkBalance + takeAmount);
 
         if (rateLimit != type(uint256).max) {
-            assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), rateLimit - takeAmount / 2);
+            assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), rateLimit - takeAmount);
         } else {
             assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), type(uint256).max);
         }

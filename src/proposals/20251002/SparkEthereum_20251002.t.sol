@@ -37,13 +37,21 @@ interface INetworkRestakeDelegator {
 
 interface ISparkVaultV2 {
     function asset() external view returns (address);
+    function chi() external view returns (uint192);
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
     function depositCap() external view returns (uint256);
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
     function hasRole(bytes32 role, address account) external view returns (bool);
-    function SETTER_ROLE() external view returns (bytes32);
     function minVsr() external view returns (uint256);
     function maxVsr() external view returns (uint256);
+    function name() external view returns (string memory);
+    function nowChi() external view returns (uint256);
+    function rho() external view returns (uint64);
+    function SETTER_ROLE() external view returns (bytes32);
+    function setVsr(uint256 newVsr) external;
+    function symbol() external view returns (string memory);
     function TAKER_ROLE() external view returns (bytes32);
+    function vsr() external view returns (uint256);
 }
 
 contract SparkEthereum_20251002Test is SparkTestBase {
@@ -127,6 +135,10 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() public onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
+            asset:      Ethereum.USDC,
+            name:       "Spark Savings USDC",
+            symbol:     "spUSDC",
+            rho:        1758286595,
             vault_:     Ethereum.SPARK_VAULT_V2_SPUSDC,
             minVsr:     1e27,
             maxVsr:     TEN_PCT_APY,
@@ -137,6 +149,10 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() public onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
+            asset:      Ethereum.USDT,
+            name:       "Spark Savings USDT",
+            symbol:     "spUSDT",
+            rho:        1758288359,
             vault_:     Ethereum.SPARK_VAULT_V2_SPUSDT,
             minVsr:     1e27,
             maxVsr:     TEN_PCT_APY,
@@ -147,6 +163,10 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
     function test_ETHEREUM_sparkVaultsV2_configureSPETH() public onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
+            asset:      Ethereum.WETH,
+            name:       "Spark Savings ETH",
+            symbol:     "spETH",
+            rho:        1758289979,
             vault_:     Ethereum.SPARK_VAULT_V2_SPETH,
             minVsr:     1e27,
             maxVsr:     FIVE_PCT_APY,
@@ -156,6 +176,10 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     }
 
     function _testVaultConfiguration(
+        address asset,
+        string  memory name,
+        string  memory symbol,
+        uint64  rho,
         address vault_,
         uint256 minVsr,
         uint256 maxVsr,
@@ -176,10 +200,20 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             vault_
         );
 
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY), true);
-        assertEq(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG),   false);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY),           false);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), false);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        false);
 
+        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        0);
+        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         0);
+
+        assertEq(vault.asset(),      asset);
+        assertEq(vault.name(),       name);
+        assertEq(vault.symbol(),     symbol);
+        assertEq(vault.rho(),        rho);
+        assertEq(vault.chi(),        uint192(1e27));
+        assertEq(vault.vsr(),        1e27);
         assertEq(vault.minVsr(),     1e27);
         assertEq(vault.maxVsr(),     1e27);
         assertEq(vault.depositCap(), 0);
@@ -193,6 +227,10 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG),   true);
         assertEq(vault.hasRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY),           true);
 
+        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        1);
+        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         1);
+
         assertEq(vault.minVsr(),     minVsr);
         assertEq(vault.maxVsr(),     maxVsr);
         assertEq(vault.depositCap(), depositCap);
@@ -200,6 +238,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
 
+        uint256 initialChi = vault.nowChi();
+
+        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        vault.setVsr(FIVE_PCT_APY);
+
+        skip(1 days);
+
+        assertGt(vault.nowChi(), initialChi);
+        
         _testVaultTakeIntegration({
             asset:      vault.asset(),
             vault:      vault_,
@@ -235,7 +282,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547362527277079545e18);
     }
 
-    function test_ETHEREUM_sll_transferAssetSYRUP() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_addTransferAssetRateLimitForSYRUP() public onChain(ChainIdUtils.Ethereum()) {
         bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             SYRUP,
