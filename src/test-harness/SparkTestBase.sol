@@ -133,6 +133,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // }
     }
 
+    function test_printAllRateLimitInfo() public {
+        _populateRateLimitKeys(false);
+        _loadPreExecutionIntegrations();
+
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _printAllRateLimitInfo(ethereumSllIntegrations[i]);
+        }
+    }
+
     /**********************************************************************************************/
     /*** E2E test helper functions                                                              ***/
     /**********************************************************************************************/
@@ -486,7 +497,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         ethereumSllIntegrations.push(_createSLLIntegration("ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("FARM-USDS_SPK_FARM",   Category.FARM,       USDS_SPK_FARM));
+        ethereumSllIntegrations.push(_createSLLIntegration("FARM-USDS_SPK_FARM", Category.FARM, USDS_SPK_FARM));
 
         ethereumSllIntegrations.push(_createSLLIntegration("MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC));
 
@@ -497,8 +508,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ethereumSllIntegrations.push(_createSLLIntegration("SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB));
     }
 
-    function _loadPostExecutionIntegrations() internal {
-    }
+    function _loadPostExecutionIntegrations() internal {}
 
     /**********************************************************************************************/
     /*** Data processing helper functions                                                       ***/
@@ -639,6 +649,65 @@ abstract contract SparkTestBase is SparkEthereumTests {
             exitId2:     exitId2,
             extraData:   extraData
         });
+    }
+
+    function _printKeys(
+        SLLIntegration memory integration,
+        string memory entryLabel,
+        string memory exitLabel,
+        string memory entryId2Label,
+        string memory exitId2Label
+    ) internal {
+        console2.log("--- KEYS ---");
+        if (bytes(entryLabel).length > 0)    console2.log(entryLabel,    ":", vm.toString(integration.entryId));
+        if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", vm.toString(integration.exitId));
+        if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", vm.toString(integration.entryId2));
+        if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", vm.toString(integration.exitId2));
+    }
+
+    function _formattedAmount(uint256 maxAmount) internal pure returns (string memory) {
+        return maxAmount == type(uint256).max ? "unlimited" : vm.toString(maxAmount);
+    }
+
+    function _printAllRateLimitInfo(SLLIntegration memory integration) internal {
+        string memory entryLabel;
+        string memory exitLabel;
+        string memory entryId2Label;
+        string memory exitId2Label;
+
+        console2.log("");
+        console2.log("");
+        console2.log("Integration:", integration.label);
+
+        if (integration.category == Category.AAVE)             _printKeys(integration, "AAVE deposit",         "AAVE withdraw",        "",                "");
+        if (integration.category == Category.BUIDL)            _printKeys(integration, "BUIDL deposit",        "BUIDL withdraw",       "",                "");
+        if (integration.category == Category.CCTP_GENERAL)     _printKeys(integration, "CCTP general",         "",                     "",                "");
+        if (integration.category == Category.CCTP)             _printKeys(integration, "CCTP to domain",       "",                     "",                "");
+        if (integration.category == Category.CENTRIFUGE)       _printKeys(integration, "Centrifuge deposit",   "Centrifuge redeem",    "",                "");
+        if (integration.category == Category.CORE)             _printKeys(integration, "USDS mint",            "",                     "",                "");
+        if (integration.category == Category.CURVE_LP)         _printKeys(integration, "Curve LP deposit",     "Curve LP withdraw",    "",                "");
+        if (integration.category == Category.CURVE_SWAP)       _printKeys(integration, "Curve swap",           "",                     "",                "");
+        if (integration.category == Category.ERC4626)          _printKeys(integration, "ERC4626 deposit",      "ERC4626 withdraw",     "",                "");
+        if (integration.category == Category.ETHENA)           _printKeys(integration, "ETHENA mint",          "ETHENA deposit",       "ETHENA cooldown", "ETHENA burn");
+        if (integration.category == Category.FARM)             _printKeys(integration, "FARM deposit",         "FARM withdraw",        "",                "");
+        if (integration.category == Category.MAPLE)            _printKeys(integration, "Maple deposit",        "Maple request redeem", "Maple withdraw",  "");
+        if (integration.category == Category.PSM)              _printKeys(integration, "PSM deposit",          "PSM withdraw",         "",                "");
+        if (integration.category == Category.REWARDS_TRANSFER) _printKeys(integration, "Rewards transfer",     "",                     "",                "");
+        if (integration.category == Category.SUPERSTATE)       _printKeys(integration, "Superstate subscribe", "Superstate redeem",    "",                "");
+
+        IRateLimits rateLimits = IRateLimits(_getSparkLiquidityLayerContext().rateLimits);
+
+        console2.log("--- MAX AMOUNTS ---");
+        console2.log("Entry ID:   ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).maxAmount));
+        console2.log("Exit ID:    ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).maxAmount));
+        console2.log("Entry ID 2: ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).maxAmount));
+        console2.log("Exit ID 2:  ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).maxAmount));
+
+        console2.log("--- SLOPES ---");
+        console2.log("Entry ID:   ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).slope * 1 days));
+        console2.log("Exit ID:    ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).slope * 1 days));
+        console2.log("Entry ID 2: ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).slope * 1 days));
+        console2.log("Exit ID 2:  ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).slope * 1 days));
     }
 
 }
