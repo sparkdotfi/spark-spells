@@ -67,7 +67,7 @@ interface IVetoSlasher {
  *         SparkLend:
  *         - Increase LBTC Supply Cap Automator Parameters
  *         - Reduce Stablecoin Market Reserve Factors
- *         - Claim Accrued Reserves for USDS and DAI
+ *         - Claim Reserves for USDS and DAI
  *         Spark Liquidity Layer:
  *         - Onboard SparkLend ETH
  *         - Claim Aave Core aUSDS Rewards
@@ -89,13 +89,13 @@ interface IVetoSlasher {
  */
 contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
-    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
-    //   1.000000003022265980097387650
-    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
-
     // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
     //   1.000000001547125957863212448
     uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
+
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
+    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
     address internal constant AAVE_INCENTIVE_CONTROLLER = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
     address internal constant GROVE_SUBDAO_PROXY        = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
