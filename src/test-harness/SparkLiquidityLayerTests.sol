@@ -946,6 +946,80 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
+    function _testCurveSwapIntegration(CurveSwapE2ETestParams memory p) internal {
+        skip(10 days);  // Recharge rate limits
+
+        uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
+
+        uint256 swapAmount = p.swapAmount * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
+        uint256 swapValue  = swapAmount * rates[0] / 1e18;
+
+        deal(address(p.asset0), address(p.ctx.proxy), swapAmount);
+        deal(address(p.asset1), address(p.ctx.proxy), 0);  // Make easier assertions
+
+        uint256 swapLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+
+        uint256 maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
+
+        /******************************************************************/
+        /*** Step 1: Swap asset0 to asset1 and check resulting position ***/
+        /******************************************************************/
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), swapAmount);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        uint256 minAmountOut = swapAmount * rates[0] * maxSlippage / rates[1] / 1e18;
+
+        // Swap asset0 to asset1
+        vm.prank(p.ctx.relayer);
+        uint256 amountOut = MainnetController(p.ctx.controller).swapCurve(
+            p.pool,
+            0,
+            1,
+            swapAmount,
+            minAmountOut
+        );
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
+        assertGe(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), minAmountOut);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), amountOut);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
+
+        /********************************************/
+        /*** Step 2: Warp to recharge rate limits ***/
+        /********************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+
+        /******************************************************************/
+        /*** Step 3: Swap asset1 to asset0 and check resulting position ***/
+        /******************************************************************/
+
+        swapAmount = amountOut;
+        swapValue  = swapAmount * rates[1] / 1e18;
+
+        minAmountOut = swapAmount * rates[1] * maxSlippage / rates[0] / 1e18;
+
+        vm.prank(p.ctx.relayer);
+        amountOut = MainnetController(p.ctx.controller).swapCurve(p.pool, 1, 0, swapAmount, minAmountOut);
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), amountOut);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        /********************************************/
+        /*** Step 4: Warp to recharge rate limits ***/
+        /********************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -1090,80 +1164,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _isDeployedByFactory(address pool) internal view returns (bool) {
         address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
-    }
-
-    function _testCurveSwapIntegration(CurveSwapE2ETestParams memory p) internal {
-        skip(10 days);  // Recharge rate limits
-
-        uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
-
-        uint256 swapAmount = p.swapAmount * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
-        uint256 swapValue  = swapAmount * rates[0] / 1e18;
-
-        deal(address(p.asset0), address(p.ctx.proxy), swapAmount);
-        deal(address(p.asset1), address(p.ctx.proxy), 0);  // Make easier assertions
-
-        uint256 swapLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
-
-        uint256 maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
-
-        /******************************************************************/
-        /*** Step 1: Swap asset0 to asset1 and check resulting position ***/
-        /******************************************************************/
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), swapAmount);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
-
-        uint256 minAmountOut = swapAmount * rates[0] * maxSlippage / rates[1] / 1e18;
-
-        // Swap asset0 to asset1
-        vm.prank(p.ctx.relayer);
-        uint256 amountOut = MainnetController(p.ctx.controller).swapCurve(
-            p.pool,
-            0,
-            1,
-            swapAmount,
-            minAmountOut
-        );
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertGe(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), minAmountOut);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), amountOut);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
-
-        /********************************************/
-        /*** Step 2: Warp to recharge rate limits ***/
-        /********************************************/
-
-        skip(10 days);
-
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
-
-        /******************************************************************/
-        /*** Step 3: Swap asset1 to asset0 and check resulting position ***/
-        /******************************************************************/
-
-        swapAmount = amountOut;
-        swapValue  = swapAmount * rates[1] / 1e18;
-
-        minAmountOut = swapAmount * rates[1] * maxSlippage / rates[0] / 1e18;
-
-        vm.prank(p.ctx.relayer);
-        amountOut = MainnetController(p.ctx.controller).swapCurve(p.pool, 1, 0, swapAmount, minAmountOut);
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), amountOut);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
-
-        /********************************************/
-        /*** Step 4: Warp to recharge rate limits ***/
-        /********************************************/
-
-        skip(10 days);
-
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
     }
 
     struct PSMSwapE2ETestParams {
