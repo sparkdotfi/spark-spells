@@ -338,8 +338,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
 
-        (,,,,uint48 supplyCapLastIncreaseTime) = capAutomator.supplyCapConfigs(asset);
-        (,,,,uint48 borrowCapLastIncreaseTime) = capAutomator.borrowCapConfigs(asset);
+        ( , , , , uint48 supplyCapLastIncreaseTime ) = capAutomator.supplyCapConfigs(asset);
+        ( , , , , uint48 borrowCapLastIncreaseTime ) = capAutomator.borrowCapConfigs(asset);
 
         capAutomator.exec(asset);
 
@@ -352,7 +352,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint48 gap;
         uint48 cooldown;
 
-        (max, gap, cooldown,,) = capAutomator.supplyCapConfigs(asset);
+        ( max, gap, cooldown, , ) = capAutomator.supplyCapConfigs(asset);
 
         if (max > 0) {
             uint256 currentSupply = (IScaledBalanceToken(reserveDataAfter.aTokenAddress).scaledTotalSupply() + uint256(reserveDataAfter.accruedToTreasury))
@@ -372,7 +372,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             assertEq(supplyCapAfter, supplyCapBefore);
         }
 
-        (max, gap, cooldown,,) = capAutomator.borrowCapConfigs(asset);
+        ( max, gap, cooldown, , ) = capAutomator.borrowCapConfigs(asset);
 
         if (max > 0) {
             uint256 currentBorrows = IERC20(reserveDataAfter.variableDebtTokenAddress).totalSupply() / 10 ** IERC20(reserveDataAfter.variableDebtTokenAddress).decimals();
@@ -509,7 +509,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         }
 
         // Check total assets in the morpho market are greater than 1 unit of the loan token
-        ( uint256 totalSupplyAssets_,,,,, ) = IMorphoLike(Ethereum.MORPHO).market(MarketParamsLib.id(config));
+        ( uint256 totalSupplyAssets_, , , , , ) = IMorphoLike(Ethereum.MORPHO).market(MarketParamsLib.id(config));
         assertGe(totalSupplyAssets_, 10 ** IERC20(config.loanToken).decimals());
 
         // Check shares of address(1) are greater or equal to 1e6 * 10 ** loanTokenDecimals (1 unit)
@@ -553,8 +553,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(address(baseFeed.source()), address(pendleOracle));
         assertEq(baseFeed.decimals(),        pendleOracle.decimals());
 
-        ( , int256 pendlePrice,,, )   = pendleOracle.latestRoundData();
-        ( , int256 baseFeedPrice,,, ) = baseFeed.latestRoundData();
+        ( , int256 pendlePrice, , , )   = pendleOracle.latestRoundData();
+        ( , int256 baseFeedPrice, , , ) = baseFeed.latestRoundData();
 
         assertEq(baseFeedPrice, pendlePrice);
 
@@ -828,16 +828,16 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
         (
-            uint48 _max,
-            uint48 _gap,
-            uint48 _increaseCooldown,
+            uint48 max_,
+            uint48 gap_,
+            uint48 increaseCooldown_,
             , // lastUpdateBlock
               // lastIncreaseTime
         ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).supplyCapConfigs(asset);
 
-        assertEq(_max,              max);
-        assertEq(_gap,              gap);
-        assertEq(_increaseCooldown, increaseCooldown);
+        assertEq(max_,              max);
+        assertEq(gap_,              gap);
+        assertEq(increaseCooldown_, increaseCooldown);
     }
 
     function _assertSupplyCapConfigNotSet(address asset) internal view {

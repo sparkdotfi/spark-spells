@@ -173,6 +173,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 totalEscrowedShares;
     }
 
+    struct CurveOnboardingVars {
+        ICurvePoolLike pool;
+        SparkLiquidityLayerContext ctx;
+        MainnetController prevController;
+        MainnetController controller;
+        uint256[] depositAmounts;
+        uint256 minLPAmount;
+        uint256[] withdrawAmounts;
+        uint256[] rates;
+        bytes32 swapKey;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+        uint256 minAmountOut;
+        uint256 lpBalance;
+        uint256 smallerMaxSlippage;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -774,23 +791,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 monthlySlope = slope * 30 days;
             assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
-    }
-
-    struct CurveOnboardingVars {
-        ICurvePoolLike pool;
-        SparkLiquidityLayerContext ctx;
-        MainnetController prevController;
-        MainnetController controller;
-        uint256[] depositAmounts;
-        uint256 minLPAmount;
-        uint256[] withdrawAmounts;
-        uint256[] rates;
-        bytes32 swapKey;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-        uint256 minAmountOut;
-        uint256 lpBalance;
-        uint256 smallerMaxSlippage;
     }
 
     function _isDeployedByFactory(address pool) internal view returns (bool) {

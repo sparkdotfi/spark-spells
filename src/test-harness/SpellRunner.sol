@@ -225,7 +225,7 @@ abstract contract SpellRunner is Test {
 
         vm.prank(Ethereum.PAUSE_PROXY);
 
-        (bool success,) = address(executor).call(abi.encodeWithSignature(
+        ( bool success, ) = address(executor).call(abi.encodeWithSignature(
             "exec(address,bytes)",
             payloadAddress,
             abi.encodeWithSignature("execute()")

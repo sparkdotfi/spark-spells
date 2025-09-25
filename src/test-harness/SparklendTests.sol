@@ -120,34 +120,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
-        IPoolAddressesProvider poolAddressesProvider;
-
-        if (chain == ChainIdUtils.Ethereum()) {
-            poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
-        } else if (chain == ChainIdUtils.Gnosis()) {
-            poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
-        } else {
-            revert("SparkLend/executing on unknown chain");
-        }
-
-        ctx = SparkLendContext(
-            poolAddressesProvider,
-            IPool(poolAddressesProvider.getPool()),
-            IPoolConfigurator(poolAddressesProvider.getPoolConfigurator()),
-            IACLManager(poolAddressesProvider.getACLManager()),
-            IAaveOracle(poolAddressesProvider.getPriceOracle())
-        );
-    }
-
-    function _getSparkLendContext() internal view returns (SparkLendContext memory) {
-        return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
-    }
-
     function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) internal {
         string memory prefix = string(abi.encodePacked(id, "-", chainId.toDomainString()));
 
@@ -233,6 +205,34 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
             require(IERC20(aToken).totalSupply() >= 1e4, "RESERVE_NOT_SEEDED");
         }
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
+        IPoolAddressesProvider poolAddressesProvider;
+
+        if (chain == ChainIdUtils.Ethereum()) {
+            poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
+        } else if (chain == ChainIdUtils.Gnosis()) {
+            poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
+        } else {
+            revert("SparkLend/executing on unknown chain");
+        }
+
+        ctx = SparkLendContext(
+            poolAddressesProvider,
+            IPool(poolAddressesProvider.getPool()),
+            IPoolConfigurator(poolAddressesProvider.getPoolConfigurator()),
+            IACLManager(poolAddressesProvider.getACLManager()),
+            IAaveOracle(poolAddressesProvider.getPriceOracle())
+        );
+    }
+
+    function _getSparkLendContext() internal view returns (SparkLendContext memory) {
+        return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
     }
 
     function _validateOracles() internal view {

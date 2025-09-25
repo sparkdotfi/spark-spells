@@ -82,13 +82,13 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes    extraData;
     }
 
+    uint256 internal constant START_BLOCK = 21029247;
+
     SLLIntegration[] internal arbitrumSllIntegrations;
     SLLIntegration[] internal baseSllIntegrations;
     SLLIntegration[] internal ethereumSllIntegrations;
     SLLIntegration[] internal optimismSllIntegrations;
     SLLIntegration[] internal unichainSllIntegrations;
-
-    uint256 internal constant START_BLOCK = 21029247;
 
     EnumerableSet.Bytes32Set internal _arbitrumRateLimitKeys;
     EnumerableSet.Bytes32Set internal _baseRateLimitKeys;
@@ -425,7 +425,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         for (uint256 i = 0; i < allLogs.length; ++i) {
             if (allLogs[i].topics.length <= 1) continue;
 
-            ( uint256 maxAmount,,, ) = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
+            ( uint256 maxAmount, , , ) = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
 
             if (maxAmount == 0) continue;
 
@@ -439,7 +439,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             for (uint256 i = 0; i < newLogs.length; ++i) {
                 if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
 
-                ( uint256 maxAmount,,, ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
+                ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
 
                 if (maxAmount == 0) continue;
 
