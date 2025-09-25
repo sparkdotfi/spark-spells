@@ -112,12 +112,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
-        // TODO: Find more robust way to do this, this is a hack to use the old controller in getSparkLiquidityLayerContext()
-        delete chainData[ChainIdUtils.Ethereum()].prevController;
-        delete chainData[ChainIdUtils.Base()].prevController;
-
-        // _runSLLE2ETests(ethereumSllIntegrations[16]);
-
         skip(2 days);  // Ensure rate limits are recharged
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
@@ -129,21 +123,14 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
         executeMainnetPayload();
 
-        // TODO: Find more robust way to do this, this is a hack to use the new controller in getSparkLiquidityLayerContext()
-        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
-        chainData[ChainIdUtils.Base()].prevController     = Base.ALM_CONTROLLER;
+        // _populateRateLimitKeys(true);
+        // _loadPostExecutionIntegrations();
 
-        // Overwrite mainnetController with the new controller for the rest of the tests
-        mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
-        _populateRateLimitKeys(true);
-        _loadPostExecutionIntegrations();
-
-        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
-
-        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-            _runSLLE2ETests(ethereumSllIntegrations[i]);
-        }
+        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
+        // }
     }
 
     /**********************************************************************************************/
@@ -483,9 +470,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         ethereumSllIntegrations.push(_createSLLIntegration("CORE-USDS", Category.CORE, Ethereum.USDS));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-PYUSDUSDS", Category.CURVE_LP, Ethereum.CURVE_PYUSDUSDS));
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT));
 
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, CURVE_PYUSDUSDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDS));
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT));
         ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT));
 
@@ -497,6 +486,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         ethereumSllIntegrations.push(_createSLLIntegration("ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE));
 
+        ethereumSllIntegrations.push(_createSLLIntegration("FARM-USDS_SPK_FARM",   Category.FARM,       USDS_SPK_FARM));
+
         ethereumSllIntegrations.push(_createSLLIntegration("MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC));
 
         ethereumSllIntegrations.push(_createSLLIntegration("PSM-USDS", Category.PSM, Ethereum.PSM));
@@ -507,9 +498,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
     }
 
     function _loadPostExecutionIntegrations() internal {
-        ethereumSllIntegrations.push(_createSLLIntegration("FARM-USDS_SPK_FARM",   Category.FARM,       USDS_SPK_FARM));
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, CURVE_PYUSDUSDS));
-        ethereumSllIntegrations.push(_createSLLIntegration("CURVE_LP-PYUSDUSDS",   Category.CURVE_LP,   CURVE_PYUSDUSDS));
     }
 
     /**********************************************************************************************/

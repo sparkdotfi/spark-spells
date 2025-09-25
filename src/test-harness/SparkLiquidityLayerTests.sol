@@ -86,6 +86,7 @@ interface ISuperstateToken is IERC20 {
 interface IPoolManagerLike {
     function poolDelegate() external view returns (address);
     function strategyList(uint256 index) external view returns (address);
+    function strategyListLength() external view returns (uint256);
     function withdrawalManager() external view returns (address);
 }
 
@@ -94,6 +95,8 @@ interface IPsmLike {
 }
 
 interface IMapleStrategyLike {
+    function assetsUnderManagement() external view returns (uint256);
+    function lastRecordedTotalAssets() external view returns (uint256);
     function withdrawFromStrategy(uint256 amount) external;
 }
 
@@ -700,8 +703,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.startPrank(poolManager.poolDelegate());
 
-        // Withdraw from sUSDS strategy
-        IMapleStrategyLike(poolManager.strategyList(3)).withdrawFromStrategy(v.withdrawAmount);
+        uint256 remainingWithdrawal = v.withdrawAmount;
+
+        // Iterate from the last strategy to the first because the first strategies are loan managers
+        // which don't support withdrawFromStrategy
+        for (uint256 i = poolManager.strategyListLength() - 1; i > 0; i--) {
+            IMapleStrategyLike strategy = IMapleStrategyLike(poolManager.strategyList(i));
+
+            uint256 strategyWithdrawAmount = strategy.lastRecordedTotalAssets();
+
+            strategy.withdrawFromStrategy(strategyWithdrawAmount);
+
+            remainingWithdrawal -= strategyWithdrawAmount;
+        }
 
         IWithdrawalManagerLike(withdrawalManager).processRedemptions(v.shares);
 
@@ -1349,6 +1363,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Assert cooldown is unlimited
         assertEq(v.cooldownLimit, type(uint256).max);
 
+        // Unstake any existing sUSDE to prevent unexpected behavior
+        skip(7 days + 1);
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).unstakeSUSDe();
+
         /*************************************/
         /*** Step 1: Check mint rate limit ***/
         /*************************************/
@@ -1474,7 +1493,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
 
-        assertEq(usde.balanceOf(address(silo)), siloBalance + underlyingUsde);
+        assertEq(usde.balanceOf(address(silo)),        siloBalance + underlyingUsde);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).unstakeSUSDe();
@@ -1865,6 +1885,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         ( address sweepDestination, ) = token.supportedStablecoins(address(asset));
 
+        uint256 sweepDestinationBalance = asset.balanceOf(sweepDestination);
+
         ( uint256 expectedToken, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount )
             = token.calculateSuperstateTokenOut(p.depositAmount, address(asset));
 
@@ -1874,7 +1896,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(feeOnStablecoinInAmount,    0);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
-        assertEq(asset.balanceOf(sweepDestination),     0);
+        assertEq(asset.balanceOf(sweepDestination),     sweepDestinationBalance);
 
         assertEq(asset.allowance(address(p.ctx.proxy), address(token)), 0);
 
@@ -1887,7 +1909,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         controller.subscribeSuperstate(p.depositAmount);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(asset.balanceOf(sweepDestination),     p.depositAmount);
+        assertEq(asset.balanceOf(sweepDestination),     sweepDestinationBalance + p.depositAmount);
 
         assertEq(asset.allowance(address(p.ctx.proxy), address(token)), 0);
 
