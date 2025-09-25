@@ -81,22 +81,26 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address tokenAddress;
         address oracleAddress;
         bool    collateralEnabled;
+
         // IRM Params
         uint256 optimalUsageRatio;
         uint256 baseVariableBorrowRate;
         uint256 variableRateSlope1;
         uint256 variableRateSlope2;
+
         // Borrowing configuration
         bool borrowEnabled;
         bool stableBorrowEnabled;
         bool isolationBorrowEnabled;
         bool siloedBorrowEnabled;
         bool flashloanEnabled;
+
         // Reserve configuration
         uint256 ltv;
         uint256 liquidationThreshold;
         uint256 liquidationBonus;
         uint256 reserveFactor;
+
         // Supply and borrow caps
         uint48 supplyCap;
         uint48 supplyCapMax;
@@ -106,6 +110,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint48 borrowCapMax;
         uint48 borrowCapGap;
         uint48 borrowCapTtl;
+
         // Isolation and emode configurations
         bool    isolationMode;
         uint256 isolationModeDebtCeiling;
@@ -125,8 +130,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _runFreezerMomTests();
 
         vm.revertTo(snapshot);
-        _executeAllPayloadsAndBridges();
 
+        _executeAllPayloadsAndBridges();
         _runFreezerMomTests();
     }
 
@@ -136,20 +141,19 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _runFreezerMomTestsMultisig();
 
         vm.revertTo(snapshot);
-        _executeAllPayloadsAndBridges();
 
+        _executeAllPayloadsAndBridges();
         _runFreezerMomTestsMultisig();
     }
 
     function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
         ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
-        address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
+        address         ESM   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
 
         assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
         _checkStorageSlot(address(proxy), 100);
-
         _executeAllPayloadsAndBridges();
 
         assertEq(proxy.wards(ESM),                  1);
@@ -160,9 +164,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
         _runRewardsConfigurationTests();
-
         _executeAllPayloadsAndBridges();
-
         _runRewardsConfigurationTests();
     }
 
@@ -172,22 +174,25 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _runCapAutomatorTests();
 
         vm.revertTo(snapshot);
-        _executeAllPayloadsAndBridges();
 
+        _executeAllPayloadsAndBridges();
         _runCapAutomatorTests();
     }
 
     function test_ETHEREUM_PayloadsConfigured() external onChain(ChainIdUtils.Ethereum()) {
-         for (uint256 i = 0; i < allChains.length; i++) {
+         for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
+
             address payload = chainData[chainId].payload;
-            if (payload != address(0)) {
-                // A payload is defined for this domain
-                // We verify the mainnet spell defines this payload correctly
-                address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
-                assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
-            }
+
+            if (payload == address(0)) continue;
+
+            // A payload is defined for this domain
+            // We verify the mainnet spell defines this payload correctly
+            address mainnetPayload = _getForeignPayloadFromMainnetSpell(chainId);
+            assertEq(mainnetPayload, payload, "Mainnet payload not matching deployed payload");
         }
     }
 
@@ -199,16 +204,18 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
 
         address skyWhale = makeAddr("skyWhale");
-        uint256 amount = 10_000_000_000 ether;
+        uint256 amount   = 10_000_000_000 ether;
 
         deal(Ethereum.SKY, skyWhale, amount);
 
         vm.startPrank(skyWhale);
+
         IERC20(Ethereum.SKY).approve(address(authority), amount);
         authority.lock(amount);
 
         address[] memory slate = new address[](1);
         slate[0] = _spell;
+
         authority.vote(slate);
 
         // Min amount of blocks to pass to vote again.
@@ -230,10 +237,13 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeMarket(Ethereum.DAI, true);
+
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeAllMarkets(true);
+
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.pauseMarket(Ethereum.DAI, true);
+
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.pauseAllMarkets(true);
 
@@ -274,52 +284,59 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeMarket(Ethereum.DAI, true);
+
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.freezeAllMarkets(true);
+
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.pauseMarket(Ethereum.DAI, true);
+
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.pauseAllMarkets(true);
 
         _assertFrozen(Ethereum.DAI,  false);
         _assertFrozen(Ethereum.WETH, false);
+
         _voteAndCast(Ethereum.SPELL_FREEZE_DAI);
+
         _assertFrozen(Ethereum.DAI,  true);
         _assertFrozen(Ethereum.WETH, false);
 
         _voteAndCast(Ethereum.SPELL_FREEZE_ALL);
+
         _assertFrozen(Ethereum.DAI,  true);
         _assertFrozen(Ethereum.WETH, true);
 
         _assertPaused(Ethereum.DAI,  false);
         _assertPaused(Ethereum.WETH, false);
+
         _voteAndCast(Ethereum.SPELL_PAUSE_DAI);
+
         _assertPaused(Ethereum.DAI,  true);
         _assertPaused(Ethereum.WETH, false);
 
         _voteAndCast(Ethereum.SPELL_PAUSE_ALL);
+
         _assertPaused(Ethereum.DAI,  true);
         _assertPaused(Ethereum.WETH, true);
     }
 
     function _runCapAutomatorTests() internal {
-        SparkLendContext memory ctx = _getSparkLendContext();
+        address[] memory reserves = _getSparkLendContext().pool.getReservesList();
 
-        address[] memory reserves = ctx.pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; i++) {
+        for (uint256 i = 0; i < reserves.length; ++i) {
             _assertAutomatedCapsUpdate(reserves[i]);
         }
     }
 
     function _assertAutomatedCapsUpdate(address asset) internal {
-        SparkLendContext memory ctx = _getSparkLendContext();
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
+        SparkLendContext      memory ctx               = _getSparkLendContext();
         DataTypes.ReserveData memory reserveDataBefore = ctx.pool.getReserveData(asset);
 
         uint256 supplyCapBefore = reserveDataBefore.configuration.getSupplyCap();
         uint256 borrowCapBefore = reserveDataBefore.configuration.getBorrowCap();
+
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
 
         (,,,,uint48 supplyCapLastIncreaseTime) = capAutomator.supplyCapConfigs(asset);
         (,,,,uint48 borrowCapLastIncreaseTime) = capAutomator.borrowCapConfigs(asset);
@@ -375,9 +392,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
+        SparkLendContext memory ctx              = _getSparkLendContext();
+        ReserveConfig[]  memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
 
         uint256 startingReserveLength = allConfigsBefore.length;
 
@@ -387,13 +403,13 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
 
-        for (uint256 i = 0; i < collaterals.length; i++) {
+        for (uint256 i = 0; i < collaterals.length; ++i) {
             _testAssetOnboarding(allConfigsAfter, collaterals[i]);
         }
     }
 
     function _testAssetOnboarding(
-        ReserveConfig[] memory allReserveConfigs,
+        ReserveConfig[]                memory allReserveConfigs,
         SparkLendAssetOnboardingParams memory params
     )
         internal view
@@ -443,7 +459,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         });
 
         _validateReserveConfig(reserveConfig, allReserveConfigs);
-
         _validateInterestRateStrategy(irm, irm, irmParams);
 
         _assertSupplyCapConfig({
@@ -467,15 +482,14 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     function _testMorphoCapUpdate(
-        address vault,
+        address             vault,
         MarketParams memory config,
-        uint256 currentCap,
-        uint256 newCap
+        uint256             currentCap,
+        uint256             newCap
     )
         internal
     {
         _assertMorphoCap(vault, config, currentCap);
-
         _executeAllPayloadsAndBridges();
 
         if (newCap > currentCap) {
@@ -483,6 +497,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             _assertMorphoCap(vault, config, currentCap, newCap);
 
             assertEq(IMetaMorpho(vault).timelock(), 1 days);
+
             skip(1 days);
 
             IMetaMorpho(vault).acceptCap(config);
@@ -511,25 +526,23 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     )
         internal
     {
-        IMorphoChainlinkOracleV2 _oracle = IMorphoChainlinkOracleV2(oracle);
-
-        MorphoUpgradableOracle baseFeed = MorphoUpgradableOracle(address(_oracle.BASE_FEED_1()));
-
+        IMorphoChainlinkOracleV2        oracle_      = IMorphoChainlinkOracleV2(oracle);
+        MorphoUpgradableOracle          baseFeed     = MorphoUpgradableOracle(address(oracle_.BASE_FEED_1()));
         IPendleLinearDiscountOracleLike pendleOracle = IPendleLinearDiscountOracleLike(address(baseFeed.source()));
 
         // TODO: This assumes loanTokenDecimals >= ptDecimals, fix for the other case.
         uint256 assetConversion = 10 ** (IERC20(loanToken).decimals() - IERC20(pt).decimals());
 
-        assertEq(address(_oracle.BASE_FEED_2()),          address(0));
-        assertEq(address(_oracle.BASE_VAULT()),           address(0));
-        assertEq(_oracle.BASE_VAULT_CONVERSION_SAMPLE(),  1);
-        assertEq(address(_oracle.QUOTE_FEED_1()),         address(0));
-        assertEq(address(_oracle.QUOTE_FEED_2()),         address(0));
-        assertEq(address(_oracle.QUOTE_VAULT()),          address(0));
-        assertEq(_oracle.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
-        assertEq(_oracle.SCALE_FACTOR(),                  1e36 * assetConversion / 10 ** (IERC20(address(baseFeed)).decimals()));
-        assertGe(_oracle.price(),                         0.01e36);
-        assertLe(_oracle.price(),                         1e36 * assetConversion);
+        assertEq(address(oracle_.BASE_FEED_2()),          address(0));
+        assertEq(address(oracle_.BASE_VAULT()),           address(0));
+        assertEq(oracle_.BASE_VAULT_CONVERSION_SAMPLE(),  1);
+        assertEq(address(oracle_.QUOTE_FEED_1()),         address(0));
+        assertEq(address(oracle_.QUOTE_FEED_2()),         address(0));
+        assertEq(address(oracle_.QUOTE_VAULT()),          address(0));
+        assertEq(oracle_.QUOTE_VAULT_CONVERSION_SAMPLE(), 1);
+        assertEq(oracle_.SCALE_FACTOR(),                  1e36 * assetConversion / 10 ** (IERC20(address(baseFeed)).decimals()));
+        assertGe(oracle_.price(),                         0.01e36);
+        assertLe(oracle_.price(),                         1e36 * assetConversion);
 
         assertEq(pendleOracle.PT(),                  pt);
         assertEq(pendleOracle.baseDiscountPerYear(), discount);
@@ -546,22 +559,21 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(baseFeedPrice, pendlePrice);
 
         uint256 blockTime = block.timestamp;
-
-        uint256 price = _oracle.price();
+        uint256 price     = oracle_.price();
 
         vm.warp(blockTime + 1 days);
 
-        assertApproxEqAbs(uint256(_oracle.price() - price) / 1e18, uint256(0.15e18) / 365, 1);
+        assertApproxEqAbs(uint256(oracle_.price() - price) / 1e18, uint256(0.15e18) / 365, 1);
 
         vm.warp(maturity - 1 seconds);
 
-        assertLe(_oracle.price(), 1e36 * assetConversion);
+        assertLe(oracle_.price(), 1e36 * assetConversion);
 
         vm.warp(maturity);
 
-        assertEq(_oracle.price(), 1e36 * assetConversion);
+        assertEq(oracle_.price(), 1e36 * assetConversion);
 
-        assertEq(IMorphoOracleFactoryLike(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(_oracle)), true);
+        assertTrue(IMorphoOracleFactoryLike(MORPHO_ORACLE_FACTORY).isMorphoChainlinkOracleV2(address(oracle_)));
 
         address expectedPendleOracle = address(new PendleSparkLinearDiscountOracle(pt, discount));
 
@@ -642,6 +654,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(ICustomIRMLike(newParams.irm).RATE_SOURCE(), ICustomIRMLike(oldParams.irm).RATE_SOURCE());
 
         uint256 ssrRateDecimals = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).decimals();
+
         int256 ssrRate = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
 
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
@@ -723,9 +736,10 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
 
+        // TODO: make below loop a getter with a return to make this all cleaner. Possibly incorporating the zero check.
         address vault;
 
-        for (uint256 i = 0; i < allLogs.length; i++) {
+        for (uint256 i = 0; i < allLogs.length; ++i) {
             if (allLogs[i].topics[0] == createMetaMorphoSig) {
                 vault = address(uint160(uint256(allLogs[i].topics[1])));
                 break;
@@ -744,7 +758,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(IMetaMorpho(vault).feeRecipient(),                    Ethereum.ALM_PROXY);
         assertEq(IMetaMorpho(vault).fee(),                             vaultFee);
 
-        for (uint256 i = 0; i < markets.length; i++) {
+        for (uint256 i = 0; i < markets.length; ++i) {
             _assertMorphoCap(vault, markets[i], caps[i]);
         }
 
@@ -752,14 +766,15 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
             Id.unwrap(IMetaMorpho(vault).supplyQueue(0)),
             Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
         );
+
         _assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint184).max);
 
         assertEq(IMetaMorpho(vault).totalAssets(),    initialDeposit);
         assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20(asset).decimals());
 
-        if (sllDepositMax != 0 && sllDepositSlope != 0) {
-            _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
-        }
+        if (sllDepositMax == 0 || sllDepositSlope == 0) return;
+
+        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
     /**********************************************************************************************/
@@ -774,11 +789,10 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     function _runRewardsConfigurationTests() internal view {
-        SparkLendContext memory ctx = _getSparkLendContext();
+        SparkLendContext memory ctx      = _getSparkLendContext();
+        address[]        memory reserves = ctx.pool.getReservesList();
 
-        address[] memory reserves = ctx.pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; i++) {
+        for (uint256 i = 0; i < reserves.length; ++i) {
             DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
 
             assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
@@ -795,75 +809,78 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     }
 
     function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+        (
+            uint48 max_,
+            uint48 gap_,
+            uint48 increaseCooldown_,
+            , // lastUpdateBlock
+              // lastIncreaseTime
+        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).borrowCapConfigs(asset);
 
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
-        assertEq(_max,              max);
-        assertEq(_gap,              gap);
-        assertEq(_increaseCooldown, increaseCooldown);
+        assertEq(max_,              max);
+        assertEq(gap_,              gap);
+        assertEq(increaseCooldown_, increaseCooldown);
     }
 
     function _assertBorrowCapConfigNotSet(address asset) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
-        assertEq(_max,              0);
-        assertEq(_gap,              0);
-        assertEq(_increaseCooldown, 0);
+        _assertBorrowCapConfig(asset, 0, 0, 0);
     }
 
     function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+        (
+            uint48 _max,
+            uint48 _gap,
+            uint48 _increaseCooldown,
+            , // lastUpdateBlock
+              // lastIncreaseTime
+        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).supplyCapConfigs(asset);
 
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
         assertEq(_max,              max);
         assertEq(_gap,              gap);
         assertEq(_increaseCooldown, increaseCooldown);
     }
 
     function _assertSupplyCapConfigNotSet(address asset) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
-        assertEq(_max,              0);
-        assertEq(_gap,              0);
-        assertEq(_increaseCooldown, 0);
+        _assertSupplyCapConfig(asset, 0, 0, 0);
     }
 
     function _assertMorphoCap(
-        address             _vault,
-        MarketParams memory _config,
-        uint256             _currentCap,
-        bool                _hasPending,
-        uint256             _pendingCap
+        address             vault,
+        MarketParams memory config,
+        uint256             currentCap,
+        bool                hasPending,
+        uint256             pendingCap
     ) internal view {
-        Id id = MarketParamsLib.id(_config);
-        assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
-        PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
-        if (_hasPending) {
-            assertEq(pendingCap.value,   _pendingCap);
-            assertGt(pendingCap.validAt, 0);
+        Id id = MarketParamsLib.id(config);
+
+        assertEq(IMetaMorpho(vault).config(id).cap, currentCap);
+
+        PendingUint192 memory pendingCap_ = IMetaMorpho(vault).pendingCap(id);
+
+        if (hasPending) {
+            assertEq(pendingCap_.value,   pendingCap);
+            assertGt(pendingCap_.validAt, 0);
         } else {
-            assertEq(pendingCap.value,   0);
-            assertEq(pendingCap.validAt, 0);
+            assertEq(pendingCap_.value,   0);
+            assertEq(pendingCap_.validAt, 0);
         }
     }
 
     function _assertMorphoCap(
-        address             _vault,
-        MarketParams memory _config,
-        uint256             _currentCap,
-        uint256             _pendingCap
+        address             vault,
+        MarketParams memory config,
+        uint256             currentCap,
+        uint256             pendingCap
     ) internal view {
-        _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
+        _assertMorphoCap(vault, config, currentCap, true, pendingCap);
     }
 
     function _assertMorphoCap(
-        address             _vault,
-        MarketParams memory _config,
-        uint256             _currentCap
+        address             vault,
+        MarketParams memory config,
+        uint256             currentCap
     ) internal view {
-        _assertMorphoCap(_vault, _config, _currentCap, false, 0);
+        _assertMorphoCap(vault, config, currentCap, false, 0);
     }
 
 }

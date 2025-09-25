@@ -56,8 +56,11 @@ abstract contract SpellRunner is Test {
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
+
         if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
+
         _;
+
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
     }
 
@@ -115,6 +118,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.ArbitrumOne()].domain
             )
         );
+
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -129,6 +133,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Base()].domain
             )
         );
+
         chainData[ChainIdUtils.Base()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -151,6 +156,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Optimism()].domain
             )
         );
+
         chainData[ChainIdUtils.Optimism()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -165,6 +171,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Unichain()].domain
             )
         );
+
         chainData[ChainIdUtils.Unichain()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -187,6 +194,7 @@ abstract contract SpellRunner is Test {
     function _deployPayloads() internal {
         for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+
             string memory identifier = _spellIdentifier(chainId);
 
             try vm.getCode(identifier) {
@@ -210,16 +218,19 @@ abstract contract SpellRunner is Test {
     }
 
     function _executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
-        address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
-        IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
+        address   payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
+        IExecutor executor       = chainData[ChainIdUtils.Ethereum()].executor;
+
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
 
         vm.prank(Ethereum.PAUSE_PROXY);
+
         (bool success,) = address(executor).call(abi.encodeWithSignature(
             "exec(address,bytes)",
             payloadAddress,
             abi.encodeWithSignature("execute()")
         ));
+
         require(success, "FAILED TO EXECUTE PAYLOAD");
     }
 
@@ -254,8 +265,8 @@ abstract contract SpellRunner is Test {
 
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
 
-            address mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
-            IExecutor executor = chainData[chainId].executor;
+            address   mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
+            IExecutor executor            = chainData[chainId].executor;
 
             // TODO: Move each of the two flows below into their own functions.
 
@@ -263,7 +274,7 @@ abstract contract SpellRunner is Test {
                 // We assume the payload has been queued in the executor (will revert otherwise)
                 chainData[chainId].domain.selectFork();
 
-                uint256 actionsSetId = executor.actionsSetCount() - 1;
+                uint256 actionsSetId  = executor.actionsSetCount() - 1;
                 uint256 prevTimestamp = block.timestamp;
 
                 vm.warp(executor.getActionsSetById(actionsSetId).executionTime);
@@ -329,6 +340,7 @@ abstract contract SpellRunner is Test {
         // Process chains in batches of 3
         for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
             uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
+
             string[] memory batchChains = new string[](batchSize);
 
             // Create batch of chains

@@ -513,158 +513,6 @@ contract ProtocolV3TestBase is Test {
         assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   - amount, 1);
     }
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    /**
-     * Reserves that are frozen or not active should not be included in e2e test suite
-     */
-    function _includeBorrowAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
-        return !config.isFrozen && config.isActive && !config.isPaused && config.borrowingEnabled;
-    }
-
-    function _includeCollateralAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
-        return !config.isFrozen && config.isActive && !config.isPaused && config.usageAsCollateralEnabled && config.ltv > 0;
-    }
-
-    function _getTokenPrice(IPool pool, ReserveConfig memory config) internal view returns (uint256) {
-        IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
-        IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
-        return oracle.getAssetPrice(config.underlying);
-    }
-
-    function _getTokenAmountByDollarValue(
-        IPool pool,
-        ReserveConfig memory config,
-        uint256 dollarValue
-    ) internal view returns (uint256) {
-        return (dollarValue * 10 ** (8 + config.decimals)) / _getTokenPrice(pool, config);
-    }
-
-    function _getMaxBorrowAmount(
-        IPool pool,
-        ReserveConfig memory collateralConfig,
-        ReserveConfig memory borrowConfig,
-        uint256 collateralAmount
-    ) internal view returns (uint256) {
-        // Intentionally introducing a slight rounding error to not trigger the LTV edge case failure condition
-        return collateralAmount
-            * _getTokenPrice(pool, collateralConfig)
-            / _getTokenPrice(pool, borrowConfig)
-            * (10 ** borrowConfig.decimals)
-            / (10 ** collateralConfig.decimals)
-            * collateralConfig.ltv
-            / 100_00
-            - (10 ** borrowConfig.decimals / 1e6);  // Round down to be conservative
-    }
-
-    function _isAboveBorrowCap(
-        IPool pool,
-        ReserveConfig memory borrowConfig,
-        uint256 borrowAmount
-    ) internal view returns (bool) {
-        DataTypes.ReserveData memory reserveData = pool.getReserveData(borrowConfig.underlying);
-
-        uint256 scaledBorrowCap = borrowConfig.borrowCap * 10 ** borrowConfig.decimals;
-
-        if (scaledBorrowCap == 0) return false;
-
-        uint256 currScaledVariableDebt = IVariableDebtToken(borrowConfig.variableDebtToken).scaledTotalSupply();
-        (,uint256 currTotalStableDebt,,) = IStableDebtToken(borrowConfig.stableDebtToken).getSupplyData();
-
-        uint256 totalDebt = currTotalStableDebt + currScaledVariableDebt.rayMul(reserveData.variableBorrowIndex);
-
-        return (borrowAmount + totalDebt) > scaledBorrowCap;
-    }
-
-    function _assertReserveChange(
-        DataTypes.ReserveData memory beforeReserve,
-        DataTypes.ReserveData memory afterReserve,
-        int256 amountRepaid,
-        uint256 timeSinceLastUpdate
-    ) internal pure {
-        assertEq(afterReserve.configuration.data, beforeReserve.configuration.data);
-
-        assertApproxEqAbs(
-            uint256(afterReserve.liquidityIndex),
-            uint256(beforeReserve.liquidityIndex)
-            * (1e27 + (beforeReserve.currentLiquidityRate * timeSinceLastUpdate / 365 days)) / 1e27,
-            1
-        );
-
-        if (amountRepaid > 0) {
-            assertLt(afterReserve.currentLiquidityRate,      beforeReserve.currentLiquidityRate);
-            assertLe(afterReserve.currentVariableBorrowRate, beforeReserve.currentVariableBorrowRate);
-            assertLe(afterReserve.currentStableBorrowRate,   beforeReserve.currentStableBorrowRate);
-            assertLe(afterReserve.isolationModeTotalDebt,    beforeReserve.isolationModeTotalDebt);
-        } else {
-            assertGe(afterReserve.currentLiquidityRate,      beforeReserve.currentLiquidityRate);
-            assertGe(afterReserve.currentVariableBorrowRate, beforeReserve.currentVariableBorrowRate);
-            assertGe(afterReserve.currentStableBorrowRate,   beforeReserve.currentStableBorrowRate);
-            assertGe(afterReserve.isolationModeTotalDebt,    beforeReserve.isolationModeTotalDebt);
-        }
-
-        assertEq(afterReserve.lastUpdateTimestamp, beforeReserve.lastUpdateTimestamp + timeSinceLastUpdate);
-
-        assertEq(afterReserve.id,                          beforeReserve.id);
-        assertEq(afterReserve.aTokenAddress,               beforeReserve.aTokenAddress);
-        assertEq(afterReserve.stableDebtTokenAddress,      beforeReserve.stableDebtTokenAddress);
-        assertEq(afterReserve.variableDebtTokenAddress,    beforeReserve.variableDebtTokenAddress);
-        assertEq(afterReserve.interestRateStrategyAddress, beforeReserve.interestRateStrategyAddress);
-        assertEq(afterReserve.unbacked,                    beforeReserve.unbacked);
-
-        assertGe(afterReserve.accruedToTreasury, beforeReserve.accruedToTreasury);
-
-        uint256 expectedInterest;
-        for (uint256 i; i < timeSinceLastUpdate; i++) {
-            expectedInterest +=
-                uint256(beforeReserve.variableBorrowIndex)
-                * uint256(beforeReserve.currentVariableBorrowRate)
-                * 1 seconds
-                / 365 days
-                / 1e27;
-        }
-
-        // Accurate to 0.01%
-        assertApproxEqRel(
-            afterReserve.variableBorrowIndex,
-            beforeReserve.variableBorrowIndex + expectedInterest,
-            1e14
-        );
-    }
-
-    function _isAboveSupplyCap(ReserveConfig memory config, uint256 supplyAmount) internal view returns (bool) {
-        return IERC20(config.aToken).totalSupply() + supplyAmount > (config.supplyCap * 10 ** config.decimals);
-    }
-
-    function _withdraw(
-        ReserveConfig memory config,
-        IPool pool,
-        address user,
-        uint256 amount
-    ) internal returns (uint256) {
-        uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
-        uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
-        uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
-
-        vm.prank(user);
-        uint256 amountOut = pool.withdraw(config.underlying, amount, user);
-
-        console.log("WITHDRAW: %s, Amount: %s", config.symbol, _formattedAmount(amountOut, config.decimals));
-
-        uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
-        uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
-        uint256 underlyingUserAfter   = IERC20(config.underlying).balanceOf(user);
-
-        assertApproxEqAbs(aTokenAfter, aTokenBefore < amount ? 0 : aTokenBefore - amount, 1);
-
-        assertApproxEqAbs(underlyingATokenAfter, underlyingATokenBefore - amountOut, 1);
-        assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   + amountOut, 1);
-
-        return amountOut;
-    }
-
     function _borrow(
         ReserveConfig memory config,
         IPool pool,
@@ -823,6 +671,158 @@ contract ProtocolV3TestBase is Test {
             (balances.aTokenBorrowerBefore - balances.aTokenBorrowerAfter) - (balances.aTokenTreasuryAfter - balances.aTokenTreasuryBefore),
             2
         );
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    /**
+     * Reserves that are frozen or not active should not be included in e2e test suite
+     */
+    function _includeBorrowAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
+        return !config.isFrozen && config.isActive && !config.isPaused && config.borrowingEnabled;
+    }
+
+    function _includeCollateralAssetInE2e(ReserveConfig memory config) internal pure returns (bool) {
+        return !config.isFrozen && config.isActive && !config.isPaused && config.usageAsCollateralEnabled && config.ltv > 0;
+    }
+
+    function _getTokenPrice(IPool pool, ReserveConfig memory config) internal view returns (uint256) {
+        IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
+        IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
+        return oracle.getAssetPrice(config.underlying);
+    }
+
+    function _getTokenAmountByDollarValue(
+        IPool pool,
+        ReserveConfig memory config,
+        uint256 dollarValue
+    ) internal view returns (uint256) {
+        return (dollarValue * 10 ** (8 + config.decimals)) / _getTokenPrice(pool, config);
+    }
+
+    function _getMaxBorrowAmount(
+        IPool pool,
+        ReserveConfig memory collateralConfig,
+        ReserveConfig memory borrowConfig,
+        uint256 collateralAmount
+    ) internal view returns (uint256) {
+        // Intentionally introducing a slight rounding error to not trigger the LTV edge case failure condition
+        return collateralAmount
+            * _getTokenPrice(pool, collateralConfig)
+            / _getTokenPrice(pool, borrowConfig)
+            * (10 ** borrowConfig.decimals)
+            / (10 ** collateralConfig.decimals)
+            * collateralConfig.ltv
+            / 100_00
+            - (10 ** borrowConfig.decimals / 1e6);  // Round down to be conservative
+    }
+
+    function _isAboveBorrowCap(
+        IPool pool,
+        ReserveConfig memory borrowConfig,
+        uint256 borrowAmount
+    ) internal view returns (bool) {
+        DataTypes.ReserveData memory reserveData = pool.getReserveData(borrowConfig.underlying);
+
+        uint256 scaledBorrowCap = borrowConfig.borrowCap * 10 ** borrowConfig.decimals;
+
+        if (scaledBorrowCap == 0) return false;
+
+        uint256 currScaledVariableDebt = IVariableDebtToken(borrowConfig.variableDebtToken).scaledTotalSupply();
+        (,uint256 currTotalStableDebt,,) = IStableDebtToken(borrowConfig.stableDebtToken).getSupplyData();
+
+        uint256 totalDebt = currTotalStableDebt + currScaledVariableDebt.rayMul(reserveData.variableBorrowIndex);
+
+        return (borrowAmount + totalDebt) > scaledBorrowCap;
+    }
+
+    function _assertReserveChange(
+        DataTypes.ReserveData memory beforeReserve,
+        DataTypes.ReserveData memory afterReserve,
+        int256 amountRepaid,
+        uint256 timeSinceLastUpdate
+    ) internal pure {
+        assertEq(afterReserve.configuration.data, beforeReserve.configuration.data);
+
+        assertApproxEqAbs(
+            uint256(afterReserve.liquidityIndex),
+            uint256(beforeReserve.liquidityIndex)
+            * (1e27 + (beforeReserve.currentLiquidityRate * timeSinceLastUpdate / 365 days)) / 1e27,
+            1
+        );
+
+        if (amountRepaid > 0) {
+            assertLt(afterReserve.currentLiquidityRate,      beforeReserve.currentLiquidityRate);
+            assertLe(afterReserve.currentVariableBorrowRate, beforeReserve.currentVariableBorrowRate);
+            assertLe(afterReserve.currentStableBorrowRate,   beforeReserve.currentStableBorrowRate);
+            assertLe(afterReserve.isolationModeTotalDebt,    beforeReserve.isolationModeTotalDebt);
+        } else {
+            assertGe(afterReserve.currentLiquidityRate,      beforeReserve.currentLiquidityRate);
+            assertGe(afterReserve.currentVariableBorrowRate, beforeReserve.currentVariableBorrowRate);
+            assertGe(afterReserve.currentStableBorrowRate,   beforeReserve.currentStableBorrowRate);
+            assertGe(afterReserve.isolationModeTotalDebt,    beforeReserve.isolationModeTotalDebt);
+        }
+
+        assertEq(afterReserve.lastUpdateTimestamp, beforeReserve.lastUpdateTimestamp + timeSinceLastUpdate);
+
+        assertEq(afterReserve.id,                          beforeReserve.id);
+        assertEq(afterReserve.aTokenAddress,               beforeReserve.aTokenAddress);
+        assertEq(afterReserve.stableDebtTokenAddress,      beforeReserve.stableDebtTokenAddress);
+        assertEq(afterReserve.variableDebtTokenAddress,    beforeReserve.variableDebtTokenAddress);
+        assertEq(afterReserve.interestRateStrategyAddress, beforeReserve.interestRateStrategyAddress);
+        assertEq(afterReserve.unbacked,                    beforeReserve.unbacked);
+
+        assertGe(afterReserve.accruedToTreasury, beforeReserve.accruedToTreasury);
+
+        uint256 expectedInterest;
+        for (uint256 i; i < timeSinceLastUpdate; i++) {
+            expectedInterest +=
+                uint256(beforeReserve.variableBorrowIndex)
+                * uint256(beforeReserve.currentVariableBorrowRate)
+                * 1 seconds
+                / 365 days
+                / 1e27;
+        }
+
+        // Accurate to 0.01%
+        assertApproxEqRel(
+            afterReserve.variableBorrowIndex,
+            beforeReserve.variableBorrowIndex + expectedInterest,
+            1e14
+        );
+    }
+
+    function _isAboveSupplyCap(ReserveConfig memory config, uint256 supplyAmount) internal view returns (bool) {
+        return IERC20(config.aToken).totalSupply() + supplyAmount > (config.supplyCap * 10 ** config.decimals);
+    }
+
+    function _withdraw(
+        ReserveConfig memory config,
+        IPool pool,
+        address user,
+        uint256 amount
+    ) internal returns (uint256) {
+        uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
+        uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
+        uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
+
+        vm.prank(user);
+        uint256 amountOut = pool.withdraw(config.underlying, amount, user);
+
+        console.log("WITHDRAW: %s, Amount: %s", config.symbol, _formattedAmount(amountOut, config.decimals));
+
+        uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
+        uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
+        uint256 underlyingUserAfter   = IERC20(config.underlying).balanceOf(user);
+
+        assertApproxEqAbs(aTokenAfter, aTokenBefore < amount ? 0 : aTokenBefore - amount, 1);
+
+        assertApproxEqAbs(underlyingATokenAfter, underlyingATokenBefore - amountOut, 1);
+        assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   + amountOut, 1);
+
+        return amountOut;
     }
 
     function _getLiquidationAmounts(

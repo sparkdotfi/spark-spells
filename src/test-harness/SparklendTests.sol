@@ -92,6 +92,30 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _assertAllReservesSeeded(ChainIdUtils.Gnosis());
     }
 
+    function test_ETHEREUM_PayloadBytecodeMatches() external {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Ethereum());
+    }
+
+    function test_BASE_PayloadBytecodeMatches() external {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Base());
+    }
+
+    function test_GNOSIS_PayloadBytecodeMatches() external {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Gnosis());
+    }
+
+    function test_ARBITRUM_ONE_PayloadBytecodeMatches() external {
+        _assertPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
+    }
+
+    function test_OPTIMISM_PayloadBytecodeMatches() external {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Optimism());
+    }
+
+    function test_UNICHAIN_PayloadBytecodeMatches() external {
+        _assertPayloadBytecodeMatches(ChainIdUtils.Unichain());
+    }
+
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
@@ -278,30 +302,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
                 variableRateSlope2:            newSlope2
             })
         );
-    }
-
-    function test_ETHEREUM_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Ethereum());
-    }
-
-    function test_BASE_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Base());
-    }
-
-    function test_GNOSIS_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Gnosis());
-    }
-
-    function test_ARBITRUM_ONE_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
-    }
-
-    function test_OPTIMISM_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Optimism());
-    }
-
-    function test_UNICHAIN_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Unichain());
     }
 
     /**

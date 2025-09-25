@@ -105,7 +105,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external {
         _populateRateLimitKeys(false);
         _loadPreExecutionIntegrations();
-
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         skip(2 days);  // Ensure rate limits are recharged
@@ -121,7 +120,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         _populateRateLimitKeys(true);
         _loadPostExecutionIntegrations();
-
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
@@ -133,6 +131,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, this function should be broken up into one function per test.
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
         uint256 snapshot = vm.snapshot();
 
@@ -155,6 +154,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             console2.log("Running SLL E2E test for", integration.label);
 
             uint256 decimals = IERC20(IERC4626(integration.integration).asset()).decimals();
+
             _testERC4626Integration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
                 vault:         integration.integration,
@@ -422,24 +422,28 @@ abstract contract SparkTestBase is SparkEthereumTests {
         );
 
         // Collect unique keys from topics[1] (`key`)
-        for (uint256 i = 0; i < allLogs.length; i++) {
-            if (allLogs[i].topics.length > 1) {
-                ( uint256 maxAmount,,, )
-                    = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
-                if (maxAmount == 0) continue;
-                _ethereumRateLimitKeys.add(allLogs[i].topics[1]);
-            }
+        for (uint256 i = 0; i < allLogs.length; ++i) {
+            if (allLogs[i].topics.length <= 1) continue;
+
+            ( uint256 maxAmount,,, ) = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
+
+            if (maxAmount == 0) continue;
+
+            _ethereumRateLimitKeys.add(allLogs[i].topics[1]);
         }
 
         // Collects all new logs from rate limits after spell is executed
         if (isPostExecution) {
             VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
-            for (uint256 i = 0; i < newLogs.length; i++) {
-                if (newLogs[i].topics[0] == IRateLimits.RateLimitDataSet.selector) {
-                    ( uint256 maxAmount,,, ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
-                    if (maxAmount == 0) continue;
-                    _ethereumRateLimitKeys.add(newLogs[i].topics[1]);
-                }
+
+            for (uint256 i = 0; i < newLogs.length; ++i) {
+                if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
+
+                ( uint256 maxAmount,,, ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
+
+                if (maxAmount == 0) continue;
+
+                _ethereumRateLimitKeys.add(newLogs[i].topics[1]);
             }
         }
 
@@ -516,6 +520,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /*** Data processing helper functions                                                       ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
     function _createSLLIntegration(string memory label, Category category, address integration) internal returns (SLLIntegration memory) {
         bytes32 entryId  = bytes32(0);
         bytes32 entryId2 = bytes32(0);
@@ -527,51 +532,39 @@ abstract contract SparkTestBase is SparkEthereumTests {
         if (category == Category.ERC4626) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration);
-        }
-        else if (category == Category.ETHENA) {
+        } else if (category == Category.ETHENA) {
             entryId  = mainnetController.LIMIT_USDE_MINT();
             entryId2 = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration);
             exitId   = mainnetController.LIMIT_SUSDE_COOLDOWN();
             exitId2  = mainnetController.LIMIT_USDE_BURN();
-        }
-        else if (category == Category.FARM) {
+        } else if (category == Category.FARM) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration);
-        }
-        else if (category == Category.AAVE) {
+        } else if (category == Category.AAVE) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_WITHDRAW(), integration);
-        }
-        else if (category == Category.MAPLE) {
+        } else if (category == Category.MAPLE) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration);
             exitId2 = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration);
-        }
-        else if (category == Category.CORE) {
+        } else if (category == Category.CORE) {
             entryId = mainnetController.LIMIT_USDS_MINT();
-        }
-        else if (category == Category.CENTRIFUGE) {
+        } else if (category == Category.CENTRIFUGE) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_DEPOSIT(), integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_REDEEM(),  integration);
-        }
-        else if (category == Category.PSM) {
+        } else if (category == Category.PSM) {
             entryId = mainnetController.LIMIT_USDS_TO_USDC();
-        }
-        else if (category == Category.CURVE_LP) {
+        } else if (category == Category.CURVE_LP) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_DEPOSIT(),  integration);
             exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_WITHDRAW(), integration);
-        }
-        else if (category == Category.CURVE_SWAP) {
+        } else if (category == Category.CURVE_SWAP) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_SWAP(), integration);
-        }
-        else if (category == Category.CCTP_GENERAL) {
+        } else if (category == Category.CCTP_GENERAL) {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
-        }
-        else if (category == Category.SPARK_VAULT_V2) {
+        } else if (category == Category.SPARK_VAULT_V2) {
             entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_SPARK_VAULT_TAKE(), integration);
             exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration);
-        }
-        else {
+        } else {
             revert("Invalid category");
         }
 
@@ -587,13 +580,13 @@ abstract contract SparkTestBase is SparkEthereumTests {
         });
     }
 
+    // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
     function _createSLLIntegration(string memory label, Category category, uint32 domain) internal view returns (SLLIntegration memory) {
         bytes32 entryId = bytes32(0);
 
         if (category == Category.CCTP) {
             entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
-        }
-        else {
+        } else {
             revert("Invalid category");
         }
 
@@ -609,6 +602,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         });
     }
 
+    // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
     function _createSLLIntegration(
         string memory label,
         Category category,
@@ -630,18 +624,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
             entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
             exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
             extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
-        }
-        else if (category == Category.SUPERSTATE) {
+        } else if (category == Category.SUPERSTATE) {
             entryId   = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
             exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
             exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
             extraData = abi.encode(assetIn, assetOut, withdrawDestination);
-        }
-        else if (category == Category.REWARDS_TRANSFER) {
+        } else if (category == Category.REWARDS_TRANSFER) {
             entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
             extraData = abi.encode(assetIn, depositDestination);
-        }
-        else {
+        } else {
             revert("Invalid category");
         }
 
