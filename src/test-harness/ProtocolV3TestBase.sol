@@ -105,6 +105,10 @@ contract ProtocolV3TestBase is Test {
     using WadRayMath for uint256;
 
     /**********************************************************************************************/
+    /*** External State-Modifying Functions                                                     ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
@@ -358,6 +362,82 @@ contract ProtocolV3TestBase is Test {
         _assertReserveChange(beforeReserve, afterReserve, -int256(amount), timePassed);
     }
 
+    function _e2eTestStableBorrowDisabled(
+        IPool pool,
+        address borrower,
+        ReserveConfig memory borrowConfig,
+        uint256 amount
+    ) internal {
+        vm.expectRevert(bytes("31")); // STABLE_BORROWING_NOT_ENABLED
+
+        pool.borrow(borrowConfig.underlying, amount, 1, 0, borrower);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        _borrow(borrowConfig, pool, borrower, amount, false);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.startPrank(borrower);
+        IERC20(borrowConfig.underlying).safeApprove(address(pool), amount);
+
+        vm.expectRevert(bytes("39")); // NO_DEBT_OF_SELECTED_TYPE
+        pool.repay(borrowConfig.underlying, amount, 1, borrower);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        pool.repay(borrowConfig.underlying, amount, 2, borrower);
+
+        vm.stopPrank();
+    }
+
+    function _e2eTestLiquidationReceiveCollateral(
+        IPool pool,
+        address borrower,
+        address liquidator,
+        ReserveConfig memory collateralConfig,
+        ReserveConfig memory borrowConfig,
+        uint256 amount
+    ) internal {
+        _borrow(borrowConfig, pool, borrower, amount, false);
+
+        IPoolConfigurator configurator = IPoolConfigurator(
+            IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getPoolConfigurator()
+        );
+
+        // Set ltv/lt to 1bps which enables liquidation on the position
+        vm.prank(IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getACLAdmin());
+
+        configurator.configureReserveAsCollateral(
+            collateralConfig.underlying,
+            1,
+            1,
+            collateralConfig.liquidationBonus
+        );
+
+        vm.warp(block.timestamp + 1 hours);
+
+        _liquidateAndReceiveCollateral(collateralConfig, borrowConfig, pool, liquidator, borrower);
+    }
+
+    function _e2eTestFlashLoan(
+        IPool pool,
+        ReserveConfig memory testAssetConfig,
+        uint256 amount
+    ) internal {
+        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
+
+        pool.flashLoanSimple(
+            address(this),
+            testAssetConfig.underlying,
+            amount,
+            abi.encode(address(pool)),
+            0
+        );
+
+        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -481,82 +561,6 @@ contract ProtocolV3TestBase is Test {
 
     function _isAboveSupplyCap(ReserveConfig memory config, uint256 supplyAmount) internal view returns (bool) {
         return IERC20(config.aToken).totalSupply() + supplyAmount > (config.supplyCap * 10 ** config.decimals);
-    }
-
-    function _e2eTestStableBorrowDisabled(
-        IPool pool,
-        address borrower,
-        ReserveConfig memory borrowConfig,
-        uint256 amount
-    ) internal {
-        vm.expectRevert(bytes("31")); // STABLE_BORROWING_NOT_ENABLED
-
-        pool.borrow(borrowConfig.underlying, amount, 1, 0, borrower);
-
-        vm.warp(block.timestamp + 1 hours);
-
-        _borrow(borrowConfig, pool, borrower, amount, false);
-
-        vm.warp(block.timestamp + 1 hours);
-
-        vm.startPrank(borrower);
-        IERC20(borrowConfig.underlying).safeApprove(address(pool), amount);
-
-        vm.expectRevert(bytes("39")); // NO_DEBT_OF_SELECTED_TYPE
-        pool.repay(borrowConfig.underlying, amount, 1, borrower);
-
-        vm.warp(block.timestamp + 1 hours);
-
-        pool.repay(borrowConfig.underlying, amount, 2, borrower);
-
-        vm.stopPrank();
-    }
-
-    function _e2eTestLiquidationReceiveCollateral(
-        IPool pool,
-        address borrower,
-        address liquidator,
-        ReserveConfig memory collateralConfig,
-        ReserveConfig memory borrowConfig,
-        uint256 amount
-    ) internal {
-        _borrow(borrowConfig, pool, borrower, amount, false);
-
-        IPoolConfigurator configurator = IPoolConfigurator(
-            IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getPoolConfigurator()
-        );
-
-        // Set ltv/lt to 1bps which enables liquidation on the position
-        vm.prank(IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getACLAdmin());
-
-        configurator.configureReserveAsCollateral(
-            collateralConfig.underlying,
-            1,
-            1,
-            collateralConfig.liquidationBonus
-        );
-
-        vm.warp(block.timestamp + 1 hours);
-
-        _liquidateAndReceiveCollateral(collateralConfig, borrowConfig, pool, liquidator, borrower);
-    }
-
-    function _e2eTestFlashLoan(
-        IPool pool,
-        ReserveConfig memory testAssetConfig,
-        uint256 amount
-    ) internal {
-        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
-
-        pool.flashLoanSimple(
-            address(this),
-            testAssetConfig.underlying,
-            amount,
-            abi.encode(address(pool)),
-            0
-        );
-
-        assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
     }
 
     // TODO: MDL, this function implies this test contract is being called by an on-chain contract, which is bad practice. Fix.

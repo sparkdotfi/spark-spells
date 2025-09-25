@@ -75,6 +75,44 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256 optimalUsageRatio;
     }
 
+    struct SparkLendAssetOnboardingParams {
+        // General
+        string  symbol;
+        address tokenAddress;
+        address oracleAddress;
+        bool    collateralEnabled;
+        // IRM Params
+        uint256 optimalUsageRatio;
+        uint256 baseVariableBorrowRate;
+        uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+        // Borrowing configuration
+        bool borrowEnabled;
+        bool stableBorrowEnabled;
+        bool isolationBorrowEnabled;
+        bool siloedBorrowEnabled;
+        bool flashloanEnabled;
+        // Reserve configuration
+        uint256 ltv;
+        uint256 liquidationThreshold;
+        uint256 liquidationBonus;
+        uint256 reserveFactor;
+        // Supply and borrow caps
+        uint48 supplyCap;
+        uint48 supplyCapMax;
+        uint48 supplyCapGap;
+        uint48 supplyCapTtl;
+        uint48 borrowCap;
+        uint48 borrowCapMax;
+        uint48 borrowCapGap;
+        uint48 borrowCapTtl;
+        // Isolation and emode configurations
+        bool    isolationMode;
+        uint256 isolationModeDebtCeiling;
+        uint256 liquidationProtocolFee;
+        uint256 emodeCategory;
+    }
+
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
     /**********************************************************************************************/
@@ -438,44 +476,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             _currentCap
     ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
-    }
-
-    struct SparkLendAssetOnboardingParams {
-        // General
-        string  symbol;
-        address tokenAddress;
-        address oracleAddress;
-        bool    collateralEnabled;
-        // IRM Params
-        uint256 optimalUsageRatio;
-        uint256 baseVariableBorrowRate;
-        uint256 variableRateSlope1;
-        uint256 variableRateSlope2;
-        // Borrowing configuration
-        bool borrowEnabled;
-        bool stableBorrowEnabled;
-        bool isolationBorrowEnabled;
-        bool siloedBorrowEnabled;
-        bool flashloanEnabled;
-        // Reserve configuration
-        uint256 ltv;
-        uint256 liquidationThreshold;
-        uint256 liquidationBonus;
-        uint256 reserveFactor;
-        // Supply and borrow caps
-        uint48 supplyCap;
-        uint48 supplyCapMax;
-        uint48 supplyCapGap;
-        uint48 supplyCapTtl;
-        uint48 borrowCap;
-        uint48 borrowCapMax;
-        uint48 borrowCapGap;
-        uint48 borrowCapTtl;
-        // Isolation and emode configurations
-        bool    isolationMode;
-        uint256 isolationModeDebtCeiling;
-        uint256 liquidationProtocolFee;
-        uint256 emodeCategory;
     }
 
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {

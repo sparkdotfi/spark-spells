@@ -306,10 +306,6 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
     /// @dev maximum 3 chains in 1 query
     function _getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
         blocks = new uint256[](chains.length);
@@ -352,6 +348,10 @@ abstract contract SpellRunner is Test {
             }
         }
     }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
 
     function _spellIdentifier(ChainId chainId) internal view returns (string memory) {
         string memory slug       = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
