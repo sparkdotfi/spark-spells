@@ -43,7 +43,19 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     using DomainHelpers for StdChains.Chain;
     using DomainHelpers for Domain;
 
-    function _getSparkLendContext(ChainId chain) internal view returns(SparkLendContext memory ctx) {
+    /**********************************************************************************************/
+    /*** Tests                                                                                  ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
         IPoolAddressesProvider poolAddressesProvider;
 
         if (chain == ChainIdUtils.Ethereum()) {
@@ -63,128 +75,128 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         );
     }
 
-    function _getSparkLendContext() internal view returns(SparkLendContext memory) {
+    function _getSparkLendContext() internal view returns (SparkLendContext memory) {
         return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
     }
 
-    function test_ETHEREUM_SpellExecutionDiff() public {
+    function test_ETHEREUM_SpellExecutionDiff() external {
         _runSpellExecutionDiff(ChainIdUtils.Ethereum());
     }
 
-    function test_GNOSIS_SpellExecutionDiff() public {
+    function test_GNOSIS_SpellExecutionDiff() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _runSpellExecutionDiff(ChainIdUtils.Gnosis());
     }
 
-    function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) private {
+    function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) internal {
         string memory prefix = string(abi.encodePacked(id, "-", chainId.toDomainString()));
 
         IPool pool = _getSparkLendContext().pool;
 
-        createConfigurationSnapshot(
+        _createConfigurationSnapshot(
             string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
             pool
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        createConfigurationSnapshot(
+        _createConfigurationSnapshot(
             string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post")),
             pool
         );
 
-        diffReports(
+        _diffReports(
             string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
             string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post"))
         );
     }
 
-    function test_ETHEREUM_E2E_sparkLend() public {
+    function test_ETHEREUM_E2E_sparkLend() external {
         _runE2ETests(ChainIdUtils.Ethereum());
     }
 
-    function test_GNOSIS_E2E_sparkLend() public {
+    function test_GNOSIS_E2E_sparkLend() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _runE2ETests(ChainIdUtils.Gnosis());
     }
 
-    function _runE2ETests(ChainId chainId) private onChain(chainId) {
+    function _runE2ETests(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
-        e2eTest(ctx.pool);
+        _e2eTest(ctx.pool);
 
         // Prevent MemoryLimitOOG
         _clearLogs();
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        e2eTest(ctx.pool);
+        _e2eTest(ctx.pool);
     }
 
-    function test_ETHEREUM_TokenImplementationsMatch() public {
+    function test_ETHEREUM_TokenImplementationsMatch() external {
         _assertTokenImplementationsMatch(ChainIdUtils.Ethereum());
     }
 
-    function test_GNOSIS_TokenImplementationsMatch() public {
+    function test_GNOSIS_TokenImplementationsMatch() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _assertTokenImplementationsMatch(ChainIdUtils.Gnosis());
     }
 
-    function _assertTokenImplementationsMatch(ChainId chainId) private onChain(chainId) {
+    function _assertTokenImplementationsMatch(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         // This test is to avoid a footgun where the token implementations are upgraded (possibly in an emergency) and
         // the config engine is not redeployed to use the new implementation. As a general rule all reserves should
         // use the same implementation for AToken, StableDebtToken and VariableDebtToken.
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         address[] memory reserves = ctx.pool.getReservesList();
         assertGt(reserves.length, 0);
 
         DataTypes.ReserveData memory data = ctx.pool.getReserveData(reserves[0]);
-        address aTokenImpl            = getImplementation(address(ctx.poolConfigurator), data.aTokenAddress);
-        address stableDebtTokenImpl   = getImplementation(address(ctx.poolConfigurator), data.stableDebtTokenAddress);
-        address variableDebtTokenImpl = getImplementation(address(ctx.poolConfigurator), data.variableDebtTokenAddress);
+        address aTokenImpl            = _getImplementation(address(ctx.poolConfigurator), data.aTokenAddress);
+        address stableDebtTokenImpl   = _getImplementation(address(ctx.poolConfigurator), data.stableDebtTokenAddress);
+        address variableDebtTokenImpl = _getImplementation(address(ctx.poolConfigurator), data.variableDebtTokenAddress);
 
         for (uint256 i = 1; i < reserves.length; i++) {
             DataTypes.ReserveData memory expectedData = ctx.pool.getReserveData(reserves[i]);
 
-            assertEq(getImplementation(address(ctx.poolConfigurator), expectedData.aTokenAddress),            aTokenImpl);
-            assertEq(getImplementation(address(ctx.poolConfigurator), expectedData.stableDebtTokenAddress),   stableDebtTokenImpl);
-            assertEq(getImplementation(address(ctx.poolConfigurator), expectedData.variableDebtTokenAddress), variableDebtTokenImpl);
+            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.aTokenAddress),            aTokenImpl);
+            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.stableDebtTokenAddress),   stableDebtTokenImpl);
+            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.variableDebtTokenAddress), variableDebtTokenImpl);
         }
     }
 
-    function test_ETHEREUM_Oracles() public {
+    function test_ETHEREUM_Oracles() external {
         _runOraclesTests(ChainIdUtils.Ethereum());
     }
 
-    function test_GNOSIS_Oracles() public {
+    function test_GNOSIS_Oracles() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _runOraclesTests(ChainIdUtils.Gnosis());
     }
 
-    function _runOraclesTests(ChainId chainId) private onChain(chainId) {
+    function _runOraclesTests(ChainId chainId) internal onChain(chainId) {
         _validateOracles();
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _validateOracles();
     }
 
-    function test_ETHEREUM_AllReservesSeeded() public {
+    function test_ETHEREUM_AllReservesSeeded() external {
         _assertAllReservesSeeded(ChainIdUtils.Ethereum());
     }
 
-    function test_GNOSIS_AllReservesSeeded() public {
+    function test_GNOSIS_AllReservesSeeded() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
         _assertAllReservesSeeded(ChainIdUtils.Gnosis());
     }
 
-    function _assertAllReservesSeeded(ChainId chainId) private onChain(chainId) {
+    function _assertAllReservesSeeded(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         address[] memory reserves = ctx.pool.getReservesList();
 
@@ -210,7 +222,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         }
     }
 
-    function getImplementation(address admin, address proxy) internal returns (address) {
+    function _getImplementation(address admin, address proxy) internal returns (address) {
         vm.prank(admin);
         return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
     }
@@ -226,7 +238,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         uint256 newSlope1,
         uint256 newSlope2
     ) internal {
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot("", _getSparkLendContext().pool);
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", _getSparkLendContext().pool);
         ReserveConfig   memory config           = _findReserveConfig(allConfigsBefore, asset);
 
         IDefaultInterestRateStrategy prevIRM = IDefaultInterestRateStrategy(config.interestRateStrategy);
@@ -246,9 +258,9 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
             })
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        address newIRM = _findReserveConfig(createConfigurationSnapshot("", _getSparkLendContext().pool), asset).interestRateStrategy;
+        address newIRM = _findReserveConfig(_createConfigurationSnapshot("", _getSparkLendContext().pool), asset).interestRateStrategy;
         assertNotEq(newIRM, address(prevIRM));
 
         _validateInterestRateStrategy(
@@ -270,27 +282,27 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     /** Common Tests **/
 
-    function test_ETHEREUM_PayloadBytecodeMatches() public {
+    function test_ETHEREUM_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Ethereum());
     }
 
-    function test_BASE_PayloadBytecodeMatches() public {
+    function test_BASE_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Base());
     }
 
-    function test_GNOSIS_PayloadBytecodeMatches() public {
+    function test_GNOSIS_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Gnosis());
     }
 
-    function test_ARBITRUM_ONE_PayloadBytecodeMatches() public {
+    function test_ARBITRUM_ONE_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
     }
 
-    function test_OPTIMISM_PayloadBytecodeMatches() public {
+    function test_OPTIMISM_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Optimism());
     }
 
-    function test_UNICHAIN_PayloadBytecodeMatches() public {
+    function test_UNICHAIN_PayloadBytecodeMatches() external {
         _assertPayloadBytecodeMatches(ChainIdUtils.Unichain());
     }
 
@@ -299,7 +311,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /**
      * @dev generates the diff between two reports
      */
-    function diffReports(string memory reportBefore, string memory reportAfter) internal {
+    function _diffReports(string memory reportBefore, string memory reportAfter) internal {
         string memory outPath = string(
             abi.encodePacked("./diffs/", reportBefore, "_", reportAfter, ".md")
         );

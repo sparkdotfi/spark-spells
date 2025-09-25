@@ -33,21 +33,21 @@ abstract contract SparkTestBase is SparkEthereumTests {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // TODO: Put in registry
-    address public constant AAVE_CORE_AUSDT    = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
-    address public constant AAVE_ETH_LIDO_USDS = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
-    address public constant AAVE_ETH_USDC      = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
-    address public constant AAVE_ETH_USDS      = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
-    address public constant BUIDL_DEPOSIT      = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
-    address public constant BUIDL_REDEEM       = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
-    address public constant CURVE_PYUSDUSDC    = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
-    address public constant CURVE_PYUSDUSDS    = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
-    address public constant MORPHO_TOKEN       = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
-    address public constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
-    address public constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address public constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
-    address public constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
-    address public constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
-    address public constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
+    address internal constant AAVE_CORE_AUSDT    = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
+    address internal constant AAVE_ETH_LIDO_USDS = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
+    address internal constant AAVE_ETH_USDC      = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
+    address internal constant AAVE_ETH_USDS      = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
+    address internal constant BUIDL_DEPOSIT      = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
+    address internal constant BUIDL_REDEEM       = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
+    address internal constant CURVE_PYUSDUSDC    = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+    address internal constant CURVE_PYUSDUSDS    = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
+    address internal constant MORPHO_TOKEN       = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
+    address internal constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
+    address internal constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
+    address internal constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
+    address internal constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
+    address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -82,27 +82,27 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes    extraData;
     }
 
-    SLLIntegration[] public arbitrumSllIntegrations;
-    SLLIntegration[] public baseSllIntegrations;
-    SLLIntegration[] public ethereumSllIntegrations;
-    SLLIntegration[] public optimismSllIntegrations;
-    SLLIntegration[] public unichainSllIntegrations;
+    SLLIntegration[] internal arbitrumSllIntegrations;
+    SLLIntegration[] internal baseSllIntegrations;
+    SLLIntegration[] internal ethereumSllIntegrations;
+    SLLIntegration[] internal optimismSllIntegrations;
+    SLLIntegration[] internal unichainSllIntegrations;
 
-    uint256 constant START_BLOCK = 21029247;
+    uint256 internal constant START_BLOCK = 21029247;
 
-    EnumerableSet.Bytes32Set private _arbitrumRateLimitKeys;
-    EnumerableSet.Bytes32Set private _baseRateLimitKeys;
-    EnumerableSet.Bytes32Set private _ethereumRateLimitKeys;
-    EnumerableSet.Bytes32Set private _optimismRateLimitKeys;
-    EnumerableSet.Bytes32Set private _unichainRateLimitKeys;
+    EnumerableSet.Bytes32Set internal _arbitrumRateLimitKeys;
+    EnumerableSet.Bytes32Set internal _baseRateLimitKeys;
+    EnumerableSet.Bytes32Set internal _ethereumRateLimitKeys;
+    EnumerableSet.Bytes32Set internal _optimismRateLimitKeys;
+    EnumerableSet.Bytes32Set internal _unichainRateLimitKeys;
 
-    MainnetController public mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+    MainnetController internal mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    function test_ETHEREUM_E2E_sparkLiquidityLayer() public {
+    function test_ETHEREUM_E2E_sparkLiquidityLayer() external {
         _populateRateLimitKeys(false);
         _loadPreExecutionIntegrations();
 
@@ -116,8 +116,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
-        executeMainnetPayload();
+        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
+        _executeMainnetPayload();
 
         _populateRateLimitKeys(true);
         _loadPostExecutionIntegrations();

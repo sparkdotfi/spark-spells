@@ -61,8 +61,16 @@ abstract contract SpellRunner is Test {
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
     }
 
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
     /// @dev maximum 3 chains in 1 query
-    function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
+    function _getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
         blocks = new uint256[](chains.length);
 
         // Process chains in batches of 3
@@ -104,14 +112,14 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    function setupBlocksFromDate(string memory date) internal {
+    function _setupBlocksFromDate(string memory date) internal {
         string[] memory chains = new string[](4);
         chains[0] = "eth-mainnet";
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
         chains[3] = "opt-mainnet";
 
-        uint256[] memory blocks = getBlocksFromDate(date, chains);
+        uint256[] memory blocks = _getBlocksFromDate(date, chains);
 
         console.log("Mainnet block: ", blocks[0]);
         console.log("Base block: ", blocks[1]);
@@ -124,6 +132,7 @@ abstract contract SpellRunner is Test {
             chainId: 130
         }));
 
+        // TODO: MDL, magic values should be top-level constants.
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
@@ -133,8 +142,8 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev to be called in setUp
-    function setupDomains(string memory date) internal {
-        setupBlocksFromDate(date);
+    function _setupDomains(string memory date) internal {
+        _setupBlocksFromDate(date);
 
         // We default to Ethereum domain
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
@@ -218,22 +227,22 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Unichain());
     }
 
-    function spellIdentifier(ChainId chainId) private view returns(string memory) {
+    function _spellIdentifier(ChainId chainId) internal view returns (string memory) {
         string memory slug       = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
         string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
         return identifier;
     }
 
-    function deployPayload(ChainId chainId) internal onChain(chainId) returns(address) {
-        return deployCode(spellIdentifier(chainId));
+    function _deployPayload(ChainId chainId) internal onChain(chainId) returns (address) {
+        return deployCode(_spellIdentifier(chainId));
     }
 
-    function deployPayloads() internal {
+    function _deployPayloads() internal {
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            string memory identifier = spellIdentifier(chainId);
+            string memory identifier = _spellIdentifier(chainId);
             try vm.getCode(identifier) {
-                chainData[chainId].payload = deployPayload(chainId);
+                chainData[chainId].payload = _deployPayload(chainId);
             } catch {
                 console.log("skipping spell deployment for network: ", chainId.toDomainString());
             }
@@ -241,9 +250,9 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev takes care to revert the selected fork to what was chosen before
-    function executeAllPayloadsAndBridges() internal {
+    function _executeAllPayloadsAndBridges() internal {
         // only execute mainnet payload
-        executeMainnetPayload();
+        _executeMainnetPayload();
         // then use bridges to execute other chains' payloads
         _relayMessageOverBridges();
         // execute the foreign payloads (either by simulation or real execute)
@@ -254,14 +263,14 @@ abstract contract SpellRunner is Test {
     function _relayMessageOverBridges() internal onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
+            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++) {
                 _executeBridge(chainData[chainId].bridges[j]);
             }
         }
     }
 
     /// @dev this does not relay messages from L2s to mainnet except in the case of USDC
-    function _executeBridge(Bridge storage bridge) private {
+    function _executeBridge(Bridge storage bridge) internal {
         if (bridge.bridgeType == BridgeType.OPTIMISM) {
             OptimismBridgeTesting.relayMessagesToDestination(bridge, false);
         } else if (bridge.bridgeType == BridgeType.CCTP) {
@@ -274,7 +283,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    function _executeForeignPayloads() private onChain(ChainIdUtils.Ethereum()) {
+    function _executeForeignPayloads() internal onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
@@ -323,7 +332,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
+    function _executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
         address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
         IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
@@ -343,7 +352,7 @@ abstract contract SpellRunner is Test {
         // Need to also reset all bridge indices
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
+            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++) {
                 chainData[chainId].bridges[j].lastSourceLogIndex = 0;
                 chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
@@ -356,7 +365,7 @@ abstract contract SpellRunner is Test {
         address actualPayload = chainData[chainId].payload;
         vm.skip(actualPayload == address(0));
         require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
-        address expectedPayload = deployPayload(chainId);
+        address expectedPayload = _deployPayload(chainId);
 
         _assertBytecodeMatches(expectedPayload, actualPayload);
     }

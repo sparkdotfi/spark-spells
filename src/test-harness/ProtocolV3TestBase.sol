@@ -104,27 +104,35 @@ contract ProtocolV3TestBase is Test {
     using SafeERC20 for IERC20;
     using WadRayMath for uint256;
 
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
     /**
      * @dev Generates a markdown compatible snapshot of the whole pool configuration into `/reports`.
      * @param reportName filename suffix for the generated reports.
      * @param pool the pool to be snapshotted
      * @return ReserveConfig[] list of configs
      */
-    function createConfigurationSnapshot(
+    function _createConfigurationSnapshot(
         string memory reportName,
         IPool pool
-    ) public returns (ReserveConfig[] memory) {
-        return createConfigurationSnapshot(reportName, pool, true, true, true, true);
+    ) internal returns (ReserveConfig[] memory) {
+        return _createConfigurationSnapshot(reportName, pool, true, true, true, true);
     }
 
-    function createConfigurationSnapshot(
+    function _createConfigurationSnapshot(
         string memory reportName,
         IPool pool,
         bool reserveConfigs,
         bool strategyConfigs,
         bool eModeConfigs,
         bool poolConfigs
-    ) public returns (ReserveConfig[] memory) {
+    ) internal returns (ReserveConfig[] memory) {
         string memory path = string(abi.encodePacked("./reports/", reportName, ".json"));
 
         // overwrite with empty json to later be extended
@@ -151,7 +159,7 @@ contract ProtocolV3TestBase is Test {
      *      of collateral and borrow assets.
      * @param pool The pool that should be tested
      */
-    function e2eTest(IPool pool) public {
+    function _e2eTest(IPool pool) internal {
         uint256 snapshot = vm.snapshot();
 
         ReserveConfig[] memory configs = _getReservesConfigs(pool);
@@ -168,17 +176,17 @@ contract ProtocolV3TestBase is Test {
                     continue;
                 }
 
-                e2eTestAsset(pool, configs[i], configs[j]);
+                _e2eTestAsset(pool, configs[i], configs[j]);
                 vm.revertTo(snapshot);
             }
         }
     }
 
-    function e2eTestAsset(
+    function _e2eTestAsset(
         IPool pool,
         ReserveConfig memory collateralConfig,
         ReserveConfig memory borrowConfig
-    ) public {
+    ) internal {
         console.log(
             "\n\nE2E: Collateral %s, borrow %s",
             collateralConfig.symbol,
@@ -551,6 +559,7 @@ contract ProtocolV3TestBase is Test {
         assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
     }
 
+    // TODO: MDL, this function implies this test contract is being called by an on-chain contract, which is bad practice. Fix.
     // Called back from the flashloan
     function executeOperation(
         address asset,

@@ -77,29 +77,41 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
-    function test_ETHEREUM_FreezerMom() public onChain(ChainIdUtils.Ethereum()){
+    /**********************************************************************************************/
+    /*** Tests                                                                                  ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function test_ETHEREUM_FreezerMom() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
         _runFreezerMomTests();
 
         vm.revertTo(snapshot);
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _runFreezerMomTests();
     }
 
-    function test_ETHEREUM_FreezerMom_Multisig() public onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_FreezerMom_Multisig() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
         _runFreezerMomTestsMultisig();
 
         vm.revertTo(snapshot);
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _runFreezerMomTestsMultisig();
     }
 
-    function test_ETHEREUM_SparkProxyStorage() public onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
         ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
         address ESM = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
 
@@ -108,7 +120,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         _checkStorageSlot(address(proxy), 100);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(proxy.wards(ESM),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
@@ -116,26 +128,26 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _checkStorageSlot(address(proxy), 100);
     }
 
-    function test_ETHEREUM_RewardsConfiguration() public onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
         _runRewardsConfigurationTests();
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _runRewardsConfigurationTests();
     }
 
-    function test_ETHEREUM_CapAutomator() public onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_CapAutomator() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
         _runCapAutomatorTests();
 
         vm.revertTo(snapshot);
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _runCapAutomatorTests();
     }
 
-    function test_ETHEREUM_PayloadsConfigured() public onChain(ChainIdUtils.Ethereum()){
+    function test_ETHEREUM_PayloadsConfigured() external onChain(ChainIdUtils.Ethereum()) {
          for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
@@ -398,7 +410,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             _currentCap,
         bool                _hasPending,
         uint256             _pendingCap
-    ) private view {
+    ) internal view {
         Id id = MarketParamsLib.id(_config);
         assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
         PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
@@ -416,7 +428,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         MarketParams memory _config,
         uint256             _currentCap,
         uint256             _pendingCap
-    ) private view {
+    ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
     }
 
@@ -424,7 +436,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address             _vault,
         MarketParams memory _config,
         uint256             _currentCap
-    ) private view {
+    ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
 
@@ -473,13 +485,13 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
         SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot("", ctx.pool);
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
 
         uint256 startingReserveLength = allConfigsBefore.length;
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot("", ctx.pool);
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
 
         assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
 
@@ -572,7 +584,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     {
         _assertMorphoCap(vault, config, currentCap);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         if (newCap > currentCap) {
             // Increases are timelocked
@@ -682,7 +694,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         uint256 ssrRate = uint256(IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR());
 
-        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configBefore.interestRateStrategy,
@@ -702,9 +714,9 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         assertEq(ITargetBaseIRMLike(configBefore.interestRateStrategy).getBaseVariableBorrowRateSpread(), oldParams.baseRateSpread);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configAfter.interestRateStrategy,
@@ -740,7 +752,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256 ssrRateDecimals = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).decimals();
         int256 ssrRate = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
 
-        ReserveConfig memory configBefore = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configBefore.interestRateStrategy,
@@ -760,9 +772,9 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         assertEq(uint256(ITargetKinkIRMLike(configBefore.interestRateStrategy).getVariableRateSlope1Spread()), uint256(oldParams.variableRateSlope1Spread));
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        ReserveConfig memory configAfter = _findReserveConfigBySymbol(createConfigurationSnapshot("", ctx.pool), symbol);
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
             configAfter.interestRateStrategy,
@@ -815,7 +827,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         // Start the recorder
         RecordedLogs.init();
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
 

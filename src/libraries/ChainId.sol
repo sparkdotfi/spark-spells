@@ -11,11 +11,11 @@ using ChainIdUtils for ChainId global;
 using { equals as == } for ChainId global;
 using { notEquals as != } for ChainId global;
 
-function equals(ChainId left, ChainId right) pure returns(bool) {
+function equals(ChainId left, ChainId right) pure returns (bool) {
     return ChainId.unwrap(left) == ChainId.unwrap(right);
 }
 
-function notEquals(ChainId left, ChainId right) pure returns(bool) {
+function notEquals(ChainId left, ChainId right) pure returns (bool) {
     return ChainId.unwrap(left) != ChainId.unwrap(right);
 }
 

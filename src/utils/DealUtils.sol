@@ -21,17 +21,17 @@ library DealUtils {
     uint256 internal constant AVALANCHE = 43114;
     uint256 internal constant HARMONY   = 1666600000;
 
-    address public constant USDC_MAINNET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address internal constant USDC_MAINNET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    address public constant EURE_GNOSIS  = 0xcB444e90D8198415266c6a2724b7900fb12FC56E;
-    address public constant USDCE_GNOSIS = 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0;
+    address internal constant EURE_GNOSIS  = 0xcB444e90D8198415266c6a2724b7900fb12FC56E;
+    address internal constant USDCE_GNOSIS = 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0;
 
-    address public constant USDC_BASE = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+    address internal constant USDC_BASE = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
-    address public constant USDC_MAINNET_WHALE = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
-    address public constant EURE_GNOSIS_WHALE  = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
-    address public constant USDCE_GNOSIS_WHALE = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
-    address public constant USDC_BASE_WHALE    = 0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78;
+    address internal constant USDC_MAINNET_WHALE = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
+    address internal constant EURE_GNOSIS_WHALE  = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+    address internal constant USDCE_GNOSIS_WHALE = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+    address internal constant USDC_BASE_WHALE    = 0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78;
 
     /**
      * @notice deal doesn't support amounts stored in a script right now.

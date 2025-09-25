@@ -144,9 +144,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     using DomainHelpers for Domain;
 
-    address private constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
+    address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
-    function setControllerUpgrade(ChainId chain, address prevController, address newController) internal {
+    /**********************************************************************************************/
+    /*** Tests                                                                                  ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _setControllerUpgrade(ChainId chain, address prevController, address newController) internal {
         chainData[chain].prevController = prevController;
         chainData[chain].newController  = newController;
     }
@@ -155,7 +167,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** State loading helpers                                                                  ***/
     /**********************************************************************************************/
 
-    function _getSparkLiquidityLayerContext(ChainId chain) internal view returns(SparkLiquidityLayerContext memory ctx) {
+    function _getSparkLiquidityLayerContext(ChainId chain) internal view returns (SparkLiquidityLayerContext memory ctx) {
         if (chain == ChainIdUtils.Ethereum()) {
             ctx = SparkLiquidityLayerContext(
                 Ethereum.ALM_CONTROLLER,
@@ -214,7 +226,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _getSparkLiquidityLayerContext() internal view returns(SparkLiquidityLayerContext memory) {
+    function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
         return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
     }
 
@@ -340,7 +352,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vm.expectRevert("RateLimits/zero-maxAmount");
             MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
 
-            executeAllPayloadsAndBridges();
+            _executeAllPayloadsAndBridges();
         }
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
@@ -476,7 +488,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.expectRevert("RateLimits/zero-maxAmount");
         MainnetController(ctx.prevController).depositAave(aToken, expectedDepositAmount);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
@@ -717,7 +729,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 smallerMaxSlippage;
     }
 
-    function isDeployedByFactory(address pool) internal view returns (bool) {
+    function _isDeployedByFactory(address pool) internal view returns (bool) {
         address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
     }
@@ -733,7 +745,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         RateLimitData memory depositLimit,
         RateLimitData memory withdrawLimit
     ) internal {
-        require(isDeployedByFactory(pool), "Pool is not deployed by factory");
+        require(_isDeployedByFactory(pool), "Pool is not deployed by factory");
 
         assertGe(IERC20(pool).balanceOf(address(1)), 1e18);
 
@@ -765,7 +777,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(vars.depositKey,  0, 0);
         _assertRateLimit(vars.withdrawKey, 0, 0);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertRateLimit(vars.swapKey,     swapLimit);
         _assertRateLimit(vars.depositKey,  depositLimit);
@@ -1958,7 +1970,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
         }
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(ctx.proxy.hasRole(CONTROLLER, oldController), false);
         assertEq(ctx.proxy.hasRole(CONTROLLER, newController), true);
@@ -2182,7 +2194,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** E2E tests to be run on every spell                                                     ***/
     /**********************************************************************************************/
 
-    function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() public {
+    function test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() external {
         SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxBase    = _getSparkLiquidityLayerContext(ChainIdUtils.Base());
 
@@ -2192,7 +2204,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ForeignController(ctxBase.prevController)
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Base(),
@@ -2201,7 +2213,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-    function test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() public {
+    function test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() external {
         SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxArbitrum = _getSparkLiquidityLayerContext(ChainIdUtils.ArbitrumOne());
 
@@ -2211,7 +2223,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ForeignController(ctxArbitrum.prevController)
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.ArbitrumOne(),
@@ -2220,7 +2232,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-    function test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() public {
+    function test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() external {
         SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxOptimism = _getSparkLiquidityLayerContext(ChainIdUtils.Optimism());
 
@@ -2230,7 +2242,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ForeignController(ctxOptimism.prevController)
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Optimism(),
@@ -2239,7 +2251,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-    function test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() public {
+    function test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() external {
         SparkLiquidityLayerContext memory ctxMainnet  = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
         SparkLiquidityLayerContext memory ctxUnichain = _getSparkLiquidityLayerContext(ChainIdUtils.Unichain());
 
@@ -2249,7 +2261,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ForeignController(ctxUnichain.prevController)
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _testE2ESLLCrossChainForDomain(
             ChainIdUtils.Unichain(),
