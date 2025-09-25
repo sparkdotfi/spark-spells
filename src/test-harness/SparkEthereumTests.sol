@@ -200,7 +200,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    function _voteAndCast(address _spell) internal {
+    function _voteAndCast(address spell) internal {
         IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
 
         address skyWhale = makeAddr("skyWhale");
@@ -214,21 +214,21 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         authority.lock(amount);
 
         address[] memory slate = new address[](1);
-        slate[0] = _spell;
+        slate[0] = spell;
 
         authority.vote(slate);
 
         // Min amount of blocks to pass to vote again.
         vm.roll(block.number + 11);
 
-        authority.lift(_spell);
+        authority.lift(spell);
 
         vm.stopPrank();
 
-        assertEq(authority.hat(), _spell);
+        assertEq(authority.hat(), spell);
 
         vm.prank(makeAddr("randomUser"));
-        IExecutableLike(_spell).execute();
+        IExecutableLike(spell).execute();
     }
 
     function _runFreezerMomTestsMultisig() internal {

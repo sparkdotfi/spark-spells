@@ -207,50 +207,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         }
     }
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
-        IPoolAddressesProvider poolAddressesProvider;
-
-        if (chain == ChainIdUtils.Ethereum()) {
-            poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
-        } else if (chain == ChainIdUtils.Gnosis()) {
-            poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
-        } else {
-            revert("SparkLend/executing on unknown chain");
-        }
-
-        ctx = SparkLendContext(
-            poolAddressesProvider,
-            IPool(poolAddressesProvider.getPool()),
-            IPoolConfigurator(poolAddressesProvider.getPoolConfigurator()),
-            IACLManager(poolAddressesProvider.getACLManager()),
-            IAaveOracle(poolAddressesProvider.getPriceOracle())
-        );
-    }
-
-    function _getSparkLendContext() internal view returns (SparkLendContext memory) {
-        return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
-    }
-
-    function _validateOracles() internal view {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        address[] memory reserves = ctx.pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; i++) {
-            require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
-            require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
-        }
-    }
-
-    function _getImplementation(address admin, address proxy) internal returns (address) {
-        vm.prank(admin);
-        return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
-    }
-
     function _testIRMChanges(
         address asset,
         uint256 oldOptimal,
@@ -325,6 +281,50 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         inputs[6] = outPath;
 
         vm.ffi(inputs);
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
+        IPoolAddressesProvider poolAddressesProvider;
+
+        if (chain == ChainIdUtils.Ethereum()) {
+            poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
+        } else if (chain == ChainIdUtils.Gnosis()) {
+            poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
+        } else {
+            revert("SparkLend/executing on unknown chain");
+        }
+
+        ctx = SparkLendContext(
+            poolAddressesProvider,
+            IPool(poolAddressesProvider.getPool()),
+            IPoolConfigurator(poolAddressesProvider.getPoolConfigurator()),
+            IACLManager(poolAddressesProvider.getACLManager()),
+            IAaveOracle(poolAddressesProvider.getPriceOracle())
+        );
+    }
+
+    function _getSparkLendContext() internal view returns (SparkLendContext memory) {
+        return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
+    }
+
+    function _validateOracles() internal view {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        address[] memory reserves = ctx.pool.getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
+            require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
+        }
+    }
+
+    function _getImplementation(address admin, address proxy) internal returns (address) {
+        vm.prank(admin);
+        return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
     }
 
 }

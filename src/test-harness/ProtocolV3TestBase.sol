@@ -56,16 +56,16 @@ contract ProtocolV3TestBase is Test {
         uint256 liquidationBonus;
         uint256 liquidationProtocolFee;
         uint256 reserveFactor;
-        bool usageAsCollateralEnabled;
-        bool borrowingEnabled;
+        bool    usageAsCollateralEnabled;
+        bool    borrowingEnabled;
         address interestRateStrategy;
-        bool stableBorrowRateEnabled;
-        bool isPaused;
-        bool isActive;
-        bool isFrozen;
-        bool isSiloed;
-        bool isBorrowableInIsolation;
-        bool isFlashloanable;
+        bool    stableBorrowRateEnabled;
+        bool    isPaused;
+        bool    isActive;
+        bool    isFrozen;
+        bool    isSiloed;
+        bool    isBorrowableInIsolation;
+        bool    isFlashloanable;
         uint256 supplyCap;
         uint256 borrowCap;
         uint256 debtCeiling;
@@ -74,7 +74,7 @@ contract ProtocolV3TestBase is Test {
 
     struct LocalVars {
         IPoolDataProvider.TokenData[] reserves;
-        ReserveConfig[] configs;
+        ReserveConfig[]               configs;
     }
 
     struct LiquidationBalanceAssertions {
@@ -118,6 +118,7 @@ contract ProtocolV3TestBase is Test {
         bytes calldata params
     ) external returns (bool) {
         address pool = abi.decode(params, (address));
+
         assertEq(IERC20(asset).balanceOf(address(this)), amount, "UNDERLYING_NOT_AMOUNT");
 
         // TODO: MDL, is this fixed?
@@ -152,18 +153,18 @@ contract ProtocolV3TestBase is Test {
      */
     function _createConfigurationSnapshot(
         string memory reportName,
-        IPool pool
+        IPool         pool
     ) internal returns (ReserveConfig[] memory) {
         return _createConfigurationSnapshot(reportName, pool, true, true, true, true);
     }
 
     function _createConfigurationSnapshot(
         string memory reportName,
-        IPool pool,
-        bool reserveConfigs,
-        bool strategyConfigs,
-        bool eModeConfigs,
-        bool poolConfigs
+        IPool         pool,
+        bool          reserveConfigs,
+        bool          strategyConfigs,
+        bool          eModeConfigs,
+        bool          poolConfigs
     ) internal returns (ReserveConfig[] memory) {
         string memory path = string(abi.encodePacked("./reports/", reportName, ".json"));
 
@@ -178,10 +179,21 @@ contract ProtocolV3TestBase is Test {
         // TODO: return argument can be named and used directly.
         ReserveConfig[] memory configs = _getReservesConfigs(pool);
 
-        if (reserveConfigs) _writeReserveConfigs(path, configs, pool);
-        if (strategyConfigs) _writeStrategyConfigs(path, configs);
-        if (eModeConfigs) _writeEModeConfigs(path, configs, pool);
-        if (poolConfigs) _writePoolConfiguration(path, pool);
+        if (reserveConfigs) {
+            _writeReserveConfigs(path, configs, pool);
+        }
+
+        if (strategyConfigs) {
+            _writeStrategyConfigs(path, configs);
+        }
+
+        if (eModeConfigs) {
+            _writeEModeConfigs(path, configs, pool);
+        }
+
+        if (poolConfigs) {
+            _writePoolConfiguration(path, pool);
+        }
 
         return configs;
     }
@@ -249,16 +261,12 @@ contract ProtocolV3TestBase is Test {
             return;
         }
 
-        if (
-            _isAboveSupplyCap(borrowConfig, totalBorrowAssetSupplied)
-        ) {
+        if (_isAboveSupplyCap(borrowConfig, totalBorrowAssetSupplied)) {
             console.log("Skip borrow: %s, supply cap fully utilized", borrowConfig.symbol);
             return;
         }
 
-        if (
-            _isAboveBorrowCap(pool, borrowConfig, maxBorrowAmount)
-        ) {
+        if (_isAboveBorrowCap(pool, borrowConfig, maxBorrowAmount)) {
             console.log("Skip borrow: %s, borrow cap fully utilized", borrowConfig.symbol);
             return;
         }
@@ -317,10 +325,10 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _e2eTestBorrowAboveLTV(
-        IPool pool,
-        address borrower,
+        IPool                pool,
+        address              borrower,
         ReserveConfig memory config,
-        uint256 maxBorrowAmount
+        uint256              maxBorrowAmount
     ) internal {
         // Borrow at exactly theoretical max, and then the smallest unit over
         vm.startPrank(borrower);
@@ -330,17 +338,18 @@ contract ProtocolV3TestBase is Test {
         uint256 minThresholdAmount = 1 * 10 ** config.decimals / 1000;
 
         vm.expectRevert(bytes("36")); // COLLATERAL_CANNOT_COVER_NEW_BORROW
+
         pool.borrow(config.underlying, minThresholdAmount, 2, 0, borrower);
 
         vm.stopPrank();
     }
 
     function _e2eTestBorrowRepayWithdraw(
-        IPool pool,
-        address borrower,
+        IPool                pool,
+        address              borrower,
         ReserveConfig memory collateralConfig,
         ReserveConfig memory borrowConfig,
-        uint256 amount
+        uint256              amount
     ) internal {
         // Step 1: Borrow against collateral
 
@@ -354,7 +363,9 @@ contract ProtocolV3TestBase is Test {
         //         assert updated state of borrow reserve
 
         DataTypes.ReserveData memory beforeReserve = pool.getReserveData(borrowConfig.underlying);
+
         _repay(borrowConfig, pool, borrower, amount, false);
+
         DataTypes.ReserveData memory afterReserve = pool.getReserveData(borrowConfig.underlying);
 
         _assertReserveChange(beforeReserve, afterReserve, int256(amount), 8 hours);
@@ -369,8 +380,8 @@ contract ProtocolV3TestBase is Test {
 
         // Handle edge case for for low LTV collaterals at under 1% causing rounding errors here, preventing failure.
         if (collateralConfig.ltv > 100) {
-            vm.prank(borrower);
             vm.expectRevert(bytes("35"));  // HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD
+            vm.prank(borrower);
             pool.withdraw(collateralConfig.underlying, totalCollateral, borrower);
         }
 
@@ -385,7 +396,9 @@ contract ProtocolV3TestBase is Test {
         // Step 7: Withdraw all collateral, assert updated state of collateral reserves
 
         beforeReserve = pool.getReserveData(collateralConfig.underlying);
+
         _withdraw(collateralConfig, pool, borrower, totalCollateral);
+
         afterReserve = pool.getReserveData(collateralConfig.underlying);
 
         // If collateral == borrow asset, reserve was updated during repay step
@@ -395,10 +408,10 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _e2eTestStableBorrowDisabled(
-        IPool pool,
-        address borrower,
+        IPool                pool,
+        address              borrower,
         ReserveConfig memory borrowConfig,
-        uint256 amount
+        uint256              amount
     ) internal {
         vm.expectRevert(bytes("31")); // STABLE_BORROWING_NOT_ENABLED
 
@@ -411,6 +424,7 @@ contract ProtocolV3TestBase is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.startPrank(borrower);
+
         IERC20(borrowConfig.underlying).safeApprove(address(pool), amount);
 
         vm.expectRevert(bytes("39")); // NO_DEBT_OF_SELECTED_TYPE
@@ -424,12 +438,12 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _e2eTestLiquidationReceiveCollateral(
-        IPool pool,
-        address borrower,
-        address liquidator,
+        IPool                pool,
+        address              borrower,
+        address              liquidator,
         ReserveConfig memory collateralConfig,
         ReserveConfig memory borrowConfig,
-        uint256 amount
+        uint256              amount
     ) internal {
         _borrow(borrowConfig, pool, borrower, amount, false);
 
@@ -453,9 +467,9 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _e2eTestFlashLoan(
-        IPool pool,
+        IPool                pool,
         ReserveConfig memory testAssetConfig,
-        uint256 amount
+        uint256              amount
     ) internal {
         assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
 
@@ -471,19 +485,20 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _e2eTestMintToTreasury(
-        IPool pool,
+        IPool                pool,
         ReserveConfig memory testAssetConfig
     ) internal {
         address[] memory assets = new address[](1);
         assets[0] = testAssetConfig.underlying;
+
         pool.mintToTreasury(assets);
     }
 
     function _supply(
         ReserveConfig memory config,
-        IPool pool,
-        address user,
-        uint256 amount
+        IPool                pool,
+        address              user,
+        uint256              amount
     ) internal {
         require(!config.isFrozen, "SUPPLY(): FROZEN_RESERVE");
         require( config.isActive, "SUPPLY(): INACTIVE_RESERVE");
@@ -515,10 +530,10 @@ contract ProtocolV3TestBase is Test {
 
     function _borrow(
         ReserveConfig memory config,
-        IPool pool,
-        address user,
-        uint256 amount,
-        bool stable
+        IPool                pool,
+        address              user,
+        uint256              amount,
+        bool                 stable
     ) internal {
         address debtToken = stable ? config.stableDebtToken : config.variableDebtToken;
 
@@ -542,10 +557,10 @@ contract ProtocolV3TestBase is Test {
 
     function _repay(
         ReserveConfig memory config,
-        IPool pool,
-        address user,
-        uint256 amount,
-        bool stable
+        IPool                pool,
+        address              user,
+        uint256              amount,
+        bool                 stable
     ) internal {
         address debtToken = stable ? config.stableDebtToken : config.variableDebtToken;
 
@@ -576,9 +591,9 @@ contract ProtocolV3TestBase is Test {
     function _liquidateAndReceiveCollateral(
         ReserveConfig memory collateral,
         ReserveConfig memory borrow,
-        IPool pool,
-        address liquidator,
-        address user
+        IPool                pool,
+        address              liquidator,
+        address              user
     ) internal {
         address debtToken = borrow.variableDebtToken;
 
@@ -602,11 +617,13 @@ contract ProtocolV3TestBase is Test {
         // TODO: Add totalSupply assertions
 
         vm.startPrank(liquidator);
+
         SafeERC20.safeApprove(IERC20(borrow.underlying), address(pool), balances.debtBefore);
 
         console.log("LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s", collateral.symbol, borrow.symbol, _formattedAmount(balances.debtBefore, borrow.decimals));
 
         pool.liquidationCall(collateral.underlying, borrow.underlying, user, balances.debtBefore, false);
+
         vm.stopPrank();
 
         balances.aTokenBorrowerAfter = IERC20(collateral.aToken).balanceOf(user);
@@ -674,13 +691,13 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _writeEModeConfigs(
-        string memory path,
+        string          memory path,
         ReserveConfig[] memory configs,
-        IPool pool
+        IPool                  pool
     ) internal {
         // keys for json stringification
         string memory eModesKey = "emodes";
-        string memory content = "{}";
+        string memory content   = "{}";
 
         uint256[] memory usedCategories = new uint256[](configs.length);
 
@@ -711,7 +728,7 @@ contract ProtocolV3TestBase is Test {
     function _writeStrategyConfigs(string memory path, ReserveConfig[] memory configs) internal {
         // keys for json stringification
         string memory strategiesKey = "strategies";
-        string memory content = "{}";
+        string memory content       = "{}";
 
         address[] memory usedStrategies = new address[](configs.length);
 
@@ -726,78 +743,77 @@ contract ProtocolV3TestBase is Test {
         vm.writeJson(output, path);
     }
 
-    function _writeStrategyConfig(string memory strategiesKey, address _strategy) internal returns (string memory content) {
-        string memory key = vm.toString(_strategy);
+    function _writeStrategyConfig(string memory strategiesKey, address strategy) internal returns (string memory content) {
+        string memory key = vm.toString(strategy);
 
-        IDefaultInterestRateStrategy strategy = IDefaultInterestRateStrategy(
-            _strategy
-        );
+        IDefaultInterestRateStrategy strategy_ = IDefaultInterestRateStrategy(strategy);
 
         vm.serializeString(
             key,
             "baseStableBorrowRate",
-            vm.toString(strategy.getBaseStableBorrowRate())
+            vm.toString(strategy_.getBaseStableBorrowRate())
         );
 
-        vm.serializeString(key, "stableRateSlope1", vm.toString(strategy.getStableRateSlope1()));
+        vm.serializeString(key, "stableRateSlope1", vm.toString(strategy_.getStableRateSlope1()));
 
-        vm.serializeString(key, "stableRateSlope2", vm.toString(strategy.getStableRateSlope2()));
+        vm.serializeString(key, "stableRateSlope2", vm.toString(strategy_.getStableRateSlope2()));
 
         vm.serializeString(
             key,
             "baseVariableBorrowRate",
-            vm.toString(strategy.getBaseVariableBorrowRate())
+            vm.toString(strategy_.getBaseVariableBorrowRate())
         );
 
         vm.serializeString(
             key,
             "variableRateSlope1",
-            vm.toString(strategy.getVariableRateSlope1())
+            vm.toString(strategy_.getVariableRateSlope1())
         );
 
         vm.serializeString(
             key,
             "variableRateSlope2",
-            vm.toString(strategy.getVariableRateSlope2())
+            vm.toString(strategy_.getVariableRateSlope2())
         );
 
         vm.serializeString(
             key,
             "optimalStableToTotalDebtRatio",
-            vm.toString(strategy.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO())
+            vm.toString(strategy_.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO())
         );
 
         vm.serializeString(
             key,
             "maxExcessStableToTotalDebtRatio",
-            vm.toString(strategy.MAX_EXCESS_STABLE_TO_TOTAL_DEBT_RATIO())
+            vm.toString(strategy_.MAX_EXCESS_STABLE_TO_TOTAL_DEBT_RATIO())
         );
 
-        vm.serializeString(key, "optimalUsageRatio", vm.toString(strategy.OPTIMAL_USAGE_RATIO()));
+        vm.serializeString(key, "optimalUsageRatio", vm.toString(strategy_.OPTIMAL_USAGE_RATIO()));
 
         string memory object = vm.serializeString(
             key,
             "maxExcessUsageRatio",
-            vm.toString(strategy.MAX_EXCESS_USAGE_RATIO())
+            vm.toString(strategy_.MAX_EXCESS_USAGE_RATIO())
         );
 
         content = vm.serializeString(strategiesKey, key, object);
     }
 
     function _writeReserveConfigs(
-        string memory path,
+        string          memory path,
         ReserveConfig[] memory configs,
-        IPool pool
+        IPool                  pool
     ) internal {
         // keys for json stringification
         string memory reservesKey = "reserves";
-        string memory content = "{}";
+        string memory content     = "{}";
 
         IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
         IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
 
         for (uint256 i = 0; i < configs.length; i++) {
             ReserveConfig memory config = configs[i];
+
             IOracleLike assetOracle = IOracleLike(oracle.getSourceOfAsset(config.underlying));
 
             string memory key = vm.toString(config.underlying);
@@ -947,6 +963,7 @@ contract ProtocolV3TestBase is Test {
             "poolImpl",
             ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(vm, address(pool))
         );
+
         string memory content = vm.serializeAddress(poolConfigKey, "pool", address(pool));
 
         string memory output = vm.serializeString("root", "poolConfig", content);
@@ -975,18 +992,18 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _getTokenAmountByDollarValue(
-        IPool pool,
+        IPool                pool,
         ReserveConfig memory config,
-        uint256 dollarValue
+        uint256              dollarValue
     ) internal view returns (uint256) {
         return (dollarValue * 10 ** (8 + config.decimals)) / _getTokenPrice(pool, config);
     }
 
     function _getMaxBorrowAmount(
-        IPool pool,
+        IPool                pool,
         ReserveConfig memory collateralConfig,
         ReserveConfig memory borrowConfig,
-        uint256 collateralAmount
+        uint256              collateralAmount
     ) internal view returns (uint256) {
         // Intentionally introducing a slight rounding error to not trigger the LTV edge case failure condition
         return collateralAmount
@@ -1000,9 +1017,9 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _isAboveBorrowCap(
-        IPool pool,
+        IPool                pool,
         ReserveConfig memory borrowConfig,
-        uint256 borrowAmount
+        uint256              borrowAmount
     ) internal view returns (bool) {
         DataTypes.ReserveData memory reserveData = pool.getReserveData(borrowConfig.underlying);
 
@@ -1021,8 +1038,8 @@ contract ProtocolV3TestBase is Test {
     function _assertReserveChange(
         DataTypes.ReserveData memory beforeReserve,
         DataTypes.ReserveData memory afterReserve,
-        int256 amountRepaid,
-        uint256 timeSinceLastUpdate
+        int256                       amountRepaid,
+        uint256                      timeSinceLastUpdate
     ) internal pure {
         assertEq(afterReserve.configuration.data, beforeReserve.configuration.data);
 
@@ -1080,9 +1097,9 @@ contract ProtocolV3TestBase is Test {
 
     function _withdraw(
         ReserveConfig memory config,
-        IPool pool,
-        address user,
-        uint256 amount
+        IPool                pool,
+        address              user,
+        uint256              amount
     ) internal returns (uint256) {
         uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
         uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
@@ -1108,8 +1125,8 @@ contract ProtocolV3TestBase is Test {
     function _getLiquidationAmounts(
         ReserveConfig memory collateral,
         ReserveConfig memory borrow,
-        IPool pool,
-        uint256 debtToCover
+        IPool                pool,
+        uint256              debtToCover
     )
         internal view returns (uint256 totalCollateralToLiquidate, uint256 amountToProtocol)
     {
@@ -1164,7 +1181,8 @@ contract ProtocolV3TestBase is Test {
 
     function _getReservesConfigs(IPool pool) internal view returns (ReserveConfig[] memory) {
         IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
-        IPoolDataProvider poolDataProvider = IPoolDataProvider(addressesProvider.getPoolDataProvider());
+        IPoolDataProvider      poolDataProvider  = IPoolDataProvider(addressesProvider.getPoolDataProvider());
+
         LocalVars memory vars;
 
         vars.reserves = poolDataProvider.getAllReservesTokens();
@@ -1187,14 +1205,14 @@ contract ProtocolV3TestBase is Test {
 
     function _getStructReserveTokens(
         IPoolDataProvider pdp,
-        address underlyingAddress
+        address           underlyingAddress
     ) internal view returns (ReserveTokens memory reserveTokens) {
         (reserveTokens.aToken, reserveTokens.stableDebtToken, reserveTokens.variableDebtToken) = pdp
             .getReserveTokensAddresses(underlyingAddress);
     }
 
     function _getStructReserveConfig(
-        IPool pool,
+        IPool                              pool,
         IPoolDataProvider.TokenData memory reserve
     ) internal view virtual returns (ReserveConfig memory localConfig) {
         DataTypes.ReserveConfigurationMap memory configuration = pool.getConfiguration(
@@ -1269,7 +1287,7 @@ contract ProtocolV3TestBase is Test {
 
     function _findReserveConfig(
         ReserveConfig[] memory configs,
-        address underlying
+        address                underlying
     ) internal pure returns (ReserveConfig memory) {
         for (uint256 i = 0; i < configs.length; i++) {
             if (configs[i].underlying != underlying) continue;
@@ -1283,9 +1301,10 @@ contract ProtocolV3TestBase is Test {
 
     function _findReserveConfigBySymbol(
         ReserveConfig[] memory configs,
-        string memory symbolOfUnderlying
+        string          memory symbolOfUnderlying
     ) internal pure returns (ReserveConfig memory) {
         for (uint256 i = 0; i < configs.length; i++) {
+            // TODO: MDL, maybe replace with string equals helper and `if return _clone`.
             if (keccak256(abi.encodePacked(configs[i].symbol)) != keccak256(abi.encodePacked(symbolOfUnderlying))) {
                 continue;
             }
@@ -1326,7 +1345,7 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _validateReserveConfig(
-        ReserveConfig memory expectedConfig,
+        ReserveConfig   memory expectedConfig,
         ReserveConfig[] memory allConfigs
     ) internal pure {
         ReserveConfig memory config = _findReserveConfig(allConfigs, expectedConfig.underlying);
@@ -1432,8 +1451,8 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _validateInterestRateStrategy(
-        address interestRateStrategyAddress,
-        address expectedStrategy,
+        address                       interestRateStrategyAddress,
+        address                       expectedStrategy,
         InterestStrategyValues memory expectedStrategyValues
     ) internal view {
         IDefaultInterestRateStrategy strategy = IDefaultInterestRateStrategy(
@@ -1664,7 +1683,7 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _validateCountOfListings(
-        uint256 count,
+        uint256                count,
         ReserveConfig[] memory allConfigsBefore,
         ReserveConfig[] memory allConfigsAfter
     ) internal pure {
@@ -1675,14 +1694,9 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _validateReserveTokensImplementations(
-        IPoolAddressesProvider addressProvider,
         ReserveConfig memory config,
         ReserveTokens memory expectedImplementations
-    ) internal {
-        address poolConfigurator = addressProvider.getPoolConfigurator();
-
-        vm.startPrank(poolConfigurator);
-
+    ) internal view {
         require(
             IProxyLike(config.aToken).implementation() ==
                 expectedImplementations.aToken,
@@ -1700,14 +1714,12 @@ contract ProtocolV3TestBase is Test {
                 expectedImplementations.stableDebtToken,
             "_validateReserveTokensImplementations() : INVALID_ATOKEN_IMPL"
         );
-
-        vm.stopPrank();
     }
 
     function _validateAssetSourceOnOracle(
         IPoolAddressesProvider addressesProvider,
-        address asset,
-        address expectedSource
+        address                asset,
+        address                expectedSource
     ) internal view {
         IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
 
@@ -1723,9 +1735,9 @@ contract ProtocolV3TestBase is Test {
     }
 
     function _validateAssetsOnEmodeCategory(
-        uint256 category,
+        uint256                category,
         ReserveConfig[] memory assetsConfigs,
-        string[] memory expectedAssets
+        string[]        memory expectedAssets
     ) internal pure {
         string[] memory assetsInCategory = new string[](assetsConfigs.length);
 
@@ -1741,7 +1753,7 @@ contract ProtocolV3TestBase is Test {
                 "_getAssetOnEmodeCategory(): INCONSISTENT_ASSETS"
             );
 
-            countCategory++;
+            ++countCategory;
 
             if (countCategory > expectedAssets.length) {
                 revert("_getAssetOnEmodeCategory(): MORE_ASSETS_IN_CATEGORY_THAN_EXPECTED");
@@ -1758,7 +1770,7 @@ contract ProtocolV3TestBase is Test {
 
     function _isInUint256Array(
         uint256[] memory haystack,
-        uint256 needle
+        uint256          needle
     ) internal pure returns (bool) {
         for (uint256 i = 0; i < haystack.length; ++i) {
             if (haystack[i] == needle) return true;
@@ -1769,7 +1781,7 @@ contract ProtocolV3TestBase is Test {
 
     function _isInAddressArray(
         address[] memory haystack,
-        address needle
+        address          needle
     ) internal pure returns (bool) {
         for (uint256 i = 0; i < haystack.length; ++i) {
             if (haystack[i] == needle) return true;
