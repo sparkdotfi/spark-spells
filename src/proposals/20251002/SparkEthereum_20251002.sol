@@ -226,9 +226,9 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
         INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
-        INetworkRegistry  networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
+        INetworkRegistry networkRegistry   = INetworkRegistry(NETWORK_REGISTRY);
         IOperatorRegistry operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
-        IVetoSlasher      slasher          = IVetoSlasher(VETO_SLASHER);
+        IVetoSlasher slasher               = IVetoSlasher(VETO_SLASHER);
 
         // --- Step 1: Do configurations as network, DO NOT SET middleware, max network limit, and resolver
         networkRegistry.registerNetwork();

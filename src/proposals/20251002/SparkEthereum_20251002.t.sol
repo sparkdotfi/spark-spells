@@ -16,6 +16,28 @@ import { ReserveConfig }              from 'src/test-harness/ProtocolV3TestBase.
 import { SparkLendContext }           from 'src/test-harness/SparklendTests.sol';
 import { SparkLiquidityLayerContext } from 'src/test-harness/SparkLiquidityLayerTests.sol';
 
+interface INetworkRegistry {
+    function isEntity(address entity_) external view returns (bool);
+}
+
+interface IOperatorRegistry {
+    function isEntity(address entity_) external view returns (bool);
+}
+
+interface IOptInService {
+    function isOptedIn(address who, address where) external view returns (bool);
+}
+
+interface INetworkRestakeDelegator {
+    function hasRole(bytes32 role, address account) external returns (bool);
+    function hook() external returns (address);
+    function networkLimit(bytes32 subnetwork) external returns (uint256);
+    function operatorNetworkShares(bytes32 subnetwork, address operator) external view returns (uint256);
+    function OPERATOR_NETWORK_SHARES_SET_ROLE() external returns (bytes32);
+    function OPERATOR_VAULT_OPT_IN_SERVICE() external view returns (address);
+    function OPERATOR_NETWORK_OPT_IN_SERVICE() external view returns (address);
+}
+
 interface ISparkVaultV2 {
     function asset() external view returns (address);
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
@@ -41,6 +63,13 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
     uint256 internal constant AMOUNT_TO_GROVE            = 1_031_866e18;
     uint256 internal constant AMOUNT_TO_SPARK_FOUNDATION = 1_100_000e18;
+
+    // Symbiotic addresses
+    address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
+    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
+    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
+    address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
+    address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
 
     constructor() {
         id = "20251002";
@@ -245,6 +274,64 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),      sparkUsdsBalanceBefore - AMOUNT_TO_GROVE - AMOUNT_TO_SPARK_FOUNDATION);
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION), foundationUsdsBalanceBefore + AMOUNT_TO_SPARK_FOUNDATION);
         assertEq(IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY),        groveUsdsBalanceBefore + AMOUNT_TO_GROVE);
+    }
+
+    function test_ETHEREUM_symbioticConfiguration() public onChain(ChainIdUtils.Ethereum()) {
+        address NETWORK   = Ethereum.SPARK_PROXY;
+        address OWNER     = Ethereum.SPARK_PROXY;
+        address OPERATOR  = Ethereum.SPARK_PROXY;
+
+        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+        INetworkRegistry networkRegistry   = INetworkRegistry(NETWORK_REGISTRY);
+        IOperatorRegistry operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
+
+        bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+
+        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), false);
+
+        assertEq(delegator.networkLimit(subnetwork),                    0);
+        assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
+        assertEq(delegator.hook(),                                      address(0));
+
+        assertEq(
+            delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK),
+            false
+        );
+
+        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), false);
+
+        assertEq(
+            IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, NETWORK),
+            false
+        );
+        assertEq(
+            IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT),
+            false
+        );
+
+        executeAllPayloadsAndBridges();
+
+        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), true);
+
+        assertEq(delegator.networkLimit(subnetwork),                    type(uint256).max);
+        assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
+        assertEq(delegator.hook(),                                      RESET_HOOK);
+
+        assertEq(
+            delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK),
+            true
+        );
+
+        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), true);
+
+        assertEq(
+            IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, NETWORK),
+            true
+        );
+        assertEq(
+            IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT),
+            true
+        );
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
