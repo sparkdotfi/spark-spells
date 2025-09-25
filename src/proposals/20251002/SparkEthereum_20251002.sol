@@ -129,10 +129,6 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
             1_000_000_000e18
         );
 
-        // Reduce Stablecoin Market Reserve Factors
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
-
         // Increase LBTC Supply Cap Automator Parameters
         ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
             asset:            Ethereum.LBTC,
@@ -140,6 +136,10 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
             gap:              500,
             increaseCooldown: 12 hours
         });
+
+        // Reduce Stablecoin Market Reserve Factors
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
 
         // --- Launch Savings v2 Vaults for USDC, USDT, and ETH ---
         _configureVaultsV2({

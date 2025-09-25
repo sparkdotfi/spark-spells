@@ -141,6 +141,14 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         });
     }
 
+    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() public onChain(ChainIdUtils.Ethereum()) {
+        _assertSupplyCapConfig(Ethereum.LBTC, 2500, 250, 12 hours);
+
+        executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
+    }
+
     function test_ETHEREUM_sparkLend_reserveFactor() public onChain(ChainIdUtils.Ethereum()) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
@@ -161,14 +169,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         _validateReserveConfig(usdc, allConfigsAfter);
         _validateReserveConfig(usdt, allConfigsAfter);
-    }
-
-    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() public onChain(ChainIdUtils.Ethereum()) {
-        _assertSupplyCapConfig(Ethereum.LBTC, 2500, 250, 12 hours);
-
-        executeAllPayloadsAndBridges();
-
-        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() public onChain(ChainIdUtils.Ethereum()) {
