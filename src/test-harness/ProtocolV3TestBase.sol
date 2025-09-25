@@ -108,6 +108,38 @@ contract ProtocolV3TestBase is Test {
     /*** External State-Modifying Functions                                                     ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, this function implies this test contract is being called by an on-chain contract, which is bad practice. Fix.
+    // Called back from the flashloan
+    function executeOperation(
+        address asset,
+        uint256 amount,
+        uint256 premium,
+        address,
+        bytes calldata params
+    ) external returns (bool) {
+        address pool = abi.decode(params, (address));
+        assertEq(IERC20(asset).balanceOf(address(this)), amount, "UNDERLYING_NOT_AMOUNT");
+
+        // TODO: MDL, is this fixed?
+        // Temporary measure while USDC/EURe/USDC.e deal gets fixed, set the balance to amount + premium either way
+        uint256 dealAmount =
+            asset == DealUtils.USDC_MAINNET ||
+            asset == DealUtils.EURE_GNOSIS ||
+            asset == DealUtils.USDCE_GNOSIS
+                ? premium
+                : amount + premium;
+
+        if (!DealUtils.patchedDeal(asset, address(this), dealAmount)) {
+            deal(asset, address(this), dealAmount);
+        }
+
+        vm.startPrank(address(this));
+        SafeERC20.safeApprove(IERC20(asset), pool, amount + premium);
+        vm.stopPrank();
+
+        return true;
+    }
+
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
@@ -561,38 +593,6 @@ contract ProtocolV3TestBase is Test {
 
     function _isAboveSupplyCap(ReserveConfig memory config, uint256 supplyAmount) internal view returns (bool) {
         return IERC20(config.aToken).totalSupply() + supplyAmount > (config.supplyCap * 10 ** config.decimals);
-    }
-
-    // TODO: MDL, this function implies this test contract is being called by an on-chain contract, which is bad practice. Fix.
-    // Called back from the flashloan
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address,
-        bytes calldata params
-    ) external returns (bool) {
-        address pool = abi.decode(params, (address));
-        assertEq(IERC20(asset).balanceOf(address(this)), amount, "UNDERLYING_NOT_AMOUNT");
-
-        // TODO: MDL, is this fixed?
-        // Temporary measure while USDC/EURe/USDC.e deal gets fixed, set the balance to amount + premium either way
-        uint256 dealAmount =
-            asset == DealUtils.USDC_MAINNET ||
-            asset == DealUtils.EURE_GNOSIS ||
-            asset == DealUtils.USDCE_GNOSIS
-                ? premium
-                : amount + premium;
-
-        if (!DealUtils.patchedDeal(asset, address(this), dealAmount)) {
-            deal(asset, address(this), dealAmount);
-        }
-
-        vm.startPrank(address(this));
-        SafeERC20.safeApprove(IERC20(asset), pool, amount + premium);
-        vm.stopPrank();
-
-        return true;
     }
 
     function _e2eTestMintToTreasury(

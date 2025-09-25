@@ -349,6 +349,15 @@ abstract contract SpellRunner is Test {
         }
     }
 
+    function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
+        address actualPayload = chainData[chainId].payload;
+        vm.skip(actualPayload == address(0));
+        require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
+        address expectedPayload = _deployPayload(chainId);
+
+        _assertBytecodeMatches(expectedPayload, actualPayload);
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -357,15 +366,6 @@ abstract contract SpellRunner is Test {
         string memory slug       = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
         string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
         return identifier;
-    }
-
-    function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
-        address actualPayload = chainData[chainId].payload;
-        vm.skip(actualPayload == address(0));
-        require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
-        address expectedPayload = _deployPayload(chainId);
-
-        _assertBytecodeMatches(expectedPayload, actualPayload);
     }
 
     function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {

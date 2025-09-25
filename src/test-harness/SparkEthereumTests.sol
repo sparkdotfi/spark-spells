@@ -374,6 +374,24 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         }
     }
 
+    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
+
+        uint256 startingReserveLength = allConfigsBefore.length;
+
+        _executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
+
+        assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
+
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            _testAssetOnboarding(allConfigsAfter, collaterals[i]);
+        }
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -476,24 +494,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             _currentCap
     ) internal view {
         _assertMorphoCap(_vault, _config, _currentCap, false, 0);
-    }
-
-    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
-
-        uint256 startingReserveLength = allConfigsBefore.length;
-
-        _executeAllPayloadsAndBridges();
-
-        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
-
-        assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
-
-        for (uint256 i = 0; i < collaterals.length; i++) {
-            _testAssetOnboarding(allConfigsAfter, collaterals[i]);
-        }
     }
 
     function _testAssetOnboarding(
