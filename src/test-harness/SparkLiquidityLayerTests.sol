@@ -151,6 +151,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 tolerance;
     }
 
+    struct MapleE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 redeemKey;
+        bytes32 withdrawKey;
+        uint256 tolerance;
+    }
+
+    struct MapleE2ETestVars {
+        uint256 depositLimit;
+        uint256 redeemLimit;
+        uint256 withdrawLimit;
+        uint256 positionAssets;
+        uint256 startingShares;
+        uint256 startingAssets;
+        uint256 shares;
+        uint256 withdrawAmount;
+        uint256 totalEscrowedShares;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -619,28 +641,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 monthlySlope = slope * 30 days;
             assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
-    }
-
-    struct MapleE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address vault;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 redeemKey;
-        bytes32 withdrawKey;
-        uint256 tolerance;
-    }
-
-    struct MapleE2ETestVars {
-        uint256 depositLimit;
-        uint256 redeemLimit;
-        uint256 withdrawLimit;
-        uint256 positionAssets;
-        uint256 startingShares;
-        uint256 startingAssets;
-        uint256 shares;
-        uint256 withdrawAmount;
-        uint256 totalEscrowedShares;
     }
 
     function _testMapleIntegration(MapleE2ETestParams memory p) internal {

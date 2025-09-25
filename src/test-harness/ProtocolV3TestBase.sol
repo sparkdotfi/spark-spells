@@ -470,6 +470,49 @@ contract ProtocolV3TestBase is Test {
         assertEq(IERC20(testAssetConfig.underlying).balanceOf(address(this)), 0, "UNDERLYING_NOT_ZERO");
     }
 
+    function _e2eTestMintToTreasury(
+        IPool pool,
+        ReserveConfig memory testAssetConfig
+    ) internal {
+        address[] memory assets = new address[](1);
+        assets[0] = testAssetConfig.underlying;
+        pool.mintToTreasury(assets);
+    }
+
+    function _supply(
+        ReserveConfig memory config,
+        IPool pool,
+        address user,
+        uint256 amount
+    ) internal {
+        require(!config.isFrozen, "SUPPLY(): FROZEN_RESERVE");
+        require( config.isActive, "SUPPLY(): INACTIVE_RESERVE");
+        require(!config.isPaused, "SUPPLY(): PAUSED_RESERVE");
+
+        if (!DealUtils.patchedDeal(config.underlying, user, amount)) {
+            deal(config.underlying, user, amount);
+        }
+
+        uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
+        uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
+        uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
+
+        console.log("SUPPLY: %s, Amount: %s", config.symbol, _formattedAmount(amount, config.decimals));
+
+        vm.startPrank(user);
+        IERC20(config.underlying).safeApprove(address(pool), amount);
+        pool.supply(config.underlying, amount, user, 0);
+        vm.stopPrank();
+
+        uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
+        uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
+        uint256 underlyingUserAfter   = IERC20(config.underlying).balanceOf(user);
+
+        assertApproxEqAbs(aTokenAfter,           aTokenBefore           + amount, 1);
+        assertApproxEqAbs(underlyingATokenAfter, underlyingATokenBefore + amount, 1);
+        assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   - amount, 1);
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -593,49 +636,6 @@ contract ProtocolV3TestBase is Test {
 
     function _isAboveSupplyCap(ReserveConfig memory config, uint256 supplyAmount) internal view returns (bool) {
         return IERC20(config.aToken).totalSupply() + supplyAmount > (config.supplyCap * 10 ** config.decimals);
-    }
-
-    function _e2eTestMintToTreasury(
-        IPool pool,
-        ReserveConfig memory testAssetConfig
-    ) internal {
-        address[] memory assets = new address[](1);
-        assets[0] = testAssetConfig.underlying;
-        pool.mintToTreasury(assets);
-    }
-
-    function _supply(
-        ReserveConfig memory config,
-        IPool pool,
-        address user,
-        uint256 amount
-    ) internal {
-        require(!config.isFrozen, "SUPPLY(): FROZEN_RESERVE");
-        require( config.isActive, "SUPPLY(): INACTIVE_RESERVE");
-        require(!config.isPaused, "SUPPLY(): PAUSED_RESERVE");
-
-        if (!DealUtils.patchedDeal(config.underlying, user, amount)) {
-            deal(config.underlying, user, amount);
-        }
-
-        uint256 aTokenBefore           = IERC20(config.aToken).balanceOf(user);
-        uint256 underlyingATokenBefore = IERC20(config.underlying).balanceOf(config.aToken);
-        uint256 underlyingUserBefore   = IERC20(config.underlying).balanceOf(user);
-
-        console.log("SUPPLY: %s, Amount: %s", config.symbol, _formattedAmount(amount, config.decimals));
-
-        vm.startPrank(user);
-        IERC20(config.underlying).safeApprove(address(pool), amount);
-        pool.supply(config.underlying, amount, user, 0);
-        vm.stopPrank();
-
-        uint256 aTokenAfter           = IERC20(config.aToken).balanceOf(user);
-        uint256 underlyingATokenAfter = IERC20(config.underlying).balanceOf(config.aToken);
-        uint256 underlyingUserAfter   = IERC20(config.underlying).balanceOf(user);
-
-        assertApproxEqAbs(aTokenAfter,           aTokenBefore           + amount, 1);
-        assertApproxEqAbs(underlyingATokenAfter, underlyingATokenBefore + amount, 1);
-        assertApproxEqAbs(underlyingUserAfter,   underlyingUserBefore   - amount, 1);
     }
 
     function _withdraw(

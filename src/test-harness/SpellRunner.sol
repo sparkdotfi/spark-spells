@@ -185,9 +185,10 @@ abstract contract SpellRunner is Test {
     }
 
     function _deployPayloads() internal {
-        for (uint256 i = 0; i < allChains.length; i++) {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             string memory identifier = _spellIdentifier(chainId);
+
             try vm.getCode(identifier) {
                 chainData[chainId].payload = _deployPayload(chainId);
             } catch {
@@ -200,17 +201,34 @@ abstract contract SpellRunner is Test {
     function _executeAllPayloadsAndBridges() internal {
         // only execute mainnet payload
         _executeMainnetPayload();
+
         // then use bridges to execute other chains' payloads
         _relayMessageOverBridges();
+
         // execute the foreign payloads (either by simulation or real execute)
         _executeForeignPayloads();
     }
 
+    function _executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
+        address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
+        IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
+        require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
+
+        vm.prank(Ethereum.PAUSE_PROXY);
+        (bool success,) = address(executor).call(abi.encodeWithSignature(
+            "exec(address,bytes)",
+            payloadAddress,
+            abi.encodeWithSignature("execute()")
+        ));
+        require(success, "FAILED TO EXECUTE PAYLOAD");
+    }
+
     /// @dev bridge contracts themselves are stored on mainnet
     function _relayMessageOverBridges() internal onChain(ChainIdUtils.Ethereum()) {
-        for (uint256 i = 0; i < allChains.length; i++) {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++) {
+
+            for (uint256 j = 0; j < chainData[chainId].bridges.length ; ++j) {
                 _executeBridge(chainData[chainId].bridges[j]);
             }
         }
@@ -231,25 +249,37 @@ abstract contract SpellRunner is Test {
     }
 
     function _executeForeignPayloads() internal onChain(ChainIdUtils.Ethereum()) {
-        for (uint256 i = 0; i < allChains.length; i++) {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
+
             address mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
             IExecutor executor = chainData[chainId].executor;
+
+            // TODO: Move each of the two flows below into their own functions.
+
             if (mainnetSpellPayload != address(0)) {
                 // We assume the payload has been queued in the executor (will revert otherwise)
                 chainData[chainId].domain.selectFork();
+
                 uint256 actionsSetId = executor.actionsSetCount() - 1;
                 uint256 prevTimestamp = block.timestamp;
+
                 vm.warp(executor.getActionsSetById(actionsSetId).executionTime);
+
                 executor.execute(actionsSetId);
+
                 vm.warp(prevTimestamp);
             } else {
                 // We will simulate execution until the real spell is deployed in the mainnet spell
                 address payload = chainData[chainId].payload;
+
                 if (payload != address(0)) {
                     chainData[chainId].domain.selectFork();
+
                     vm.prank(address(executor));
+
                     executor.executeDelegateCall(
                         payload,
                         abi.encodeWithSignature("execute()")
@@ -264,42 +294,28 @@ abstract contract SpellRunner is Test {
 
     function _getForeignPayloadFromMainnetSpell(ChainId chainId) internal onChain(ChainIdUtils.Ethereum()) returns (address) {
         SparkPayloadEthereum spell = SparkPayloadEthereum(chainData[ChainIdUtils.Ethereum()].payload);
-        if (chainId == ChainIdUtils.Base()) {
-            return spell.PAYLOAD_BASE();
-        } else if (chainId == ChainIdUtils.Gnosis()) {
-            return spell.PAYLOAD_GNOSIS();
-        } else if (chainId == ChainIdUtils.ArbitrumOne()) {
-            return spell.PAYLOAD_ARBITRUM();
-        } else if (chainId == ChainIdUtils.Optimism()) {
-            return spell.PAYLOAD_OPTIMISM();
-        } else if (chainId == ChainIdUtils.Unichain()) {
-            return spell.PAYLOAD_UNICHAIN();
-        } else {
-            revert("Unsupported chainId");
-        }
-    }
 
-    function _executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
-        address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
-        IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
-        require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
+        if (chainId == ChainIdUtils.Base()) return spell.PAYLOAD_BASE();
 
-        vm.prank(Ethereum.PAUSE_PROXY);
-        (bool success,) = address(executor).call(abi.encodeWithSignature(
-            "exec(address,bytes)",
-            payloadAddress,
-            abi.encodeWithSignature("execute()")
-        ));
-        require(success, "FAILED TO EXECUTE PAYLOAD");
+        if (chainId == ChainIdUtils.Gnosis()) return spell.PAYLOAD_GNOSIS();
+
+        if (chainId == ChainIdUtils.ArbitrumOne()) return spell.PAYLOAD_ARBITRUM();
+
+        if (chainId == ChainIdUtils.Optimism()) return spell.PAYLOAD_OPTIMISM();
+
+        if (chainId == ChainIdUtils.Unichain()) return spell.PAYLOAD_UNICHAIN();
+
+        revert("Unsupported chainId");
     }
 
     function _clearLogs() internal {
         RecordedLogs.clearLogs();
 
         // Need to also reset all bridge indices
-        for (uint256 i = 0; i < allChains.length; i++) {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++) {
+
+            for (uint256 j = 0; j < chainData[chainId].bridges.length ; ++j) {
                 chainData[chainId].bridges[j].lastSourceLogIndex = 0;
                 chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
@@ -316,13 +332,13 @@ abstract contract SpellRunner is Test {
             string[] memory batchChains = new string[](batchSize);
 
             // Create batch of chains
-            for (uint256 i = 0; i < batchSize; i++) {
+            for (uint256 i = 0; i < batchSize; ++i) {
                 batchChains[i] = chains[batchStart + i];
             }
 
             // Build networks parameter for this batch
             string memory networks = "";
-            for (uint256 i = 0; i < batchSize; i++) {
+            for (uint256 i = 0; i < batchSize; ++i) {
                 if (i == 0) {
                     networks = string(abi.encodePacked("networks=", batchChains[i]));
                 } else {
@@ -343,7 +359,7 @@ abstract contract SpellRunner is Test {
             string memory response = string(vm.ffi(inputs));
 
             // Store results in the correct positions of the final blocks array
-            for (uint256 i = 0; i < batchSize; i++) {
+            for (uint256 i = 0; i < batchSize; ++i) {
                 blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
             }
         }
@@ -351,8 +367,11 @@ abstract contract SpellRunner is Test {
 
     function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
         address actualPayload = chainData[chainId].payload;
+
         vm.skip(actualPayload == address(0));
+
         require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
+
         address expectedPayload = _deployPayload(chainId);
 
         _assertBytecodeMatches(expectedPayload, actualPayload);
@@ -363,9 +382,8 @@ abstract contract SpellRunner is Test {
     /**********************************************************************************************/
 
     function _spellIdentifier(ChainId chainId) internal view returns (string memory) {
-        string memory slug       = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
-        string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
-        return identifier;
+        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
+        return string(abi.encodePacked(slug, ".sol:", slug));
     }
 
     function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {
@@ -404,6 +422,7 @@ abstract contract SpellRunner is Test {
         assembly {
             let ptr  := mload(0x40)
             let size := extcodesize(a)
+
             if iszero(lt(size, 2)) {
                 extcodecopy(a, ptr, sub(size, 2), 2)
                 length := mload(ptr)

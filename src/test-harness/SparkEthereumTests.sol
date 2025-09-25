@@ -392,110 +392,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         }
     }
 
-    /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
-    /**********************************************************************************************/
-
-    function _checkStorageSlot(address target, uint256 limit) internal view {
-        for (uint256 slot; slot < limit; ++slot) {
-            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
-            require(result == bytes32(0), "Slot is not zero");
-        }
-    }
-
-    function _runRewardsConfigurationTests() internal view {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        address[] memory reserves = ctx.pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; i++) {
-            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
-
-            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
-            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
-        }
-    }
-
-    function _assertFrozen(address asset, bool frozen) internal view {
-        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
-    }
-
-    function _assertPaused(address asset, bool paused) internal view {
-        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
-    }
-
-    function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
-        assertEq(_max,              max);
-        assertEq(_gap,              gap);
-        assertEq(_increaseCooldown, increaseCooldown);
-    }
-
-    function _assertBorrowCapConfigNotSet(address asset) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
-        assertEq(_max,              0);
-        assertEq(_gap,              0);
-        assertEq(_increaseCooldown, 0);
-    }
-
-    function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
-        assertEq(_max,              max);
-        assertEq(_gap,              gap);
-        assertEq(_increaseCooldown, increaseCooldown);
-    }
-
-    function _assertSupplyCapConfigNotSet(address asset) internal view {
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
-        assertEq(_max,              0);
-        assertEq(_gap,              0);
-        assertEq(_increaseCooldown, 0);
-    }
-
-    function _assertMorphoCap(
-        address             _vault,
-        MarketParams memory _config,
-        uint256             _currentCap,
-        bool                _hasPending,
-        uint256             _pendingCap
-    ) internal view {
-        Id id = MarketParamsLib.id(_config);
-        assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
-        PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
-        if (_hasPending) {
-            assertEq(pendingCap.value,   _pendingCap);
-            assertGt(pendingCap.validAt, 0);
-        } else {
-            assertEq(pendingCap.value,   0);
-            assertEq(pendingCap.validAt, 0);
-        }
-    }
-
-    function _assertMorphoCap(
-        address             _vault,
-        MarketParams memory _config,
-        uint256             _currentCap,
-        uint256             _pendingCap
-    ) internal view {
-        _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
-    }
-
-    function _assertMorphoCap(
-        address             _vault,
-        MarketParams memory _config,
-        uint256             _currentCap
-    ) internal view {
-        _assertMorphoCap(_vault, _config, _currentCap, false, 0);
-    }
-
     function _testAssetOnboarding(
         ReserveConfig[] memory allReserveConfigs,
         SparkLendAssetOnboardingParams memory params
@@ -864,6 +760,110 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
         }
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _checkStorageSlot(address target, uint256 limit) internal view {
+        for (uint256 slot; slot < limit; ++slot) {
+            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
+            require(result == bytes32(0), "Slot is not zero");
+        }
+    }
+
+    function _runRewardsConfigurationTests() internal view {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        address[] memory reserves = ctx.pool.getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
+
+            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
+            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
+        }
+    }
+
+    function _assertFrozen(address asset, bool frozen) internal view {
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
+    }
+
+    function _assertPaused(address asset, bool paused) internal view {
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
+    }
+
+    function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
+        assertEq(_max,              max);
+        assertEq(_gap,              gap);
+        assertEq(_increaseCooldown, increaseCooldown);
+    }
+
+    function _assertBorrowCapConfigNotSet(address asset) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.borrowCapConfigs(asset);
+        assertEq(_max,              0);
+        assertEq(_gap,              0);
+        assertEq(_increaseCooldown, 0);
+    }
+
+    function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
+        assertEq(_max,              max);
+        assertEq(_gap,              gap);
+        assertEq(_increaseCooldown, increaseCooldown);
+    }
+
+    function _assertSupplyCapConfigNotSet(address asset) internal view {
+        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+
+        (uint48 _max, uint48 _gap, uint48 _increaseCooldown,,) = capAutomator.supplyCapConfigs(asset);
+        assertEq(_max,              0);
+        assertEq(_gap,              0);
+        assertEq(_increaseCooldown, 0);
+    }
+
+    function _assertMorphoCap(
+        address             _vault,
+        MarketParams memory _config,
+        uint256             _currentCap,
+        bool                _hasPending,
+        uint256             _pendingCap
+    ) internal view {
+        Id id = MarketParamsLib.id(_config);
+        assertEq(IMetaMorpho(_vault).config(id).cap, _currentCap);
+        PendingUint192 memory pendingCap = IMetaMorpho(_vault).pendingCap(id);
+        if (_hasPending) {
+            assertEq(pendingCap.value,   _pendingCap);
+            assertGt(pendingCap.validAt, 0);
+        } else {
+            assertEq(pendingCap.value,   0);
+            assertEq(pendingCap.validAt, 0);
+        }
+    }
+
+    function _assertMorphoCap(
+        address             _vault,
+        MarketParams memory _config,
+        uint256             _currentCap,
+        uint256             _pendingCap
+    ) internal view {
+        _assertMorphoCap(_vault, _config, _currentCap, true, _pendingCap);
+    }
+
+    function _assertMorphoCap(
+        address             _vault,
+        MarketParams memory _config,
+        uint256             _currentCap
+    ) internal view {
+        _assertMorphoCap(_vault, _config, _currentCap, false, 0);
     }
 
 }

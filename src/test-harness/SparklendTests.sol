@@ -83,6 +83,15 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _runOraclesTests(ChainIdUtils.Gnosis());
     }
 
+    function test_ETHEREUM_AllReservesSeeded() external {
+        _assertAllReservesSeeded(ChainIdUtils.Ethereum());
+    }
+
+    function test_GNOSIS_AllReservesSeeded() external {
+        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
+        _assertAllReservesSeeded(ChainIdUtils.Gnosis());
+    }
+
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
@@ -182,15 +191,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _executeAllPayloadsAndBridges();
 
         _validateOracles();
-    }
-
-    function test_ETHEREUM_AllReservesSeeded() external {
-        _assertAllReservesSeeded(ChainIdUtils.Ethereum());
-    }
-
-    function test_GNOSIS_AllReservesSeeded() external {
-        vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
-        _assertAllReservesSeeded(ChainIdUtils.Gnosis());
     }
 
     function _assertAllReservesSeeded(ChainId chainId) internal onChain(chainId) {
