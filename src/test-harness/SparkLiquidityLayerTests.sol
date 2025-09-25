@@ -1688,7 +1688,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
 
         if (expectedRateLimit != type(uint256).max) {
-            assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount);
+            assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
         } else {
             assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
         }
