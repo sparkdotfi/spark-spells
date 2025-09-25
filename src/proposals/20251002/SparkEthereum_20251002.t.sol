@@ -25,6 +25,11 @@ interface IOptInService {
     function isOptedIn(address who, address where) external view returns (bool);
 }
 
+interface INetworkMiddlewareService {
+    function middleware(address network) external view returns (address);
+    function setMiddleware(address middleware) external;
+}
+
 interface INetworkRestakeDelegator {
     function hasRole(bytes32 role, address account) external returns (bool);
     function hook() external returns (address);
@@ -54,6 +59,36 @@ interface ISparkVaultV2 {
     function vsr() external view returns (uint256);
 }
 
+interface IStakedSPK {
+    function activeStake() external view returns (uint256);
+
+    function deposit(
+        address onBehalfOf,
+        uint256 amount
+    ) external returns (uint256 depositedAmount, uint256 mintedShares);
+}
+
+interface IVetoSlasher {
+    function executeSlash(uint256 slashIndex, bytes calldata hints) external returns (uint256 slashedAmount);
+
+    function NETWORK_MIDDLEWARE_SERVICE() external returns (address);
+
+    function requestSlash(
+        bytes32 subnetwork,
+        address operator,
+        uint256 amount,
+        uint48 captureTimestamp,
+        bytes calldata hints
+    ) external returns (uint256 slashIndex);
+
+    function slashableStake(
+        bytes32 subnetwork,
+        address operator,
+        uint48 captureTimestamp,
+        bytes memory hints
+    ) external view returns (uint256);
+}
+
 contract SparkEthereum_20251002Test is SparkTestBase {
 
     uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
@@ -75,6 +110,9 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
     address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
+    address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+
+    error NotNetworkMiddleware();
 
     constructor() {
         id = "20251002";
@@ -376,6 +414,76 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT),
             true
         );
+
+        _testSlashingIsDisabledUnlessMiddlewareIsSet();
+    }
+
+    function _testSlashingIsDisabledUnlessMiddlewareIsSet() public {
+        address alice      = makeAddr("alice");
+        address bob        = makeAddr("bob");
+        address NETWORK    = Ethereum.SPARK_PROXY;
+        address OPERATOR   = Ethereum.SPARK_PROXY;
+        address MIDDLEWARE = makeAddr("middleware");
+ 
+        IERC20 spk           = IERC20(Ethereum.SPK);
+        IStakedSPK stSpk     = IStakedSPK(Ethereum.STSPK);
+        IVetoSlasher slasher = IVetoSlasher(VETO_SLASHER);
+
+        INetworkMiddlewareService middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
+
+        bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+
+        uint256 ACTIVE_STAKE = stSpk.activeStake();
+
+        // --- Step 1: Deposit 10m SPK to stSPK as two users
+
+        deal(address(spk), alice, 6_000_000e18);
+        deal(address(spk), bob,   4_000_000e18);
+
+        vm.startPrank(alice);
+        spk.approve(address(stSpk), 6_000_000e18);
+        stSpk.deposit(alice, 6_000_000e18);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        spk.approve(address(stSpk), 4_000_000e18);
+        stSpk.deposit(bob, 4_000_000e18);
+        vm.stopPrank();
+
+        uint48 depositTimestamp = uint48(block.timestamp);
+
+        skip(24 hours);  // Warp 24 hours
+
+        // --- Step 2: Request a slash of all staked SPK (show that network limit is hit)
+
+        uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);  // Can't capture current timestamp and above
+
+        // Demonstrate that the slashable stake increases with new deposits
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), ACTIVE_STAKE + 10_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), ACTIVE_STAKE + 10_000_000e18);
+
+        // There is no middleware, so slashing is impossible
+        assertEq(middlewareService.middleware(NETWORK), address(0));
+
+        vm.prank(NETWORK);
+        vm.expectRevert(NotNetworkMiddleware.selector);
+        slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
+
+        // Show how it would work if middleware was set
+        vm.prank(NETWORK);
+        middlewareService.setMiddleware(MIDDLEWARE);
+
+        // Its now possible
+        assertEq(middlewareService.middleware(NETWORK), MIDDLEWARE);
+
+        vm.prank(MIDDLEWARE);
+        uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
+
+        skip(3 days + 1);
+
+        vm.prank(MIDDLEWARE);
+        slasher.executeSlash(slashIndex, "");
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
