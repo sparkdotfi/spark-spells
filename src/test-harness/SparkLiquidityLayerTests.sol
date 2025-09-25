@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 
-import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
-import { Base }     from 'spark-address-registry/Base.sol';
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-import { Optimism } from 'spark-address-registry/Optimism.sol';
-import { Unichain } from 'spark-address-registry/Unichain.sol';
+import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
+import { Base }     from "spark-address-registry/Base.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Optimism } from "spark-address-registry/Optimism.sol";
+import { Unichain } from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -17,103 +18,49 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
+import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 
 import { IMetaMorpho } from "metamorpho/interfaces/IMetaMorpho.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
-import { CCTPForwarder }         from 'xchain-helpers/forwarders/CCTPForwarder.sol';
+import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.sol";
+import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
-import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
 
-import { Address }               from '../libraries/Address.sol';
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { SLLHelpers }            from '../libraries/SLLHelpers.sol';
+import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
+
+import {
+    ICurvePoolLike,
+    IPoolManagerLike,
+    IPsmLike,
+    IMapleStrategyLike,
+    IWithdrawalManagerLike,
+    ISyrupLike,
+    ISUSDELike,
+    ICurveStableswapFactoryLike,
+    IFarmLike
+} from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-struct SparkLiquidityLayerContext {
-    address     controller;
-    address     prevController;  // Only if upgrading
-    IALMProxy   proxy;
-    IRateLimits rateLimits;
-    address     relayer;
-    address     freezer;
-}
-
-struct RateLimitData {
-    uint256 maxAmount;
-    uint256 slope;
-}
-
-interface ICurvePoolLike is IERC20 {
-    function A() external view returns (uint256);
-    function add_liquidity(
-        uint256[] memory amounts,
-        uint256 minMintAmount,
-        address receiver
-    ) external;
-    function balances(uint256 index) external view returns (uint256);
-    function coins(uint256 index) external returns (address);
-    function exchange(
-        int128  inputIndex,
-        int128  outputIndex,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver
-    ) external returns (uint256 tokensOut);
-    function fee() external view returns (uint256);
-    function get_virtual_price() external view returns (uint256);
-    function N_COINS() external view returns (uint256);
-    function offpeg_fee_multiplier() external view returns (uint256);
-    function remove_liquidity(
-        uint256 burnAmount,
-        uint256[] memory minAmounts,
-        address receiver
-    ) external;
-    function stored_rates() external view returns (uint256[] memory);
-}
-
-interface IPoolManagerLike {
-    function poolDelegate() external view returns (address);
-    function strategyList(uint256 index) external view returns (address);
-    function withdrawalManager() external view returns (address);
-}
-
-interface IPsmLike {
-    function pocket() external view returns (address);
-}
-
-interface IMapleStrategyLike {
-    function withdrawFromStrategy(uint256 amount) external;
-}
-
-interface IWithdrawalManagerLike {
-    function processRedemptions(uint256 maxSharesToProcess) external;
-}
-
-interface ISyrupLike is IERC4626 {
-    function manager() external view returns (address);
-}
-
-interface ISUSDELike is IERC4626 {
-    function silo() external view returns (address);
-}
-
-interface ICurveStableswapFactory {
-    function get_implementation_address(address pool) external view returns (address);
-}
-
-interface IFarmLike {
-    function earned(address account) external view returns (uint256);
-    function rewardsToken() external view returns (address);
-    function stakingToken() external view returns (address);
-}
-
+// TODO: MDL, only used by `SparkEthereumTests`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
+
+    struct RateLimitData {
+        uint256 maxAmount;
+        uint256 slope;
+    }
+
+    struct SparkLiquidityLayerContext {
+        address     controller;
+        address     prevController;  // Only if upgrading
+        IALMProxy   proxy;
+        IRateLimits rateLimits;
+        address     relayer;
+        address     freezer;
+    }
 
     using DomainHelpers for Domain;
 
@@ -195,11 +142,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** Assertion helpers                                                                      ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, seems like unnecessary overload bloat.
     function _assertRateLimit(
        bytes32 key,
        RateLimitData memory data
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         _assertRateLimit(
             key,
             data.maxAmount,
@@ -215,6 +164,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
        uint256 slope
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         _assertRateLimit(
             key,
             maxAmount,
@@ -224,10 +174,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-   function _assertUnlimitedRateLimit(
+    function _assertUnlimitedRateLimit(
        bytes32 key
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         _assertRateLimit(
             key,
             type(uint256).max,
@@ -237,7 +188,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
-   function _assertRateLimit(
+    function _assertRateLimit(
        bytes32 key,
        uint256 maxAmount,
        uint256 slope,
@@ -245,6 +196,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
        uint256 lastUpdated
     ) internal view {
         IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+
         assertEq(rateLimit.maxAmount,   maxAmount);
         assertEq(rateLimit.slope,       slope);
         assertEq(rateLimit.lastAmount,  lastAmount);
@@ -669,7 +621,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function isDeployedByFactory(address pool) internal view returns (bool) {
-        address impl = ICurveStableswapFactory(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
+        address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
         return impl != address(0);
     }
 
@@ -1117,7 +1069,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
         usdsTotalSupply  = usds.totalSupply();
 
-        // Do a 10% swap to increase the rate limit without hittig the max
+        // Do a 10% swap to increase the rate limit without hitting the max
         p.swapAmount   = p.swapAmount / 10;
         usdsSwapAmount = usdsSwapAmount / 10;
 
@@ -1551,7 +1503,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        // Note the functions used are interchangable with mainnet and foreign controllers
+        // Note the functions used are interchangeable with mainnet and foreign controllers
         MainnetController controller = MainnetController(newController);
 
         bytes32 CONTROLLER = ctx.proxy.CONTROLLER();

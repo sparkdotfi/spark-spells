@@ -1,52 +1,44 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
-import './AaveV3PayloadBase.sol';
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 
-import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
-
-import { IMetaMorpho, MarketParams, Id, IERC4626 } from 'metamorpho/interfaces/IMetaMorpho.sol';
-import { IMetaMorphoFactory }                      from 'metamorpho/interfaces/IMetaMorphoFactory.sol';
+import { IMetaMorpho, MarketParams, Id, IERC4626 } from "metamorpho/interfaces/IMetaMorpho.sol";
+import { IMetaMorphoFactory }                      from "metamorpho/interfaces/IMetaMorphoFactory.sol";
 
 import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
-import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
-import { Base }     from 'spark-address-registry/Base.sol';
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
-import { Optimism } from 'spark-address-registry/Optimism.sol';
-import { Unichain } from 'spark-address-registry/Unichain.sol';
+import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
+import { Base }     from "spark-address-registry/Base.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Gnosis }   from "spark-address-registry/Gnosis.sol";
+import { Optimism } from "spark-address-registry/Optimism.sol";
+import { Unichain } from "spark-address-registry/Unichain.sol";
 
-import { IALMProxy }         from 'spark-alm-controller/src/interfaces/IALMProxy.sol';
-import { MainnetController } from 'spark-alm-controller/src/MainnetController.sol';
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 
-import { IExecutor } from 'spark-gov-relay/src/interfaces/IExecutor.sol';
+import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 
-import { IAToken } from 'sparklend-v1-core/interfaces/IAToken.sol';
-import { IPool }   from 'sparklend-v1-core/interfaces/IPool.sol';
+import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
+import { IPool }   from "sparklend-v1-core/interfaces/IPool.sol";
 
-import { AMBForwarder }      from 'xchain-helpers/forwarders/AMBForwarder.sol';
-import { ArbitrumForwarder } from 'xchain-helpers/forwarders/ArbitrumForwarder.sol';
-import { OptimismForwarder } from 'xchain-helpers/forwarders/OptimismForwarder.sol';
+import { AMBForwarder }      from "xchain-helpers/forwarders/AMBForwarder.sol";
+import { ArbitrumForwarder } from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
+import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
 
-import { SLLHelpers } from './libraries/SLLHelpers.sol';
+import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
-interface ITreasuryController {
-    function transfer(
-        address collector,
-        address token,
-        address recipient,
-        uint256 amount
-    ) external;
-}
+import { ITreasuryControllerLike } from "./interfaces/Interfaces.sol";
+
+import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 
 /**
- * @dev Base smart contract for Ethereum.
+ * @dev    Base smart contract for Ethereum.
  * @author Phoenix Labs
  */
-abstract contract SparkPayloadEthereum is
-    AaveV3PayloadBase(IEngine(Ethereum.CONFIG_ENGINE))
-{
+abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGINE) {
 
     // These need to be immutable (delegatecall) and can only be set in constructor
     address public immutable PAYLOAD_ARBITRUM;
@@ -126,7 +118,7 @@ abstract contract SparkPayloadEthereum is
             withDelegatecalls
         ));
     }
-    
+
     function _upgradeController(address oldController, address newController) internal {
         SLLHelpers.upgradeMainnetController(
             oldController,
@@ -217,7 +209,7 @@ abstract contract SparkPayloadEthereum is
                 ? Ethereum.DAI_TREASURY
                 : Ethereum.TREASURY;
 
-            ITreasuryController(Ethereum.TREASURY_CONTROLLER).transfer({
+            ITreasuryControllerLike(Ethereum.TREASURY_CONTROLLER).transfer({
                 collector: treasury,
                 token:     aTokens[i],
                 recipient: Ethereum.ALM_PROXY,

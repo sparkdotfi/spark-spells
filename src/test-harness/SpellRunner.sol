@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
 import { Test }      from "forge-std/Test.sol";
 import { StdChains } from "forge-std/StdChains.sol";
 import { console }   from "forge-std/console.sol";
 
-import { Address } from '../libraries/Address.sol';
+import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
+import { Base }     from "spark-address-registry/Base.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Gnosis }   from "spark-address-registry/Gnosis.sol";
+import { Optimism } from "spark-address-registry/Optimism.sol";
+import { Unichain } from "spark-address-registry/Unichain.sol";
 
-import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
-import { Base }     from 'spark-address-registry/Base.sol';
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
-import { Optimism } from 'spark-address-registry/Optimism.sol';
-import { Unichain } from 'spark-address-registry/Unichain.sol';
-
-import { IExecutor } from 'lib/spark-gov-relay/src/interfaces/IExecutor.sol';
+import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBridgeTesting.sol";
@@ -24,10 +23,14 @@ import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridge
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
+import { Address }               from "../libraries/Address.sol";
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { SparkPayloadEthereum }  from "../SparkPayloadEthereum.sol";
 
+import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
+
+// TODO: MDL, Use by `SparklendTests` and `SparkLiquidityLayerTests`.
 abstract contract SpellRunner is Test {
+
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
 
@@ -49,7 +52,7 @@ abstract contract SpellRunner is Test {
     mapping(ChainId => DomainData) internal chainData;
 
     ChainId[] internal allChains;
-    string internal    id;
+    string    internal id;
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
@@ -61,17 +64,17 @@ abstract contract SpellRunner is Test {
     /// @dev maximum 3 chains in 1 query
     function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
         blocks = new uint256[](chains.length);
-        
+
         // Process chains in batches of 3
         for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
             uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
             string[] memory batchChains = new string[](batchSize);
-            
+
             // Create batch of chains
             for (uint256 i = 0; i < batchSize; i++) {
                 batchChains[i] = chains[batchStart + i];
             }
-            
+
             // Build networks parameter for this batch
             string memory networks = "";
             for (uint256 i = 0; i < batchSize; i++) {
@@ -81,7 +84,7 @@ abstract contract SpellRunner is Test {
                     networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
                 }
             }
-            
+
             string[] memory inputs = new string[](8);
             inputs[0] = "curl";
             inputs[1] = "-s";
@@ -93,7 +96,7 @@ abstract contract SpellRunner is Test {
             inputs[7] = "accept: application/json";
 
             string memory response = string(vm.ffi(inputs));
-            
+
             // Store results in the correct positions of the final blocks array
             for (uint256 i = 0; i < batchSize; i++) {
                 blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
@@ -337,13 +340,70 @@ abstract contract SpellRunner is Test {
     function _clearLogs() internal {
         RecordedLogs.clearLogs();
 
-        // Need to also reset all bridge indicies
+        // Need to also reset all bridge indices
         for (uint256 i = 0; i < allChains.length; i++) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
                 chainData[chainId].bridges[j].lastSourceLogIndex = 0;
                 chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
+        }
+    }
+
+    /** Utils **/
+
+    function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
+        address actualPayload = chainData[chainId].payload;
+        vm.skip(actualPayload == address(0));
+        require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
+        address expectedPayload = deployPayload(chainId);
+
+        _assertBytecodeMatches(expectedPayload, actualPayload);
+    }
+
+    function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {
+        uint256 expectedBytecodeSize = expectedPayload.code.length;
+        uint256 actualBytecodeSize   = actualPayload.code.length;
+
+        uint256 metadataLength = _getBytecodeMetadataLength(expectedPayload);
+        assertTrue(metadataLength <= expectedBytecodeSize);
+        expectedBytecodeSize -= metadataLength;
+
+        metadataLength = _getBytecodeMetadataLength(actualPayload);
+        assertTrue(metadataLength <= actualBytecodeSize);
+        actualBytecodeSize -= metadataLength;
+
+        assertEq(actualBytecodeSize, expectedBytecodeSize);
+
+        uint256 size = actualBytecodeSize;
+        uint256 expectedHash;
+        uint256 actualHash;
+
+        assembly {
+            let ptr := mload(0x40)
+
+            extcodecopy(expectedPayload, ptr, 0, size)
+            expectedHash := keccak256(ptr, size)
+
+            extcodecopy(actualPayload, ptr, 0, size)
+            actualHash := keccak256(ptr, size)
+        }
+
+        assertEq(actualHash, expectedHash);
+    }
+
+    function _getBytecodeMetadataLength(address a) internal view returns (uint256 length) {
+        // The Solidity compiler encodes the metadata length in the last two bytes of the contract bytecode.
+        assembly {
+            let ptr  := mload(0x40)
+            let size := extcodesize(a)
+            if iszero(lt(size, 2)) {
+                extcodecopy(a, ptr, sub(size, 2), 2)
+                length := mload(ptr)
+                length := shr(240, length)
+                length := add(length, 2)  // The two bytes used to specify the length are not counted in the length
+            }
+            // Return zero if the bytecode is shorter than two bytes.
         }
     }
 
