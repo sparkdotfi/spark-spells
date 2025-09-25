@@ -1253,7 +1253,7 @@ contract ProtocolV3TestBase is Test {
         localConfig.isFlashloanable = configuration.getFlashLoanEnabled();
     }
 
-    // TODO This should probably be simplified with assembly, too much boilerplate
+    // TODO This should probably be simplified with assembly, too much boilerplate.
     function _clone(ReserveConfig memory config) internal pure returns (ReserveConfig memory) {
         return
             ReserveConfig({
