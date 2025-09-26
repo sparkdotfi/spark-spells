@@ -33,6 +33,7 @@ interface INetworkMiddlewareService {
 interface INetworkRestakeDelegator {
     function hasRole(bytes32 role, address account) external returns (bool);
     function hook() external returns (address);
+    function maxNetworkLimit(bytes32 subnetwork) external returns (uint256);
     function networkLimit(bytes32 subnetwork) external returns (uint256);
     function operatorNetworkShares(bytes32 subnetwork, address operator) external view returns (uint256);
     function OPERATOR_NETWORK_SHARES_SET_ROLE() external returns (bytes32);
@@ -76,6 +77,8 @@ interface IVetoSlasher {
     function executeSlash(uint256 slashIndex, bytes calldata hints) external returns (uint256 slashedAmount);
 
     function NETWORK_MIDDLEWARE_SERVICE() external returns (address);
+
+    function resolver(bytes32 subnetwork, bytes memory hint) external view returns (address);
 
     function requestSlash(
         bytes32 subnetwork,
@@ -421,11 +424,13 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
         INetworkRegistry networkRegistry   = INetworkRegistry(NETWORK_REGISTRY);
         IOperatorRegistry operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
+        IVetoSlasher slasher               = IVetoSlasher(VETO_SLASHER);
 
         bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
         assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), false);
 
+        assertEq(delegator.maxNetworkLimit(subnetwork),                 0);
         assertEq(delegator.networkLimit(subnetwork),                    0);
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
         assertEq(delegator.hook(),                                      address(0));
@@ -434,6 +439,8 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK),
             false
         );
+
+        assertEq(slasher.resolver(subnetwork, ""), address(0));
 
         assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), false);
 
@@ -450,6 +457,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), true);
 
+        assertEq(delegator.maxNetworkLimit(subnetwork),                 type(uint256).max);
         assertEq(delegator.networkLimit(subnetwork),                    type(uint256).max);
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
         assertEq(delegator.hook(),                                      RESET_HOOK);
@@ -458,6 +466,8 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK),
             true
         );
+
+        assertEq(slasher.resolver(subnetwork, ""), OWNER);
 
         assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), true);
 
