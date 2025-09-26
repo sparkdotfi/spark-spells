@@ -84,17 +84,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     uint256 internal constant START_BLOCK = 21029247;
 
-    SLLIntegration[] internal arbitrumSllIntegrations;
-    SLLIntegration[] internal baseSllIntegrations;
     SLLIntegration[] internal ethereumSllIntegrations;
-    SLLIntegration[] internal optimismSllIntegrations;
-    SLLIntegration[] internal unichainSllIntegrations;
 
-    EnumerableSet.Bytes32Set internal _arbitrumRateLimitKeys;
-    EnumerableSet.Bytes32Set internal _baseRateLimitKeys;
     EnumerableSet.Bytes32Set internal _ethereumRateLimitKeys;
-    EnumerableSet.Bytes32Set internal _optimismRateLimitKeys;
-    EnumerableSet.Bytes32Set internal _unichainRateLimitKeys;
 
     MainnetController internal mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
@@ -390,18 +382,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 integrations[i].exitId2  != bytes32(0),
                 "Empty integration"
             );
-        }
 
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            assertTrue(rateLimitKeys.contains(integrations[i].entryId)  || integrations[i].entryId  == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].entryId2) || integrations[i].entryId2 == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].exitId)   || integrations[i].exitId   == bytes32(0));
-            assertTrue(rateLimitKeys.contains(integrations[i].exitId2)  || integrations[i].exitId2  == bytes32(0));
-
-            rateLimitKeys.remove(integrations[i].entryId);
-            rateLimitKeys.remove(integrations[i].entryId2);
-            rateLimitKeys.remove(integrations[i].exitId);
-            rateLimitKeys.remove(integrations[i].exitId2);
+            assertTrue(integrations[i].entryId  == bytes32(0) || rateLimitKeys.remove(integrations[i].entryId));
+            assertTrue(integrations[i].entryId2 == bytes32(0) || rateLimitKeys.remove(integrations[i].entryId2));
+            assertTrue(integrations[i].exitId   == bytes32(0) || rateLimitKeys.remove(integrations[i].exitId));
+            assertTrue(integrations[i].exitId2  == bytes32(0) || rateLimitKeys.remove(integrations[i].exitId2));
         }
 
         assertTrue(rateLimitKeys.length() == 0, "Rate limit keys not fully covered");
@@ -411,7 +396,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /*** Data populating helper functions                                                       ***/
     /**********************************************************************************************/
 
-    function _populateRateLimitKeys(bool isPostExecution) internal returns (bytes32[] memory uniqueKeys) {
+    function _populateRateLimitKeys(bool isPostExecution) internal {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
@@ -447,9 +432,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 _ethereumRateLimitKeys.add(newLogs[i].topics[1]);
             }
         }
-
-        // Copy to memory (OZ returns a memory array view of the storage vector)
-        uniqueKeys = _ethereumRateLimitKeys.values();
 
         console2.log("Rate limit keys", _ethereumRateLimitKeys.length());
     }

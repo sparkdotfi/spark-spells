@@ -65,13 +65,14 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _runE2ETests(ChainIdUtils.Gnosis());
     }
 
+    // TODO: MDL, should combine tests to call `_executeAllPayloadsAndBridges` once and then run make all assertions.
     function test_ETHEREUM_TokenImplementationsMatch() external {
-        _assertTokenImplementationsMatch(ChainIdUtils.Ethereum());
+        _testMatchingTokenImplementations(ChainIdUtils.Ethereum());
     }
 
     function test_GNOSIS_TokenImplementationsMatch() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
-        _assertTokenImplementationsMatch(ChainIdUtils.Gnosis());
+        _testMatchingTokenImplementations(ChainIdUtils.Gnosis());
     }
 
     function test_ETHEREUM_Oracles() external {
@@ -84,12 +85,12 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_ETHEREUM_AllReservesSeeded() external {
-        _assertAllReservesSeeded(ChainIdUtils.Ethereum());
+        _testAllReservesAreSeeded(ChainIdUtils.Ethereum());
     }
 
     function test_GNOSIS_AllReservesSeeded() external {
         vm.skip(chainData[ChainIdUtils.Gnosis()].payload == address(0));
-        _assertAllReservesSeeded(ChainIdUtils.Gnosis());
+        _testAllReservesAreSeeded(ChainIdUtils.Gnosis());
     }
 
     function test_ETHEREUM_PayloadBytecodeMatches() external {
@@ -156,8 +157,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _e2eTest(ctx.pool);
     }
 
-    // TODO: MDL, rename as it is not only asserting, but executing.
-    function _assertTokenImplementationsMatch(ChainId chainId) internal onChain(chainId) {
+    function _testMatchingTokenImplementations(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         // This test is to avoid a footgun where the token implementations are upgraded (possibly in an emergency) and
@@ -166,20 +166,21 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _executeAllPayloadsAndBridges();
 
         address[] memory reserves = ctx.pool.getReservesList();
+
         assertGt(reserves.length, 0);
 
         DataTypes.ReserveData memory data = ctx.pool.getReserveData(reserves[0]);
 
-        address aTokenImpl            = _getImplementation(address(ctx.poolConfigurator), data.aTokenAddress);
-        address stableDebtTokenImpl   = _getImplementation(address(ctx.poolConfigurator), data.stableDebtTokenAddress);
-        address variableDebtTokenImpl = _getImplementation(address(ctx.poolConfigurator), data.variableDebtTokenAddress);
+        address aTokenImplementation            = _getImplementation(address(ctx.poolConfigurator), data.aTokenAddress);
+        address stableDebtTokenImplementation   = _getImplementation(address(ctx.poolConfigurator), data.stableDebtTokenAddress);
+        address variableDebtTokenImplementation = _getImplementation(address(ctx.poolConfigurator), data.variableDebtTokenAddress);
 
-        for (uint256 i = 1; i < reserves.length; i++) {
+        for (uint256 i = 1; i < reserves.length; ++i) {
             DataTypes.ReserveData memory expectedData = ctx.pool.getReserveData(reserves[i]);
 
-            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.aTokenAddress),            aTokenImpl);
-            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.stableDebtTokenAddress),   stableDebtTokenImpl);
-            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.variableDebtTokenAddress), variableDebtTokenImpl);
+            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.aTokenAddress),            aTokenImplementation);
+            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.stableDebtTokenAddress),   stableDebtTokenImplementation);
+            assertEq(_getImplementation(address(ctx.poolConfigurator), expectedData.variableDebtTokenAddress), variableDebtTokenImplementation);
         }
     }
 
@@ -189,20 +190,17 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _validateOracles();
     }
 
-    // TODO: MDL, rename as it is not only asserting, but executing.
-    function _assertAllReservesSeeded(ChainId chainId) internal onChain(chainId) {
+    function _testAllReservesAreSeeded(ChainId chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         _executeAllPayloadsAndBridges();
 
         address[] memory reserves = ctx.pool.getReservesList();
 
-        for (uint256 i = 0; i < reserves.length; i++) {
+        for (uint256 i = 0; i < reserves.length; ++i) {
             address aToken = ctx.pool.getReserveData(reserves[i]).aTokenAddress;
 
-            if (aToken == Ethereum.GNO_SPTOKEN) {
-                continue;
-            }
+            if (aToken == Ethereum.GNO_SPTOKEN) continue;
 
             require(IERC20(aToken).totalSupply() >= 1e4, "RESERVE_NOT_SEEDED");
         }
@@ -323,7 +321,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         address[] memory reserves = ctx.pool.getReservesList();
 
-        for (uint256 i = 0; i < reserves.length; i++) {
+        for (uint256 i = 0; i < reserves.length; ++i) {
             require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
             require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
         }

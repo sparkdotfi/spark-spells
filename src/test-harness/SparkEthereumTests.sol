@@ -294,12 +294,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         address[] memory reserves = _getSparkLendContext().pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; ++i) {
-            _assertAutomatedCapsUpdate(reserves[i]);
+            _testAutomatedCapsUpdate(reserves[i]);
         }
     }
 
-    // TODO: MDL, rename as it is not only asserting, but executing.
-    function _assertAutomatedCapsUpdate(address asset) internal {
+    function _testAutomatedCapsUpdate(address asset) internal {
         SparkLendContext      memory ctx               = _getSparkLendContext();
         DataTypes.ReserveData memory reserveDataBefore = ctx.pool.getReserveData(asset);
 

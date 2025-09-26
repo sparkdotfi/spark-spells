@@ -728,7 +728,7 @@ contract ProtocolV3TestBase is Test {
 
         uint256[] memory usedCategories = new uint256[](configs.length);
 
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i = 0; i < configs.length; ++i) {
             if (_isInUint256Array(usedCategories, configs[i].eModeCategory)) continue;
 
             usedCategories[i] = configs[i].eModeCategory;
@@ -759,7 +759,7 @@ contract ProtocolV3TestBase is Test {
 
         address[] memory usedStrategies = new address[](configs.length);
 
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i = 0; i < configs.length; ++i) {
             if (_isInAddressArray(usedStrategies, configs[i].interestRateStrategy)) continue;
 
             usedStrategies[i] = configs[i].interestRateStrategy;
@@ -838,7 +838,7 @@ contract ProtocolV3TestBase is Test {
         IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(pool.ADDRESSES_PROVIDER());
         IAaveOracle oracle = IAaveOracle(addressesProvider.getPriceOracle());
 
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i = 0; i < configs.length; ++i) {
             ReserveConfig memory config = configs[i];
 
             IOracleLike assetOracle = IOracleLike(oracle.getSourceOfAsset(config.underlying));
@@ -1101,7 +1101,7 @@ contract ProtocolV3TestBase is Test {
         assertGe(afterReserve.accruedToTreasury, beforeReserve.accruedToTreasury);
 
         uint256 expectedInterest;
-        for (uint256 i; i < timeSinceLastUpdate; i++) {
+        for (uint256 i; i < timeSinceLastUpdate; ++i) {
             expectedInterest +=
                 uint256(beforeReserve.variableBorrowIndex)
                 * uint256(beforeReserve.currentVariableBorrowRate)
@@ -1189,7 +1189,7 @@ contract ProtocolV3TestBase is Test {
 
         vars.configs = new ReserveConfig[](vars.reserves.length);
 
-        for (uint256 i = 0; i < vars.reserves.length; i++) {
+        for (uint256 i = 0; i < vars.reserves.length; ++i) {
             vars.configs[i] = _getStructReserveConfig(pool, vars.reserves[i]);
             ReserveTokens memory reserveTokens = _getStructReserveTokens(
                 poolDataProvider,
@@ -1289,7 +1289,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig[] memory configs,
         address                underlying
     ) internal pure returns (ReserveConfig memory) {
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i = 0; i < configs.length; ++i) {
             if (configs[i].underlying != underlying) continue;
 
             // Important to clone the struct, to avoid unexpected side effect if modifying the returned config
@@ -1303,7 +1303,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig[] memory configs,
         string          memory symbolOfUnderlying
     ) internal pure returns (ReserveConfig memory) {
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i = 0; i < configs.length; ++i) {
             // TODO: MDL, maybe replace with string equals helper and `if return _clone`.
             if (keccak256(abi.encodePacked(configs[i].symbol)) != keccak256(abi.encodePacked(symbolOfUnderlying))) {
                 continue;
@@ -1515,7 +1515,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig[] memory allConfigsBefore,
         ReserveConfig[] memory allConfigsAfter
     ) internal pure {
-        for (uint256 i = 0; i < allConfigsBefore.length; i++) {
+        for (uint256 i = 0; i < allConfigsBefore.length; ++i) {
             _requireNoChangeInConfigs(allConfigsBefore[i], allConfigsAfter[i]);
         }
     }
@@ -1527,7 +1527,7 @@ contract ProtocolV3TestBase is Test {
     ) internal pure {
         require(allConfigsBefore.length == allConfigsAfter.length, "A_UNEXPECTED_NEW_LISTING_HAPPENED");
 
-        for (uint256 i = 0; i < allConfigsBefore.length; i++) {
+        for (uint256 i = 0; i < allConfigsBefore.length; ++i) {
             if (assetChangedUnderlying == allConfigsBefore[i].underlying) continue;
 
             _requireNoChangeInConfigs(allConfigsBefore[i], allConfigsAfter[i]);
@@ -1542,10 +1542,10 @@ contract ProtocolV3TestBase is Test {
     ) internal pure {
         require(allConfigsBefore.length == allConfigsAfter.length, "A_UNEXPECTED_NEW_LISTING_HAPPENED");
 
-        for (uint256 i = 0; i < allConfigsBefore.length; i++) {
+        for (uint256 i = 0; i < allConfigsBefore.length; ++i) {
             bool isAssetExpectedToChange;
 
-            for (uint256 j = 0; j < assetChangedUnderlying.length; j++) {
+            for (uint256 j = 0; j < assetChangedUnderlying.length; ++j) {
                 if (assetChangedUnderlying[j] != allConfigsBefore[i].underlying) continue;
 
                 isAssetExpectedToChange = true;
@@ -1742,7 +1742,7 @@ contract ProtocolV3TestBase is Test {
         string[] memory assetsInCategory = new string[](assetsConfigs.length);
 
         uint256 countCategory;
-        for (uint256 i = 0; i < assetsConfigs.length; i++) {
+        for (uint256 i = 0; i < assetsConfigs.length; ++i) {
             if (assetsConfigs[i].eModeCategory != category) continue;
 
             assetsInCategory[countCategory] = assetsConfigs[i].symbol;
