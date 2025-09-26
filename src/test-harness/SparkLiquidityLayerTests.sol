@@ -1661,7 +1661,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         deal(token, address(ctx.proxy), transferAmount);
 
-        uint256 desitnationBalance = IERC20(token).balanceOf(destination);
+        uint256 destinationBalance = IERC20(token).balanceOf(destination);
 
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount);
 
@@ -1670,7 +1670,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         controller.transferAsset(token, destination, transferAmount / 2);
 
-        assertEq(IERC20(token).balanceOf(destination),        desitnationBalance + transferAmount / 2);
+        assertEq(IERC20(token).balanceOf(destination),        destinationBalance + transferAmount / 2);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
 
         if (expectedRateLimit != type(uint256).max) {
@@ -1684,7 +1684,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         controller.transferAsset(token, destination, transferAmount / 2);
 
-        assertEq(IERC20(token).balanceOf(destination),        desitnationBalance + transferAmount);
+        assertEq(IERC20(token).balanceOf(destination),        destinationBalance + transferAmount);
         assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
 
         if (expectedRateLimit != type(uint256).max) {

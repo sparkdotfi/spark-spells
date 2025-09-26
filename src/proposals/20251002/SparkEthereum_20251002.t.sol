@@ -126,7 +126,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         // chainData[ChainIdUtils.Ethereum()].payload = 0x7B28F4Bdd7208fe80916EBC58611Eb72Fb6A09Ed;
     }
 
-    function test_ETHEREUM_morpho_increasePTUSDE27NovSupplyCap() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() public onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: Ethereum.MORPHO_VAULT_USDS,
             config: MarketParams({
@@ -169,6 +169,21 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         _validateReserveConfig(usdc, allConfigsAfter);
         _validateReserveConfig(usdt, allConfigsAfter);
+    }
+
+    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
+        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+
+        assertEq(spDaiBalanceBefore,  446_756_954.903747305236702025e18);
+        assertEq(spUsdsBalanceBefore, 533_866_585.285220791565254216e18);
+
+        executeAllPayloadsAndBridges();
+
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 9_402.155256707448903492e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 12_633.767612739349578615e18);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() public onChain(ChainIdUtils.Ethereum()) {
@@ -261,9 +276,9 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         executeAllPayloadsAndBridges();
 
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY), true);
-        assertEq(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG),   true);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY),           true);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), true);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        true);
 
         assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        1);
@@ -484,21 +499,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         vm.prank(MIDDLEWARE);
         slasher.executeSlash(slashIndex, "");
-    }
-
-    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
-        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-
-        assertEq(spDaiBalanceBefore,  446_756_954.903747305236702025e18);
-        assertEq(spUsdsBalanceBefore, 533_866_585.285220791565254216e18);
-
-        executeAllPayloadsAndBridges();
-
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 9_402.155256707448903492e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 12_633.767612739349578615e18);
     }
 
 }

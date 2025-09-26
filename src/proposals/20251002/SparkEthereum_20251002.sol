@@ -47,6 +47,7 @@ interface IOptInService {
 
 interface ISparkVaultV2 {
     function asset() external view returns (address);
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function grantRole(bytes32 role, address account) external;
     function setDepositCap(uint256 newCap) external;
     function SETTER_ROLE() external view returns (bytes32);
@@ -141,26 +142,36 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
 
+        // Withdraw USDS and DAI Reserves from SparkLend
+        address[] memory aTokens = new address[](2);
+        aTokens[0] = Ethereum.DAI_SPTOKEN;
+        aTokens[1] = Ethereum.USDS_SPTOKEN;
+
+        _transferFromSparkLendTreasury(aTokens);
+
         // --- Launch Savings v2 Vaults for USDC, USDT, and ETH ---
         _configureVaultsV2({
-            vault_    : Ethereum.SPARK_VAULT_V2_SPUSDC,
-            supplyCap : 50_000_000e6,
-            minVsr    : 1e27,
-            maxVsr    : TEN_PCT_APY
+            vault_        : Ethereum.SPARK_VAULT_V2_SPUSDC,
+            supplyCap     : 50_000_000e6,
+            minVsr        : 1e27,
+            maxVsr        : TEN_PCT_APY,
+            depositAmount : 1e6
         });
 
         _configureVaultsV2({
-            vault_    : Ethereum.SPARK_VAULT_V2_SPUSDT,
-            supplyCap : 50_000_000e6,
-            minVsr    : 1e27,
-            maxVsr    : TEN_PCT_APY
+            vault_        : Ethereum.SPARK_VAULT_V2_SPUSDT,
+            supplyCap     : 50_000_000e6,
+            minVsr        : 1e27,
+            maxVsr        : TEN_PCT_APY,
+            depositAmount : 1e6
         });
 
         _configureVaultsV2({
-            vault_    : Ethereum.SPARK_VAULT_V2_SPETH,
-            supplyCap : 10_000e18,
-            minVsr    : 1e27,
-            maxVsr    : FIVE_PCT_APY
+            vault_        : Ethereum.SPARK_VAULT_V2_SPETH,
+            supplyCap     : 10_000e18,
+            minVsr        : 1e27,
+            maxVsr        : FIVE_PCT_APY,
+            depositAmount : 0.0001e18
         });
 
         // Onboard SparkLend ETH
@@ -209,13 +220,6 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
         // Configure Symbiotic Instance
         _configureSymbiotic();
-
-        // Withdraw USDS and DAI Reserves from SparkLend
-        address[] memory aTokens = new address[](2);
-        aTokens[0] = Ethereum.DAI_SPTOKEN;
-        aTokens[1] = Ethereum.USDS_SPTOKEN;
-
-        _transferFromSparkLendTreasury(aTokens);
     }
 
     function _configureSymbiotic() internal {
@@ -255,7 +259,8 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         address vault_,
         uint256 supplyCap,
         uint256 minVsr,
-        uint256 maxVsr
+        uint256 maxVsr,
+        uint256 depositAmount
     ) internal {
         ISparkVaultV2     vault      = ISparkVaultV2(vault_);
         IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
@@ -272,6 +277,10 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
         // Set the supply cap
         vault.setDepositCap(supplyCap);
+
+        // Deposit into the vault
+        IERC20(vault.asset()).approve(vault_, depositAmount);
+        vault.deposit(depositAmount, address(1));
 
         rateLimits.setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
