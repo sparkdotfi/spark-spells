@@ -13,6 +13,8 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
 
+import { SparkVault } from "lib/spark-vaults-v2/src/SparkVault.sol";
+
 interface INetworkRegistry {
     function isEntity(address entity_) external view returns (bool);
 }
@@ -186,6 +188,11 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 12_633.767612739349578615e18);
     }
 
+    function test_debug() public onChain(ChainIdUtils.Ethereum()) {
+        vm.etch(Ethereum.SPARK_VAULT_V2_IMPL, address(new SparkVault()).code);
+        executeAllPayloadsAndBridges();
+    }
+
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() public onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
             asset:      Ethereum.USDC,
@@ -299,7 +306,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         skip(1 days);
 
         assertGt(vault.nowChi(), initialChi);
-        
+
         _testVaultTakeIntegration({
             asset:      vault.asset(),
             vault:      vault_,
@@ -439,7 +446,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         address NETWORK    = Ethereum.SPARK_PROXY;
         address OPERATOR   = Ethereum.SPARK_PROXY;
         address MIDDLEWARE = makeAddr("middleware");
- 
+
         IERC20 spk           = IERC20(Ethereum.SPK);
         IStakedSPK stSpk     = IStakedSPK(Ethereum.STSPK);
         IVetoSlasher slasher = IVetoSlasher(VETO_SLASHER);

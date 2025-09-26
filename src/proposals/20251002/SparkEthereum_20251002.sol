@@ -118,36 +118,36 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
 
     function _postExecute() internal override {
-        // Increase PT-USDe-27Nov Supply Cap
-        IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
-            MarketParams({
-                loanToken:       Ethereum.USDS,
-                collateralToken: PT_USDE_27NOV2025,
-                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.915e18
-            }),
-            1_000_000_000e18
-        );
+        // // Increase PT-USDe-27Nov Supply Cap
+        // IMetaMorpho(Ethereum.MORPHO_VAULT_USDS).submitCap(
+        //     MarketParams({
+        //         loanToken:       Ethereum.USDS,
+        //         collateralToken: PT_USDE_27NOV2025,
+        //         oracle:          PT_USDE_27NOV2025_PRICE_FEED,
+        //         irm:             Ethereum.MORPHO_DEFAULT_IRM,
+        //         lltv:            0.915e18
+        //     }),
+        //     1_000_000_000e18
+        // );
 
-        // Increase LBTC Supply Cap Automator Parameters
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
-            asset:            Ethereum.LBTC,
-            max:              10_000,
-            gap:              500,
-            increaseCooldown: 12 hours
-        });
+        // // Increase LBTC Supply Cap Automator Parameters
+        // ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
+        //     asset:            Ethereum.LBTC,
+        //     max:              10_000,
+        //     gap:              500,
+        //     increaseCooldown: 12 hours
+        // });
 
-        // Reduce Stablecoin Market Reserve Factors
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
+        // // Reduce Stablecoin Market Reserve Factors
+        // LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
+        // LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
 
-        // Withdraw USDS and DAI Reserves from SparkLend
-        address[] memory aTokens = new address[](2);
-        aTokens[0] = Ethereum.DAI_SPTOKEN;
-        aTokens[1] = Ethereum.USDS_SPTOKEN;
+        // // Withdraw USDS and DAI Reserves from SparkLend
+        // address[] memory aTokens = new address[](2);
+        // aTokens[0] = Ethereum.DAI_SPTOKEN;
+        // aTokens[1] = Ethereum.USDS_SPTOKEN;
 
-        _transferFromSparkLendTreasury(aTokens);
+        // _transferFromSparkLendTreasury(aTokens);
 
         // --- Launch Savings v2 Vaults for USDC, USDT, and ETH ---
         _configureVaultsV2({
@@ -166,60 +166,60 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
             depositAmount : 1e6
         });
 
-        _configureVaultsV2({
-            vault_        : Ethereum.SPARK_VAULT_V2_SPETH,
-            supplyCap     : 10_000e18,
-            minVsr        : 1e27,
-            maxVsr        : FIVE_PCT_APY,
-            depositAmount : 0.0001e18
-        });
+        // _configureVaultsV2({
+        //     vault_        : Ethereum.SPARK_VAULT_V2_SPETH,
+        //     supplyCap     : 10_000e18,
+        //     minVsr        : 1e27,
+        //     maxVsr        : FIVE_PCT_APY,
+        //     depositAmount : 0.0001e18
+        // });
 
-        // Onboard SparkLend ETH
-        _configureAaveToken(Ethereum.WETH_SPTOKEN, 50_000e18, 10_000e18 / uint256(1 days));
+        // // Onboard SparkLend ETH
+        // _configureAaveToken(Ethereum.WETH_SPTOKEN, 50_000e18, 10_000e18 / uint256(1 days));
 
-        // Claim Aave Core aUSDS Rewards
-        MainnetController(Ethereum.ALM_PROXY).grantRole(
-            IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
-            Ethereum.SPARK_PROXY
-        );
+        // // Claim Aave Core aUSDS Rewards
+        // MainnetController(Ethereum.ALM_PROXY).grantRole(
+        //     IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
+        //     Ethereum.SPARK_PROXY
+        // );
 
-        address[] memory assets = new address[](1);
-        assets[0] = Ethereum.ATOKEN_CORE_USDS;
+        // address[] memory assets = new address[](1);
+        // assets[0] = Ethereum.ATOKEN_CORE_USDS;
 
-        IALMProxy(Ethereum.ALM_PROXY).doCall(
-            AAVE_INCENTIVE_CONTROLLER,
-            abi.encodeCall(
-                IAaveIncentiveController(AAVE_INCENTIVE_CONTROLLER).claimAllRewardsToSelf,
-                (assets)
-            )
-        );
+        // IALMProxy(Ethereum.ALM_PROXY).doCall(
+        //     AAVE_INCENTIVE_CONTROLLER,
+        //     abi.encodeCall(
+        //         IAaveIncentiveController(AAVE_INCENTIVE_CONTROLLER).claimAllRewardsToSelf,
+        //         (assets)
+        //     )
+        // );
 
-        MainnetController(Ethereum.ALM_PROXY).revokeRole(
-            IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
-            Ethereum.SPARK_PROXY
-        );
+        // MainnetController(Ethereum.ALM_PROXY).revokeRole(
+        //     IALMProxy(Ethereum.ALM_PROXY).CONTROLLER(),
+        //     Ethereum.SPARK_PROXY
+        // );
 
-        // Add transferAsset Rate Limit for SYRUP
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                SYRUP,
-                Ethereum.ALM_OPS_MULTISIG
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            200_000e18,
-            200_000e18 / uint256(1 days),
-            18
-        );
+        // // Add transferAsset Rate Limit for SYRUP
+        // SLLHelpers.setRateLimitData(
+        //     RateLimitHelpers.makeAssetDestinationKey(
+        //         MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+        //         SYRUP,
+        //         Ethereum.ALM_OPS_MULTISIG
+        //     ),
+        //     Ethereum.ALM_RATE_LIMITS,
+        //     200_000e18,
+        //     200_000e18 / uint256(1 days),
+        //     18
+        // );
 
-        // Transfer Share of Ethena Direct Allocation Net Profit to Grove
-        IERC20(Ethereum.USDS).transfer(GROVE_SUBDAO_PROXY, AMOUNT_TO_GROVE);
+        // // Transfer Share of Ethena Direct Allocation Net Profit to Grove
+        // IERC20(Ethereum.USDS).transfer(GROVE_SUBDAO_PROXY, AMOUNT_TO_GROVE);
 
-        // Spark Foundation
-        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION, AMOUNT_TO_SPARK_FOUNDATION);
+        // // Spark Foundation
+        // IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION, AMOUNT_TO_SPARK_FOUNDATION);
 
-        // Configure Symbiotic Instance
-        _configureSymbiotic();
+        // // Configure Symbiotic Instance
+        // _configureSymbiotic();
     }
 
     function _configureSymbiotic() internal {
@@ -266,14 +266,14 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
 
-        // Grant SETTER_ROLE to Spark Operations Safe
-        vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        // // Grant SETTER_ROLE to Spark Operations Safe
+        // vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
 
-        // Grant TAKER_ROLE to Alm Proxy
-        vault.grantRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY);
+        // // Grant TAKER_ROLE to Alm Proxy
+        // vault.grantRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY);
 
-        // Set VSR bounds
-        vault.setVsrBounds(minVsr, maxVsr);
+        // // Set VSR bounds
+        // vault.setVsrBounds(minVsr, maxVsr);
 
         // Set the supply cap
         vault.setDepositCap(supplyCap);
@@ -282,20 +282,20 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         IERC20(vault.asset()).approve(vault_, depositAmount);
         vault.deposit(depositAmount, address(1));
 
-        rateLimits.setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
-                controller.LIMIT_SPARK_VAULT_TAKE(),
-                address(vault)
-            )
-        );
+        // rateLimits.setUnlimitedRateLimitData(
+        //     RateLimitHelpers.makeAssetKey(
+        //         controller.LIMIT_SPARK_VAULT_TAKE(),
+        //         address(vault)
+        //     )
+        // );
 
-        rateLimits.setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetDestinationKey(
-                controller.LIMIT_ASSET_TRANSFER(),
-                vault.asset(),
-                address(vault)
-            )
-        );
+        // rateLimits.setUnlimitedRateLimitData(
+        //     RateLimitHelpers.makeAssetDestinationKey(
+        //         controller.LIMIT_ASSET_TRANSFER(),
+        //         vault.asset(),
+        //         address(vault)
+        //     )
+        // );
     }
 
 }
