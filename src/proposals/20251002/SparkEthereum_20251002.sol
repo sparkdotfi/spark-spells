@@ -278,9 +278,9 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         // Set the supply cap
         vault.setDepositCap(supplyCap);
 
-        // Deposit into the vault
-        IERC20(vault.asset()).approve(vault_, depositAmount);
-        vault.deposit(depositAmount, address(1));
+        // // Deposit into the vault
+        // IERC20(vault.asset()).approve(vault_, depositAmount);
+        // vault.deposit(depositAmount, address(1));
 
         rateLimits.setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(

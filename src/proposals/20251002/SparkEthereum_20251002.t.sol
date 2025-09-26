@@ -42,8 +42,10 @@ interface INetworkRestakeDelegator {
 
 interface ISparkVaultV2 {
     function asset() external view returns (address);
+    function balanceOf(address user) external view returns (uint256);
     function chi() external view returns (uint192);
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function depositCap() external view returns (uint256);
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
     function hasRole(bytes32 role, address account) external view returns (bool);
@@ -51,11 +53,13 @@ interface ISparkVaultV2 {
     function maxVsr() external view returns (uint256);
     function name() external view returns (string memory);
     function nowChi() external view returns (uint256);
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
     function rho() external view returns (uint64);
     function SETTER_ROLE() external view returns (bytes32);
     function setVsr(uint256 newVsr) external;
     function symbol() external view returns (string memory);
     function TAKER_ROLE() external view returns (bytes32);
+    function totalAssets() external view returns (uint256);
     function vsr() external view returns (uint256);
 }
 
@@ -198,6 +202,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
         });
+        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPUSDC);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() public onChain(ChainIdUtils.Ethereum()) {
@@ -212,6 +217,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
         });
+        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPUSDT);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPETH() public onChain(ChainIdUtils.Ethereum()) {
@@ -226,6 +232,40 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 10_000e18,
             amount:     1_000e18
         });
+        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPETH);
+    }
+
+    function _testVaultFullFlow(address vault_) internal {
+        address user1 = makeAddr("user1");
+
+        ISparkVaultV2 vault = ISparkVaultV2(vault_);
+        IERC20        asset = IERC20(vault.asset());
+
+        uint256 amount = 1_000 * 10 ** asset.decimals();
+
+        deal(address(asset), user1, amount);
+
+        assertEq(asset.balanceOf(user1), amount);
+        assertEq(vault.balanceOf(user1), 0);
+
+        vm.startPrank(user1);
+        asset.approve(vault_, amount);
+        uint256 shares = vault.deposit(amount, user1);
+        vm.stopPrank();
+
+        assertEq(asset.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user1), shares);
+
+        skip(1 days);
+
+        uint256 totalVaultAssets = vault.totalAssets();
+        deal(address(asset), vault_, totalVaultAssets);
+
+        vm.prank(user1);
+        vault.redeem(shares, user1, user1);
+
+        assertGt(totalVaultAssets,       amount);
+        assertEq(asset.balanceOf(user1), totalVaultAssets);
     }
 
     function _testVaultConfiguration(
