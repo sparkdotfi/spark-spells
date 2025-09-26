@@ -8,8 +8,6 @@ import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { console2 } from "forge-std/console2.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 
-import { EnumerableSet } from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
-
 import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 
 import { Base }     from "spark-address-registry/Base.sol";
@@ -29,8 +27,6 @@ import { SparkEthereumTests }                from "./SparkEthereumTests.sol";
 // TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
 /// @dev Convenience contract meant to be the single point of entry for all spell-specific test contracts.
 abstract contract SparkTestBase is SparkEthereumTests {
-
-    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // TODO: Put in registry
     address internal constant AAVE_CORE_AUSDT    = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
@@ -86,8 +82,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     SLLIntegration[] internal ethereumSllIntegrations;
 
-    EnumerableSet.Bytes32Set internal _ethereumRateLimitKeys;
-
+    // TODO: MDL, consider making this a constant or a local variable passed around functions.
     MainnetController internal mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
     /**********************************************************************************************/
@@ -95,9 +90,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /**********************************************************************************************/
 
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external {
-        _populateRateLimitKeys(false);
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys(false);
+
         _loadPreExecutionIntegrations();
-        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        _checkRateLimitKeys(ethereumSllIntegrations, rateLimitKeys);
 
         skip(2 days);  // Ensure rate limits are recharged
 
@@ -110,9 +106,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
         _executeMainnetPayload();
 
-        _populateRateLimitKeys(true);
+        rateLimitKeys = _getRateLimitKeys(true);
+
         _loadPostExecutionIntegrations();
-        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        _checkRateLimitKeys(ethereumSllIntegrations, rateLimitKeys);
 
         for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
             _runSLLE2ETests(ethereumSllIntegrations[i]);
@@ -372,8 +369,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         vm.revertTo(snapshot);
     }
 
-    // TODO: MDL, rename as this is not just checking, but modifying storage.
-    function _checkRateLimitKeys(SLLIntegration[] memory integrations, EnumerableSet.Bytes32Set storage rateLimitKeys) internal {
+    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
         for (uint256 i = 0; i < integrations.length; ++i) {
             require(
                 integrations[i].entryId  != bytes32(0) ||
@@ -383,20 +379,37 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 "Empty integration"
             );
 
-            assertTrue(integrations[i].entryId  == bytes32(0) || rateLimitKeys.remove(integrations[i].entryId));
-            assertTrue(integrations[i].entryId2 == bytes32(0) || rateLimitKeys.remove(integrations[i].entryId2));
-            assertTrue(integrations[i].exitId   == bytes32(0) || rateLimitKeys.remove(integrations[i].exitId));
-            assertTrue(integrations[i].exitId2  == bytes32(0) || rateLimitKeys.remove(integrations[i].exitId2));
+            bool found;
+
+            if (integrations[i].entryId != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId);
+                assertTrue(found);
+            }
+
+            if (integrations[i].entryId2 != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId2);
+                assertTrue(found);
+            }
+
+            if (integrations[i].exitId != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId);
+                assertTrue(found);
+            }
+
+            if (integrations[i].exitId2 != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId2);
+                assertTrue(found);
+            }
         }
 
-        assertTrue(rateLimitKeys.length() == 0, "Rate limit keys not fully covered");
+        assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
     }
 
     /**********************************************************************************************/
     /*** Data populating helper functions                                                       ***/
     /**********************************************************************************************/
 
-    function _populateRateLimitKeys(bool isPostExecution) internal {
+    function _getRateLimitKeys(bool isPostExecution) internal returns (bytes32[] memory rateLimitKeys) {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
@@ -407,6 +420,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
             topics
         );
 
+        rateLimitKeys = new bytes32[](0);
+
         // Collect unique keys from topics[1] (`key`)
         for (uint256 i = 0; i < allLogs.length; ++i) {
             if (allLogs[i].topics.length <= 1) continue;
@@ -415,7 +430,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
             if (maxAmount == 0) continue;
 
-            _ethereumRateLimitKeys.add(allLogs[i].topics[1]);
+            rateLimitKeys = _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
+
         }
 
         // Collects all new logs from rate limits after spell is executed
@@ -429,11 +445,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
                 if (maxAmount == 0) continue;
 
-                _ethereumRateLimitKeys.add(newLogs[i].topics[1]);
+                rateLimitKeys = _appendIfNotContaining(rateLimitKeys, newLogs[i].topics[1]);
             }
         }
 
-        console2.log("Rate limit keys", _ethereumRateLimitKeys.length());
+        console2.log("Rate limit keys", rateLimitKeys.length);
     }
 
     function _loadPreExecutionIntegrations() internal {
@@ -629,6 +645,49 @@ abstract contract SparkTestBase is SparkEthereumTests {
             exitId2:     exitId2,
             extraData:   extraData
         });
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _appendIfNotContaining(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
+        if (_contains(array, value)) return array;
+
+        newArray = new bytes32[](array.length + 1);
+
+        for (uint256 i = 0; i < array.length; ++i) {
+            newArray[i] = array[i];
+        }
+
+        newArray[array.length] = value;
+    }
+
+    function _contains(bytes32[] memory array, bytes32 value) internal pure returns (bool) {
+        for (uint256 i = 0; i < array.length; ++i) {
+            if (array[i] == value) return true;
+        }
+
+        return false;
+    }
+
+    function _remove(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray, bool found) {
+        // Assume `array` was built using `_appendIfNotContaining`.
+        newArray = new bytes32[](array.length - 1);
+
+        uint256 writeIndex = 0;
+
+        for (uint256 readIndex = 0; readIndex < array.length; ++readIndex) {
+            if (array[readIndex] == value) continue;
+
+            // If we are about to write past the end of the new array, it means we've never found the value,
+            // so we can return the original array.
+            if (writeIndex == newArray.length) return (array, false);
+
+            newArray[writeIndex++] = array[readIndex];
+        }
+
+        return (newArray, true);
     }
 
 }
