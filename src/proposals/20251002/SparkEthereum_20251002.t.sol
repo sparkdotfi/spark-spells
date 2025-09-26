@@ -3,8 +3,6 @@ pragma solidity ^0.8.10;
 
 import { IVaultTokenized } from "lib/core/src/interfaces/vault/IVaultTokenized.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
 import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { IAccessControl }    from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -448,8 +446,8 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
-        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY),  false);
-        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), false);
+        assertEq(networkRegistry.isEntity(NETWORK),   false);
+        assertEq(operatorRegistry.isEntity(OPERATOR), false);
 
         assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), false);
 
@@ -462,13 +460,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         assertEq(slasher.resolver(subnetwork, ""), address(0));
 
-        assertEq(networkOptInService.isOptedIn(Ethereum.SPARK_PROXY, NETWORK),        false);
-        assertEq(vaultOptInService.isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT), false);
+        assertEq(networkOptInService.isOptedIn(OPERATOR, NETWORK),        false);
+        assertEq(vaultOptInService.isOptedIn(OPERATOR, STAKED_SPK_VAULT), false);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY),  true);
-        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), true);
+        _testOwnershipConfiguration();
+
+        assertEq(networkRegistry.isEntity(NETWORK),   true);
+        assertEq(operatorRegistry.isEntity(OPERATOR), true);
 
         assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), true);
 
@@ -482,8 +482,8 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         assertEq(slasher.resolver(subnetwork, ""), OWNER);
 
-        assertEq(networkOptInService.isOptedIn(Ethereum.SPARK_PROXY, NETWORK),        true);
-        assertEq(vaultOptInService.isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT), true);
+        assertEq(networkOptInService.isOptedIn(OPERATOR, NETWORK),        true);
+        assertEq(vaultOptInService.isOptedIn(OPERATOR, STAKED_SPK_VAULT), true);
 
         _testSlashingIsDisabledUnlessMiddlewareIsSet();
     }
