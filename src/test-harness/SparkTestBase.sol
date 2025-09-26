@@ -369,42 +369,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         vm.revertTo(snapshot);
     }
 
-    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            require(
-                integrations[i].entryId  != bytes32(0) ||
-                integrations[i].entryId2 != bytes32(0) ||
-                integrations[i].exitId   != bytes32(0) ||
-                integrations[i].exitId2  != bytes32(0),
-                "Empty integration"
-            );
-
-            bool found;
-
-            if (integrations[i].entryId != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId);
-                assertTrue(found);
-            }
-
-            if (integrations[i].entryId2 != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId2);
-                assertTrue(found);
-            }
-
-            if (integrations[i].exitId != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId);
-                assertTrue(found);
-            }
-
-            if (integrations[i].exitId2 != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId2);
-                assertTrue(found);
-            }
-        }
-
-        assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
-    }
-
     /**********************************************************************************************/
     /*** Data populating helper functions                                                       ***/
     /**********************************************************************************************/
@@ -648,8 +612,44 @@ abstract contract SparkTestBase is SparkEthereumTests {
     }
 
     /**********************************************************************************************/
-    /*** View/Pure Functions                                                                     **/
+    /*** Other View/Pure Functions                                                               **/
     /**********************************************************************************************/
+
+    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            require(
+                integrations[i].entryId  != bytes32(0) ||
+                integrations[i].entryId2 != bytes32(0) ||
+                integrations[i].exitId   != bytes32(0) ||
+                integrations[i].exitId2  != bytes32(0),
+                "Empty integration"
+            );
+
+            bool found;
+
+            if (integrations[i].entryId != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId);
+                assertTrue(found);
+            }
+
+            if (integrations[i].entryId2 != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId2);
+                assertTrue(found);
+            }
+
+            if (integrations[i].exitId != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId);
+                assertTrue(found);
+            }
+
+            if (integrations[i].exitId2 != bytes32(0)) {
+                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId2);
+                assertTrue(found);
+            }
+        }
+
+        assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
+    }
 
     function _appendIfNotContaining(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
         if (_contains(array, value)) return array;
