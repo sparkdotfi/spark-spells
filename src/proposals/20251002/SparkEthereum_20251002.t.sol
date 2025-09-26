@@ -452,65 +452,49 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         IOperatorRegistry        operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
         IVetoSlasher             slasher          = IVetoSlasher(VETO_SLASHER);
 
-        _testOwnership();
+        IOptInService networkOptInService = IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE());
+        IOptInService vaultOptInService   = IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE());
+
+        _testOwnershipConfiguration();
 
         bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
-        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), false);
+        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY),  false);
+        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), false);
 
         assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), false);
-
 
         assertEq(delegator.maxNetworkLimit(subnetwork),                 0);
         assertEq(delegator.networkLimit(subnetwork),                    0);
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
         assertEq(delegator.totalOperatorNetworkShares(subnetwork),      0);
         assertEq(delegator.hook(),                                      address(0));
-
-        assertEq(
-            delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK),
-            false
-        );
+        assertEq(delegator.stake(subnetwork, OPERATOR),                 0);
 
         assertEq(slasher.resolver(subnetwork, ""), address(0));
 
-        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), false);
-
-        assertEq(
-            IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, NETWORK),
-            false
-        );
-        assertEq(
-            IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT),
-            false
-        );
+        assertEq(networkOptInService.isOptedIn(Ethereum.SPARK_PROXY, NETWORK),        false);
+        assertEq(vaultOptInService.isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT), false);
 
         executeAllPayloadsAndBridges();
 
-        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), true);
+        assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY),  true);
+        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), true);
+
+        assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), true);
 
         assertEq(delegator.maxNetworkLimit(subnetwork),                 type(uint256).max);
         assertEq(delegator.networkLimit(subnetwork),                    type(uint256).max);
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
+        assertEq(delegator.totalOperatorNetworkShares(subnetwork),      1e18);
         assertEq(delegator.hook(),                                      RESET_HOOK);
-
-        assertEq(
-            delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK),
-            true
-        );
+        assertEq(delegator.stake(subnetwork, OPERATOR),                 284_729_616.056636577884186845e18);
+        assertEq(delegator.stake(subnetwork, OPERATOR),                 stSpk.activeStake());
 
         assertEq(slasher.resolver(subnetwork, ""), OWNER);
 
-        assertEq(operatorRegistry.isEntity(Ethereum.SPARK_PROXY), true);
-
-        assertEq(
-            IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, NETWORK),
-            true
-        );
-        assertEq(
-            IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT),
-            true
-        );
+        assertEq(networkOptInService.isOptedIn(Ethereum.SPARK_PROXY, NETWORK),        true);
+        assertEq(vaultOptInService.isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT), true);
 
         _testSlashingIsDisabledUnlessMiddlewareIsSet();
     }
@@ -581,15 +565,9 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         slasher.executeSlash(slashIndex, "");
     }
 
-    function _testOwnership() public {
-        address NETWORK   = Ethereum.SPARK_PROXY;
-        address OWNER     = Ethereum.SPARK_PROXY;
-        address OPERATOR  = Ethereum.SPARK_PROXY;
-
-        INetworkRestakeDelegator delegator        = INetworkRestakeDelegator(NETWORK_DELEGATOR);
-        INetworkRegistry         networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
-        IOperatorRegistry        operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
-        IVetoSlasher             slasher          = IVetoSlasher(VETO_SLASHER);
+    function _testOwnershipConfiguration() public {
+        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+        IVetoSlasher             slasher   = IVetoSlasher(VETO_SLASHER);
 
         // 1: BurnerRouter
         // Correct owner
