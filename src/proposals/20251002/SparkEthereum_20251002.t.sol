@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
+import { IVaultTokenized } from "lib/core/src/interfaces/vault/IVaultTokenized.sol";
+
+import { console2 } from "forge-std/console2.sol";
+
 import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
+import { IAccessControl }    from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
@@ -12,6 +17,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
+
 
 interface INetworkRegistry {
     function isEntity(address entity_) external view returns (bool);
@@ -72,24 +78,7 @@ interface ISparkVaultV2 {
     function vsr() external view returns (uint256);
 }
 
-interface IStakedSPK {
-    function activeStake() external view returns (uint256);
-
-    function hasRole(bytes32 role, address account) external view returns (bool);
-    function DEPOSIT_WHITELIST_SET_ROLE() external view returns (bytes32);
-    function DEPOSITOR_WHITELIST_ROLE() external view returns (bytes32);
-    function IS_DEPOSIT_LIMIT_SET_ROLE() external view returns (bytes32);
-    function DEPOSIT_LIMIT_SET_ROLE() external view returns (bytes32);
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
-    function getRoleMemberCount(bytes32 role) external view returns (uint256);
-
-    function owner() external view returns (address);
-
-    function deposit(
-        address onBehalfOf,
-        uint256 amount
-    ) external returns (uint256 depositedAmount, uint256 mintedShares);
-}
+interface IStakedSPK is IERC20, IVaultTokenized, IAccessControl {}
 
 interface IVetoSlasher {
     function executeSlash(uint256 slashIndex, bytes calldata hints) external returns (uint256 slashedAmount);
@@ -497,6 +486,103 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(vaultOptInService.isOptedIn(Ethereum.SPARK_PROXY, STAKED_SPK_VAULT), true);
 
         _testSlashingIsDisabledUnlessMiddlewareIsSet();
+    }
+
+    function test_ETHEREUM_userStakingSPKE2E() public onChain(ChainIdUtils.Ethereum()) {
+        uint256 snapshot = vm.snapshot();
+
+        _testUserStaking(1_000_000e18, false);
+
+        vm.revertTo(snapshot);
+
+        executeAllPayloadsAndBridges();
+
+        _testUserStaking(1_000_000e18, true);
+
+    }
+
+    function _testUserStaking(uint256 amount, bool stakingLive) public {
+        address NETWORK   = Ethereum.SPARK_PROXY;
+        address OPERATOR  = Ethereum.SPARK_PROXY;
+
+        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+
+        bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+
+        address user = makeAddr("user");
+
+        deal(address(spk), user, amount);
+
+        vm.startPrank(user);
+
+        // Step 1: Deposit
+
+        uint256 stSpkStake        = stSpk.activeStake();
+        uint256 stSpkTotalSupply  = stSpk.totalSupply();
+        uint256 spkBalanceOfStSpk = spk.balanceOf(address(stSpk));
+
+        uint256 stakedAmount  = stakingLive ? amount     : 0;
+        uint256 startingStake = stakingLive ? stSpkStake : 0;
+
+        assertEq(stSpk.activeStake(),                   stSpkStake);
+        assertEq(delegator.stake(subnetwork, OPERATOR), startingStake);
+
+        assertEq(stSpk.totalSupply(),   stSpkTotalSupply);
+        assertEq(stSpk.balanceOf(user), 0);
+
+        assertEq(spk.balanceOf(user),           amount);
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk);
+
+        if (stakingLive) {
+            assertEq(delegator.stake(subnetwork, OPERATOR), stSpk.activeStake());
+        } else {
+            assertEq(delegator.stake(subnetwork, OPERATOR), 0);
+        }
+
+        spk.approve(address(stSpk), amount);
+        stSpk.deposit(user, amount);
+
+        assertEq(stSpk.activeStake(),                   stSpkStake    + amount);
+        assertEq(delegator.stake(subnetwork, OPERATOR), startingStake + stakedAmount);
+
+        assertEq(stSpk.totalSupply(),   stSpkTotalSupply + amount);
+        assertEq(stSpk.balanceOf(user), amount);
+
+        assertEq(spk.balanceOf(user),           0);
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + amount);
+
+        if (stakingLive) {
+            assertEq(delegator.stake(subnetwork, OPERATOR), stSpk.activeStake());
+        } else {
+            assertEq(delegator.stake(subnetwork, OPERATOR), 0);
+        }
+
+        // Step 2: Withdraw and claim
+
+        stSpk.withdraw(user, amount);
+
+        uint256 currentEpoch   = stSpk.currentEpoch();
+        uint256 withdrawalTime = stSpk.currentEpochStart() + 4 weeks;  // Between 2 and 4 weeks
+
+        vm.warp(withdrawalTime + 1);
+        stSpk.claim(user, currentEpoch + 1);
+
+        assertEq(stSpk.activeStake(),                   stSpkStake);
+        assertEq(delegator.stake(subnetwork, OPERATOR), startingStake);
+
+        assertEq(stSpk.totalSupply(),   stSpkTotalSupply);
+        assertEq(stSpk.balanceOf(user), 0);
+
+        assertEq(spk.balanceOf(user),           amount);
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk);
+
+        if (stakingLive) {
+            assertEq(delegator.stake(subnetwork, OPERATOR), stSpk.activeStake());
+        } else {
+            assertEq(delegator.stake(subnetwork, OPERATOR), 0);
+        }
+
+        vm.stopPrank();
     }
 
     function _testSlashingIsDisabledUnlessMiddlewareIsSet() public {
