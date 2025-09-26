@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
-
 import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
@@ -278,9 +278,9 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         // Set the supply cap
         vault.setDepositCap(supplyCap);
 
-        // // Deposit into the vault
-        // IERC20(vault.asset()).approve(vault_, depositAmount);
-        // vault.deposit(depositAmount, address(1));
+        // Deposit into the vault
+        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), vault_, depositAmount);
+        vault.deposit(depositAmount, address(1));
 
         rateLimits.setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
