@@ -32,13 +32,21 @@ interface INetworkMiddlewareService {
 
 interface INetworkRestakeDelegator {
     function hasRole(bytes32 role, address account) external returns (bool);
+    function HOOK_SET_ROLE() external view returns (bytes32);
     function hook() external returns (address);
     function maxNetworkLimit(bytes32 subnetwork) external returns (uint256);
     function networkLimit(bytes32 subnetwork) external returns (uint256);
-    function operatorNetworkShares(bytes32 subnetwork, address operator) external view returns (uint256);
+    function NETWORK_LIMIT_SET_ROLE() external view returns (bytes32);
+    function OPERATOR_NETWORK_OPT_IN_SERVICE() external view returns (address);
     function OPERATOR_NETWORK_SHARES_SET_ROLE() external returns (bytes32);
     function OPERATOR_VAULT_OPT_IN_SERVICE() external view returns (address);
-    function OPERATOR_NETWORK_OPT_IN_SERVICE() external view returns (address);
+    function operatorNetworkShares(bytes32 subnetwork, address operator) external view returns (uint256);
+    function stake(bytes32 subnetwork, address operator) external view returns (uint256);
+    function totalOperatorNetworkShares(bytes32 subnetwork) external view returns (uint256);
+}
+
+interface IOwnable {
+    function owner() external view returns (address);
 }
 
 interface ISparkVaultV2 {
@@ -66,6 +74,16 @@ interface ISparkVaultV2 {
 
 interface IStakedSPK {
     function activeStake() external view returns (uint256);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function DEPOSIT_WHITELIST_SET_ROLE() external view returns (bytes32);
+    function DEPOSITOR_WHITELIST_ROLE() external view returns (bytes32);
+    function IS_DEPOSIT_LIMIT_SET_ROLE() external view returns (bytes32);
+    function DEPOSIT_LIMIT_SET_ROLE() external view returns (bytes32);
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
+
+    function owner() external view returns (address);
 
     function deposit(
         address onBehalfOf,
@@ -112,12 +130,21 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     uint256 internal constant AMOUNT_TO_SPARK_FOUNDATION = 1_100_000e18;
 
     // Symbiotic addresses
+    address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
     address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
     address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
     address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
+    address constant VAULT_FACTORY     = 0xAEb6bdd95c502390db8f52c8909F703E9Af6a346;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+
+    IERC20     spk   = IERC20(Ethereum.SPK);
+    IStakedSPK stSpk = IStakedSPK(Ethereum.STSPK);
+
+    bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
+
+    bytes32 constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     error NotNetworkMiddleware();
 
@@ -342,7 +369,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         skip(1 days);
 
         assertGt(vault.nowChi(), initialChi);
-        
+
         _testVaultTakeIntegration({
             asset:      vault.asset(),
             vault:      vault_,
@@ -421,18 +448,24 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         address OWNER     = Ethereum.SPARK_PROXY;
         address OPERATOR  = Ethereum.SPARK_PROXY;
 
-        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
-        INetworkRegistry networkRegistry   = INetworkRegistry(NETWORK_REGISTRY);
-        IOperatorRegistry operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
-        IVetoSlasher slasher               = IVetoSlasher(VETO_SLASHER);
+        INetworkRestakeDelegator delegator        = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+        INetworkRegistry         networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
+        IOperatorRegistry        operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
+        IVetoSlasher             slasher          = IVetoSlasher(VETO_SLASHER);
+
+        _testOwnership();
 
         bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
         assertEq(networkRegistry.isEntity(Ethereum.SPARK_PROXY), false);
 
+        assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), false);
+
+
         assertEq(delegator.maxNetworkLimit(subnetwork),                 0);
         assertEq(delegator.networkLimit(subnetwork),                    0);
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
+        assertEq(delegator.totalOperatorNetworkShares(subnetwork),      0);
         assertEq(delegator.hook(),                                      address(0));
 
         assertEq(
@@ -489,9 +522,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         address NETWORK    = Ethereum.SPARK_PROXY;
         address OPERATOR   = Ethereum.SPARK_PROXY;
         address MIDDLEWARE = makeAddr("middleware");
- 
-        IERC20 spk           = IERC20(Ethereum.SPK);
-        IStakedSPK stSpk     = IStakedSPK(Ethereum.STSPK);
+
         IVetoSlasher slasher = IVetoSlasher(VETO_SLASHER);
 
         INetworkMiddlewareService middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
@@ -549,6 +580,91 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         vm.prank(MIDDLEWARE);
         slasher.executeSlash(slashIndex, "");
+    }
+
+    function _testOwnership() public {
+        address NETWORK   = Ethereum.SPARK_PROXY;
+        address OWNER     = Ethereum.SPARK_PROXY;
+        address OPERATOR  = Ethereum.SPARK_PROXY;
+
+        INetworkRestakeDelegator delegator        = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+        INetworkRegistry         networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
+        IOperatorRegistry        operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
+        IVetoSlasher             slasher          = IVetoSlasher(VETO_SLASHER);
+
+        // 1: BurnerRouter
+        // Correct owner
+        assertEq(IOwnable(BURNER_ROUTER).owner(), Ethereum.SPARK_PROXY);
+
+        // No admin()
+        (bool success, ) = BURNER_ROUTER.call(abi.encodeWithSignature("admin()"));
+        assertFalse(success);
+
+        // No admin slot
+        assertEq(vm.load(BURNER_ROUTER, ADMIN_SLOT), bytes32(0));
+
+        // 2. Vault
+        // Correct owner
+        assertEq(IOwnable(address(stSpk)).owner(), Ethereum.SPARK_PROXY);
+
+        // Admin is Vault Factory (not Multisig)
+        bytes32 adminSlot = vm.load(address(stSpk), ADMIN_SLOT);
+        address admin = address(uint160(uint256(adminSlot))); // lower 20 bytes
+        assertEq(admin, VAULT_FACTORY);
+
+        // Correct roles
+        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), Ethereum.SPARK_PROXY));
+        assertTrue(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   Ethereum.SPARK_PROXY));
+        assertTrue(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  Ethereum.SPARK_PROXY));
+        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     Ethereum.SPARK_PROXY));
+
+        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), Ethereum.SPK_BRIDGING_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   Ethereum.SPK_BRIDGING_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  Ethereum.SPK_BRIDGING_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     Ethereum.SPK_BRIDGING_MULTISIG));
+
+        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE,  Ethereum.SPARK_PROXY));
+        assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPK_BRIDGING_MULTISIG));
+
+        // 3. Delegator
+        // No owner
+        (bool success2, ) = address(delegator).call(abi.encodeWithSignature("owner()"));
+        assertFalse(success2);
+
+        // No admin()
+        (bool success3, ) = address(delegator).call(abi.encodeWithSignature("admin()"));
+        assertFalse(success3);
+
+        // No admin slot
+        assertEq(vm.load(address(delegator), ADMIN_SLOT), bytes32(0));
+
+        // Correct roles
+        assertTrue(delegator.hasRole(delegator.HOOK_SET_ROLE(),                    Ethereum.SPARK_PROXY));
+        assertTrue(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(),           Ethereum.SPARK_PROXY));
+        assertTrue(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), Ethereum.SPARK_PROXY));
+
+        assertFalse(delegator.hasRole(delegator.HOOK_SET_ROLE(),                    Ethereum.SPK_BRIDGING_MULTISIG));
+        assertFalse(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(),           Ethereum.SPK_BRIDGING_MULTISIG));
+        assertFalse(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), Ethereum.SPK_BRIDGING_MULTISIG));
+
+        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE,  Ethereum.SPARK_PROXY));
+        assertFalse(delegator.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPK_BRIDGING_MULTISIG));
+
+        // 4. Slasher
+        // No owner
+        (bool success4, ) = address(slasher).call(abi.encodeWithSignature("owner()"));
+        assertFalse(success4);
+
+        // No admin()
+        (bool success5, ) = address(slasher).call(abi.encodeWithSignature("admin()"));
+        assertFalse(success5);
+
+        // No admin slot
+        assertEq(vm.load(address(slasher), ADMIN_SLOT), bytes32(0));
+
+        // No roles
+        (bool success6, ) = address(slasher).call(abi.encodeWithSignature("hasRole(bytes32,address)", DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY));
+        assertFalse(success6);
     }
 
 }
