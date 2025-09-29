@@ -269,15 +269,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.CENTRIFUGE) {
-            console2.log("Running SLL E2E test for", integration.label);
-
-            _testCentrifugeIntegration(CentrifugeE2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
-                vault:         integration.integration,
-                depositAmount: 100_000_000e6,
-                depositKey:    integration.entryId,
-                withdrawKey:   integration.exitId
-            }));
+            console2.log("Skipping SLL E2E test for", integration.label, "[DEPRECATED] due to protocol upgrade");
         }
 
         else if (integration.category == Category.BUIDL) {
