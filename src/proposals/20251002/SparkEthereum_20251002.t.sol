@@ -351,6 +351,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         _testSetterIntegration(vault, minVsr, maxVsr);
 
+        uint256 initialChi = vault.nowChi();
+
+        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        vault.setVsr(FIVE_PCT_APY);
+
+        skip(1 days);
+
+        assertGt(vault.nowChi(), initialChi);
+
         _testVaultTakeIntegration({
             asset:      vault.asset(),
             vault:      vault_,
@@ -369,9 +378,13 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         if (vault.asset() == Ethereum.WETH) {
             assertGe(vault.totalSupply(), 0.0001e18);
             assertGe(vault.totalAssets(), 0.0001e18);
+
+            assertEq(vault.balanceOf(address(1)), 0.0001e18);
         } else {
             assertGe(vault.totalSupply(), 1e6);
             assertGe(vault.totalAssets(), 1e6);
+
+            assertEq(vault.balanceOf(address(1)), 1e6);
         }
     }
 
