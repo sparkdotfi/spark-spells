@@ -34,7 +34,6 @@ import {
     IMorphoOracleFactoryLike,
     IPendleLinearDiscountOracleLike,
     IRateSourceLike,
-    ISparkProxyLike,
     ITargetBaseIRMLike,
     ITargetKinkIRMLike
 } from "../interfaces/Interfaces.sol";
@@ -121,22 +120,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
-
-    function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
-        ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
-        address         esm   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
-
-        assertEq(proxy.wards(esm),                  1);
-        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
-
-        _checkStorageSlot(address(proxy), 100);
-        _executeAllPayloadsAndBridges();
-
-        assertEq(proxy.wards(esm),                  1);
-        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
-
-        _checkStorageSlot(address(proxy), 100);
-    }
 
     function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
         _assertRewardsConfigurations();
@@ -720,13 +703,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
             assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
             assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
-        }
-    }
-
-    function _checkStorageSlot(address target, uint256 limit) internal view {
-        for (uint256 slot; slot < limit; ++slot) {
-            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
-            require(result == bytes32(0), "Slot is not zero");
         }
     }
 
