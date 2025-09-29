@@ -498,7 +498,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         executeAllPayloadsAndBridges();
 
         _testUserStaking(1_000_000e18, true);
-
     }
 
     function _testUserStaking(uint256 amount, bool stakingLive) public {
