@@ -73,6 +73,7 @@ interface ISparkVaultV2 {
     function symbol() external view returns (string memory);
     function TAKER_ROLE() external view returns (bytes32);
     function totalAssets() external view returns (uint256);
+    function totalSupply() external view returns (uint256);
     function vsr() external view returns (uint256);
 }
 
@@ -282,6 +283,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         vault.redeem(shares, user1, user1);
 
         assertGt(asset.balanceOf(user1), amount);
+        assertEq(vault.balanceOf(user1), 0);
     }
 
     function _testVaultConfiguration(
@@ -347,14 +349,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
 
-        uint256 initialChi = vault.nowChi();
-
-        vm.prank(Ethereum.ALM_OPS_MULTISIG);
-        vault.setVsr(FIVE_PCT_APY);
-
-        skip(1 days);
-
-        assertGt(vault.nowChi(), initialChi);
+        _testSetterIntegration(vault, minVsr, maxVsr);
 
         _testVaultTakeIntegration({
             asset:      vault.asset(),
@@ -370,6 +365,30 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             expectedRateLimit: type(uint256).max,
             transferAmount:    amount
         });
+
+        if (vault.asset() == Ethereum.WETH) {
+            assertGe(vault.totalSupply(), 0.0001e18);
+            assertGe(vault.totalAssets(), 0.0001e18);
+        } else {
+            assertGe(vault.totalSupply(), 1e6);
+            assertGe(vault.totalAssets(), 1e6);
+        }
+    }
+
+    function _testSetterIntegration(ISparkVaultV2 vault, uint256 minVsr, uint256 maxVsr) internal {
+        vm.startPrank(Ethereum.ALM_OPS_MULTISIG);
+
+        vm.expectRevert("SparkVault/vsr-too-low");
+        vault.setVsr(minVsr - 1);
+
+        vault.setVsr(minVsr);
+
+        vm.expectRevert("SparkVault/vsr-too-high");
+        vault.setVsr(maxVsr + 1);
+
+        vault.setVsr(maxVsr);
+
+        vm.stopPrank();
     }
 
     function test_ETHEREUM_sll_onboardSparklendETH() public onChain(ChainIdUtils.Ethereum()) {
