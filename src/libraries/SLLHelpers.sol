@@ -1,41 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
 import { IAToken } from "aave-v3-origin/src/core/contracts/interfaces/IAToken.sol";
 
-import { IERC20 }   from 'forge-std/interfaces/IERC20.sol';
-import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
+import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
+import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
 import { IMetaMorpho } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { MarketParams, Id } from "morpho-blue/src/interfaces/IMorpho.sol";
 import { MarketParamsLib }  from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
-import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
-import { Base }     from 'spark-address-registry/Base.sol';
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-import { Optimism } from 'spark-address-registry/Optimism.sol';
-import { Unichain } from 'spark-address-registry/Unichain.sol';
+import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
+import { Base }     from "spark-address-registry/Base.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Optimism } from "spark-address-registry/Optimism.sol";
+import { Unichain } from "spark-address-registry/Unichain.sol";
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { MainnetControllerInit } from "spark-alm-controller/deploy/MainnetControllerInit.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
-import { MainnetController }     from "spark-alm-controller/src/MainnetController.sol";
-import { ForeignController }     from "spark-alm-controller/src/ForeignController.sol";
-import { RateLimitHelpers }      from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { IRateLimits }           from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { MainnetController }     from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }      from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { CCTPForwarder }from "xchain-helpers/forwarders/CCTPForwarder.sol";
-
-struct RateLimitData {
-    uint256 maxAmount;
-    uint256 slope;
-}
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 /**
  * @notice Helper functions for Spark Liquidity Layer
  */
 library SLLHelpers {
+
+    struct RateLimitData {
+        uint256 maxAmount;
+        uint256 slope;
+    }
 
     // This is the same on all chains
     address private constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
@@ -78,6 +78,7 @@ library SLLHelpers {
             usdcDeposit.slope,
             6
         );
+
         setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
@@ -96,6 +97,7 @@ library SLLHelpers {
                 usds
             )
         );
+
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
@@ -110,6 +112,7 @@ library SLLHelpers {
                 susds
             )
         );
+
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_PSM_WITHDRAW,
@@ -121,6 +124,7 @@ library SLLHelpers {
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
             LIMIT_USDC_TO_CCTP
         );
+
         setRateLimitData(
             RateLimitHelpers.makeDomainKey(
                 LIMIT_USDC_TO_DOMAIN,
@@ -156,6 +160,7 @@ library SLLHelpers {
             depositSlope,
             underlying.decimals()
         );
+
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_AAVE_WITHDRAW,
@@ -187,6 +192,7 @@ library SLLHelpers {
             depositSlope,
             asset.decimals()
         );
+
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 LIMIT_4626_WITHDRAW,
@@ -211,6 +217,7 @@ library SLLHelpers {
         uint256 withdrawSlope
     ) internal {
         MainnetController(controller).setMaxSlippage(pool, maxSlippage);
+
         if (swapMax != 0) {
             setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
@@ -223,6 +230,7 @@ library SLLHelpers {
                 18
             );
         }
+
         if (depositMax != 0) {
             setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
@@ -235,6 +243,7 @@ library SLLHelpers {
                 18
             );
         }
+
         if (withdrawMax != 0) {
             setRateLimitData(
                 RateLimitHelpers.makeAssetKey(
@@ -279,13 +288,16 @@ library SLLHelpers {
             relayer,
             true
         );
+
         IMetaMorpho(vault).submitCap(
             idleMarket,
             type(uint184).max
         );
+
         IMetaMorpho(vault).acceptCap(
             idleMarket
         );
+
         Id[] memory supplyQueue = new Id[](1);
         supplyQueue[0] = MarketParamsLib.id(idleMarket);
         IMetaMorpho(vault).setSupplyQueue(supplyQueue);
@@ -354,18 +366,22 @@ library SLLHelpers {
 
     function upgradeMainnetController(address oldController, address newController) internal {
         MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](4);
+
         mintRecipients[0] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
             mintRecipient : addrToBytes32(Base.ALM_PROXY)
         });
+
         mintRecipients[1] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE,
             mintRecipient : addrToBytes32(Arbitrum.ALM_PROXY)
         });
+
         mintRecipients[2] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM,
             mintRecipient : addrToBytes32(Optimism.ALM_PROXY)
         });
+
         mintRecipients[3] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN,
             mintRecipient : addrToBytes32(Unichain.ALM_PROXY)
@@ -374,14 +390,17 @@ library SLLHelpers {
         MainnetControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new MainnetControllerInit.LayerZeroRecipient[](0);
 
         MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](3);
+
         maxSlippageParams[0] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_SUSDSUSDT,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_SUSDSUSDT)
         });
+
         maxSlippageParams[1] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_PYUSDUSDC,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_PYUSDUSDC)
         });
+
         maxSlippageParams[2] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_USDCUSDT,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_USDCUSDT)
@@ -423,6 +442,7 @@ library SLLHelpers {
         ForeignControllerInit.CheckAddressParams memory checkAddresses
     ) internal {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
+
         mintRecipients[0] = ForeignControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
             mintRecipient : addrToBytes32(Ethereum.ALM_PROXY)
@@ -459,6 +479,7 @@ library SLLHelpers {
             require(slope <= upperBound / 1 hours && slope >= lowerBound / 1 hours, "InvalidSlopePrecision");
             require(slope != 0,                                                     "InvalidSlopePrecision");
         }
+
         IRateLimits(rateLimits).setRateLimitData(key, maxAmount, slope);
     }
 

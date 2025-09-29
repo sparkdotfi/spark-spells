@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.25;
 
-import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum, SLLHelpers } from "../../SparkPayloadEthereum.sol";
 
 /**
  * @title  September 18, 2025 Spark Ethereum Proposal
@@ -113,6 +113,7 @@ contract SparkEthereum_20250918 is SparkPayloadEthereum {
             gap:              1_000_000_000,
             increaseCooldown: 12 hours
         });
+
         ICapAutomator(Ethereum.CAP_AUTOMATOR).setBorrowCapConfig({
             asset:            Ethereum.USDT,
             max:              5_000_000_000,

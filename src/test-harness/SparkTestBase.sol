@@ -1,39 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
 import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
-import { ChainId } from 'src/libraries/ChainId.sol';
-
-import { IAToken } from "lib/sparklend-v1-core/contracts/interfaces/IAToken.sol";
-
-import { SparkEthereumTests } from "./SparkEthereumTests.sol";
-
 import { console2 } from "forge-std/console2.sol";
-
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-
-import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
-
-import { IRateLimits } from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { RateLimitHelpers } from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
-import { Base } from "spark-address-registry/Base.sol";
+import { VmSafe }   from "forge-std/Vm.sol";
 
 import { EnumerableSet } from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
-import { ChainIdUtils } from 'src/libraries/ChainId.sol';
+import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 
-import { VmSafe } from "forge-std/Vm.sol";
+import { Base }     from "spark-address-registry/Base.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-interface ICurvePoolLike {
-    function coins(uint256) external view returns (address);
-}
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol"; // Keep as code using it is currently commented.
 
-/// @dev Convenience contract meant to be the single point of entry for all
-///      spell-specific test contracts
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
+
+import { ChainIdUtils }       from "../libraries/ChainId.sol";
+import { ICurvePoolLike }     from "../interfaces/Interfaces.sol";
+import { SparkEthereumTests } from "./SparkEthereumTests.sol";
+
+// TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
+/// @dev Convenience contract meant to be the single point of entry for all spell-specific test contracts.
 abstract contract SparkTestBase is SparkEthereumTests {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -92,7 +86,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     SLLIntegration[] public optimismSllIntegrations;
     SLLIntegration[] public unichainSllIntegrations;
 
-    uint256 START_BLOCK = 21029247;
+    uint256 constant START_BLOCK = 21029247;
 
     EnumerableSet.Bytes32Set private _arbitrumRateLimitKeys;
     EnumerableSet.Bytes32Set private _baseRateLimitKeys;

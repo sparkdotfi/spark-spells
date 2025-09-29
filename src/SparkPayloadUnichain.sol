@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
-import { Unichain } from 'spark-address-registry/Unichain.sol';
+import { Unichain } from "spark-address-registry/Unichain.sol";
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 
-import { SLLHelpers } from './libraries/SLLHelpers.sol';
+import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
 /**
- * @dev Base smart contract for Unichain.
+ * @dev    Base smart contract for Unichain.
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadUnichain {
-    
+
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
         relayers[0] = Unichain.ALM_RELAYER;
         relayers[1] = Unichain.ALM_RELAYER2;
-        
+
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
                 almProxy:    Unichain.ALM_PROXY,

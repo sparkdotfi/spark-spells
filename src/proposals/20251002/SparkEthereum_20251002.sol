@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 } from 'forge-std/interfaces/IERC20.sol';
-
 import { IMetaMorpho, MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+
+import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum } from 'spark-address-registry/Ethereum.sol';
 
@@ -47,6 +47,7 @@ interface IOptInService {
 
 interface ISparkVaultV2 {
     function asset() external view returns (address);
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function grantRole(bytes32 role, address account) external;
     function setDepositCap(uint256 newCap) external;
     function SETTER_ROLE() external view returns (bytes32);
@@ -67,7 +68,7 @@ interface IVetoSlasher {
  *         SparkLend:
  *         - Increase LBTC Supply Cap Automator Parameters
  *         - Reduce Stablecoin Market Reserve Factors
- *         - Claim Accrued Reserves for USDS and DAI
+ *         - Claim Reserves for USDS and DAI
  *         Spark Liquidity Layer:
  *         - Onboard SparkLend ETH
  *         - Claim Aave Core aUSDS Rewards
@@ -89,13 +90,13 @@ interface IVetoSlasher {
  */
 contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
-    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
-    //   1.000000003022265980097387650
-    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
-
     // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
     //   1.000000001547125957863212448
     uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
+
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
+    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
     address internal constant AAVE_INCENTIVE_CONTROLLER = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
     address internal constant GROVE_SUBDAO_PROXY        = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
@@ -129,10 +130,6 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
             1_000_000_000e18
         );
 
-        // Reduce Stablecoin Market Reserve Factors
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
-
         // Increase LBTC Supply Cap Automator Parameters
         ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
             asset:            Ethereum.LBTC,
@@ -141,26 +138,40 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
             increaseCooldown: 12 hours
         });
 
+        // Reduce Stablecoin Market Reserve Factors
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 1_00);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 1_00);
+
+        // Withdraw USDS and DAI Reserves from SparkLend
+        address[] memory aTokens = new address[](2);
+        aTokens[0] = Ethereum.DAI_SPTOKEN;
+        aTokens[1] = Ethereum.USDS_SPTOKEN;
+
+        _transferFromSparkLendTreasury(aTokens);
+
         // --- Launch Savings v2 Vaults for USDC, USDT, and ETH ---
         _configureVaultsV2({
-            vault_    : Ethereum.SPARK_VAULT_V2_SPUSDC,
-            supplyCap : 50_000_000e6,
-            minVsr    : 1e27,
-            maxVsr    : TEN_PCT_APY
+            vault_        : Ethereum.SPARK_VAULT_V2_SPUSDC,
+            supplyCap     : 50_000_000e6,
+            minVsr        : 1e27,
+            maxVsr        : TEN_PCT_APY,
+            depositAmount : 1e6
         });
 
         _configureVaultsV2({
-            vault_    : Ethereum.SPARK_VAULT_V2_SPUSDT,
-            supplyCap : 50_000_000e6,
-            minVsr    : 1e27,
-            maxVsr    : TEN_PCT_APY
+            vault_        : Ethereum.SPARK_VAULT_V2_SPUSDT,
+            supplyCap     : 50_000_000e6,
+            minVsr        : 1e27,
+            maxVsr        : TEN_PCT_APY,
+            depositAmount : 1e6
         });
 
         _configureVaultsV2({
-            vault_    : Ethereum.SPARK_VAULT_V2_SPETH,
-            supplyCap : 10_000e18,
-            minVsr    : 1e27,
-            maxVsr    : FIVE_PCT_APY
+            vault_        : Ethereum.SPARK_VAULT_V2_SPETH,
+            supplyCap     : 10_000e18,
+            minVsr        : 1e27,
+            maxVsr        : FIVE_PCT_APY,
+            depositAmount : 0.0001e18
         });
 
         // Onboard SparkLend ETH
@@ -209,13 +220,6 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
         // Configure Symbiotic Instance
         _configureSymbiotic();
-
-        // Withdraw USDS and DAI Reserves from SparkLend
-        address[] memory aTokens = new address[](2);
-        aTokens[0] = Ethereum.DAI_SPTOKEN;
-        aTokens[1] = Ethereum.USDS_SPTOKEN;
-
-        _transferFromSparkLendTreasury(aTokens);
     }
 
     function _configureSymbiotic() internal {
@@ -255,7 +259,8 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
         address vault_,
         uint256 supplyCap,
         uint256 minVsr,
-        uint256 maxVsr
+        uint256 maxVsr,
+        uint256 depositAmount
     ) internal {
         ISparkVaultV2     vault      = ISparkVaultV2(vault_);
         IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
@@ -272,6 +277,10 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
 
         // Set the supply cap
         vault.setDepositCap(supplyCap);
+
+        // Deposit into the vault
+        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), vault_, depositAmount);
+        vault.deposit(depositAmount, address(1));
 
         rateLimits.setUnlimitedRateLimitData(
             RateLimitHelpers.makeAssetKey(
