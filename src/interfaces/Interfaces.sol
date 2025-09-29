@@ -252,7 +252,7 @@ interface IPsmLike {
 
 interface IMapleStrategyLike {
 
-    function lastRecordedTotalAssets() external view returns (uint256);
+    function assetsUnderManagement() external view returns (uint256);
 
     function withdrawFromStrategy(uint256 amount) external;
 

@@ -209,15 +209,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (integration.category == Category.MAPLE) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            // _testMapleIntegration(MapleE2ETestParams({
-            //     ctx:           _getSparkLiquidityLayerContext(),
-            //     vault:         integration.integration,
-            //     depositAmount: 1_000_000e6,
-            //     depositKey:    integration.entryId,
-            //     redeemKey:     integration.exitId,
-            //     withdrawKey:   integration.exitId2,
-            //     tolerance:     10
-            // }));
+            _testMapleIntegration(MapleE2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                vault:         integration.integration,
+                depositAmount: 1_000_000e6,
+                depositKey:    integration.entryId,
+                redeemKey:     integration.exitId,
+                withdrawKey:   integration.exitId2,
+                tolerance:     10
+            }));
         }
 
         else if (integration.category == Category.PSM) {
