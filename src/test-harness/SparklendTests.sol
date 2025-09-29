@@ -27,7 +27,8 @@ import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
 import {
     IAuthorityLike,
-    IExecutableLike
+    IExecutableLike,
+    ISparkProxyLike
 } from "../interfaces/Interfaces.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
@@ -144,6 +145,22 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         _executeAllPayloadsAndBridges();
         _runFreezerMomTestsMultisig();
+    }
+
+    function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
+        ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
+        address         esm   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
+
+        assertEq(proxy.wards(esm),                  1);
+        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
+
+        _checkStorageSlot(address(proxy), 100);
+        _executeAllPayloadsAndBridges();
+
+        assertEq(proxy.wards(esm),                  1);
+        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
+
+        _checkStorageSlot(address(proxy), 100);
     }
 
     /**********************************************************************************************/
@@ -442,6 +459,13 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _assertPaused(address asset, bool paused) internal view {
         assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
+    }
+
+    function _checkStorageSlot(address target, uint256 limit) internal view {
+        for (uint256 slot; slot < limit; ++slot) {
+            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
+            require(result == bytes32(0), "Slot is not zero");
+        }
     }
 
     function _getImplementation(address admin, address proxy) internal returns (address) {
