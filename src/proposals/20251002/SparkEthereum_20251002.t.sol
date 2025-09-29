@@ -196,7 +196,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
         });
-        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPUSDC);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() public onChain(ChainIdUtils.Ethereum()) {
@@ -211,7 +210,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
         });
-        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPUSDT);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPETH() public onChain(ChainIdUtils.Ethereum()) {
@@ -226,41 +224,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 10_000e18,
             amount:     1_000e18
         });
-        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPETH);
-    }
-
-    function _testVaultFullFlow(address vault_) internal {
-        address user1 = makeAddr("user1");
-
-        ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
-
-        IERC20 asset = IERC20(vault.asset());
-
-        uint256 amount = 1_000e6;
-
-        deal(address(asset), user1, amount);
-
-        assertEq(asset.balanceOf(user1), amount);
-        assertEq(vault.balanceOf(user1), 0);
-
-        vm.startPrank(user1);
-        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), vault_, amount);
-        uint256 shares = vault.deposit(amount, user1);
-        vm.stopPrank();
-
-        assertEq(asset.balanceOf(user1), 0);
-        assertEq(vault.balanceOf(user1), shares);
-
-        skip(1 days);
-
-        uint256 totalVaultAssets = vault.totalAssets();
-        deal(address(asset), vault_, totalVaultAssets);
-
-        vm.prank(user1);
-        vault.redeem(shares, user1, user1);
-
-        assertGt(asset.balanceOf(user1), amount);
-        assertEq(vault.balanceOf(user1), 0);
     }
 
     function _testVaultConfiguration(
@@ -337,33 +300,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         assertGt(vault.nowChi(), initialChi);
 
-        _testVaultTakeIntegration(VaultTakeE2ETestParams({
-            ctx:        ctx,
-            asset:      vault.asset(),
-            vault:      vault_,
-            takeKey:    takeKey,
-            takeAmount: amount
+        _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
+            ctx:             ctx,
+            vault:           vault_,
+            takeKey:         takeKey,
+            transferKey:     transferKey,
+            takeAmount:      amount,
+            transferAmount:  amount,
+            userVaultAmount: amount
         }));
-
-        _testTransferAssetIntegration(TransferAssetE2ETestParams({
-            ctx:            ctx,
-            asset:          vault.asset(),
-            destination:    vault_,
-            transferKey:    transferKey,
-            transferAmount: amount
-        }));
-
-        if (vault.asset() == Ethereum.WETH) {
-            assertGe(vault.totalSupply(), 0.0001e18);
-            assertGe(vault.totalAssets(), 0.0001e18);
-
-            assertEq(vault.balanceOf(address(1)), 0.0001e18);
-        } else {
-            assertGe(vault.totalSupply(), 1e6);
-            assertGe(vault.totalAssets(), 1e6);
-
-            assertEq(vault.balanceOf(address(1)), 1e6);
-        }
     }
 
     function _testSetterIntegration(ISparkVaultV2Like vault, uint256 minVsr, uint256 maxVsr) internal {

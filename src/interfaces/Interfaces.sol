@@ -44,6 +44,8 @@ interface ISparkVaultV2Like {
 
     function asset() external view returns (address);
 
+    function assetsOf(address user) external view returns (uint256);
+
     function balanceOf(address user) external view returns (uint256);
 
     function chi() external view returns (uint192);

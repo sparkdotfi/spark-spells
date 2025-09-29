@@ -124,9 +124,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
-        // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
-        //     _runSLLE2ETests(ethereumSllIntegrations[i]);
-        // }
+        for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
+            _runSLLE2ETests(ethereumSllIntegrations[i]);
+        }
     }
 
     /**********************************************************************************************/
@@ -345,10 +345,20 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (integration.category == Category.SPARK_VAULT_V2) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            // _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
-            //     ctx:           _getSparkLiquidityLayerContext(),
-            //     vault:         integration.integration,
-            // }));
+            IERC20 asset = IERC20(ISparkVaultV2Like(integration.integration).asset());
+
+            uint256 amount   = address(asset) == Ethereum.WETH ? 1_000 : 10_000_000;
+            uint256 decimals = asset.decimals();
+
+            _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
+                ctx:             _getSparkLiquidityLayerContext(),
+                vault:           integration.integration,
+                takeKey:         integration.entryId,
+                transferKey:     integration.exitId,
+                takeAmount:      amount * 10 ** decimals,
+                transferAmount:  amount * 10 ** decimals,
+                userVaultAmount: amount * 10 ** decimals
+            }));
         }
 
         // else if (integration.category == Category.CCTP) {
@@ -507,6 +517,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-SYRUP", Category.REWARDS_TRANSFER, SYRUP, address(0), SPARK_MULTISIG, address(0)));
 
+        // TODO: When moving into pre section, remove setVsr step in tests
         ethereumSllIntegrations.push(_createSLLIntegration("SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH));
         ethereumSllIntegrations.push(_createSLLIntegration("SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC));
         ethereumSllIntegrations.push(_createSLLIntegration("SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT));

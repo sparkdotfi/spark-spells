@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
+
+import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Base }     from "spark-address-registry/Base.sol";
@@ -33,14 +35,15 @@ import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
 
 import {
     ICurvePoolLike,
+    ICurveStableswapFactoryLike,
+    IFarmLike,
+    IMapleStrategyLike,
     IPoolManagerLike,
     IPsmLike,
-    IMapleStrategyLike,
-    IWithdrawalManagerLike,
-    ISyrupLike,
+    ISparkVaultV2Like,
     ISUSDELike,
-    ICurveStableswapFactoryLike,
-    IFarmLike
+    ISyrupLike,
+    IWithdrawalManagerLike
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
@@ -908,12 +911,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 deposit1Value = p.depositAmount * (pool.balances(1) * v.rates[1] / totalValue) / 1e18;
 
         // Convert to asset value
-        v.depositAmount0 = deposit0Value * 1e36 / (v.rates[0] * 10 ** IERC20(p.asset0).decimals());
-        v.depositAmount1 = deposit1Value * 1e36 / (v.rates[1] * 10 ** IERC20(p.asset1).decimals());
+        v.depositAmount0 = deposit0Value * 1e36 / (v.rates[0] * 10 ** IERC20Metadata(p.asset0).decimals());
+        v.depositAmount1 = deposit1Value * 1e36 / (v.rates[1] * 10 ** IERC20Metadata(p.asset1).decimals());
 
         // Convert to asset precision (TODO: Simplify mathematically with above)
-        v.depositAmount0 = v.depositAmount0 * 10 ** IERC20(p.asset0).decimals() / 1e18;
-        v.depositAmount1 = v.depositAmount1 * 10 ** IERC20(p.asset1).decimals() / 1e18;
+        v.depositAmount0 = v.depositAmount0 * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
+        v.depositAmount1 = v.depositAmount1 * 10 ** IERC20Metadata(p.asset1).decimals() / 1e18;
 
         deal(address(p.asset0), address(p.ctx.proxy), v.depositAmount0);
         deal(address(p.asset1), address(p.ctx.proxy), v.depositAmount1);
@@ -1012,7 +1015,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
 
-        uint256 swapAmount = p.swapAmount * 10 ** IERC20(p.asset0).decimals() / 1e18;
+        uint256 swapAmount = p.swapAmount * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
         uint256 swapValue  = swapAmount * rates[0] / 1e18;
 
         deal(address(p.asset0), address(p.ctx.proxy), swapAmount);
@@ -1925,6 +1928,103 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.takeKey), type(uint256).max);
         }
+    }
+
+    struct SparkVaultV2E2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        bytes32 takeKey;
+        bytes32 transferKey;
+        uint256 takeAmount;
+        uint256 transferAmount;
+        uint256 userVaultAmount;
+    }
+
+    function _testSparkVaultV2Integration(SparkVaultV2E2ETestParams memory p) internal {
+        ISparkVaultV2Like vault = ISparkVaultV2Like(p.vault);
+
+        // Step 1: Check seeding
+
+        uint256 amount = vault.asset() == Ethereum.WETH ? 0.0001e18 : 1e6;
+
+        assertGe(vault.totalSupply(), amount);
+        assertGe(vault.totalAssets(), amount);
+
+        assertEq(vault.balanceOf(address(1)), amount);
+
+        // Step 2: Check SLL take and transfer integrations
+
+        _testVaultTakeIntegration(VaultTakeE2ETestParams({
+            ctx:        p.ctx,
+            asset:      vault.asset(),
+            vault:      p.vault,
+            takeKey:    p.takeKey,
+            takeAmount: p.takeAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          vault.asset(),
+            destination:    p.vault,
+            transferKey:    p.transferKey,
+            transferAmount: p.transferAmount
+        }));
+
+        // Step 3: Check user vault integration
+
+        address user = makeAddr("user");
+
+        IERC20 asset = IERC20(vault.asset());
+
+        deal(address(asset), user, p.userVaultAmount);
+
+        uint256 assetBalanceVault = asset.balanceOf(address(vault));
+        uint256 vaultTotalSupply  = vault.totalSupply();
+
+        assertEq(asset.balanceOf(user),           p.userVaultAmount);
+        assertEq(asset.balanceOf(address(vault)), assetBalanceVault);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply);
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(vault.assetsOf(user),  0);
+
+        vm.startPrank(user);
+        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), p.vault, p.userVaultAmount);
+        uint256 shares = vault.deposit(p.userVaultAmount, user);
+        vm.stopPrank();
+
+        assertEq(asset.balanceOf(user),           0);
+        assertEq(asset.balanceOf(address(vault)), assetBalanceVault + p.userVaultAmount);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
+        assertEq(vault.balanceOf(user), shares);
+        assertEq(vault.assetsOf(user),  p.userVaultAmount);
+
+        // TODO: Remove this once vaults are live (5% APY)
+        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        vault.setVsr(1.000000001547125957863212448e27);
+
+        skip(1 days);
+
+        assertEq(asset.balanceOf(user),           0);
+        assertEq(asset.balanceOf(address(vault)), assetBalanceVault + p.userVaultAmount);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
+        assertEq(vault.balanceOf(user), shares);
+        assertGt(vault.assetsOf(user),  p.userVaultAmount);
+
+        uint256 totalVaultAssets = vault.totalAssets();
+        deal(address(asset), p.vault, totalVaultAssets);
+
+        vm.prank(user);
+        vault.redeem(shares, user, user);
+
+        assertGt(asset.balanceOf(user),           p.userVaultAmount);
+        assertLt(asset.balanceOf(address(vault)), assetBalanceVault);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply);
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(vault.assetsOf(user),  0);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
