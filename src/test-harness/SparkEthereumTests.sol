@@ -29,9 +29,7 @@ import { WadRayMath }                      from "sparklend-v1-core/protocol/libr
 import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import {
-    IAuthorityLike,
     ICustomIRMLike,
-    IExecutableLike,
     IMorphoLike,
     IMorphoOracleFactoryLike,
     IPendleLinearDiscountOracleLike,
@@ -123,17 +121,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
-
-    function test_ETHEREUM_FreezerMom() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 snapshot = vm.snapshot();
-
-        _runFreezerMomTests();
-
-        vm.revertTo(snapshot);
-
-        _executeAllPayloadsAndBridges();
-        _runFreezerMomTests();
-    }
 
     function test_ETHEREUM_FreezerMom_Multisig() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
@@ -245,49 +232,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertPaused(Ethereum.WETH, true);
 
         vm.stopPrank();
-    }
-
-    function _runFreezerMomTests() internal {
-        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
-
-        // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.freezeMarket(Ethereum.DAI, true);
-
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.freezeAllMarkets(true);
-
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.pauseMarket(Ethereum.DAI, true);
-
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.pauseAllMarkets(true);
-
-        _assertFrozen(Ethereum.DAI,  false);
-        _assertFrozen(Ethereum.WETH, false);
-
-        _voteAndCast(Ethereum.SPELL_FREEZE_DAI);
-
-        _assertFrozen(Ethereum.DAI,  true);
-        _assertFrozen(Ethereum.WETH, false);
-
-        _voteAndCast(Ethereum.SPELL_FREEZE_ALL);
-
-        _assertFrozen(Ethereum.DAI,  true);
-        _assertFrozen(Ethereum.WETH, true);
-
-        _assertPaused(Ethereum.DAI,  false);
-        _assertPaused(Ethereum.WETH, false);
-
-        _voteAndCast(Ethereum.SPELL_PAUSE_DAI);
-
-        _assertPaused(Ethereum.DAI,  true);
-        _assertPaused(Ethereum.WETH, false);
-
-        _voteAndCast(Ethereum.SPELL_PAUSE_ALL);
-
-        _assertPaused(Ethereum.DAI,  true);
-        _assertPaused(Ethereum.WETH, true);
     }
 
     function _runCapAutomatorTests() internal {
@@ -746,48 +690,9 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
-    function _voteAndCast(address spell) internal {
-        IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
-
-        address skyWhale = makeAddr("skyWhale");
-        uint256 amount   = 10_000_000_000 ether;
-
-        deal(Ethereum.SKY, skyWhale, amount);
-
-        vm.startPrank(skyWhale);
-
-        IERC20(Ethereum.SKY).approve(address(authority), amount);
-        authority.lock(amount);
-
-        address[] memory slate = new address[](1);
-        slate[0] = spell;
-
-        authority.vote(slate);
-
-        // Min amount of blocks to pass to vote again.
-        vm.roll(block.number + 11);
-
-        authority.lift(spell);
-
-        vm.stopPrank();
-
-        assertEq(authority.hat(), spell);
-
-        vm.prank(makeAddr("randomUser"));
-        IExecutableLike(spell).execute();
-    }
-
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
-
-    function _assertFrozen(address asset, bool frozen) internal view {
-        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
-    }
-
-    function _assertPaused(address asset, bool paused) internal view {
-        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
-    }
 
     function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
         (

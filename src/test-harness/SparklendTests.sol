@@ -9,6 +9,8 @@ import { IERC20 } from "erc20-helpers/interfaces/IERC20.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 import { Gnosis }   from "spark-address-registry/Gnosis.sol";
 
+import { ISparkLendFreezerMom } from "sparklend-freezer/interfaces/ISparkLendFreezerMom.sol";
+
 import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
 
 import { IACLManager }                  from "sparklend-v1-core/interfaces/IACLManager.sol";
@@ -22,6 +24,11 @@ import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/confi
 import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
+
+import {
+    IAuthorityLike,
+    IExecutableLike
+} from "../interfaces/Interfaces.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { ProtocolV3TestBase }    from "./ProtocolV3TestBase.sol";
@@ -115,6 +122,17 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function test_UNICHAIN_PayloadBytecodeMatches() external {
         _testPayloadBytecodeMatches(ChainIdUtils.Unichain());
+    }
+
+    function test_ETHEREUM_FreezerMom() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 snapshot = vm.snapshot();
+
+        _runFreezerMomTests();
+
+        vm.revertTo(snapshot);
+
+        _executeAllPayloadsAndBridges();
+        _runFreezerMomTests();
     }
 
     /**********************************************************************************************/
@@ -282,9 +300,91 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         vm.ffi(inputs);
     }
 
+    function _runFreezerMomTests() internal {
+        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
+
+        // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.freezeMarket(Ethereum.DAI, true);
+
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.freezeAllMarkets(true);
+
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.pauseMarket(Ethereum.DAI, true);
+
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.pauseAllMarkets(true);
+
+        _assertFrozen(Ethereum.DAI,  false);
+        _assertFrozen(Ethereum.WETH, false);
+
+        _voteAndCast(Ethereum.SPELL_FREEZE_DAI);
+
+        _assertFrozen(Ethereum.DAI,  true);
+        _assertFrozen(Ethereum.WETH, false);
+
+        _voteAndCast(Ethereum.SPELL_FREEZE_ALL);
+
+        _assertFrozen(Ethereum.DAI,  true);
+        _assertFrozen(Ethereum.WETH, true);
+
+        _assertPaused(Ethereum.DAI,  false);
+        _assertPaused(Ethereum.WETH, false);
+
+        _voteAndCast(Ethereum.SPELL_PAUSE_DAI);
+
+        _assertPaused(Ethereum.DAI,  true);
+        _assertPaused(Ethereum.WETH, false);
+
+        _voteAndCast(Ethereum.SPELL_PAUSE_ALL);
+
+        _assertPaused(Ethereum.DAI,  true);
+        _assertPaused(Ethereum.WETH, true);
+    }
+
+    function _voteAndCast(address spell) internal {
+        IAuthorityLike authority = IAuthorityLike(Ethereum.CHIEF);
+
+        address skyWhale = makeAddr("skyWhale");
+        uint256 amount   = 10_000_000_000 ether;
+
+        deal(Ethereum.SKY, skyWhale, amount);
+
+        vm.startPrank(skyWhale);
+
+        IERC20(Ethereum.SKY).approve(address(authority), amount);
+        authority.lock(amount);
+
+        address[] memory slate = new address[](1);
+        slate[0] = spell;
+
+        authority.vote(slate);
+
+        // Min amount of blocks to pass to vote again.
+        vm.roll(block.number + 11);
+
+        authority.lift(spell);
+
+        vm.stopPrank();
+
+        assertEq(authority.hat(), spell);
+
+        vm.prank(makeAddr("randomUser"));
+        IExecutableLike(spell).execute();
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
+
+    function _assertFrozen(address asset, bool frozen) internal view {
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
+    }
+
+    function _assertPaused(address asset, bool paused) internal view {
+        assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
+    }
 
     function _getImplementation(address admin, address proxy) internal returns (address) {
         // TODO: MDL, very odd that this query requires a prank.
