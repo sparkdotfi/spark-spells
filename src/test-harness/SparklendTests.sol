@@ -135,6 +135,17 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _runFreezerMomTests();
     }
 
+    function test_ETHEREUM_FreezerMom_Multisig() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 snapshot = vm.snapshot();
+
+        _runFreezerMomTestsMultisig();
+
+        vm.revertTo(snapshot);
+
+        _executeAllPayloadsAndBridges();
+        _runFreezerMomTestsMultisig();
+    }
+
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
@@ -341,6 +352,53 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         _assertPaused(Ethereum.DAI,  true);
         _assertPaused(Ethereum.WETH, true);
+    }
+
+    function _runFreezerMomTestsMultisig() internal {
+        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
+
+        // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.freezeMarket(Ethereum.DAI, true);
+
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.freezeAllMarkets(true);
+
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.pauseMarket(Ethereum.DAI, true);
+
+        vm.expectRevert("SparkLendFreezerMom/not-authorized");
+        freezerMom.pauseAllMarkets(true);
+
+        vm.startPrank(Ethereum.FREEZER_MULTISIG);
+
+        _assertFrozen(Ethereum.DAI,  false);
+        _assertFrozen(Ethereum.WETH, false);
+
+        freezerMom.freezeMarket(Ethereum.DAI, true);
+
+        _assertFrozen(Ethereum.DAI,  true);
+        _assertFrozen(Ethereum.WETH, false);
+
+        freezerMom.freezeAllMarkets(true);
+
+        _assertFrozen(Ethereum.DAI,  true);
+        _assertFrozen(Ethereum.WETH, true);
+
+        _assertPaused(Ethereum.DAI,  false);
+        _assertPaused(Ethereum.WETH, false);
+
+        freezerMom.pauseMarket(Ethereum.DAI, true);
+
+        _assertPaused(Ethereum.DAI,  true);
+        _assertPaused(Ethereum.WETH, false);
+
+        freezerMom.pauseAllMarkets(true);
+
+        _assertPaused(Ethereum.DAI,  true);
+        _assertPaused(Ethereum.WETH, true);
+
+        vm.stopPrank();
     }
 
     function _voteAndCast(address spell) internal {
