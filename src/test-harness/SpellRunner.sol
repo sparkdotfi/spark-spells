@@ -49,10 +49,13 @@ abstract contract SpellRunner is Test {
         address                        newController;
     }
 
+    uint256 internal immutable _spellId;
+
+    string internal _blockDate;
+
     mapping(ChainId => DomainData) internal chainData;
 
     ChainId[] internal allChains;
-    string    internal id;
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
@@ -62,6 +65,11 @@ abstract contract SpellRunner is Test {
         _;
 
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
+    }
+
+    function setUp() public virtual {
+        _setupDomains();
+        _deployPayloads();
     }
 
     /**********************************************************************************************/
@@ -98,8 +106,10 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev to be called in setUp
-    function _setupDomains(string memory date) internal {
-        _setupBlocksFromDate(date);
+    function _setupDomains() internal {
+        require(bytes(_blockDate).length > 0, "Block Date not set");
+
+        _setupBlocksFromDate(_blockDate);
 
         // We default to Ethereum domain
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
@@ -441,7 +451,7 @@ abstract contract SpellRunner is Test {
     }
 
     function _getSpellIdentifier(ChainId chainId) internal view returns (string memory) {
-        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
+        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", vm.toString(_spellId)));
         return string(abi.encodePacked(slug, ".sol:", slug));
     }
 

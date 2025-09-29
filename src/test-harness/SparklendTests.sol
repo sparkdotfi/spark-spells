@@ -122,7 +122,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /**********************************************************************************************/
 
     function _runSpellExecutionDiff(ChainId chainId) internal onChain(chainId) {
-        string memory prefix = string(abi.encodePacked(id, "-", chainId.toDomainString()));
+        string memory prefix = string(abi.encodePacked(vm.toString(_spellId), "-", chainId.toDomainString()));
 
         IPool pool = _getSparkLendContext().pool;
 
