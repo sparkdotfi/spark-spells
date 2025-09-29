@@ -41,6 +41,7 @@ import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
 
 import { SparklendTests }           from "./SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
+import { SpellRunner }              from "./SpellRunner.sol";
 
 // TODO: MDL, only used by `SparkTestBase`.
 /// @dev assertions specific to mainnet
@@ -115,12 +116,18 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
+    // TODO: MDL, this overriding and selective super calling is temporary.
+    function setUp() public override(SpellRunner, SparkLiquidityLayerTests) virtual {
+        SparkLiquidityLayerTests.setUp();
+    }
+
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
     // TODO: MDL, fails when moved to and run only in the context of `SparklendTests`. Consider moving up as it must
     //       rely on some state an inheriting contract is setting up or modifying.
+    // TODO: MDL, this fails in the context of just `SparkEthereumTesting`.
     function test_ETHEREUM_PayloadsConfigured() external onChain(ChainIdUtils.Ethereum()) {
          for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
