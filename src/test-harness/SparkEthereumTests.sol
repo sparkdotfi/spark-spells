@@ -21,7 +21,6 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { ISparkLendFreezerMom } from "sparklend-freezer/interfaces/ISparkLendFreezerMom.sol";
 
-import { IScaledBalanceToken }             from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
 import { ReserveConfiguration, DataTypes } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 import { WadRayMath }                      from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
@@ -120,17 +119,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    function test_ETHEREUM_CapAutomator() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 snapshot = vm.snapshot();
-
-        _runCapAutomatorTests();
-
-        vm.revertTo(snapshot);
-
-        _executeAllPayloadsAndBridges();
-        _runCapAutomatorTests();
-    }
-
+    // TODO: MDL, fails when moved to and run only in the context of `SparklendTests`. Consider moving up as it must
+    //       rely on some state an inheriting contract is setting up or modifying.
     function test_ETHEREUM_PayloadsConfigured() external onChain(ChainIdUtils.Ethereum()) {
          for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
@@ -151,76 +141,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
-
-    function _runCapAutomatorTests() internal {
-        address[] memory reserves = _getSparkLendContext().pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; ++i) {
-            _testAutomatedCapsUpdate(reserves[i]);
-        }
-    }
-
-    function _testAutomatedCapsUpdate(address asset) internal {
-        SparkLendContext      memory ctx               = _getSparkLendContext();
-        DataTypes.ReserveData memory reserveDataBefore = ctx.pool.getReserveData(asset);
-
-        uint256 supplyCapBefore = reserveDataBefore.configuration.getSupplyCap();
-        uint256 borrowCapBefore = reserveDataBefore.configuration.getBorrowCap();
-
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-
-        ( , , , , uint48 supplyCapLastIncreaseTime ) = capAutomator.supplyCapConfigs(asset);
-        ( , , , , uint48 borrowCapLastIncreaseTime ) = capAutomator.borrowCapConfigs(asset);
-
-        capAutomator.exec(asset);
-
-        DataTypes.ReserveData memory reserveDataAfter = ctx.pool.getReserveData(asset);
-
-        uint256 supplyCapAfter = reserveDataAfter.configuration.getSupplyCap();
-        uint256 borrowCapAfter = reserveDataAfter.configuration.getBorrowCap();
-
-        uint48 max;
-        uint48 gap;
-        uint48 cooldown;
-
-        ( max, gap, cooldown, , ) = capAutomator.supplyCapConfigs(asset);
-
-        if (max > 0) {
-            uint256 currentSupply = (IScaledBalanceToken(reserveDataAfter.aTokenAddress).scaledTotalSupply() + uint256(reserveDataAfter.accruedToTreasury))
-                .rayMul(reserveDataAfter.liquidityIndex)
-                / 10 ** IERC20(reserveDataAfter.aTokenAddress).decimals();
-
-            uint256 expectedSupplyCap = uint256(max) < currentSupply + uint256(gap)
-                ? uint256(max)
-                : currentSupply + uint256(gap);
-
-            if (supplyCapLastIncreaseTime + cooldown > block.timestamp && supplyCapBefore < expectedSupplyCap) {
-                assertEq(supplyCapAfter, supplyCapBefore);
-            } else {
-                assertEq(supplyCapAfter, expectedSupplyCap);
-            }
-        } else {
-            assertEq(supplyCapAfter, supplyCapBefore);
-        }
-
-        ( max, gap, cooldown, , ) = capAutomator.borrowCapConfigs(asset);
-
-        if (max > 0) {
-            uint256 currentBorrows = IERC20(reserveDataAfter.variableDebtTokenAddress).totalSupply() / 10 ** IERC20(reserveDataAfter.variableDebtTokenAddress).decimals();
-
-            uint256 expectedBorrowCap = uint256(max) < currentBorrows + uint256(gap)
-                ? uint256(max)
-                : currentBorrows + uint256(gap);
-
-            if (borrowCapLastIncreaseTime + cooldown > block.timestamp && borrowCapBefore < expectedBorrowCap) {
-                assertEq(borrowCapAfter, borrowCapBefore);
-            } else {
-                assertEq(borrowCapAfter, expectedBorrowCap);
-            }
-        } else {
-            assertEq(borrowCapAfter, borrowCapBefore);
-        }
-    }
 
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
         SparkLendContext memory ctx              = _getSparkLendContext();
