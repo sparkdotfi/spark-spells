@@ -22,7 +22,6 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 import { ISparkLendFreezerMom } from "sparklend-freezer/interfaces/ISparkLendFreezerMom.sol";
 
 import { IScaledBalanceToken }             from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
-import { IncentivizedERC20 }               from "sparklend-v1-core/protocol/tokenization/base/IncentivizedERC20.sol";
 import { ReserveConfiguration, DataTypes } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 import { WadRayMath }                      from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
@@ -120,12 +119,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
-
-    function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
-        _assertRewardsConfigurations();
-        _executeAllPayloadsAndBridges();
-        _assertRewardsConfigurations();
-    }
 
     function test_ETHEREUM_CapAutomator() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
@@ -692,18 +685,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256             currentCap
     ) internal view {
         _assertMorphoCap(vault, config, currentCap, false, 0);
-    }
-
-    function _assertRewardsConfigurations() internal view {
-        SparkLendContext memory ctx      = _getSparkLendContext();
-        address[]        memory reserves = ctx.pool.getReservesList();
-
-        for (uint256 i = 0; i < reserves.length; ++i) {
-            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
-
-            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
-            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
-        }
     }
 
 }

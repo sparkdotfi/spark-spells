@@ -23,6 +23,8 @@ import { IDefaultInterestRateStrategy } from "sparklend-v1-core/interfaces/IDefa
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 
+import { IncentivizedERC20 } from "sparklend-v1-core/protocol/tokenization/base/IncentivizedERC20.sol";
+
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
 import {
@@ -161,6 +163,12 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
         _checkStorageSlot(address(proxy), 100);
+    }
+
+    function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
+        _assertRewardsConfigurations();
+        _executeAllPayloadsAndBridges();
+        _assertRewardsConfigurations();
     }
 
     /**********************************************************************************************/
@@ -459,6 +467,18 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     function _assertPaused(address asset, bool paused) internal view {
         assertEq(_getSparkLendContext().pool.getConfiguration(asset).getPaused(), paused);
+    }
+
+    function _assertRewardsConfigurations() internal view {
+        SparkLendContext memory ctx      = _getSparkLendContext();
+        address[]        memory reserves = ctx.pool.getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; ++i) {
+            DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
+
+            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
+            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
+        }
     }
 
     function _checkStorageSlot(address target, uint256 limit) internal view {
