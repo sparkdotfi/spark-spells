@@ -40,6 +40,52 @@ interface ITreasuryControllerLike {
 
 }
 
+interface ISparkVaultV2Like {
+
+    function asset() external view returns (address);
+
+    function balanceOf(address user) external view returns (uint256);
+
+    function chi() external view returns (uint192);
+
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+
+    function depositCap() external view returns (uint256);
+
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+    function minVsr() external view returns (uint256);
+
+    function maxVsr() external view returns (uint256);
+
+    function name() external view returns (string memory);
+
+    function nowChi() external view returns (uint256);
+
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
+
+    function rho() external view returns (uint64);
+
+    function SETTER_ROLE() external view returns (bytes32);
+
+    function setVsr(uint256 newVsr) external;
+
+    function symbol() external view returns (string memory);
+
+    function TAKER_ROLE() external view returns (bytes32);
+
+    function totalAssets() external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
+
+    function vsr() external view returns (uint256);
+
+}
+
 interface IAuthorityLike {
 
     function canCall(address src, address dst, bytes4 sig) external view returns (bool);

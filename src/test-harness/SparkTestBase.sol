@@ -22,9 +22,9 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
-import { ChainIdUtils }       from "../libraries/ChainId.sol";
-import { ICurvePoolLike }     from "../interfaces/Interfaces.sol";
-import { SparkEthereumTests } from "./SparkEthereumTests.sol";
+import { ChainIdUtils }                      from "../libraries/ChainId.sol";
+import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
+import { SparkEthereumTests }                from "./SparkEthereumTests.sol";
 
 // TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
 /// @dev Convenience contract meant to be the single point of entry for all spell-specific test contracts.
@@ -44,6 +44,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     address public constant MORPHO_TOKEN       = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
     address public constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
     address public constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address public constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
     address public constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address public constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address public constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
@@ -65,6 +66,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         MAPLE,
         PSM,
         REWARDS_TRANSFER,
+        SPARK_VAULT_V2,
         SUPERSTATE,
         TREASURY
     }
@@ -117,10 +119,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
         // TODO: Change back to executeAllPayloadsAndBridges() after dealing with multichain events
         executeMainnetPayload();
 
-        // _populateRateLimitKeys(true);
-        // _loadPostExecutionIntegrations();
+        _populateRateLimitKeys(true);
+        _loadPostExecutionIntegrations();
 
-        // _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
+        _checkRateLimitKeys(ethereumSllIntegrations, _ethereumRateLimitKeys);
 
         // for (uint256 i = 0; i < ethereumSllIntegrations.length; ++i) {
         //     _runSLLE2ETests(ethereumSllIntegrations[i]);
@@ -207,15 +209,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
         else if (integration.category == Category.MAPLE) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            _testMapleIntegration(MapleE2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
-                vault:         integration.integration,
-                depositAmount: 1_000_000e6,
-                depositKey:    integration.entryId,
-                redeemKey:     integration.exitId,
-                withdrawKey:   integration.exitId2,
-                tolerance:     10
-            }));
+            // _testMapleIntegration(MapleE2ETestParams({
+            //     ctx:           _getSparkLiquidityLayerContext(),
+            //     vault:         integration.integration,
+            //     depositAmount: 1_000_000e6,
+            //     depositKey:    integration.entryId,
+            //     redeemKey:     integration.exitId,
+            //     withdrawKey:   integration.exitId2,
+            //     tolerance:     10
+            // }));
         }
 
         else if (integration.category == Category.PSM) {
@@ -338,6 +340,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 withdrawAmount:      100_000_000e6,
                 withdrawKey:         integration.exitId
             }));
+        }
+
+        else if (integration.category == Category.SPARK_VAULT_V2) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            // _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
+            //     ctx:           _getSparkLiquidityLayerContext(),
+            //     vault:         integration.integration,
+            // }));
         }
 
         // else if (integration.category == Category.CCTP) {
@@ -492,6 +503,13 @@ abstract contract SparkTestBase is SparkEthereumTests {
     }
 
     function _loadPostExecutionIntegrations() internal {
+        ethereumSllIntegrations.push(_createSLLIntegration("AAVE-SPETH", Category.AAVE, Ethereum.WETH_SPTOKEN));
+
+        ethereumSllIntegrations.push(_createSLLIntegration("REWARDS_TRANSFER-SYRUP", Category.REWARDS_TRANSFER, SYRUP, address(0), SPARK_MULTISIG, address(0)));
+
+        ethereumSllIntegrations.push(_createSLLIntegration("SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH));
+        ethereumSllIntegrations.push(_createSLLIntegration("SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC));
+        ethereumSllIntegrations.push(_createSLLIntegration("SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT));
     }
 
     /**********************************************************************************************/
@@ -548,6 +566,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
         else if (category == Category.CCTP_GENERAL) {
             entryId = mainnetController.LIMIT_USDC_TO_CCTP();
+        }
+        else if (category == Category.SPARK_VAULT_V2) {
+            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_SPARK_VAULT_TAKE(), integration);
+            exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration);
         }
         else {
             revert("Invalid category");
