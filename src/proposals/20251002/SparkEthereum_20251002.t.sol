@@ -489,11 +489,11 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     }
 
     function test_ETHEREUM_userStakingSPKE2E() public onChain(ChainIdUtils.Ethereum()) {
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
 
         _testUserStaking(1_000_000e18, false);
 
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         executeAllPayloadsAndBridges();
 
