@@ -122,17 +122,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    function test_ETHEREUM_FreezerMom_Multisig() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 snapshot = vm.snapshot();
-
-        _runFreezerMomTestsMultisig();
-
-        vm.revertTo(snapshot);
-
-        _executeAllPayloadsAndBridges();
-        _runFreezerMomTestsMultisig();
-    }
-
     function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
         ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
         address         esm   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
@@ -186,53 +175,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
-
-    function _runFreezerMomTestsMultisig() internal {
-        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
-
-        // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.freezeMarket(Ethereum.DAI, true);
-
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.freezeAllMarkets(true);
-
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.pauseMarket(Ethereum.DAI, true);
-
-        vm.expectRevert("SparkLendFreezerMom/not-authorized");
-        freezerMom.pauseAllMarkets(true);
-
-        vm.startPrank(Ethereum.FREEZER_MULTISIG);
-
-        _assertFrozen(Ethereum.DAI,  false);
-        _assertFrozen(Ethereum.WETH, false);
-
-        freezerMom.freezeMarket(Ethereum.DAI, true);
-
-        _assertFrozen(Ethereum.DAI,  true);
-        _assertFrozen(Ethereum.WETH, false);
-
-        freezerMom.freezeAllMarkets(true);
-
-        _assertFrozen(Ethereum.DAI,  true);
-        _assertFrozen(Ethereum.WETH, true);
-
-        _assertPaused(Ethereum.DAI,  false);
-        _assertPaused(Ethereum.WETH, false);
-
-        freezerMom.pauseMarket(Ethereum.DAI, true);
-
-        _assertPaused(Ethereum.DAI,  true);
-        _assertPaused(Ethereum.WETH, false);
-
-        freezerMom.pauseAllMarkets(true);
-
-        _assertPaused(Ethereum.DAI,  true);
-        _assertPaused(Ethereum.WETH, true);
-
-        vm.stopPrank();
-    }
 
     function _runCapAutomatorTests() internal {
         address[] memory reserves = _getSparkLendContext().pool.getReservesList();
