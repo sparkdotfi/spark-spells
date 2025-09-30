@@ -16,6 +16,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
 import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
 
+import { ISparkVaultV2Like } from 'src/interfaces/Interfaces.sol';
 
 interface INetworkRegistry {
     function isEntity(address entity_) external view returns (bool);
@@ -53,30 +54,6 @@ interface IOwnable {
     function owner() external view returns (address);
 }
 
-interface ISparkVaultV2 {
-    function asset() external view returns (address);
-    function balanceOf(address user) external view returns (uint256);
-    function chi() external view returns (uint192);
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
-    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
-    function depositCap() external view returns (uint256);
-    function getRoleMemberCount(bytes32 role) external view returns (uint256);
-    function hasRole(bytes32 role, address account) external view returns (bool);
-    function minVsr() external view returns (uint256);
-    function maxVsr() external view returns (uint256);
-    function name() external view returns (string memory);
-    function nowChi() external view returns (uint256);
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
-    function rho() external view returns (uint64);
-    function SETTER_ROLE() external view returns (bytes32);
-    function setVsr(uint256 newVsr) external;
-    function symbol() external view returns (string memory);
-    function TAKER_ROLE() external view returns (bytes32);
-    function totalAssets() external view returns (uint256);
-    function totalSupply() external view returns (uint256);
-    function vsr() external view returns (uint256);
-}
-
 interface IStakedSPK is IERC20, IVaultTokenized, IAccessControl {}
 
 interface IVetoSlasher {
@@ -109,7 +86,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
     address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
     address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
-    address internal constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
 
     address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
     address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
@@ -220,7 +196,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
         });
-        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPUSDC);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() public onChain(ChainIdUtils.Ethereum()) {
@@ -235,7 +210,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
         });
-        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPUSDT);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPETH() public onChain(ChainIdUtils.Ethereum()) {
@@ -250,40 +224,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             depositCap: 10_000e18,
             amount:     1_000e18
         });
-        _testVaultFullFlow(Ethereum.SPARK_VAULT_V2_SPETH);
-    }
-
-    function _testVaultFullFlow(address vault_) internal {
-        address user1 = makeAddr("user1");
-
-        ISparkVaultV2 vault = ISparkVaultV2(vault_);
-        IERC20        asset = IERC20(vault.asset());
-
-        uint256 amount = 1_000e6;
-
-        deal(address(asset), user1, amount);
-
-        assertEq(asset.balanceOf(user1), amount);
-        assertEq(vault.balanceOf(user1), 0);
-
-        vm.startPrank(user1);
-        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), vault_, amount);
-        uint256 shares = vault.deposit(amount, user1);
-        vm.stopPrank();
-
-        assertEq(asset.balanceOf(user1), 0);
-        assertEq(vault.balanceOf(user1), shares);
-
-        skip(1 days);
-
-        uint256 totalVaultAssets = vault.totalAssets();
-        deal(address(asset), vault_, totalVaultAssets);
-
-        vm.prank(user1);
-        vault.redeem(shares, user1, user1);
-
-        assertGt(asset.balanceOf(user1), amount);
-        assertEq(vault.balanceOf(user1), 0);
     }
 
     function _testVaultConfiguration(
@@ -299,7 +239,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        ISparkVaultV2 vault = ISparkVaultV2(vault_);
+        ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
 
         bytes32 takeKey = RateLimitHelpers.makeAssetKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
@@ -360,35 +300,18 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         assertGt(vault.nowChi(), initialChi);
 
-        _testVaultTakeIntegration({
-            asset:      vault.asset(),
-            vault:      vault_,
-            rateLimit:  type(uint256).max,
-            takeAmount: amount
-        });
-
-        _testTransferAssetIntegration({
-            token:             vault.asset(),
-            destination:       vault_,
-            controller_:       Ethereum.ALM_CONTROLLER,
-            expectedRateLimit: type(uint256).max,
-            transferAmount:    amount
-        });
-
-        if (vault.asset() == Ethereum.WETH) {
-            assertGe(vault.totalSupply(), 0.0001e18);
-            assertGe(vault.totalAssets(), 0.0001e18);
-
-            assertEq(vault.balanceOf(address(1)), 0.0001e18);
-        } else {
-            assertGe(vault.totalSupply(), 1e6);
-            assertGe(vault.totalAssets(), 1e6);
-
-            assertEq(vault.balanceOf(address(1)), 1e6);
-        }
+        _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
+            ctx:             ctx,
+            vault:           vault_,
+            takeKey:         takeKey,
+            transferKey:     transferKey,
+            takeAmount:      amount,
+            transferAmount:  amount,
+            userVaultAmount: amount
+        }));
     }
 
-    function _testSetterIntegration(ISparkVaultV2 vault, uint256 minVsr, uint256 maxVsr) internal {
+    function _testSetterIntegration(ISparkVaultV2Like vault, uint256 minVsr, uint256 maxVsr) internal {
         vm.startPrank(Ethereum.ALM_OPS_MULTISIG);
 
         vm.expectRevert("SparkVault/vsr-too-low");
@@ -436,13 +359,13 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         _assertRateLimit(transferKey, 200_000e18, 200_000e18 / uint256(1 days));
 
-        _testTransferAssetIntegration(
-            SYRUP,
-            Ethereum.ALM_OPS_MULTISIG,
-            Ethereum.ALM_CONTROLLER,
-            200_000e18,
-            200_000e18
-        );
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          SYRUP,
+            destination:    Ethereum.ALM_OPS_MULTISIG,
+            transferKey:    transferKey,
+            transferAmount: 200_000e18
+        }));
     }
 
     function test_ETHEREUM_usdsTransfers() public onChain(ChainIdUtils.Ethereum()) {
