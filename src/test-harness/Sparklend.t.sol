@@ -7,8 +7,8 @@ import { SparklendTests } from "./SparklendTests.sol";
 contract SparklendTesting is SparklendTests {
 
     constructor() {
-        _spellId = 20250918;
-        _blockDate = "2025-09-15T16:42:00Z";
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
     }
 
 }

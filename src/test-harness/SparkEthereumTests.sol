@@ -116,17 +116,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
-    address internal immutable _basePayload;
-    address internal immutable _ethereumPayload;
-
-    // TODO: MDL, this overriding and selective super calling is temporary.
-    function setUp() public override(SpellRunner, SparkLiquidityLayerTests) virtual {
-        SparkLiquidityLayerTests.setUp();
-
-        chainData[ChainIdUtils.Base()].payload     = _basePayload;
-        chainData[ChainIdUtils.Ethereum()].payload = _ethereumPayload;
-    }
-
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
