@@ -377,8 +377,7 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    // TODO: MDL, rename as this is not just asserting, but deploying payload.
-    function _assertPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
+    function _testPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
         address actualPayload = chainData[chainId].payload;
 
         vm.skip(actualPayload == address(0));

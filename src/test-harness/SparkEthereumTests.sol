@@ -148,24 +148,24 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
         ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
-        address         ESM   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
+        address         esm   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
 
-        assertEq(proxy.wards(ESM),                  1);
+        assertEq(proxy.wards(esm),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
         _checkStorageSlot(address(proxy), 100);
         _executeAllPayloadsAndBridges();
 
-        assertEq(proxy.wards(ESM),                  1);
+        assertEq(proxy.wards(esm),                  1);
         assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
 
         _checkStorageSlot(address(proxy), 100);
     }
 
     function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
-        _runRewardsConfigurationTests();
+        _assertRewardsConfigurations();
         _executeAllPayloadsAndBridges();
-        _runRewardsConfigurationTests();
+        _assertRewardsConfigurations();
     }
 
     function test_ETHEREUM_CapAutomator() external onChain(ChainIdUtils.Ethereum()) {
@@ -864,8 +864,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertMorphoCap(vault, config, currentCap, false, 0);
     }
 
-    // TODO: MDL, rename as this does not seem to be running anything, and is simply asserting.
-    function _runRewardsConfigurationTests() internal view {
+    function _assertRewardsConfigurations() internal view {
         SparkLendContext memory ctx      = _getSparkLendContext();
         address[]        memory reserves = ctx.pool.getReservesList();
 

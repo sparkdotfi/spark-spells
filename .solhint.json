@@ -1,0 +1,90 @@
+{
+    "extends": [
+        "solhint:recommended"
+    ],
+    "plugins": [
+        "prettier"
+    ],
+    "rules": {
+        "prettier/prettier": "error",
+        "avoid-call-value": "off",
+        "avoid-low-level-calls": "off",
+        "avoid-sha3": "error",
+        "avoid-tx-origin": "error",
+        "code-complexity": [
+            "warn",
+            10
+        ],
+        "compiler-version": [
+            "warn",
+            "^0.8.0"
+        ],
+        "comprehensive-interface": "off",
+        "const-name-snakecase": "error",
+        "contract-name-capwords": "error",
+        "duplicated-imports": "error",
+        "event-name-capwords": "error",
+        "explicit-types": [
+            "error",
+            "explicit"
+        ],
+        "function-max-lines": [
+            "warn",
+            100
+        ],
+        "func-name-mixedcase": "warn",
+        "func-named-parameters": [
+            "warn",
+            6
+        ],
+        "func-param-name-mixedcase": "error",
+        "func-visibility": [
+            "error",
+            {
+                "ignoreConstructors": true
+            }
+        ],
+        "gas-calldata-parameters": "warn",
+        "gas-custom-errors": "warn",
+        "gas-increment-by-one": "warn",
+        "gas-indexed-events": "warn",
+        "gas-named-return-values": "warn",
+        "gas-small-strings": "warn",
+        "immutable-vars-naming": [
+            "error",
+            {
+                "immutablesAsConstants": false
+            }
+        ],
+        "imports-on-top": "error",
+        "interface-starts-with-i": "error",
+        "max-line-length": [
+            "warn",
+            120
+        ],
+        "modifier-name-mixedcase": "error",
+        "named-parameters-mapping": "warn",
+        "no-console": "warn",
+        "no-empty-blocks": "warn",
+        "no-global-import": "error",
+        "no-unused-import": "warn",
+        "no-unused-vars": "warn",
+        "no-inline-assembly": "off",
+        "not-rely-on-time": "off",
+        "ordering": "warn",
+        "private-vars-leading-underscore": [
+            "warn",
+            {
+                "strict": true
+            }
+        ],
+        "quotes": [
+            "error",
+            "double"
+        ],
+        "reentrancy": "warn",
+        "state-visibility": "error",
+        "var-name-mixedcase": "error",
+        "visibility-modifier-order": "error"
+    }
+}

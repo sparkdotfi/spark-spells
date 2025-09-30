@@ -1860,19 +1860,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Note the functions used are interchangeable with mainnet and foreign controllers
         MainnetController controller = MainnetController(newController);
 
-        bytes32 CONTROLLER = ctx.proxy.CONTROLLER();
-        bytes32 RELAYER    = controller.RELAYER();
-        bytes32 FREEZER    = controller.FREEZER();
+        bytes32 controllerRole = ctx.proxy.CONTROLLER();
+        bytes32 relayerRole    = controller.RELAYER();
+        bytes32 freezerRole    = controller.FREEZER();
 
-        assertEq(ctx.proxy.hasRole(CONTROLLER, oldController), true);
-        assertEq(ctx.proxy.hasRole(CONTROLLER, newController), false);
+        assertEq(ctx.proxy.hasRole(controllerRole, oldController), true);
+        assertEq(ctx.proxy.hasRole(controllerRole, newController), false);
 
-        assertEq(ctx.rateLimits.hasRole(CONTROLLER, oldController), true);
-        assertEq(ctx.rateLimits.hasRole(CONTROLLER, newController), false);
+        assertEq(ctx.rateLimits.hasRole(controllerRole, oldController), true);
+        assertEq(ctx.rateLimits.hasRole(controllerRole, newController), false);
 
-        assertEq(controller.hasRole(RELAYER, ctx.relayer),        false);
-        assertEq(controller.hasRole(RELAYER, ALM_RELAYER_BACKUP), false);
-        assertEq(controller.hasRole(FREEZER, ctx.freezer),        false);
+        assertEq(controller.hasRole(relayerRole, ctx.relayer),        false);
+        assertEq(controller.hasRole(relayerRole, ALM_RELAYER_BACKUP), false);
+        assertEq(controller.hasRole(freezerRole, ctx.freezer),        false);
 
         if (currentChain == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(address(0)));
@@ -1890,15 +1890,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(ctx.proxy.hasRole(CONTROLLER, oldController), false);
-        assertEq(ctx.proxy.hasRole(CONTROLLER, newController), true);
+        assertEq(ctx.proxy.hasRole(controllerRole, oldController), false);
+        assertEq(ctx.proxy.hasRole(controllerRole, newController), true);
 
-        assertEq(ctx.rateLimits.hasRole(CONTROLLER, oldController), false);
-        assertEq(ctx.rateLimits.hasRole(CONTROLLER, newController), true);
+        assertEq(ctx.rateLimits.hasRole(controllerRole, oldController), false);
+        assertEq(ctx.rateLimits.hasRole(controllerRole, newController), true);
 
-        assertEq(controller.hasRole(RELAYER, ctx.relayer),        true);
-        assertEq(controller.hasRole(RELAYER, ALM_RELAYER_BACKUP), true);
-        assertEq(controller.hasRole(FREEZER, ctx.freezer),        true);
+        assertEq(controller.hasRole(relayerRole, ctx.relayer),        true);
+        assertEq(controller.hasRole(relayerRole, ALM_RELAYER_BACKUP), true);
+        assertEq(controller.hasRole(freezerRole, ctx.freezer),        true);
 
         if (currentChain == ChainIdUtils.Ethereum()) {
             _assertOldControllerEvents(oldController);

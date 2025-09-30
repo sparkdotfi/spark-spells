@@ -1001,6 +1001,10 @@ contract ProtocolV3TestBase is Test {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
+    function _isEqual(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
     /**
      * Reserves that are frozen or not active should not be included in e2e test suite
      */
@@ -1304,12 +1308,7 @@ contract ProtocolV3TestBase is Test {
         string          memory symbolOfUnderlying
     ) internal pure returns (ReserveConfig memory) {
         for (uint256 i = 0; i < configs.length; ++i) {
-            // TODO: MDL, maybe replace with string equals helper and `if return _clone`.
-            if (keccak256(abi.encodePacked(configs[i].symbol)) != keccak256(abi.encodePacked(symbolOfUnderlying))) {
-                continue;
-            }
-
-            return _clone(configs[i]);
+            if (_isEqual(configs[i].symbol, symbolOfUnderlying)) return _clone(configs[i]);
         }
 
         revert("RESERVE_CONFIG_NOT_FOUND");
@@ -1351,7 +1350,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig memory config = _findReserveConfig(allConfigs, expectedConfig.underlying);
 
         require(
-            keccak256(bytes(config.symbol)) == keccak256(bytes(expectedConfig.symbol)),
+            _isEqual(config.symbol, expectedConfig.symbol),
             "_validateConfigsInAave() : INVALID_SYMBOL"
         );
 
@@ -1563,7 +1562,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig memory config2
     ) internal pure {
         require(
-            keccak256(abi.encodePacked(config1.symbol)) == keccak256(abi.encodePacked(config2.symbol)),
+            _isEqual(config1.symbol, config2.symbol),
             "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED"
         );
 
@@ -1748,8 +1747,7 @@ contract ProtocolV3TestBase is Test {
             assetsInCategory[countCategory] = assetsConfigs[i].symbol;
 
             require(
-                keccak256(bytes(assetsInCategory[countCategory])) ==
-                    keccak256(bytes(expectedAssets[countCategory])),
+                _isEqual(assetsInCategory[countCategory], expectedAssets[countCategory]),
                 "_getAssetOnEmodeCategory(): INCONSISTENT_ASSETS"
             );
 
@@ -1760,7 +1758,6 @@ contract ProtocolV3TestBase is Test {
             }
         }
 
-        // TODO: MDL, review the double check here (in and after the for loop).
         if (countCategory < expectedAssets.length) {
             revert("_getAssetOnEmodeCategory(): LESS_ASSETS_IN_CATEGORY_THAN_EXPECTED");
         }

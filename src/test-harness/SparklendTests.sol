@@ -94,34 +94,34 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     }
 
     function test_ETHEREUM_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Ethereum());
+        _testPayloadBytecodeMatches(ChainIdUtils.Ethereum());
     }
 
     function test_BASE_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Base());
+        _testPayloadBytecodeMatches(ChainIdUtils.Base());
     }
 
     function test_GNOSIS_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Gnosis());
+        _testPayloadBytecodeMatches(ChainIdUtils.Gnosis());
     }
 
     function test_ARBITRUM_ONE_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
+        _testPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
     }
 
     function test_OPTIMISM_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Optimism());
+        _testPayloadBytecodeMatches(ChainIdUtils.Optimism());
     }
 
     function test_UNICHAIN_PayloadBytecodeMatches() external {
-        _assertPayloadBytecodeMatches(ChainIdUtils.Unichain());
+        _testPayloadBytecodeMatches(ChainIdUtils.Unichain());
     }
 
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    function _runSpellExecutionDiff(ChainId chainId) onChain(chainId) internal {
+    function _runSpellExecutionDiff(ChainId chainId) internal onChain(chainId) {
         string memory prefix = string(abi.encodePacked(id, "-", chainId.toDomainString()));
 
         IPool pool = _getSparkLendContext().pool;
