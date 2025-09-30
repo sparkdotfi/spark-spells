@@ -116,9 +116,15 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
+    address internal immutable _basePayload;
+    address internal immutable _ethereumPayload;
+
     // TODO: MDL, this overriding and selective super calling is temporary.
     function setUp() public override(SpellRunner, SparkLiquidityLayerTests) virtual {
         SparkLiquidityLayerTests.setUp();
+
+        chainData[ChainIdUtils.Base()].payload     = _basePayload;
+        chainData[ChainIdUtils.Ethereum()].payload = _ethereumPayload;
     }
 
     /**********************************************************************************************/
@@ -149,6 +155,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, not used anywhere.
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
         SparkLendContext memory ctx              = _getSparkLendContext();
         ReserveConfig[]  memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
@@ -166,6 +173,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         }
     }
 
+    // TODO: MDL, only used by `_testAssetOnboardings` above.
     function _testAssetOnboarding(
         ReserveConfig[]                memory allReserveConfigs,
         SparkLendAssetOnboardingParams memory params
@@ -239,6 +247,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         );
     }
 
+    // TODO: MDL, is this a SLL or SL test?
     function _testMorphoCapUpdate(
         address             vault,
         MarketParams memory config,
@@ -275,6 +284,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
 
+    // TODO: MDL, is this a SLL or SL test?
     function _testMorphoPendlePTOracleConfig(
         address pt,
         address loanToken,
@@ -342,6 +352,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertBytecodeMatches(expectedBaseFeed, address(baseFeed));
     }
 
+    // TODO: MDL, not used anywhere.
     function _testRateTargetBaseIRMUpdate(
         string                  memory symbol,
         RateTargetBaseIRMParams memory oldParams,
@@ -399,6 +410,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertEq(ITargetBaseIRMLike(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
     }
 
+    // TODO: MDL, not used anywhere.
     function _testRateTargetKinkIRMUpdate(
         string                  memory symbol,
         RateTargetKinkIRMParams memory oldParams,
@@ -469,6 +481,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertBytecodeMatches(expectedIRM, newParams.irm);
     }
 
+    // TODO: MDL, not used anywhere.
     function _testMorphoVaultCreation(
         address               asset,
         string         memory name,
