@@ -38,21 +38,21 @@ library SLLHelpers {
     }
 
     // This is the same on all chains
-    address private constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+    address internal constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
 
-    bytes32 private constant LIMIT_4626_DEPOSIT   = keccak256("LIMIT_4626_DEPOSIT");
-    bytes32 private constant LIMIT_4626_WITHDRAW  = keccak256("LIMIT_4626_WITHDRAW");
-    bytes32 private constant LIMIT_AAVE_DEPOSIT   = keccak256("LIMIT_AAVE_DEPOSIT");
-    bytes32 private constant LIMIT_AAVE_WITHDRAW  = keccak256("LIMIT_AAVE_WITHDRAW");
-    bytes32 private constant LIMIT_USDS_MINT      = keccak256("LIMIT_USDS_MINT");
-    bytes32 private constant LIMIT_USDS_TO_USDC   = keccak256("LIMIT_USDS_TO_USDC");
-    bytes32 private constant LIMIT_USDC_TO_CCTP   = keccak256("LIMIT_USDC_TO_CCTP");
-    bytes32 private constant LIMIT_USDC_TO_DOMAIN = keccak256("LIMIT_USDC_TO_DOMAIN");
-    bytes32 private constant LIMIT_PSM_DEPOSIT    = keccak256("LIMIT_PSM_DEPOSIT");
-    bytes32 private constant LIMIT_PSM_WITHDRAW   = keccak256("LIMIT_PSM_WITHDRAW");
-    bytes32 private constant LIMIT_CURVE_DEPOSIT  = keccak256("LIMIT_CURVE_DEPOSIT");
-    bytes32 private constant LIMIT_CURVE_SWAP     = keccak256("LIMIT_CURVE_SWAP");
-    bytes32 private constant LIMIT_CURVE_WITHDRAW = keccak256("LIMIT_CURVE_WITHDRAW");
+    bytes32 internal constant LIMIT_4626_DEPOSIT   = keccak256("LIMIT_4626_DEPOSIT");
+    bytes32 internal constant LIMIT_4626_WITHDRAW  = keccak256("LIMIT_4626_WITHDRAW");
+    bytes32 internal constant LIMIT_AAVE_DEPOSIT   = keccak256("LIMIT_AAVE_DEPOSIT");
+    bytes32 internal constant LIMIT_AAVE_WITHDRAW  = keccak256("LIMIT_AAVE_WITHDRAW");
+    bytes32 internal constant LIMIT_USDS_MINT      = keccak256("LIMIT_USDS_MINT");
+    bytes32 internal constant LIMIT_USDS_TO_USDC   = keccak256("LIMIT_USDS_TO_USDC");
+    bytes32 internal constant LIMIT_USDC_TO_CCTP   = keccak256("LIMIT_USDC_TO_CCTP");
+    bytes32 internal constant LIMIT_USDC_TO_DOMAIN = keccak256("LIMIT_USDC_TO_DOMAIN");
+    bytes32 internal constant LIMIT_PSM_DEPOSIT    = keccak256("LIMIT_PSM_DEPOSIT");
+    bytes32 internal constant LIMIT_PSM_WITHDRAW   = keccak256("LIMIT_PSM_WITHDRAW");
+    bytes32 internal constant LIMIT_CURVE_DEPOSIT  = keccak256("LIMIT_CURVE_DEPOSIT");
+    bytes32 internal constant LIMIT_CURVE_SWAP     = keccak256("LIMIT_CURVE_SWAP");
+    bytes32 internal constant LIMIT_CURVE_WITHDRAW = keccak256("LIMIT_CURVE_WITHDRAW");
 
     /**
      * @notice Activate the bare minimum for Spark Liquidity Layer

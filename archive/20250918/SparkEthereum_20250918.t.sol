@@ -37,9 +37,9 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-15T16:42:00Z");
+        _setupDomains("2025-09-15T16:42:00Z");
 
-        deployPayloads();
+        _deployPayloads();
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER_ETHEREUM;
@@ -52,11 +52,11 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     // TODO: MDL, does not seem unique to this proposal.
-    function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_controllerUpgrade() external onChain(ChainIdUtils.Ethereum()) {
         _testControllerUpgrade(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER_ETHEREUM);
     }
 
-    function test_ETHEREUM_cctpRateLimits() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_cctpRateLimits() external onChain(ChainIdUtils.Ethereum()) {
         MainnetController controller = MainnetController(NEW_ALM_CONTROLLER_ETHEREUM);
 
         _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
@@ -66,7 +66,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
             25_000_000e6 / uint256(1 days)
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
         _assertRateLimit(
@@ -76,7 +76,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         );
     }
 
-    function test_ETHEREUM_sll_onboardUsdsSpkFarm() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_onboardUsdsSpkFarm() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
             MainnetController(NEW_ALM_CONTROLLER_ETHEREUM).LIMIT_FARM_DEPOSIT(),
             USDS_SPK_FARM
@@ -89,13 +89,13 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertRateLimit(depositKey,  250_000_000e18,    50_000_000e18 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
     }
 
-    function test_ETHEREUM_curvePoolOnboarding() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_curvePoolOnboarding() external onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             controller:                  NEW_ALM_CONTROLLER_ETHEREUM,
             pool:                        Ethereum.CURVE_PYUSDUSDS,
@@ -115,7 +115,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         assertEq(pool.offpeg_fee_multiplier(), 5e10);
     }
 
-    function test_ETHEREUM_morpho_onboardPTUSDSSPK18Dec2025() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_morpho_onboardPTUSDSSPK18Dec2025() external onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: Ethereum.MORPHO_VAULT_USDS,
             config: MarketParams({
@@ -137,24 +137,24 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         });
     }
 
-    function test_ETHEREUM_sparkLend_usdtCapAutomatorUpdates() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLend_usdtCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.USDT, 500_000_000, 100_000_000, 12 hours);
         _assertBorrowCapConfig(Ethereum.USDT, 450_000_000, 50_000_000,  12 hours);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.USDT, 5_000_000_000, 1_000_000_000, 12 hours);
         _assertBorrowCapConfig(Ethereum.USDT, 5_000_000_000, 200_000_000,  12 hours);
     }
 
-    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(spDaiBalanceBefore,  404_320_160.818926086778450517e18);
         assertEq(spUsdsBalanceBefore, 592_424_783.583591603436341145e18);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
@@ -163,11 +163,11 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     }
 
     // TODO: MDL, does not seem unique to this proposal.
-    function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
+    function test_BASE_controllerUpgrade() external onChain(ChainIdUtils.Base()) {
         _testControllerUpgrade(Base.ALM_CONTROLLER, NEW_ALM_CONTROLLER_BASE);
     }
 
-    function test_BASE_cctpRateLimits() public onChain(ChainIdUtils.Base()) {
+    function test_BASE_cctpRateLimits() external onChain(ChainIdUtils.Base()) {
         ForeignController controller = ForeignController(NEW_ALM_CONTROLLER_BASE);
 
         _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
@@ -177,7 +177,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
             25_000_000e6 / uint256(1 days)
         );
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
         _assertRateLimit(
@@ -187,7 +187,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
         );
     }
 
-    function test_BASE_spark_morphoTransferLimit() public onChain(ChainIdUtils.Base()) {
+    function test_BASE_spark_morphoTransferLimit() external onChain(ChainIdUtils.Base()) {
         bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
             ForeignController(NEW_ALM_CONTROLLER_BASE).LIMIT_ASSET_TRANSFER(),
             MORPHO_TOKEN_BASE,
@@ -196,7 +196,7 @@ contract SparkEthereum_20250918Test is SparkTestBase {
 
         _assertRateLimit(transferKey, 0, 0);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertRateLimit(transferKey, 100_000e18, 100_000e18 / uint256(1 days));
 

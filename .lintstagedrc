@@ -1,0 +1,8 @@
+{
+    "*.{json,md,sol,yml}": [
+        "npm run prettier"
+    ],
+    "*.sol": [
+        "npm run solhint"
+    ]
+}

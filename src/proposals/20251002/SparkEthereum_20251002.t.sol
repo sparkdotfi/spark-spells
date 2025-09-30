@@ -3,20 +3,20 @@ pragma solidity ^0.8.10;
 
 import { IVaultTokenized } from "lib/core/src/interfaces/vault/IVaultTokenized.sol";
 
-import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
+import { MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { IAccessControl }    from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { ChainIdUtils }  from 'src/libraries/ChainId.sol';
-import { SparkTestBase } from 'src/test-harness/SparkTestBase.sol';
+import { ChainIdUtils }  from "src/libraries/ChainId.sol";
+import { SparkTestBase } from "src/test-harness/SparkTestBase.sol";
 
-import { ISparkVaultV2Like } from 'src/interfaces/Interfaces.sol';
+import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 
 interface INetworkRegistry {
     function isEntity(address entity_) external view returns (bool);
@@ -117,14 +117,14 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     }
 
     function setUp() public {
-        setupDomains("2025-09-29T14:06:00Z");
+        _setupDomains("2025-09-29T14:06:00Z");
 
-        deployPayloads();
+        _deployPayloads();
 
         chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
 
-    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
         _testMorphoCapUpdate({
             vault: Ethereum.MORPHO_VAULT_USDS,
             config: MarketParams({
@@ -139,28 +139,28 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         });
     }
 
-    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.LBTC, 2500, 250, 12 hours);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
     }
 
-    function test_ETHEREUM_sparkLend_reserveFactor() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLend_reserveFactor() external onChain(ChainIdUtils.Ethereum()) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
-        ReserveConfig[] memory allConfigsBefore = createConfigurationSnapshot('', ctx.pool);
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
 
-        ReserveConfig memory usdc = _findReserveConfigBySymbol(allConfigsBefore, 'USDC');
-        ReserveConfig memory usdt = _findReserveConfigBySymbol(allConfigsBefore, 'USDT');
+        ReserveConfig memory usdc = _findReserveConfigBySymbol(allConfigsBefore, "USDC");
+        ReserveConfig memory usdt = _findReserveConfigBySymbol(allConfigsBefore, "USDT");
 
         assertEq(usdc.reserveFactor, 10_00);
         assertEq(usdt.reserveFactor, 10_00);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        ReserveConfig[] memory allConfigsAfter = createConfigurationSnapshot('', ctx.pool);
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
 
         usdc.reserveFactor = 1_00;
         usdt.reserveFactor = 1_00;
@@ -169,14 +169,14 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         _validateReserveConfig(usdt, allConfigsAfter);
     }
 
-    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(spDaiBalanceBefore,  427_922_362.907882814087376337e18);
         assertEq(spUsdsBalanceBefore, 292_375_858.985571105560773831e18);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
@@ -184,7 +184,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 33_954.083079896392213769e18);
     }
 
-    function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
             asset:      Ethereum.USDC,
             name:       "Spark Savings USDC",
@@ -198,7 +198,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         });
     }
 
-    function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() external onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
             asset:      Ethereum.USDT,
             name:       "Spark Savings USDT",
@@ -212,7 +212,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         });
     }
 
-    function test_ETHEREUM_sparkVaultsV2_configureSPETH() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkVaultsV2_configureSPETH() external onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
             asset:      Ethereum.WETH,
             name:       "Spark Savings ETH",
@@ -272,7 +272,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
         assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), true);
@@ -328,7 +328,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         vm.stopPrank();
     }
 
-    function test_ETHEREUM_sll_onboardSparklendETH() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_onboardSparklendETH() external onChain(ChainIdUtils.Ethereum()) {
         _testAaveOnboarding(
             Ethereum.WETH_SPTOKEN,
             1_000e18,
@@ -337,17 +337,17 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         );
     }
 
-    function test_ETHEREUM_claimAaveRewards() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_claimAaveRewards() external onChain(ChainIdUtils.Ethereum()) {
         uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(aUSDSBalanceBefore, 0.003724174222078038e18);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547364810826229364e18);
     }
 
-    function test_ETHEREUM_sll_addTransferAssetRateLimitForSYRUP() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_addTransferAssetRateLimitForSYRUP() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             SYRUP,
@@ -356,7 +356,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         _assertRateLimit(transferKey, 0, 0);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _assertRateLimit(transferKey, 200_000e18, 200_000e18 / uint256(1 days));
 
@@ -369,7 +369,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         }));
     }
 
-    function test_ETHEREUM_usdsTransfers() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
         uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION);
         uint256 groveUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY);
         uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
@@ -378,14 +378,14 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(foundationUsdsBalanceBefore, 292_388.004e18);
         assertEq(groveUsdsBalanceBefore,      30_654e18);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),      sparkUsdsBalanceBefore - AMOUNT_TO_GROVE - AMOUNT_TO_SPARK_FOUNDATION);
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION), foundationUsdsBalanceBefore + AMOUNT_TO_SPARK_FOUNDATION);
         assertEq(IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY),        groveUsdsBalanceBefore + AMOUNT_TO_GROVE);
     }
 
-    function test_ETHEREUM_symbioticConfiguration() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_symbioticConfiguration() external onChain(ChainIdUtils.Ethereum()) {
         address NETWORK   = Ethereum.SPARK_PROXY;
         address OWNER     = Ethereum.SPARK_PROXY;
         address OPERATOR  = Ethereum.SPARK_PROXY;
@@ -419,7 +419,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(networkOptInService.isOptedIn(OPERATOR, NETWORK),        false);
         assertEq(vaultOptInService.isOptedIn(OPERATOR, STAKED_SPK_VAULT), false);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _testOwnershipConfiguration();
 
@@ -444,19 +444,19 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         _testSlashingIsDisabledUnlessMiddlewareIsSet();
     }
 
-    function test_ETHEREUM_userStakingSPKE2E() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_userStakingSPKE2E() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshotState();
 
         _testUserStaking(1_000_000e18, false);
 
         vm.revertToState(snapshot);
 
-        executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
         _testUserStaking(1_000_000e18, true);
     }
 
-    function _testUserStaking(uint256 amount, bool stakingLive) public {
+    function _testUserStaking(uint256 amount, bool stakingLive) internal {
         address NETWORK   = Ethereum.SPARK_PROXY;
         address OPERATOR  = Ethereum.SPARK_PROXY;
 
@@ -540,7 +540,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         vm.stopPrank();
     }
 
-    function _testSlashingIsDisabledUnlessMiddlewareIsSet() public {
+    function _testSlashingIsDisabledUnlessMiddlewareIsSet() internal {
         address alice      = makeAddr("alice");
         address bob        = makeAddr("bob");
         address NETWORK    = Ethereum.SPARK_PROXY;
@@ -606,7 +606,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         slasher.executeSlash(slashIndex, "");
     }
 
-    function _testOwnershipConfiguration() public {
+    function _testOwnershipConfiguration() internal {
         INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
         IVetoSlasher             slasher   = IVetoSlasher(VETO_SLASHER);
 

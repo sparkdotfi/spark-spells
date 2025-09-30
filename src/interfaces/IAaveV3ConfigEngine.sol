@@ -15,8 +15,8 @@ interface IAaveV3ConfigEngine {
      * @dev Required for naming of a/v/s tokens
      * Example (mock):
      * PoolContext({
-     *   networkName: 'Polygon',
-     *   networkAbbreviation: 'Pol'
+     *   networkName: "Polygon",
+     *   networkAbbreviation: "Pol"
      * })
      */
     struct PoolContext {
@@ -28,7 +28,7 @@ interface IAaveV3ConfigEngine {
      * @dev Example (mock):
      * Listing({
      *   asset: 0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9,
-     *   assetSymbol: 'AAVE',
+     *   assetSymbol: "AAVE",
      *   priceFeed: 0x547a514d5e3769680Ce22B2361c10Ea13619e8a9,
      *   rateStrategyParams: Rates.RateStrategyParams({
      *     optimalUsageRatio: _bpsToRay(80_00),

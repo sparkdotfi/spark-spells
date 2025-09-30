@@ -20,7 +20,7 @@ library EngineFlags {
 
     /// @dev Converts flag ENABLED DISABLED to bool.
     function toBool(uint256 flag) internal pure returns (bool) {
-        require(flag == 0 || flag == 1, 'INVALID_CONVERSION_TO_BOOL');
+        require(flag == 0 || flag == 1, "INVALID_CONVERSION_TO_BOOL");
         return flag == 1;
     }
 
