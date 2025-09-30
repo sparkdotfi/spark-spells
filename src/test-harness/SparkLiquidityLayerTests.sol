@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
-import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -34,13 +33,17 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
 
 import {
+    ICentrifugeTokenLike,
     ICurvePoolLike,
     ICurveStableswapFactoryLike,
     IFarmLike,
+    IInvestmentManagerLike,
     IMapleStrategyLike,
     IPoolManagerLike,
     IPsmLike,
     ISparkVaultV2Like,
+    ISSRedemptionLike,
+    ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
     IWithdrawalManagerLike
@@ -60,68 +63,6 @@ struct SparkLiquidityLayerContext {
 struct RateLimitData {
     uint256 maxAmount;
     uint256 slope;
-}
-
-interface ISuperstateToken is IERC20 {
-    function calculateSuperstateTokenOut(uint256, address)
-        external view returns (uint256, uint256, uint256);
-    function supportedStablecoins(address stablecoin) external view returns (address sweepDestination, uint256 fee);
-}
-
-interface ISSRedemptionLike {
-    function calculateUsdcOut(uint256 ustbAmount) external view returns (uint256 usdcOutAmount, uint256 usdPerUstbChainlinkRaw);
-    function calculateUstbIn(uint256 usdcOutAmount) external view returns (uint256 ustbInAmount, uint256 usdPerUstbChainlinkRaw);
-}
-
-interface IInvestmentManager {
-    function fulfillCancelDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 fulfillment
-    ) external;
-    function fulfillCancelRedeemRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 shares
-    ) external;
-    function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-    function fulfillRedeemRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-    function escrow() external view returns (address);
-}
-
-interface ICentrifugeToken is IERC7540 {
-    function claimableCancelDepositRequest(uint256 requestId, address controller)
-        external view returns (uint256 claimableAssets);
-    function claimableCancelRedeemRequest(uint256 requestId, address controller)
-        external view returns (uint256 claimableShares);
-    function pendingCancelDepositRequest(uint256 requestId, address controller)
-        external view returns (bool isPending);
-    function pendingCancelRedeemRequest(uint256 requestId, address controller)
-        external view returns (bool isPending);
-    function manager() external view returns (address);
-    function share() external view returns (address);
-    function root() external view returns (address);
-    function trancheId() external view returns (bytes16);
-    function poolId() external view returns (uint64);
 }
 
 // TODO: MDL, only used by `SparkEthereumTests`.
@@ -1655,7 +1596,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         deal(address(p.depositAsset), address(p.ctx.proxy), p.depositAmount);
 
         IERC20           asset = IERC20(p.depositAsset);
-        ISuperstateToken token = ISuperstateToken(p.vault);
+        ISuperstateTokenLike token = ISuperstateTokenLike(p.vault);
 
         uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
         uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
