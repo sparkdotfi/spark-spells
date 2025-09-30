@@ -104,7 +104,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         _executeMainnetPayload();
 
         rateLimitKeys = _getRateLimitKeys(true);
-        integrations = _appendPostExecutionIntegrations(integrations, mainnetController);
+        integrations  = _appendPostExecutionIntegrations(integrations, mainnetController);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 

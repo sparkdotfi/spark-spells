@@ -179,21 +179,10 @@ contract ProtocolV3TestBase is Test {
         // TODO: return argument can be named and used directly.
         ReserveConfig[] memory configs = _getReservesConfigs(pool);
 
-        if (reserveConfigs) {
-            _writeReserveConfigs(path, configs, pool);
-        }
-
-        if (strategyConfigs) {
-            _writeStrategyConfigs(path, configs);
-        }
-
-        if (eModeConfigs) {
-            _writeEModeConfigs(path, configs, pool);
-        }
-
-        if (poolConfigs) {
-            _writePoolConfiguration(path, pool);
-        }
+        if (reserveConfigs)  _writeReserveConfigs(path, configs, pool);
+        if (strategyConfigs) _writeStrategyConfigs(path, configs);
+        if (eModeConfigs)    _writeEModeConfigs(path, configs, pool);
+        if (poolConfigs)     _writePoolConfiguration(path, pool);
 
         return configs;
     }

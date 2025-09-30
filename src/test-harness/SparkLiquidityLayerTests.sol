@@ -52,18 +52,76 @@ import { SpellRunner } from "./SpellRunner.sol";
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
-    struct RateLimitData {
-        uint256 maxAmount;
-        uint256 slope;
+    struct BUIDLE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    depositAsset;
+        address                    depositDestination;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        address                    withdrawAsset;
+        address                    withdrawDestination;
+        uint256                    withdrawAmount;
+        bytes32                    withdrawKey;
     }
 
-    struct SparkLiquidityLayerContext {
-        address     controller;
-        address     prevController;  // Only if upgrading
-        IALMProxy   proxy;
-        IRateLimits rateLimits;
-        address     relayer;
-        address     freezer;
+    struct CoreE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256                    mintAmount;
+        uint256                    burnAmount;
+        bytes32                    mintKey;
+    }
+
+    struct CurveE2ETestVars {
+        uint256   depositAmount0;
+        uint256   depositAmount1;
+        uint256   maxSlippage;
+        uint256   depositLimit;
+        uint256   withdrawLimit;
+        uint256[] rates;
+        uint256[] depositAmounts;
+        uint256   totalDepositValue;
+        uint256   minLPAmount;
+        uint256   shares;
+        uint256[] withdrawAmounts;
+        uint256[] withdrawnTokens;
+        uint256   totalWithdrawnValue;
+    }
+
+    struct CurveLPE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address pool;
+        address asset0;
+        address asset1;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+        uint256 tolerance;
+    }
+
+    struct CurveOnboardingVars {
+        ICurvePoolLike             pool;
+        SparkLiquidityLayerContext ctx;
+        MainnetController          prevController;
+        MainnetController          controller;
+        uint256[]                  depositAmounts;
+        uint256                    minLPAmount;
+        uint256[]                  withdrawAmounts;
+        uint256[]                  rates;
+        bytes32                    swapKey;
+        bytes32                    depositKey;
+        bytes32                    withdrawKey;
+        uint256                    minAmountOut;
+        uint256                    lpBalance;
+        uint256                    smallerMaxSlippage;
+    }
+
+    struct CurveSwapE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    pool;
+        address                    asset0;
+        address                    asset1;
+        uint256                    swapAmount;
+        bytes32                    swapKey;
     }
 
     struct E2ETestParams {
@@ -73,6 +131,37 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 depositKey;
         bytes32 withdrawKey;
         uint256 tolerance;
+    }
+
+    struct EthenaE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        uint256                    depositAmount;
+        bytes32                    mintKey;
+        bytes32                    depositKey;
+        bytes32                    cooldownKey;
+        bytes32                    burnKey;
+        uint256                    tolerance;
+    }
+
+    struct EthenaE2ETestVars {
+        uint256 mintLimit;
+        uint256 depositLimit;
+        uint256 cooldownLimit;
+        uint256 burnLimit;
+        uint256 usdeAmount;
+        uint256 proxyUsdeBalance;
+        uint256 proxyUsdcBalance;
+        uint256 startingShares;
+        uint256 startingAssets;
+        uint256 shares;
+    }
+
+    struct FarmE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    farm;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        bytes32                    withdrawKey;
     }
 
     struct MapleE2ETestParams {
@@ -97,153 +186,64 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 totalEscrowedShares;
     }
 
-    struct CurveOnboardingVars {
-        ICurvePoolLike pool;
-        SparkLiquidityLayerContext ctx;
-        MainnetController prevController;
-        MainnetController controller;
-        uint256[] depositAmounts;
-        uint256 minLPAmount;
-        uint256[] withdrawAmounts;
-        uint256[] rates;
-        bytes32 swapKey;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-        uint256 minAmountOut;
-        uint256 lpBalance;
-        uint256 smallerMaxSlippage;
-    }
-
-    struct CurveLPE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address pool;
-        address asset0;
-        address asset1;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-        uint256 tolerance;
-    }
-
-    struct CurveE2ETestVars {
-        uint256 depositAmount0;
-        uint256 depositAmount1;
-        uint256 maxSlippage;
-        uint256 depositLimit;
-        uint256 withdrawLimit;
-        uint256[] rates;
-        uint256[] depositAmounts;
-        uint256 totalDepositValue;
-        uint256 minLPAmount;
-        uint256 shares;
-        uint256[] withdrawAmounts;
-        uint256[] withdrawnTokens;
-        uint256 totalWithdrawnValue;
-    }
-
-    struct CurveSwapE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address pool;
-        address asset0;
-        address asset1;
-        uint256 swapAmount;
-        bytes32 swapKey;
-    }
-
     struct PSMSwapE2ETestParams {
         SparkLiquidityLayerContext ctx;
-        address psm;
-        uint256 swapAmount;
-        bytes32 swapKey;
+        address                    psm;
+        uint256                    swapAmount;
+        bytes32                    swapKey;
     }
 
-    struct FarmE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address farm;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
+    struct RateLimitData {
+        uint256 maxAmount;
+        uint256 slope;
     }
 
-    struct EthenaE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        uint256 depositAmount;
-        bytes32 mintKey;
-        bytes32 depositKey;
-        bytes32 cooldownKey;
-        bytes32 burnKey;
-        uint256 tolerance;
-    }
-
-    struct EthenaE2ETestVars {
-        uint256 mintLimit;
-        uint256 depositLimit;
-        uint256 cooldownLimit;
-        uint256 burnLimit;
-        uint256 usdeAmount;
-        uint256 proxyUsdeBalance;
-        uint256 proxyUsdcBalance;
-        uint256 startingShares;
-        uint256 startingAssets;
-        uint256 shares;
-    }
-
-    struct CoreE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        uint256 mintAmount;
-        uint256 burnAmount;
-        bytes32 mintKey;
-    }
-
-    struct BUIDLE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address depositAsset;
-        address depositDestination;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        address withdrawAsset;
-        address withdrawDestination;
-        uint256 withdrawAmount;
-        bytes32 withdrawKey;
-    }
-
-    struct TransferAssetE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address asset;
-        address destination;
-        bytes32 transferKey;
-        uint256 transferAmount;
-    }
-
-    struct SuperstateE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address vault;
-        address depositAsset;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        address withdrawAsset;
-        address withdrawDestination;
-        uint256 withdrawAmount;
-        bytes32 withdrawKey;
-    }
-
-    struct VaultTakeE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address asset;
-        address vault;
-        bytes32 takeKey;
-        uint256 takeAmount;
+    struct SparkLiquidityLayerContext {
+        address     controller;
+        address     prevController;  // Only if upgrading
+        IALMProxy   proxy;
+        IRateLimits rateLimits;
+        address     relayer;
+        address     freezer;
     }
 
     struct SparkVaultV2E2ETestParams {
         SparkLiquidityLayerContext ctx;
-        address vault;
-        bytes32 takeKey;
-        bytes32 transferKey;
-        uint256 takeAmount;
-        uint256 transferAmount;
-        uint256 userVaultAmount;
-        uint256 tolerance;
+        address                    vault;
+        bytes32                    takeKey;
+        bytes32                    transferKey;
+        uint256                    takeAmount;
+        uint256                    transferAmount;
+        uint256                    userVaultAmount;
+        uint256                    tolerance;
+    }
+
+    struct SuperstateE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    vault;
+        address                    depositAsset;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        address                    withdrawAsset;
+        address                    withdrawDestination;
+        uint256                    withdrawAmount;
+        bytes32                    withdrawKey;
+    }
+
+    struct TransferAssetE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    asset;
+        address                    destination;
+        bytes32                    transferKey;
+        uint256                    transferAmount;
+    }
+
+    struct VaultTakeE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    asset;
+        address                    vault;
+        bytes32                    takeKey;
+        uint256                    takeAmount;
     }
 
     using DomainHelpers for Domain;

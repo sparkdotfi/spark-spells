@@ -239,7 +239,7 @@ abstract contract SpellRunner is Test {
         for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
 
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; ++j) {
+            for (uint256 j = 0; j < chainData[chainId].bridges.length; ++j) {
                 _executeBridge(chainData[chainId].bridges[j]);
             }
         }
@@ -326,7 +326,7 @@ abstract contract SpellRunner is Test {
         for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
 
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; ++j) {
+            for (uint256 j = 0; j < chainData[chainId].bridges.length; ++j) {
                 chainData[chainId].bridges[j].lastSourceLogIndex = 0;
                 chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
