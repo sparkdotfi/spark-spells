@@ -2,9 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
+import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
+
+import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Base }     from "spark-address-registry/Base.sol";
@@ -32,17 +35,94 @@ import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
 
 import {
     ICurvePoolLike,
+    ICurveStableswapFactoryLike,
+    IFarmLike,
+    IMapleStrategyLike,
     IPoolManagerLike,
     IPsmLike,
-    IMapleStrategyLike,
-    IWithdrawalManagerLike,
-    ISyrupLike,
+    ISparkVaultV2Like,
     ISUSDELike,
-    ICurveStableswapFactoryLike,
-    IFarmLike
+    ISyrupLike,
+    IWithdrawalManagerLike
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
+
+struct SparkLiquidityLayerContext {
+    address     controller;
+    address     prevController;  // Only if upgrading
+    IALMProxy   proxy;
+    IRateLimits rateLimits;
+    address     relayer;
+    address     freezer;
+}
+
+struct RateLimitData {
+    uint256 maxAmount;
+    uint256 slope;
+}
+
+interface ISuperstateToken is IERC20 {
+    function calculateSuperstateTokenOut(uint256, address)
+        external view returns (uint256, uint256, uint256);
+    function supportedStablecoins(address stablecoin) external view returns (address sweepDestination, uint256 fee);
+}
+
+interface ISSRedemptionLike {
+    function calculateUsdcOut(uint256 ustbAmount) external view returns (uint256 usdcOutAmount, uint256 usdPerUstbChainlinkRaw);
+    function calculateUstbIn(uint256 usdcOutAmount) external view returns (uint256 ustbInAmount, uint256 usdPerUstbChainlinkRaw);
+}
+
+interface IInvestmentManager {
+    function fulfillCancelDepositRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 fulfillment
+    ) external;
+    function fulfillCancelRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 shares
+    ) external;
+    function fulfillDepositRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) external;
+    function fulfillRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) external;
+    function escrow() external view returns (address);
+}
+
+interface ICentrifugeToken is IERC7540 {
+    function claimableCancelDepositRequest(uint256 requestId, address controller)
+        external view returns (uint256 claimableAssets);
+    function claimableCancelRedeemRequest(uint256 requestId, address controller)
+        external view returns (uint256 claimableShares);
+    function pendingCancelDepositRequest(uint256 requestId, address controller)
+        external view returns (bool isPending);
+    function pendingCancelRedeemRequest(uint256 requestId, address controller)
+        external view returns (bool isPending);
+    function manager() external view returns (address);
+    function share() external view returns (address);
+    function root() external view returns (address);
+    function trancheId() external view returns (bytes16);
+    function poolId() external view returns (uint64);
+}
 
 // TODO: MDL, only used by `SparkEthereumTests`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -404,7 +484,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        _testERC4626Integration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
     }
 
     function _testAaveIntegration(E2ETestParams memory p) internal {
@@ -589,8 +669,25 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.startPrank(poolManager.poolDelegate());
 
-        // Withdraw from sUSDS strategy
-        IMapleStrategyLike(poolManager.strategyList(3)).withdrawFromStrategy(v.withdrawAmount);
+        uint256 remainingWithdrawal = v.withdrawAmount;
+
+        // Iterate from the last strategy to the first because the first strategies are loan managers
+        // which don't support withdrawFromStrategy
+        for (uint256 i = poolManager.strategyListLength() - 1; i > 0; i--) {
+            IMapleStrategyLike strategy = IMapleStrategyLike(poolManager.strategyList(i));
+
+            uint256 aum = strategy.assetsUnderManagement();
+
+            if (aum == 0) continue;
+
+            uint256 strategyWithdrawAmount = aum > remainingWithdrawal ? remainingWithdrawal : aum;
+
+            strategy.withdrawFromStrategy(strategyWithdrawAmount);
+
+            remainingWithdrawal -= strategyWithdrawAmount;
+
+            if (remainingWithdrawal == 0) break;
+        }
 
         IWithdrawalManagerLike(withdrawalManager).processRedemptions(v.shares);
 
@@ -820,12 +917,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 deposit1Value = p.depositAmount * (pool.balances(1) * v.rates[1] / totalValue) / 1e18;
 
         // Convert to asset value
-        v.depositAmount0 = deposit0Value * 1e36 / (v.rates[0] * 10 ** IERC20(p.asset0).decimals());
-        v.depositAmount1 = deposit1Value * 1e36 / (v.rates[1] * 10 ** IERC20(p.asset1).decimals());
+        v.depositAmount0 = deposit0Value * 1e36 / (v.rates[0] * 10 ** IERC20Metadata(p.asset0).decimals());
+        v.depositAmount1 = deposit1Value * 1e36 / (v.rates[1] * 10 ** IERC20Metadata(p.asset1).decimals());
 
         // Convert to asset precision (TODO: Simplify mathematically with above)
-        v.depositAmount0 = v.depositAmount0 * 10 ** IERC20(p.asset0).decimals() / 1e18;
-        v.depositAmount1 = v.depositAmount1 * 10 ** IERC20(p.asset1).decimals() / 1e18;
+        v.depositAmount0 = v.depositAmount0 * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
+        v.depositAmount1 = v.depositAmount1 * 10 ** IERC20Metadata(p.asset1).decimals() / 1e18;
 
         deal(address(p.asset0), address(p.ctx.proxy), v.depositAmount0);
         deal(address(p.asset1), address(p.ctx.proxy), v.depositAmount1);
@@ -924,7 +1021,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
 
-        uint256 swapAmount = p.swapAmount * 10 ** IERC20(p.asset0).decimals() / 1e18;
+        uint256 swapAmount = p.swapAmount * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
         uint256 swapValue  = swapAmount * rates[0] / 1e18;
 
         deal(address(p.asset0), address(p.ctx.proxy), swapAmount);
@@ -1238,6 +1335,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Assert cooldown is unlimited
         assertEq(v.cooldownLimit, type(uint256).max);
 
+        // Unstake any existing sUSDE to prevent unexpected behavior
+        skip(7 days + 1);
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).unstakeSUSDe();
+
         /*************************************/
         /*** Step 1: Check mint rate limit ***/
         /*************************************/
@@ -1363,7 +1465,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
 
-        assertEq(usde.balanceOf(address(silo)), siloBalance + underlyingUsde);
+        assertEq(usde.balanceOf(address(silo)),        siloBalance + underlyingUsde);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).unstakeSUSDe();
@@ -1496,6 +1599,327 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), mintLimit - p.mintAmount + p.burnAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
+    }
+
+    struct TransferAssetE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address asset;
+        address destination;
+        bytes32 transferKey;
+        uint256 transferAmount;
+    }
+
+    function _testTransferAssetIntegration(TransferAssetE2ETestParams memory p) internal {
+        MainnetController controller = MainnetController(p.ctx.controller);
+
+        IERC20 asset = IERC20(p.asset);
+
+        uint256 transferLimit   = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
+        uint256 transferAmount1 = p.transferAmount / 4;
+        uint256 transferAmount2 = p.transferAmount - transferAmount1;
+
+        deal(address(asset), address(p.ctx.proxy), transferAmount1 + transferAmount2);
+
+        bool unlimitedTransfer = transferLimit == type(uint256).max;
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        if (!unlimitedTransfer) {
+            vm.prank(p.ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            controller.transferAsset(address(asset), p.destination, transferLimit + 1);
+        }
+
+        /*****************************************************/
+        /*** Step 2: Transfer and check resulting position ***/
+        /*****************************************************/
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount1 + transferAmount2);
+        assertEq(asset.balanceOf(p.destination),        0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
+
+        vm.prank(p.ctx.relayer);
+        controller.transferAsset(address(asset), p.destination, transferAmount1);
+
+        assertEq(asset.balanceOf(p.destination),        transferAmount1);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount2);
+
+        assertEq(
+            p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
+            unlimitedTransfer ? transferLimit : transferLimit - transferAmount1
+        );
+
+        /*****************************************/
+        /*** Step 3: Transfer remaining amount ***/
+        /*****************************************/
+
+        vm.prank(p.ctx.relayer);
+        controller.transferAsset(address(asset), p.destination, transferAmount2);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(p.destination),        transferAmount1 + transferAmount2);
+
+        assertEq(
+            p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
+            unlimitedTransfer ? transferLimit : transferLimit - transferAmount1 - transferAmount2
+        );
+
+        /********************************************/
+        /*** Step 4: Warp to recharge rate limits ***/
+        /********************************************/
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);  // Should be this for unlimited transfers as well
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), p.ctx.rateLimits.getRateLimitData(p.transferKey).maxAmount);
+    }
+
+    struct BUIDLE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address depositAsset;
+        address depositDestination;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        address withdrawAsset;
+        address withdrawDestination;
+        uint256 withdrawAmount;
+        bytes32 withdrawKey;
+    }
+
+    function _testBUIDLIntegration(BUIDLE2ETestParams memory p) internal {
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.depositAsset,
+            destination:    p.depositDestination,
+            transferKey:    p.depositKey,
+            transferAmount: p.depositAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.withdrawAsset,
+            destination:    p.withdrawDestination,
+            transferKey:    p.withdrawKey,
+            transferAmount: p.withdrawAmount
+        }));
+    }
+
+    struct SuperstateE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        address depositAsset;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        address withdrawAsset;
+        address withdrawDestination;
+        uint256 withdrawAmount;
+        bytes32 withdrawKey;
+    }
+
+    function _testSuperstateIntegration(SuperstateE2ETestParams memory p) internal {
+        MainnetController controller = MainnetController(p.ctx.controller);
+
+        deal(address(p.depositAsset), address(p.ctx.proxy), p.depositAmount);
+
+        IERC20           asset = IERC20(p.depositAsset);
+        ISuperstateToken token = ISuperstateToken(p.vault);
+
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        controller.subscribeSuperstate(depositLimit + 1);
+
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
+
+        ( address sweepDestination, ) = token.supportedStablecoins(address(asset));
+
+        uint256 sweepDestinationBalance = asset.balanceOf(sweepDestination);
+
+        ( uint256 expectedToken, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount )
+            = token.calculateSuperstateTokenOut(p.depositAmount, address(asset));
+
+        uint256 totalSupply = token.totalSupply();
+
+        assertEq(stablecoinInAmountAfterFee, p.depositAmount);
+        assertEq(feeOnStablecoinInAmount,    0);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        assertEq(asset.balanceOf(sweepDestination),     sweepDestinationBalance);
+
+        assertEq(asset.allowance(address(p.ctx.proxy), address(token)), 0);
+
+        assertEq(token.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(token.totalSupply(),                   totalSupply);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+
+        vm.prank(p.ctx.relayer);
+        controller.subscribeSuperstate(p.depositAmount);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(sweepDestination),     sweepDestinationBalance + p.depositAmount);
+
+        assertEq(asset.allowance(address(p.ctx.proxy), address(token)), 0);
+
+        assertEq(token.balanceOf(address(p.ctx.proxy)), expectedToken);
+        assertEq(token.totalSupply(),                   totalSupply + expectedToken);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+
+        /**************************************************/
+        /*** Step 3: Warp and recharge all rate limits ***/
+        /**************************************************/
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+    }
+
+    struct VaultTakeE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address asset;
+        address vault;
+        bytes32 takeKey;
+        uint256 takeAmount;
+    }
+
+    function _testVaultTakeIntegration(VaultTakeE2ETestParams memory p) internal {
+        MainnetController controller = MainnetController(p.ctx.controller);
+
+        deal(address(p.asset), address(p.vault), p.takeAmount);
+
+        uint256 rateLimit = p.ctx.rateLimits.getCurrentRateLimit(p.takeKey);
+
+        uint256 sparkBalance = IERC20(p.asset).balanceOf(address(p.ctx.proxy));
+        uint256 vaultBalance = IERC20(p.asset).balanceOf(p.vault);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.takeKey), rateLimit);
+
+        assertEq(IERC20(p.asset).balanceOf(p.vault),              vaultBalance);
+        assertEq(IERC20(p.asset).balanceOf(address(p.ctx.proxy)), sparkBalance);
+
+        vm.prank(p.ctx.relayer);
+        controller.takeFromSparkVault(p.vault, p.takeAmount);
+
+        assertEq(IERC20(p.asset).balanceOf(p.vault),              vaultBalance - p.takeAmount);
+        assertEq(IERC20(p.asset).balanceOf(address(p.ctx.proxy)), sparkBalance + p.takeAmount);
+
+        if (rateLimit != type(uint256).max) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.takeKey), rateLimit - p.takeAmount);
+        } else {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.takeKey), type(uint256).max);
+        }
+    }
+
+    struct SparkVaultV2E2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        bytes32 takeKey;
+        bytes32 transferKey;
+        uint256 takeAmount;
+        uint256 transferAmount;
+        uint256 userVaultAmount;
+        uint256 tolerance;
+    }
+
+    function _testSparkVaultV2Integration(SparkVaultV2E2ETestParams memory p) internal {
+        ISparkVaultV2Like vault = ISparkVaultV2Like(p.vault);
+
+        // Step 1: Check seeding
+
+        uint256 amount = vault.asset() == Ethereum.WETH ? 0.0001e18 : 1e6;
+
+        assertGe(vault.totalSupply(), amount);
+        assertGe(vault.totalAssets(), amount);
+
+        assertEq(vault.balanceOf(address(1)), amount);
+
+        // Step 2: Check SLL take and transfer integrations
+
+        _testVaultTakeIntegration(VaultTakeE2ETestParams({
+            ctx:        p.ctx,
+            asset:      vault.asset(),
+            vault:      p.vault,
+            takeKey:    p.takeKey,
+            takeAmount: p.takeAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          vault.asset(),
+            destination:    p.vault,
+            transferKey:    p.transferKey,
+            transferAmount: p.transferAmount
+        }));
+
+        // Step 3: Check user vault integration
+
+        address user = makeAddr("user");
+
+        IERC20 asset = IERC20(vault.asset());
+
+        deal(address(asset), user, p.userVaultAmount);
+
+        uint256 assetBalanceVault = asset.balanceOf(address(vault));
+        uint256 vaultTotalSupply  = vault.totalSupply();
+
+        assertEq(asset.balanceOf(user),           p.userVaultAmount);
+        assertEq(asset.balanceOf(address(vault)), assetBalanceVault);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply);
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(vault.assetsOf(user),  0);
+
+        vm.startPrank(user);
+        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), p.vault, p.userVaultAmount);
+        uint256 shares = vault.deposit(p.userVaultAmount, user);
+        vm.stopPrank();
+
+        assertEq(asset.balanceOf(user),           0);
+        assertEq(asset.balanceOf(address(vault)), assetBalanceVault + p.userVaultAmount);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
+        assertEq(vault.balanceOf(user), shares);
+
+        assertApproxEqAbs(vault.assetsOf(user),  p.userVaultAmount, p.tolerance);
+
+        // TODO: Remove this once vaults are live (5% APY)
+        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        vault.setVsr(1.000000001547125957863212448e27);
+
+        skip(1 days);
+
+        assertEq(asset.balanceOf(user),           0);
+        assertEq(asset.balanceOf(address(vault)), assetBalanceVault + p.userVaultAmount);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
+        assertEq(vault.balanceOf(user), shares);
+        assertGt(vault.assetsOf(user),  p.userVaultAmount);
+
+        uint256 totalVaultAssets = vault.totalAssets();
+        deal(address(asset), p.vault, totalVaultAssets);
+
+        vm.prank(user);
+        vault.redeem(shares, user, user);
+
+        assertGt(asset.balanceOf(user),           p.userVaultAmount);
+        assertLt(asset.balanceOf(address(vault)), assetBalanceVault);
+
+        assertEq(vault.totalSupply(),   vaultTotalSupply);
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(vault.assetsOf(user),  0);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
@@ -1641,52 +2065,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
-    }
-
-    function _testTransferAssetIntegration(
-        address token,
-        address destination,
-        address controller_,
-        uint256 expectedRateLimit,
-        uint256 transferAmount
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController controller = MainnetController(controller_);
-
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            controller.LIMIT_ASSET_TRANSFER(),
-            token,
-            destination
-        );
-
-        deal(token, address(ctx.proxy), transferAmount);
-
-        assertEq(IERC20(token).balanceOf(destination),        0);
-        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(token, destination, transferAmount / 2);
-
-        assertEq(IERC20(token).balanceOf(destination),        transferAmount / 2);
-        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), transferAmount / 2);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        vm.prank(ctx.relayer);
-        controller.transferAsset(token, destination, transferAmount / 2);
-
-        assertEq(IERC20(token).balanceOf(destination),        transferAmount);
-        assertEq(IERC20(token).balanceOf(address(ctx.proxy)), 0);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit - transferAmount / 2);
-
-        skip(1 days + 1 seconds);  // +1 second due to rounding
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), expectedRateLimit);
     }
 
     function _testE2ESLLCrossChainForDomain(

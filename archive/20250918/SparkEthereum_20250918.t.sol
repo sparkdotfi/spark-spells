@@ -200,13 +200,13 @@ contract SparkEthereum_20250918Test is SparkTestBase {
 
         _assertRateLimit(transferKey, 100_000e18, 100_000e18 / uint256(1 days));
 
-        _testTransferAssetIntegration(
-            MORPHO_TOKEN_BASE,
-            SPARK_MULTISIG_BASE,
-            NEW_ALM_CONTROLLER_BASE,
-            100_000e18,
-            100_000e18
-        );
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : MORPHO_TOKEN_BASE,
+            destination    : SPARK_MULTISIG_BASE,
+            transferKey    : transferKey,
+            transferAmount : 100_000e18
+        }));
     }
 
 }
