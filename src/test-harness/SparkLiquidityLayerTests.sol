@@ -250,20 +250,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
-    address internal immutable _previousEthereumController;
-    address internal immutable _newEthereumController;
-    address internal immutable _previousBaseController;
-    address internal immutable _newBaseController;
-
-    function setUp() public override virtual {
-        super.setUp();
-
-        chainData[ChainIdUtils.Ethereum()].prevController = _previousEthereumController;
-        chainData[ChainIdUtils.Ethereum()].newController  = _newEthereumController;
-
-        chainData[ChainIdUtils.Base()].prevController = _previousBaseController;
-        chainData[ChainIdUtils.Base()].newController  = _newBaseController;
-    }
 
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/

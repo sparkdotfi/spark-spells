@@ -113,13 +113,12 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     error NotNetworkMiddleware();
 
     constructor() {
-        id = "20251002";
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
     }
 
-    function setUp() public {
-        _setupDomains("2025-09-29T14:06:00Z");
-
-        _deployPayloads();
+    function setUp() public override {
+        super.setUp();
 
         chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
