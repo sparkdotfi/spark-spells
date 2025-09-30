@@ -51,20 +51,6 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-struct SparkLiquidityLayerContext {
-    address     controller;
-    address     prevController;  // Only if upgrading
-    IALMProxy   proxy;
-    IRateLimits rateLimits;
-    address     relayer;
-    address     freezer;
-}
-
-struct RateLimitData {
-    uint256 maxAmount;
-    uint256 slope;
-}
-
 // TODO: MDL, only used by `SparkEthereumTests`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
