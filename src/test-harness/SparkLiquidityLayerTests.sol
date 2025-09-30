@@ -33,16 +33,13 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
 
 import {
-    ICentrifugeTokenLike,
     ICurvePoolLike,
     ICurveStableswapFactoryLike,
     IFarmLike,
-    IInvestmentManagerLike,
     IMapleStrategyLike,
     IPoolManagerLike,
     IPsmLike,
     ISparkVaultV2Like,
-    ISSRedemptionLike,
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
@@ -684,7 +681,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Iterate from the last strategy to the first because the first strategies are loan managers
         // which don't support withdrawFromStrategy
-        for (uint256 i = poolManager.strategyListLength() - 1; i > 0; i--) {
+        for (uint256 i = poolManager.strategyListLength() - 1; i > 0; --i) {
             IMapleStrategyLike strategy = IMapleStrategyLike(poolManager.strategyList(i));
 
             uint256 aum = strategy.assetsUnderManagement();
@@ -1252,6 +1249,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Unstake any existing sUSDE to prevent unexpected behavior
         skip(7 days + 1);
+
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).unstakeSUSDe();
 
@@ -1600,7 +1598,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         deal(address(p.depositAsset), address(p.ctx.proxy), p.depositAmount);
 
-        IERC20           asset = IERC20(p.depositAsset);
+        IERC20               asset = IERC20(p.depositAsset);
         ISuperstateTokenLike token = ISuperstateTokenLike(p.vault);
 
         uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
