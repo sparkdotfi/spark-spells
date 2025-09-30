@@ -198,6 +198,57 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 mintKey;
     }
 
+    struct BUIDLE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address depositAsset;
+        address depositDestination;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        address withdrawAsset;
+        address withdrawDestination;
+        uint256 withdrawAmount;
+        bytes32 withdrawKey;
+    }
+
+    struct TransferAssetE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address asset;
+        address destination;
+        bytes32 transferKey;
+        uint256 transferAmount;
+    }
+
+    struct SuperstateE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        address depositAsset;
+        uint256 depositAmount;
+        bytes32 depositKey;
+        address withdrawAsset;
+        address withdrawDestination;
+        uint256 withdrawAmount;
+        bytes32 withdrawKey;
+    }
+
+    struct VaultTakeE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address asset;
+        address vault;
+        bytes32 takeKey;
+        uint256 takeAmount;
+    }
+
+    struct SparkVaultV2E2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address vault;
+        bytes32 takeKey;
+        bytes32 transferKey;
+        uint256 takeAmount;
+        uint256 transferAmount;
+        uint256 userVaultAmount;
+        uint256 tolerance;
+    }
+
     using DomainHelpers for Domain;
 
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
@@ -1458,14 +1509,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
     }
 
-    struct TransferAssetE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address asset;
-        address destination;
-        bytes32 transferKey;
-        uint256 transferAmount;
-    }
-
     function _testTransferAssetIntegration(TransferAssetE2ETestParams memory p) internal {
         MainnetController controller = MainnetController(p.ctx.controller);
 
@@ -1534,18 +1577,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), p.ctx.rateLimits.getRateLimitData(p.transferKey).maxAmount);
     }
 
-    struct BUIDLE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address depositAsset;
-        address depositDestination;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        address withdrawAsset;
-        address withdrawDestination;
-        uint256 withdrawAmount;
-        bytes32 withdrawKey;
-    }
-
     function _testBUIDLIntegration(BUIDLE2ETestParams memory p) internal {
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx:            p.ctx,
@@ -1562,18 +1593,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             transferKey:    p.withdrawKey,
             transferAmount: p.withdrawAmount
         }));
-    }
-
-    struct SuperstateE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address vault;
-        address depositAsset;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        address withdrawAsset;
-        address withdrawDestination;
-        uint256 withdrawAmount;
-        bytes32 withdrawKey;
     }
 
     function _testSuperstateIntegration(SuperstateE2ETestParams memory p) internal {
@@ -1644,14 +1663,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
-    struct VaultTakeE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address asset;
-        address vault;
-        bytes32 takeKey;
-        uint256 takeAmount;
-    }
-
     function _testVaultTakeIntegration(VaultTakeE2ETestParams memory p) internal {
         MainnetController controller = MainnetController(p.ctx.controller);
 
@@ -1678,17 +1689,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.takeKey), type(uint256).max);
         }
-    }
-
-    struct SparkVaultV2E2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address vault;
-        bytes32 takeKey;
-        bytes32 transferKey;
-        uint256 takeAmount;
-        uint256 transferAmount;
-        uint256 userVaultAmount;
-        uint256 tolerance;
     }
 
     function _testSparkVaultV2Integration(SparkVaultV2E2ETestParams memory p) internal {
