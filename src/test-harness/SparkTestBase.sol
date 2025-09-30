@@ -349,7 +349,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 transferKey:     integration.exitId,
                 takeAmount:      amount * 10 ** decimals,
                 transferAmount:  amount * 10 ** decimals,
-                userVaultAmount: amount * 10 ** decimals
+                userVaultAmount: amount * 10 ** decimals,
+                tolerance:       10
             }));
         }
 

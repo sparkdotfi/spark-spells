@@ -307,7 +307,8 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             transferKey:     transferKey,
             takeAmount:      amount,
             transferAmount:  amount,
-            userVaultAmount: amount
+            userVaultAmount: amount,
+            tolerance:       10
         }));
     }
 

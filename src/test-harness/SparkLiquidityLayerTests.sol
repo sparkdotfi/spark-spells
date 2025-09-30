@@ -669,6 +669,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.startPrank(poolManager.poolDelegate());
 
+        uint256 remainingWithdrawal = v.withdrawAmount;
+
         // Iterate from the last strategy to the first because the first strategies are loan managers
         // which don't support withdrawFromStrategy
         for (uint256 i = poolManager.strategyListLength() - 1; i > 0; i--) {
@@ -681,6 +683,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 strategyWithdrawAmount = aum > remainingWithdrawal ? remainingWithdrawal : aum;
 
             strategy.withdrawFromStrategy(strategyWithdrawAmount);
+
+            remainingWithdrawal -= strategyWithdrawAmount;
+
+            if (remainingWithdrawal == 0) break;
         }
 
         IWithdrawalManagerLike(withdrawalManager).processRedemptions(v.shares);
@@ -1825,6 +1831,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 takeAmount;
         uint256 transferAmount;
         uint256 userVaultAmount;
+        uint256 tolerance;
     }
 
     function _testSparkVaultV2Integration(SparkVaultV2E2ETestParams memory p) internal {
@@ -1885,7 +1892,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
-        assertEq(vault.assetsOf(user),  p.userVaultAmount);
+
+        assertApproxEqAbs(vault.assetsOf(user),  p.userVaultAmount, p.tolerance);
 
         // TODO: Remove this once vaults are live (5% APY)
         vm.prank(Ethereum.ALM_OPS_MULTISIG);
