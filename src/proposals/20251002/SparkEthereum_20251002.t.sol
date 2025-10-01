@@ -7,6 +7,7 @@ import { MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { IAccessControl }    from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
@@ -261,6 +262,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         assertEq(vault.asset(),      asset);
         assertEq(vault.name(),       name);
+        assertEq(vault.decimals(),   IERC20Metadata(vault.asset()).decimals());
         assertEq(vault.symbol(),     symbol);
         assertEq(vault.rho(),        rho);
         assertEq(vault.chi(),        uint192(1e27));
