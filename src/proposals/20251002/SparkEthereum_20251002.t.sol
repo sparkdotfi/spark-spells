@@ -118,11 +118,11 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     }
 
     function setUp() public {
-        _setupDomains("2025-10-01T17:57:00Z");
+        _setupDomains("2025-10-01T18:20:00Z");
 
         _deployPayloads();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x4a3a40957CDc47552E2BE2012d127A5f4BD7f689;
     }
 
     function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
@@ -174,15 +174,15 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  422_895_658.807518453521688321e18);
-        assertEq(spUsdsBalanceBefore, 227_895_338.171581038658175236e18);
+        assertEq(spDaiBalanceBefore,  422_896_341.232447860141064508e18);
+        assertEq(spUsdsBalanceBefore, 227_895_692.491845927531591258e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 45_964.014638266434659904e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 41_113.006258945035250611e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 46_096.554459614669743422e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 41_152.907134300607555737e18);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Ethereum()) {
@@ -342,11 +342,11 @@ contract SparkEthereum_20251002Test is SparkTestBase {
     function test_ETHEREUM_claimAaveRewards() external onChain(ChainIdUtils.Ethereum()) {
         uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(aUSDSBalanceBefore, 0.003724699360607847e18);
+        assertEq(aUSDSBalanceBefore, 0.003724703326403930e18);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547365652465693993e18);
+        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547365659745729278e18);
     }
 
     function test_ETHEREUM_sll_addTransferAssetRateLimitForSYRUP() external onChain(ChainIdUtils.Ethereum()) {
@@ -435,7 +435,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
         assertEq(delegator.totalOperatorNetworkShares(subnetwork),      1e18);
         assertEq(delegator.hook(),                                      RESET_HOOK);
-        assertEq(delegator.stake(subnetwork, OPERATOR),                 285_709_290.117092289594062182e18);
+        assertEq(delegator.stake(subnetwork, OPERATOR),                 285_708_415.310281029594062182e18);
         assertEq(delegator.stake(subnetwork, OPERATOR),                 stSpk.activeStake());
 
         assertEq(slasher.resolver(subnetwork, ""), OWNER);
