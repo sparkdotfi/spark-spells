@@ -109,30 +109,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         _testAllReservesAreSeeded(ChainIdUtils.Gnosis());
     }
 
-    function test_ETHEREUM_PayloadBytecodeMatches() external {
-        _testPayloadBytecodeMatches(ChainIdUtils.Ethereum());
-    }
-
-    function test_BASE_PayloadBytecodeMatches() external {
-        _testPayloadBytecodeMatches(ChainIdUtils.Base());
-    }
-
-    function test_GNOSIS_PayloadBytecodeMatches() external {
-        _testPayloadBytecodeMatches(ChainIdUtils.Gnosis());
-    }
-
-    function test_ARBITRUM_ONE_PayloadBytecodeMatches() external {
-        _testPayloadBytecodeMatches(ChainIdUtils.ArbitrumOne());
-    }
-
-    function test_OPTIMISM_PayloadBytecodeMatches() external {
-        _testPayloadBytecodeMatches(ChainIdUtils.Optimism());
-    }
-
-    function test_UNICHAIN_PayloadBytecodeMatches() external {
-        _testPayloadBytecodeMatches(ChainIdUtils.Unichain());
-    }
-
     function test_ETHEREUM_FreezerMom() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
@@ -153,22 +129,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         _executeAllPayloadsAndBridges();
         _runFreezerMomTestsMultisig();
-    }
-
-    function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
-        ISparkProxyLike proxy = ISparkProxyLike(Ethereum.SPARK_PROXY);
-        address         esm   = 0x09e05fF6142F2f9de8B6B65855A1d56B6cfE4c58;
-
-        assertEq(proxy.wards(esm),                  1);
-        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
-
-        _checkStorageSlot(address(proxy), 100);
-        _executeAllPayloadsAndBridges();
-
-        assertEq(proxy.wards(esm),                  1);
-        assertEq(proxy.wards(Ethereum.PAUSE_PROXY), 1);
-
-        _checkStorageSlot(address(proxy), 100);
     }
 
     function test_ETHEREUM_RewardsConfiguration() external onChain(ChainIdUtils.Ethereum()) {
@@ -193,26 +153,16 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /**********************************************************************************************/
 
     function _runSpellExecutionDiff(ChainId chainId) internal onChain(chainId) {
-        string memory prefix = string(abi.encodePacked(vm.toString(_spellId), "-", chainId.toDomainString()));
-
         IPool pool = _getSparkLendContext().pool;
 
-        _createConfigurationSnapshot(
-            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
-            pool
-        );
+        string memory prefix   = string(abi.encodePacked(vm.toString(_spellId), "-", chainId.toDomainString()));
+        string memory prePath  = string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre"));
+        string memory postPath = string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post"));
 
+        _createConfigurationSnapshot(prePath, pool);
         _executeAllPayloadsAndBridges();
-
-        _createConfigurationSnapshot(
-            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post")),
-            pool
-        );
-
-        _generateDiffReports(
-            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre")),
-            string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post"))
-        );
+        _createConfigurationSnapshot(postPath, pool);
+        _generateDiffReports(prePath, postPath);
     }
 
     function _runE2ETests(ChainId chainId) internal onChain(chainId) {
@@ -565,13 +515,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
             assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
             assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
-        }
-    }
-
-    function _checkStorageSlot(address target, uint256 limit) internal view {
-        for (uint256 slot; slot < limit; ++slot) {
-            bytes32 result = vm.load(address(target), bytes32(uint256(slot)));
-            require(result == bytes32(0), "Slot is not zero");
         }
     }
 

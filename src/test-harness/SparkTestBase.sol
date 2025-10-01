@@ -86,6 +86,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
+    // TODO: MDL, touches spark liquidity layer context.
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
