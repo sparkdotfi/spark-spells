@@ -26,8 +26,8 @@ import { IERC20 }    from "erc20-helpers/interfaces/IERC20.sol";
 import { SafeERC20 } from "erc20-helpers/SafeERC20.sol";
 
 import { IProxyLike, IOracleLike } from "../interfaces/Interfaces.sol";
+import { DealUtils }               from "../libraries/DealUtils.sol";
 import { ProxyHelpers }            from "../libraries/ProxyHelpers.sol";
-import { DealUtils }               from "../utils/DealUtils.sol";
 
 // TODO: MDL, only used by `SparklendTests`.
 contract ProtocolV3TestBase is Test {
