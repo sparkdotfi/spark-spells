@@ -86,7 +86,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    function test_ETHEREUM_E2E_sparkLiquidityLayer() external {
+    function test_ETHEREUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Ethereum()) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys(false);
