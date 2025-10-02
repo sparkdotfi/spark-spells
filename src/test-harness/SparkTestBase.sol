@@ -24,6 +24,8 @@ import { ChainIdUtils }                      from "../libraries/ChainId.sol"; //
 import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
 import { SparkEthereumTests }                from "./SparkEthereumTests.sol";
 
+import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
+
 // TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
 /// @dev Convenience contract meant to be the single point of entry for all spell-specific test contracts.
 abstract contract SparkTestBase is SparkEthereumTests {
@@ -98,10 +100,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
             _runSLLE2ETests(integrations[i]);
         }
 
-        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
         // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
-        _executeMainnetPayload();
+        _executeAllPayloadsAndBridges();
 
         rateLimitKeys = _getRateLimitKeys(true);
         integrations  = _appendPostExecutionIntegrations(integrations, mainnetController);
@@ -397,7 +399,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         // Collects all new logs from rate limits after spell is executed
         if (isPostExecution) {
-            VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
+            VmSafe.Log[] memory newLogs = RecordedLogs.getLogs();
 
             for (uint256 i = 0; i < newLogs.length; ++i) {
                 if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
