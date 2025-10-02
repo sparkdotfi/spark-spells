@@ -979,8 +979,7 @@ contract ProtocolV3TestBase is Test {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    // TODO: MDL, copied to `SparklendTests`. Drop the `2` suffix., remove duplication, or put in library.
-    function _isEqual2(string memory a, string memory b) internal pure returns (bool) {
+    function _isEqual(string memory a, string memory b) internal pure returns (bool) {
         return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
     }
 
@@ -1317,7 +1316,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig memory config2
     ) internal pure {
         require(
-            _isEqual2(config1.symbol, config2.symbol),
+            _isEqual(config1.symbol, config2.symbol),
             "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED"
         );
 
@@ -1502,7 +1501,7 @@ contract ProtocolV3TestBase is Test {
             assetsInCategory[countCategory] = assetsConfigs[i].symbol;
 
             require(
-                _isEqual2(assetsInCategory[countCategory], expectedAssets[countCategory]),
+                _isEqual(assetsInCategory[countCategory], expectedAssets[countCategory]),
                 "_getAssetOnEmodeCategory(): INCONSISTENT_ASSETS"
             );
 
