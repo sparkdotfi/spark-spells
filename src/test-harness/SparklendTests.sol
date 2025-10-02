@@ -33,8 +33,11 @@ import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
 import {
     IAuthorityLike,
+    ICustomIRMLike,
     IExecutableLike,
-    ISparkProxyLike
+    IRateSourceLike,
+    ISparkProxyLike,
+    ITargetBaseIRMLike
 } from "../interfaces/Interfaces.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
@@ -57,6 +60,14 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         uint256 baseVariableBorrowRate;
         uint256 variableRateSlope1;
         uint256 variableRateSlope2;
+    }
+
+    struct RateTargetBaseIRMParams {
+        address irm;
+        uint256 baseRateSpread;
+        uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+        uint256 optimalUsageRatio;
     }
 
     struct SparkLendAssetOnboardingParams {
@@ -642,6 +653,66 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
             ctx.priceOracle.getSourceOfAsset(params.tokenAddress) == params.oracleAddress,
             "_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE"
         );
+    }
+
+    // TODO: MDL, not used anywhere.
+    function _testRateTargetBaseIRMUpdate(
+        string                  memory symbol,
+        RateTargetBaseIRMParams memory oldParams,
+        RateTargetBaseIRMParams memory newParams
+    )
+        internal
+    {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Rate source should be the same
+        assertEq(ICustomIRMLike(newParams.irm).RATE_SOURCE(), ICustomIRMLike(oldParams.irm).RATE_SOURCE());
+
+        uint256 ssrRate = uint256(IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR());
+
+        // TODO: MDL, not writing to config, so we don't need a clone.
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
+
+        _validateInterestRateStrategy(
+            configBefore.interestRateStrategy,
+            oldParams.irm,
+            InterestStrategyValues({
+                addressesProvider:             address(ctx.poolAddressesProvider),
+                optimalUsageRatio:             oldParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          oldParams.variableRateSlope1,
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        ssrRate + oldParams.baseRateSpread,
+                variableRateSlope1:            oldParams.variableRateSlope1,
+                variableRateSlope2:            oldParams.variableRateSlope2
+            })
+        );
+
+        assertEq(ITargetBaseIRMLike(configBefore.interestRateStrategy).getBaseVariableBorrowRateSpread(), oldParams.baseRateSpread);
+
+        _executeAllPayloadsAndBridges();
+
+        // TODO: MDL, not writing to config, so we don't need a clone.
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
+
+        _validateInterestRateStrategy(
+            configAfter.interestRateStrategy,
+            newParams.irm,
+            InterestStrategyValues({
+                addressesProvider:             address(ctx.poolAddressesProvider),
+                optimalUsageRatio:             newParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          newParams.variableRateSlope1,
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        ssrRate + newParams.baseRateSpread,
+                variableRateSlope1:            newParams.variableRateSlope1,
+                variableRateSlope2:            newParams.variableRateSlope2
+            })
+        );
+
+        assertEq(ITargetBaseIRMLike(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
     }
 
     /**********************************************************************************************/
