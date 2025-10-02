@@ -71,146 +71,11 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         uint256 optimalUsageRatio;
     }
 
-    struct SparkLendAssetOnboardingParams {
-        // General
-        string  symbol;
-        address tokenAddress;
-        address oracleAddress;
-        bool    collateralEnabled;
-
-        // IRM Params
-        uint256 optimalUsageRatio;
-        uint256 baseVariableBorrowRate;
-        uint256 variableRateSlope1;
-        uint256 variableRateSlope2;
-
-        // Borrowing configuration
-        bool borrowEnabled;
-        bool stableBorrowEnabled;
-        bool isolationBorrowEnabled;
-        bool siloedBorrowEnabled;
-        bool flashloanEnabled;
-
-        // Reserve configuration
-        uint256 ltv;
-        uint256 liquidationThreshold;
-        uint256 liquidationBonus;
-        uint256 reserveFactor;
-
-        // Supply and borrow caps
-        uint48 supplyCap;
-        uint48 supplyCapMax;
-        uint48 supplyCapGap;
-        uint48 supplyCapTtl;
-        uint48 borrowCap;
-        uint48 borrowCapMax;
-        uint48 borrowCapGap;
-        uint48 borrowCapTtl;
-
-        // Isolation and emode configurations
-        bool    isolationMode;
-        uint256 isolationModeDebtCeiling;
-        uint256 liquidationProtocolFee;
-        uint256 emodeCategory;
-    }
-
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
-
-    // TODO: MDL, not used anywhere.
-    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
-        SparkLendContext memory ctx              = _getSparkLendContext();
-        ReserveConfig[]  memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
-
-        uint256 startingReserveLength = allConfigsBefore.length;
-
-        _executeAllPayloadsAndBridges();
-
-        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
-
-        assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
-
-        for (uint256 i = 0; i < collaterals.length; ++i) {
-            _testAssetOnboarding(allConfigsAfter, collaterals[i]);
-        }
-    }
-
-    // TODO: MDL, only used by `_testAssetOnboardings` above.
-    function _testAssetOnboarding(
-        ReserveConfig[]                memory allReserveConfigs,
-        SparkLendAssetOnboardingParams memory params
-    )
-        internal view
-    {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        address irm = _findReserveConfigBySymbol(allReserveConfigs, params.symbol).interestRateStrategy;
-
-        ReserveConfig memory reserveConfig = ReserveConfig({
-            symbol:                   params.symbol,
-            underlying:               params.tokenAddress,
-            aToken:                   address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            variableDebtToken:        address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            stableDebtToken:          address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
-            decimals:                 IERC20(params.tokenAddress).decimals(),
-            ltv:                      params.ltv,
-            liquidationThreshold:     params.liquidationThreshold,
-            liquidationBonus:         params.liquidationBonus,
-            liquidationProtocolFee:   params.liquidationProtocolFee,
-            reserveFactor:            params.reserveFactor,
-            usageAsCollateralEnabled: params.collateralEnabled,
-            borrowingEnabled:         params.borrowEnabled,
-            interestRateStrategy:     irm,
-            stableBorrowRateEnabled:  false,
-            isPaused:                 false,
-            isActive:                 true,
-            isFrozen:                 false,
-            isSiloed:                 params.siloedBorrowEnabled,
-            isBorrowableInIsolation:  params.isolationBorrowEnabled,
-            isFlashloanable:          params.flashloanEnabled,
-            supplyCap:                params.supplyCap,
-            borrowCap:                params.borrowCap,
-            debtCeiling:              params.isolationModeDebtCeiling,
-            eModeCategory:            params.emodeCategory
-        });
-
-        InterestStrategyValues memory irmParams = InterestStrategyValues({
-            addressesProvider:             address(ctx.poolAddressesProvider),
-            optimalUsageRatio:             params.optimalUsageRatio,
-            optimalStableToTotalDebtRatio: 0,
-            baseStableBorrowRate:          params.variableRateSlope1,
-            stableRateSlope1:              0,
-            stableRateSlope2:              0,
-            baseVariableBorrowRate:        params.baseVariableBorrowRate,
-            variableRateSlope1:            params.variableRateSlope1,
-            variableRateSlope2:            params.variableRateSlope2
-        });
-
-        _validateReserveConfig(reserveConfig, allReserveConfigs);
-        _validateInterestRateStrategy(irm, irm, irmParams);
-
-        _assertSupplyCapConfig({
-            asset:            params.tokenAddress,
-            max:              params.supplyCapMax,
-            gap:              params.supplyCapGap,
-            increaseCooldown: params.supplyCapTtl
-        });
-
-        _assertBorrowCapConfig({
-            asset:            params.tokenAddress,
-            max:              params.borrowCapMax,
-            gap:              params.borrowCapGap,
-            increaseCooldown: params.borrowCapTtl
-        });
-
-        require(
-            ctx.priceOracle.getSourceOfAsset(params.tokenAddress) == params.oracleAddress,
-            "_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE"
-        );
-    }
 
     // TODO: MDL, is this a SLL or SL test?
     function _testMorphoCapUpdate(
@@ -332,6 +197,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         uint256 ssrRate = uint256(IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR());
 
+        // TODO: MDL, not writing to config, so we don't need a clone.
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
@@ -354,6 +220,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         _executeAllPayloadsAndBridges();
 
+        // TODO: MDL, not writing to config, so we don't need a clone.
         ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
@@ -392,6 +259,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         int256 ssrRate = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
 
+        // TODO: MDL, not writing to config, so we don't need a clone.
         ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
@@ -414,6 +282,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
         _executeAllPayloadsAndBridges();
 
+        // TODO: MDL, not writing to config, so we don't need a clone.
         ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
 
         _validateInterestRateStrategy(
@@ -517,36 +386,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
-        (
-            uint48 max_,
-            uint48 gap_,
-            uint48 increaseCooldown_,
-            , // lastUpdateBlock
-              // lastIncreaseTime
-        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).borrowCapConfigs(asset);
-
-        assertEq(max_,              max);
-        assertEq(gap_,              gap);
-        assertEq(increaseCooldown_, increaseCooldown);
-    }
-
     function _assertBorrowCapConfigNotSet(address asset) internal view {
         _assertBorrowCapConfig(asset, 0, 0, 0);
-    }
-
-    function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
-        (
-            uint48 max_,
-            uint48 gap_,
-            uint48 increaseCooldown_,
-            , // lastUpdateBlock
-              // lastIncreaseTime
-        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).supplyCapConfigs(asset);
-
-        assertEq(max_,              max);
-        assertEq(gap_,              gap);
-        assertEq(increaseCooldown_, increaseCooldown);
     }
 
     function _assertSupplyCapConfigNotSet(address asset) internal view {

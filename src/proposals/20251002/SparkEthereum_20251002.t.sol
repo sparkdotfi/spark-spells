@@ -151,6 +151,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
 
+        // TODO: MDL, only writing to config at end of test, so we don't need a clone.
         ReserveConfig memory usdc = _findReserveConfigBySymbol(allConfigsBefore, "USDC");
         ReserveConfig memory usdt = _findReserveConfigBySymbol(allConfigsBefore, "USDT");
 

@@ -47,6 +47,61 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
     using WadRayMath for uint256;
 
+    struct InterestStrategyValues {
+        address addressesProvider;
+        uint256 optimalUsageRatio;
+        uint256 optimalStableToTotalDebtRatio;
+        uint256 baseStableBorrowRate;
+        uint256 stableRateSlope1;
+        uint256 stableRateSlope2;
+        uint256 baseVariableBorrowRate;
+        uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+    }
+
+    struct SparkLendAssetOnboardingParams {
+        // General
+        string  symbol;
+        address tokenAddress;
+        address oracleAddress;
+        bool    collateralEnabled;
+
+        // IRM Params
+        uint256 optimalUsageRatio;
+        uint256 baseVariableBorrowRate;
+        uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+
+        // Borrowing configuration
+        bool borrowEnabled;
+        bool stableBorrowEnabled;
+        bool isolationBorrowEnabled;
+        bool siloedBorrowEnabled;
+        bool flashloanEnabled;
+
+        // Reserve configuration
+        uint256 ltv;
+        uint256 liquidationThreshold;
+        uint256 liquidationBonus;
+        uint256 reserveFactor;
+
+        // Supply and borrow caps
+        uint48 supplyCap;
+        uint48 supplyCapMax;
+        uint48 supplyCapGap;
+        uint48 supplyCapTtl;
+        uint48 borrowCap;
+        uint48 borrowCapMax;
+        uint48 borrowCapGap;
+        uint48 borrowCapTtl;
+
+        // Isolation and emode configurations
+        bool    isolationMode;
+        uint256 isolationModeDebtCeiling;
+        uint256 liquidationProtocolFee;
+        uint256 emodeCategory;
+    }
+
     struct SparkLendContext {
         IPoolAddressesProvider poolAddressesProvider;
         IPool                  pool;
@@ -238,6 +293,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         uint256 newSlope1,
         uint256 newSlope2
     ) internal {
+        // TODO: MDL, not writing to config, so we don't need a clone.
         ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", _getSparkLendContext().pool);
         ReserveConfig   memory config           = _findReserveConfig(allConfigsBefore, asset);
 
@@ -260,6 +316,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         _executeAllPayloadsAndBridges();
 
+        // TODO: MDL, not writing to config, so we don't need a clone.
         address newIRM = _findReserveConfig(_createConfigurationSnapshot("", _getSparkLendContext().pool), asset).interestRateStrategy;
         assertNotEq(newIRM, address(prevIRM));
 
@@ -494,9 +551,116 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         IExecutableLike(spell).execute();
     }
 
+    // TODO: MDL, not used anywhere.
+    function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
+        SparkLendContext memory ctx              = _getSparkLendContext();
+        ReserveConfig[]  memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
+
+        uint256 startingReserveLength = allConfigsBefore.length;
+
+        _executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
+
+        assertEq(allConfigsAfter.length, startingReserveLength + collaterals.length);
+
+        for (uint256 i = 0; i < collaterals.length; ++i) {
+            _testAssetOnboarding(allConfigsAfter, collaterals[i]);
+        }
+    }
+
+    // TODO: MDL, only used by `_testAssetOnboardings` above.
+    function _testAssetOnboarding(
+        ReserveConfig[]                memory allReserveConfigs,
+        SparkLendAssetOnboardingParams memory params
+    )
+        internal view
+    {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // TODO: MDL, not writing to config, so we don't need a clone.
+        address irm = _findReserveConfigBySymbol(allReserveConfigs, params.symbol).interestRateStrategy;
+
+        ReserveConfig memory reserveConfig = ReserveConfig({
+            symbol:                   params.symbol,
+            underlying:               params.tokenAddress,
+            aToken:                   address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
+            variableDebtToken:        address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
+            stableDebtToken:          address(0),  // Mock, as they don't get validated, because of the "dynamic" deployment on proposal execution
+            decimals:                 IERC20(params.tokenAddress).decimals(),
+            ltv:                      params.ltv,
+            liquidationThreshold:     params.liquidationThreshold,
+            liquidationBonus:         params.liquidationBonus,
+            liquidationProtocolFee:   params.liquidationProtocolFee,
+            reserveFactor:            params.reserveFactor,
+            usageAsCollateralEnabled: params.collateralEnabled,
+            borrowingEnabled:         params.borrowEnabled,
+            interestRateStrategy:     irm,
+            stableBorrowRateEnabled:  false,
+            isPaused:                 false,
+            isActive:                 true,
+            isFrozen:                 false,
+            isSiloed:                 params.siloedBorrowEnabled,
+            isBorrowableInIsolation:  params.isolationBorrowEnabled,
+            isFlashloanable:          params.flashloanEnabled,
+            supplyCap:                params.supplyCap,
+            borrowCap:                params.borrowCap,
+            debtCeiling:              params.isolationModeDebtCeiling,
+            eModeCategory:            params.emodeCategory
+        });
+
+        InterestStrategyValues memory irmParams = InterestStrategyValues({
+            addressesProvider:             address(ctx.poolAddressesProvider),
+            optimalUsageRatio:             params.optimalUsageRatio,
+            optimalStableToTotalDebtRatio: 0,
+            baseStableBorrowRate:          params.variableRateSlope1,
+            stableRateSlope1:              0,
+            stableRateSlope2:              0,
+            baseVariableBorrowRate:        params.baseVariableBorrowRate,
+            variableRateSlope1:            params.variableRateSlope1,
+            variableRateSlope2:            params.variableRateSlope2
+        });
+
+        _validateReserveConfig(reserveConfig, allReserveConfigs);
+        _validateInterestRateStrategy(irm, irm, irmParams);
+
+        _assertSupplyCapConfig({
+            asset:            params.tokenAddress,
+            max:              params.supplyCapMax,
+            gap:              params.supplyCapGap,
+            increaseCooldown: params.supplyCapTtl
+        });
+
+        _assertBorrowCapConfig({
+            asset:            params.tokenAddress,
+            max:              params.borrowCapMax,
+            gap:              params.borrowCapGap,
+            increaseCooldown: params.borrowCapTtl
+        });
+
+        require(
+            ctx.priceOracle.getSourceOfAsset(params.tokenAddress) == params.oracleAddress,
+            "_validateAssetSourceOnOracle() : INVALID_PRICE_SOURCE"
+        );
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
+
+    function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
+        (
+            uint48 max_,
+            uint48 gap_,
+            uint48 increaseCooldown_,
+            , // lastUpdateBlock
+              // lastIncreaseTime
+        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).borrowCapConfigs(asset);
+
+        assertEq(max_,              max);
+        assertEq(gap_,              gap);
+        assertEq(increaseCooldown_, increaseCooldown);
+    }
 
     function _assertFrozen(address asset, bool frozen) internal view {
         assertEq(_getSparkLendContext().pool.getConfiguration(asset).getFrozen(), frozen);
@@ -516,6 +680,54 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
             assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
             assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
         }
+    }
+
+    function _assertSupplyCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
+        (
+            uint48 max_,
+            uint48 gap_,
+            uint48 increaseCooldown_,
+            , // lastUpdateBlock
+              // lastIncreaseTime
+        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).supplyCapConfigs(asset);
+
+        assertEq(max_,              max);
+        assertEq(gap_,              gap);
+        assertEq(increaseCooldown_, increaseCooldown);
+    }
+
+    // TODO: This should probably be simplified with assembly, too much boilerplate.
+    // TODO: MDL, might not even need this as callers of `_findReserveConfig` and `_findReserveConfigBySymbol` do not
+    //       modify the config, and even if they did, it should be their responsibility to clone the config.
+    function _clone(ReserveConfig memory config) internal pure returns (ReserveConfig memory) {
+        return
+            ReserveConfig({
+                symbol: config.symbol,
+                underlying: config.underlying,
+                aToken: config.aToken,
+                stableDebtToken: config.stableDebtToken,
+                variableDebtToken: config.variableDebtToken,
+                decimals: config.decimals,
+                ltv: config.ltv,
+                liquidationThreshold: config.liquidationThreshold,
+                liquidationBonus: config.liquidationBonus,
+                liquidationProtocolFee: config.liquidationProtocolFee,
+                reserveFactor: config.reserveFactor,
+                usageAsCollateralEnabled: config.usageAsCollateralEnabled,
+                borrowingEnabled: config.borrowingEnabled,
+                interestRateStrategy: config.interestRateStrategy,
+                stableBorrowRateEnabled: config.stableBorrowRateEnabled,
+                isPaused: config.isPaused,
+                isActive: config.isActive,
+                isFrozen: config.isFrozen,
+                isSiloed: config.isSiloed,
+                isBorrowableInIsolation: config.isBorrowableInIsolation,
+                isFlashloanable: config.isFlashloanable,
+                supplyCap: config.supplyCap,
+                borrowCap: config.borrowCap,
+                debtCeiling: config.debtCeiling,
+                eModeCategory: config.eModeCategory
+            });
     }
 
     function _getImplementation(address admin, address proxy) internal returns (address) {
@@ -548,6 +760,96 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
     }
 
+    // TODO: MDL, drop the `1` suffix.
+    function _isEqual1(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function _findReserveConfig(
+        ReserveConfig[] memory configs,
+        address                underlying
+    ) internal pure returns (ReserveConfig memory) {
+        for (uint256 i = 0; i < configs.length; ++i) {
+            // Important to clone the struct, to avoid unexpected side effect if modifying the returned config
+            if (configs[i].underlying == underlying) return _clone(configs[i]);
+        }
+
+        revert("RESERVE_CONFIG_NOT_FOUND");
+    }
+
+    function _findReserveConfigBySymbol(
+        ReserveConfig[] memory configs,
+        string          memory symbolOfUnderlying
+    ) internal pure returns (ReserveConfig memory) {
+        for (uint256 i = 0; i < configs.length; ++i) {
+            // Important to clone the struct, to avoid unexpected side effect if modifying the returned config
+            if (_isEqual1(configs[i].symbol, symbolOfUnderlying)) return _clone(configs[i]);
+        }
+
+        revert("RESERVE_CONFIG_NOT_FOUND");
+    }
+
+    function _validateInterestRateStrategy(
+        address                       interestRateStrategyAddress,
+        address                       expectedStrategy,
+        InterestStrategyValues memory expectedStrategyValues
+    ) internal view {
+        IDefaultInterestRateStrategy strategy = IDefaultInterestRateStrategy(
+            interestRateStrategyAddress
+        );
+
+        require(
+            address(strategy) == expectedStrategy,
+            "_validateInterestRateStrategy() : INVALID_STRATEGY_ADDRESS"
+        );
+
+        require(
+            strategy.OPTIMAL_USAGE_RATIO() == expectedStrategyValues.optimalUsageRatio,
+            "_validateInterestRateStrategy() : INVALID_OPTIMAL_RATIO"
+        );
+
+        require(
+            strategy.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO() ==
+                expectedStrategyValues.optimalStableToTotalDebtRatio,
+            "_validateInterestRateStrategy() : INVALID_OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO"
+        );
+
+        require(
+            address(strategy.ADDRESSES_PROVIDER()) == expectedStrategyValues.addressesProvider,
+            "_validateInterestRateStrategy() : INVALID_ADDRESSES_PROVIDER"
+        );
+
+        require(
+            strategy.getBaseVariableBorrowRate() == expectedStrategyValues.baseVariableBorrowRate,
+            "_validateInterestRateStrategy() : INVALID_BASE_VARIABLE_BORROW"
+        );
+
+        require(
+            strategy.getBaseStableBorrowRate() == expectedStrategyValues.baseStableBorrowRate,
+            "_validateInterestRateStrategy() : INVALID_BASE_STABLE_BORROW"
+        );
+
+        require(
+            strategy.getStableRateSlope1() == expectedStrategyValues.stableRateSlope1,
+            "_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_1"
+        );
+
+        require(
+            strategy.getStableRateSlope2() == expectedStrategyValues.stableRateSlope2,
+            "_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_2"
+        );
+
+        require(
+            strategy.getVariableRateSlope1() == expectedStrategyValues.variableRateSlope1,
+            "_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_1"
+        );
+
+        require(
+            strategy.getVariableRateSlope2() == expectedStrategyValues.variableRateSlope2,
+            "_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_2"
+        );
+    }
+
     function _validateOracles() internal view {
         SparkLendContext memory ctx = _getSparkLendContext();
 
@@ -557,6 +859,113 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
             require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
             require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
         }
+    }
+
+    function _validateReserveConfig(
+        ReserveConfig   memory expectedConfig,
+        ReserveConfig[] memory allConfigs
+    ) internal pure {
+        // TODO: MDL, not writing to config, so we don't need a clone.
+        ReserveConfig memory config = _findReserveConfig(allConfigs, expectedConfig.underlying);
+
+        require(
+            _isEqual1(config.symbol, expectedConfig.symbol),
+            "_validateConfigsInAave() : INVALID_SYMBOL"
+        );
+
+        require(
+            config.underlying == expectedConfig.underlying,
+            "_validateConfigsInAave() : INVALID_UNDERLYING"
+        );
+
+        require(config.decimals == expectedConfig.decimals, "_validateConfigsInAave: INVALID_DECIMALS");
+
+        require(config.ltv == expectedConfig.ltv, "_validateConfigsInAave: INVALID_LTV");
+
+        require(
+            config.liquidationThreshold == expectedConfig.liquidationThreshold,
+            "_validateConfigsInAave: INVALID_LIQ_THRESHOLD"
+        );
+
+        require(
+            config.liquidationBonus == expectedConfig.liquidationBonus,
+            "_validateConfigsInAave: INVALID_LIQ_BONUS"
+        );
+
+        require(
+            config.liquidationProtocolFee == expectedConfig.liquidationProtocolFee,
+            "_validateConfigsInAave: INVALID_LIQUIDATION_PROTOCOL_FEE"
+        );
+
+        require(
+            config.reserveFactor == expectedConfig.reserveFactor,
+            "_validateConfigsInAave: INVALID_RESERVE_FACTOR"
+        );
+
+        require(
+            config.usageAsCollateralEnabled == expectedConfig.usageAsCollateralEnabled,
+            "_validateConfigsInAave: INVALID_USAGE_AS_COLLATERAL"
+        );
+
+        require(
+            config.borrowingEnabled == expectedConfig.borrowingEnabled,
+            "_validateConfigsInAave: INVALID_BORROWING_ENABLED"
+        );
+
+        require(
+            config.stableBorrowRateEnabled == expectedConfig.stableBorrowRateEnabled,
+            "_validateConfigsInAave: INVALID_STABLE_BORROW_ENABLED"
+        );
+
+        require(
+            config.isActive == expectedConfig.isActive,
+            "_validateConfigsInAave: INVALID_IS_ACTIVE"
+        );
+
+        require(
+            config.isFrozen == expectedConfig.isFrozen,
+            "_validateConfigsInAave: INVALID_IS_FROZEN"
+        );
+
+        require(
+            config.isSiloed == expectedConfig.isSiloed,
+            "_validateConfigsInAave: INVALID_IS_SILOED"
+        );
+
+        require(
+            config.isBorrowableInIsolation == expectedConfig.isBorrowableInIsolation,
+            "_validateConfigsInAave: INVALID_IS_BORROWABLE_IN_ISOLATION"
+        );
+
+        require(
+            config.isFlashloanable == expectedConfig.isFlashloanable,
+            "_validateConfigsInAave: INVALID_IS_FLASHLOANABLE"
+        );
+
+        require(
+            config.supplyCap == expectedConfig.supplyCap,
+            "_validateConfigsInAave: INVALID_SUPPLY_CAP"
+        );
+
+        require(
+            config.borrowCap == expectedConfig.borrowCap,
+            "_validateConfigsInAave: INVALID_BORROW_CAP"
+        );
+
+        require(
+            config.debtCeiling == expectedConfig.debtCeiling,
+            "_validateConfigsInAave: INVALID_DEBT_CEILING"
+        );
+
+        require(
+            config.eModeCategory == expectedConfig.eModeCategory,
+            "_validateConfigsInAave: INVALID_EMODE_CATEGORY"
+        );
+
+        require(
+            config.interestRateStrategy == expectedConfig.interestRateStrategy,
+            "_validateConfigsInAave: INVALID_INTEREST_RATE_STRATEGY"
+        );
     }
 
 }
