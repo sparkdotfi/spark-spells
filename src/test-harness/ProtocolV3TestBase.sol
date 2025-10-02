@@ -32,18 +32,6 @@ import { DealUtils }               from "../utils/DealUtils.sol";
 // TODO: MDL, only used by `SparklendTests`.
 contract ProtocolV3TestBase is Test {
 
-    struct InterestStrategyValues {
-        address addressesProvider;
-        uint256 optimalUsageRatio;
-        uint256 optimalStableToTotalDebtRatio;
-        uint256 baseStableBorrowRate;
-        uint256 stableRateSlope1;
-        uint256 stableRateSlope2;
-        uint256 baseVariableBorrowRate;
-        uint256 variableRateSlope1;
-        uint256 variableRateSlope2;
-    }
-
     struct LiquidationBalanceAssertions {
         uint256 aTokenBorrowerBefore;
         uint256 collateralATokenBefore;
@@ -991,7 +979,8 @@ contract ProtocolV3TestBase is Test {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    function _isEqual(string memory a, string memory b) internal pure returns (bool) {
+    // TODO: MDL, copied to `SparklendTests`. Drop the `2` suffix., remove duplication, or put in library.
+    function _isEqual2(string memory a, string memory b) internal pure returns (bool) {
         return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
     }
 
@@ -1247,63 +1236,6 @@ contract ProtocolV3TestBase is Test {
         localConfig.isFlashloanable = configuration.getFlashLoanEnabled();
     }
 
-    // TODO This should probably be simplified with assembly, too much boilerplate.
-    function _clone(ReserveConfig memory config) internal pure returns (ReserveConfig memory) {
-        return
-            ReserveConfig({
-                symbol: config.symbol,
-                underlying: config.underlying,
-                aToken: config.aToken,
-                stableDebtToken: config.stableDebtToken,
-                variableDebtToken: config.variableDebtToken,
-                decimals: config.decimals,
-                ltv: config.ltv,
-                liquidationThreshold: config.liquidationThreshold,
-                liquidationBonus: config.liquidationBonus,
-                liquidationProtocolFee: config.liquidationProtocolFee,
-                reserveFactor: config.reserveFactor,
-                usageAsCollateralEnabled: config.usageAsCollateralEnabled,
-                borrowingEnabled: config.borrowingEnabled,
-                interestRateStrategy: config.interestRateStrategy,
-                stableBorrowRateEnabled: config.stableBorrowRateEnabled,
-                isPaused: config.isPaused,
-                isActive: config.isActive,
-                isFrozen: config.isFrozen,
-                isSiloed: config.isSiloed,
-                isBorrowableInIsolation: config.isBorrowableInIsolation,
-                isFlashloanable: config.isFlashloanable,
-                supplyCap: config.supplyCap,
-                borrowCap: config.borrowCap,
-                debtCeiling: config.debtCeiling,
-                eModeCategory: config.eModeCategory
-            });
-    }
-
-    function _findReserveConfig(
-        ReserveConfig[] memory configs,
-        address                underlying
-    ) internal pure returns (ReserveConfig memory) {
-        for (uint256 i = 0; i < configs.length; ++i) {
-            if (configs[i].underlying != underlying) continue;
-
-            // Important to clone the struct, to avoid unexpected side effect if modifying the returned config
-            return _clone(configs[i]);
-        }
-
-        revert("RESERVE_CONFIG_NOT_FOUND");
-    }
-
-    function _findReserveConfigBySymbol(
-        ReserveConfig[] memory configs,
-        string          memory symbolOfUnderlying
-    ) internal pure returns (ReserveConfig memory) {
-        for (uint256 i = 0; i < configs.length; ++i) {
-            if (_isEqual(configs[i].symbol, symbolOfUnderlying)) return _clone(configs[i]);
-        }
-
-        revert("RESERVE_CONFIG_NOT_FOUND");
-    }
-
     function _logReserveConfig(ReserveConfig memory config) internal pure {
         console.log("Symbol ", config.symbol);
         console.log("Underlying address ", config.underlying);
@@ -1331,173 +1263,6 @@ contract ProtocolV3TestBase is Test {
         console.log("Is flashloanable ", (config.isFlashloanable) ? "Yes" : "No");
         console.log("-----");
         console.log("-----");
-    }
-
-    function _validateReserveConfig(
-        ReserveConfig   memory expectedConfig,
-        ReserveConfig[] memory allConfigs
-    ) internal pure {
-        ReserveConfig memory config = _findReserveConfig(allConfigs, expectedConfig.underlying);
-
-        require(
-            _isEqual(config.symbol, expectedConfig.symbol),
-            "_validateConfigsInAave() : INVALID_SYMBOL"
-        );
-
-        require(
-            config.underlying == expectedConfig.underlying,
-            "_validateConfigsInAave() : INVALID_UNDERLYING"
-        );
-
-        require(config.decimals == expectedConfig.decimals, "_validateConfigsInAave: INVALID_DECIMALS");
-
-        require(config.ltv == expectedConfig.ltv, "_validateConfigsInAave: INVALID_LTV");
-
-        require(
-            config.liquidationThreshold == expectedConfig.liquidationThreshold,
-            "_validateConfigsInAave: INVALID_LIQ_THRESHOLD"
-        );
-
-        require(
-            config.liquidationBonus == expectedConfig.liquidationBonus,
-            "_validateConfigsInAave: INVALID_LIQ_BONUS"
-        );
-
-        require(
-            config.liquidationProtocolFee == expectedConfig.liquidationProtocolFee,
-            "_validateConfigsInAave: INVALID_LIQUIDATION_PROTOCOL_FEE"
-        );
-
-        require(
-            config.reserveFactor == expectedConfig.reserveFactor,
-            "_validateConfigsInAave: INVALID_RESERVE_FACTOR"
-        );
-
-        require(
-            config.usageAsCollateralEnabled == expectedConfig.usageAsCollateralEnabled,
-            "_validateConfigsInAave: INVALID_USAGE_AS_COLLATERAL"
-        );
-
-        require(
-            config.borrowingEnabled == expectedConfig.borrowingEnabled,
-            "_validateConfigsInAave: INVALID_BORROWING_ENABLED"
-        );
-
-        require(
-            config.stableBorrowRateEnabled == expectedConfig.stableBorrowRateEnabled,
-            "_validateConfigsInAave: INVALID_STABLE_BORROW_ENABLED"
-        );
-
-        require(
-            config.isActive == expectedConfig.isActive,
-            "_validateConfigsInAave: INVALID_IS_ACTIVE"
-        );
-
-        require(
-            config.isFrozen == expectedConfig.isFrozen,
-            "_validateConfigsInAave: INVALID_IS_FROZEN"
-        );
-
-        require(
-            config.isSiloed == expectedConfig.isSiloed,
-            "_validateConfigsInAave: INVALID_IS_SILOED"
-        );
-
-        require(
-            config.isBorrowableInIsolation == expectedConfig.isBorrowableInIsolation,
-            "_validateConfigsInAave: INVALID_IS_BORROWABLE_IN_ISOLATION"
-        );
-
-        require(
-            config.isFlashloanable == expectedConfig.isFlashloanable,
-            "_validateConfigsInAave: INVALID_IS_FLASHLOANABLE"
-        );
-
-        require(
-            config.supplyCap == expectedConfig.supplyCap,
-            "_validateConfigsInAave: INVALID_SUPPLY_CAP"
-        );
-
-        require(
-            config.borrowCap == expectedConfig.borrowCap,
-            "_validateConfigsInAave: INVALID_BORROW_CAP"
-        );
-
-        require(
-            config.debtCeiling == expectedConfig.debtCeiling,
-            "_validateConfigsInAave: INVALID_DEBT_CEILING"
-        );
-
-        require(
-            config.eModeCategory == expectedConfig.eModeCategory,
-            "_validateConfigsInAave: INVALID_EMODE_CATEGORY"
-        );
-
-        require(
-            config.interestRateStrategy == expectedConfig.interestRateStrategy,
-            "_validateConfigsInAave: INVALID_INTEREST_RATE_STRATEGY"
-        );
-    }
-
-    function _validateInterestRateStrategy(
-        address                       interestRateStrategyAddress,
-        address                       expectedStrategy,
-        InterestStrategyValues memory expectedStrategyValues
-    ) internal view {
-        IDefaultInterestRateStrategy strategy = IDefaultInterestRateStrategy(
-            interestRateStrategyAddress
-        );
-
-        require(
-            address(strategy) == expectedStrategy,
-            "_validateInterestRateStrategy() : INVALID_STRATEGY_ADDRESS"
-        );
-
-        require(
-            strategy.OPTIMAL_USAGE_RATIO() == expectedStrategyValues.optimalUsageRatio,
-            "_validateInterestRateStrategy() : INVALID_OPTIMAL_RATIO"
-        );
-
-        require(
-            strategy.OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO() ==
-                expectedStrategyValues.optimalStableToTotalDebtRatio,
-            "_validateInterestRateStrategy() : INVALID_OPTIMAL_STABLE_TO_TOTAL_DEBT_RATIO"
-        );
-
-        require(
-            address(strategy.ADDRESSES_PROVIDER()) == expectedStrategyValues.addressesProvider,
-            "_validateInterestRateStrategy() : INVALID_ADDRESSES_PROVIDER"
-        );
-
-        require(
-            strategy.getBaseVariableBorrowRate() == expectedStrategyValues.baseVariableBorrowRate,
-            "_validateInterestRateStrategy() : INVALID_BASE_VARIABLE_BORROW"
-        );
-
-        require(
-            strategy.getBaseStableBorrowRate() == expectedStrategyValues.baseStableBorrowRate,
-            "_validateInterestRateStrategy() : INVALID_BASE_STABLE_BORROW"
-        );
-
-        require(
-            strategy.getStableRateSlope1() == expectedStrategyValues.stableRateSlope1,
-            "_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_1"
-        );
-
-        require(
-            strategy.getStableRateSlope2() == expectedStrategyValues.stableRateSlope2,
-            "_validateInterestRateStrategy() : INVALID_STABLE_SLOPE_2"
-        );
-
-        require(
-            strategy.getVariableRateSlope1() == expectedStrategyValues.variableRateSlope1,
-            "_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_1"
-        );
-
-        require(
-            strategy.getVariableRateSlope2() == expectedStrategyValues.variableRateSlope2,
-            "_validateInterestRateStrategy() : INVALID_VARIABLE_SLOPE_2"
-        );
     }
 
     function _requireNoReservesConfigsChangesApartNewListings(
@@ -1552,7 +1317,7 @@ contract ProtocolV3TestBase is Test {
         ReserveConfig memory config2
     ) internal pure {
         require(
-            _isEqual(config1.symbol, config2.symbol),
+            _isEqual2(config1.symbol, config2.symbol),
             "_requireNoReservesConfigsChangesApartNewListings() : UNEXPECTED_SYMBOL_CHANGED"
         );
 
@@ -1737,7 +1502,7 @@ contract ProtocolV3TestBase is Test {
             assetsInCategory[countCategory] = assetsConfigs[i].symbol;
 
             require(
-                _isEqual(assetsInCategory[countCategory], expectedAssets[countCategory]),
+                _isEqual2(assetsInCategory[countCategory], expectedAssets[countCategory]),
                 "_getAssetOnEmodeCategory(): INCONSISTENT_ASSETS"
             );
 
