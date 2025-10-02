@@ -22,11 +22,12 @@ import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 import { ChainIdUtils }                      from "../libraries/ChainId.sol"; // Keep as code using it is currently commented.
 import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
-import { SparkEthereumTests }                from "./SparkEthereumTests.sol";
+import { SparklendTests }                    from "./SparklendTests.sol";
+import { SparkLiquidityLayerTests }          from "./SparkLiquidityLayerTests.sol";
 
 // TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
 /// @dev Convenience contract meant to be the single point of entry for all spell-specific test contracts.
-abstract contract SparkTestBase is SparkEthereumTests {
+abstract contract SparkTestBase is SparklendTests, SparkLiquidityLayerTests {
 
     // TODO: Put in registry
     address internal constant AAVE_CORE_AUSDT    = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;

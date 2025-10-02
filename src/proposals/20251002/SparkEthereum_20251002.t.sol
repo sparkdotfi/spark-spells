@@ -15,6 +15,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { ChainIdUtils }  from "src/libraries/ChainId.sol";
 import { SparkTestBase } from "src/test-harness/SparkTestBase.sol";
+import { MorphoTests }   from "src/test-harness/MorphoTests.sol";
 
 import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 
@@ -121,21 +122,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         super.setUp();
 
         chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
-    }
-
-    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
-        _testMorphoCapUpdate({
-            vault: Ethereum.MORPHO_VAULT_USDS,
-            config: MarketParams({
-                loanToken:       Ethereum.USDS,
-                collateralToken: PT_USDE_27NOV2025,
-                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.915e18
-            }),
-            currentCap: 500_000_000e18,
-            newCap:     1_000_000_000e18
-        });
     }
 
     function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
@@ -683,6 +669,39 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         // No roles
         (bool success6, ) = address(slasher).call(abi.encodeWithSignature("hasRole(bytes32,address)", DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY));
         assertFalse(success6);
+    }
+
+}
+
+contract SparkEthereum_20251002_MorphoTests is MorphoTests {
+
+    address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
+    address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
+
+    constructor() {
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+    }
+
+    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_USDS,
+            config: MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_USDE_27NOV2025,
+                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 500_000_000e18,
+            newCap:     1_000_000_000e18
+        });
     }
 
 }

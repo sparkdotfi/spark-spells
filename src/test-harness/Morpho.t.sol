@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import { SparkEthereumTests } from "./SparkEthereumTests.sol";
+import { MorphoTests } from "./MorphoTests.sol";
 
-contract SparkEthereumTesting is SparkEthereumTests {
+contract MorphoTesting is MorphoTests {
 
     constructor() {
         _spellId   = 20251002;
