@@ -726,7 +726,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         assertEq(ITargetBaseIRMLike(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
     }
 
-    // TODO: MDL, seems to be Sparklend.
     function _testRateTargetKinkIRMUpdate(
         string                  memory symbol,
         RateTargetKinkIRMParams memory oldParams,
@@ -923,11 +922,6 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
     }
 
-    // TODO: MDL, drop the `1` suffix.
-    function _isEqual1(string memory a, string memory b) internal pure returns (bool) {
-        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
-    }
-
     function _findReserveConfig(
         ReserveConfig[] memory configs,
         address                underlying
@@ -946,7 +940,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     ) internal pure returns (ReserveConfig memory) {
         for (uint256 i = 0; i < configs.length; ++i) {
             // Important to clone the struct, to avoid unexpected side effect if modifying the returned config
-            if (_isEqual1(configs[i].symbol, symbolOfUnderlying)) return _clone(configs[i]);
+            if (_isEqual(configs[i].symbol, symbolOfUnderlying)) return _clone(configs[i]);
         }
 
         revert("RESERVE_CONFIG_NOT_FOUND");
@@ -1032,7 +1026,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         ReserveConfig memory config = _findReserveConfig(allConfigs, expectedConfig.underlying);
 
         require(
-            _isEqual1(config.symbol, expectedConfig.symbol),
+            _isEqual(config.symbol, expectedConfig.symbol),
             "_validateConfigsInAave() : INVALID_SYMBOL"
         );
 
