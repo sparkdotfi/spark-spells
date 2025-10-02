@@ -5,6 +5,10 @@ pragma solidity ^0.8.0;
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 
+import { MarketParams, Id } from "metamorpho/interfaces/IMetaMorpho.sol";
+
+import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
+
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -29,11 +33,14 @@ import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.s
 import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
+import { MorphoHelpers }         from "../libraries/MorphoHelpers.sol";
 import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
 
 import {
+    IATokenLike,
     ICurvePoolLike,
     ICurveStableswapFactoryLike,
     IFarmLike,
@@ -49,11 +56,7 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-interface IATokenWithPool is IAToken {
-    function POOL() external view returns(address);
-}
-
-// TODO: MDL, only used by `SparkEthereumTests`.
+// TODO: MDL, only used by `SparkTestBase`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
@@ -538,7 +541,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testAaveIntegration(E2ETestParams memory p) internal {
         IERC20 asset = IERC20(IAToken(p.vault).UNDERLYING_ASSET_ADDRESS());
 
-        address pool = IATokenWithPool(p.vault).POOL();
+        address pool = IATokenLike(p.vault).POOL();
 
         // Withdraw funds to avoid supply caps getting hit
         if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
@@ -2094,6 +2097,72 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+    }
+
+    function _testMorphoVaultCreation(
+        address               asset,
+        string         memory name,
+        string         memory symbol,
+        MarketParams[] memory markets,
+        uint256[]      memory caps,
+        uint256               vaultFee,
+        uint256               initialDeposit,
+        uint256               sllDepositMax,
+        uint256               sllDepositSlope
+    )
+        internal
+    {
+        require(markets.length == caps.length, "Markets and caps length mismatch");
+
+        // TODO: make constant.
+        bytes32 createMetaMorphoSig = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
+
+        // Start the recorder
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
+
+        // TODO: make below loop a getter with a return to make this all cleaner. Possibly incorporating the zero check.
+        address vault;
+
+        for (uint256 i = 0; i < allLogs.length; ++i) {
+            if (allLogs[i].topics[0] == createMetaMorphoSig) {
+                vault = address(uint160(uint256(allLogs[i].topics[1])));
+                break;
+            }
+        }
+
+        require(vault != address(0), "Vault not found");
+
+        assertEq(IMetaMorpho(vault).asset(),                           asset);
+        assertEq(IMetaMorpho(vault).name(),                            name);
+        assertEq(IMetaMorpho(vault).symbol(),                          symbol);
+        assertEq(IMetaMorpho(vault).timelock(),                        1 days);
+        assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
+        assertEq(IMetaMorpho(vault).supplyQueueLength(),               1);
+        assertEq(IMetaMorpho(vault).owner(),                           Ethereum.SPARK_PROXY);
+        assertEq(IMetaMorpho(vault).feeRecipient(),                    Ethereum.ALM_PROXY);
+        assertEq(IMetaMorpho(vault).fee(),                             vaultFee);
+
+        for (uint256 i = 0; i < markets.length; ++i) {
+            MorphoHelpers.assertMorphoCap(vault, markets[i], caps[i]);
+        }
+
+        assertEq(
+            Id.unwrap(IMetaMorpho(vault).supplyQueue(0)),
+            Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
+        );
+
+        MorphoHelpers.assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint184).max);
+
+        assertEq(IMetaMorpho(vault).totalAssets(),    initialDeposit);
+        assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20Metadata(asset).decimals());
+
+        if (sllDepositMax == 0 || sllDepositSlope == 0) return;
+
+        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
     /**********************************************************************************************/

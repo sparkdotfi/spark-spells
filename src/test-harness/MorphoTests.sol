@@ -3,9 +3,8 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
-import { VmSafe } from "forge-std/Vm.sol";
 
-import { IMetaMorpho, MarketParams, PendingUint192, Id } from "metamorpho/interfaces/IMetaMorpho.sol";
+import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { MarketParamsLib }          from "morpho-blue/src/libraries/MarketParamsLib.sol";
 import { IMorphoChainlinkOracleV2 } from "morpho-blue-oracles/morpho-chainlink/interfaces/IMorphoChainlinkOracleV2.sol";
@@ -16,33 +15,19 @@ import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
 import { MorphoUpgradableOracle } from "sparklend-advanced/src/MorphoUpgradableOracle.sol";
 
-import { WadRayMath } from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
-
-import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
-
 import {
     IMorphoLike,
     IMorphoOracleFactoryLike,
     IPendleLinearDiscountOracleLike
 } from "../interfaces/Interfaces.sol";
 
-import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
+import { MorphoHelpers } from "../libraries/MorphoHelpers.sol";
 
-import { SparklendTests }           from "./SparklendTests.sol";
-import { SparkLiquidityLayerTests } from "./SparkLiquidityLayerTests.sol";
-import { SpellRunner }              from "./SpellRunner.sol";
+import { SpellRunner } from "./SpellRunner.sol";
 
-// TODO: MDL, only used by `SparkTestBase`.
 /// @dev assertions specific to mainnet
-/// TODO: separate tests related to sparklend from the rest (eg: morpho)
-///       also separate mainnet-specific sparklend tests from those we should
-///       run on Gnosis as well
-abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests {
-
-    using RecordedLogs for *;
-
-    using WadRayMath for uint256;
+/// TODO: separate mainnet-specific sparklend tests from those we should run on Gnosis as well
+abstract contract MorphoTests is SpellRunner {
 
     address internal constant MORPHO_ORACLE_FACTORY = 0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766;
 
@@ -50,7 +35,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    // TODO: MDL, seems to be SLL, but may be neither.
     function _testMorphoCapUpdate(
         address             vault,
         MarketParams memory config,
@@ -59,12 +43,12 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     )
         internal
     {
-        _assertMorphoCap(vault, config, currentCap);
+        MorphoHelpers.assertMorphoCap(vault, config, currentCap);
         _executeAllPayloadsAndBridges();
 
         if (newCap > currentCap) {
             // Increases are timelocked
-            _assertMorphoCap(vault, config, currentCap, newCap);
+            MorphoHelpers.assertMorphoCap(vault, config, currentCap, newCap);
 
             assertEq(IMetaMorpho(vault).timelock(), 1 days);
 
@@ -72,10 +56,10 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
 
             IMetaMorpho(vault).acceptCap(config);
 
-            _assertMorphoCap(vault, config, newCap);
+            MorphoHelpers.assertMorphoCap(vault, config, newCap);
         } else {
             // Decreases are immediate
-            _assertMorphoCap(vault, config, newCap);
+            MorphoHelpers.assertMorphoCap(vault, config, newCap);
         }
 
         // Check total assets in the morpho market are greater than 1 unit of the loan token
@@ -87,7 +71,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
 
-    // TODO: MDL, seems to be SLL, but may be neither.
     function _testMorphoPendlePTOracleConfig(
         address pt,
         address loanToken,
@@ -155,122 +138,8 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertBytecodeMatches(expectedBaseFeed, address(baseFeed));
     }
 
-    // TODO: MDL, seems to be SLL, but may be neither.
-    function _testMorphoVaultCreation(
-        address               asset,
-        string         memory name,
-        string         memory symbol,
-        MarketParams[] memory markets,
-        uint256[]      memory caps,
-        uint256               vaultFee,
-        uint256               initialDeposit,
-        uint256               sllDepositMax,
-        uint256               sllDepositSlope
-    )
-        internal
-    {
-        require(markets.length == caps.length, "Markets and caps length mismatch");
-
-        // TODO: make constant.
-        bytes32 createMetaMorphoSig = keccak256("CreateMetaMorpho(address,address,address,uint256,address,string,string,bytes32)");
-
-        // Start the recorder
-        RecordedLogs.init();
-
-        _executeAllPayloadsAndBridges();
-
-        VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
-
-        // TODO: make below loop a getter with a return to make this all cleaner. Possibly incorporating the zero check.
-        address vault;
-
-        for (uint256 i = 0; i < allLogs.length; ++i) {
-            if (allLogs[i].topics[0] == createMetaMorphoSig) {
-                vault = address(uint160(uint256(allLogs[i].topics[1])));
-                break;
-            }
-        }
-
-        require(vault != address(0), "Vault not found");
-
-        assertEq(IMetaMorpho(vault).asset(),                           asset);
-        assertEq(IMetaMorpho(vault).name(),                            name);
-        assertEq(IMetaMorpho(vault).symbol(),                          symbol);
-        assertEq(IMetaMorpho(vault).timelock(),                        1 days);
-        assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
-        assertEq(IMetaMorpho(vault).supplyQueueLength(),               1);
-        assertEq(IMetaMorpho(vault).owner(),                           Ethereum.SPARK_PROXY);
-        assertEq(IMetaMorpho(vault).feeRecipient(),                    Ethereum.ALM_PROXY);
-        assertEq(IMetaMorpho(vault).fee(),                             vaultFee);
-
-        for (uint256 i = 0; i < markets.length; ++i) {
-            _assertMorphoCap(vault, markets[i], caps[i]);
-        }
-
-        assertEq(
-            Id.unwrap(IMetaMorpho(vault).supplyQueue(0)),
-            Id.unwrap(MarketParamsLib.id(SLLHelpers.morphoIdleMarket(asset)))
-        );
-
-        _assertMorphoCap(vault, SLLHelpers.morphoIdleMarket(asset), type(uint184).max);
-
-        assertEq(IMetaMorpho(vault).totalAssets(),    initialDeposit);
-        assertEq(IERC20(vault).balanceOf(address(1)), initialDeposit * 1e18 / 10 ** IERC20(asset).decimals());
-
-        if (sllDepositMax == 0 || sllDepositSlope == 0) return;
-
-        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
-    }
-
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
-
-    function _assertBorrowCapConfigNotSet(address asset) internal view {
-        _assertBorrowCapConfig(asset, 0, 0, 0);
-    }
-
-    function _assertSupplyCapConfigNotSet(address asset) internal view {
-        _assertSupplyCapConfig(asset, 0, 0, 0);
-    }
-
-    function _assertMorphoCap(
-        address             vault,
-        MarketParams memory config,
-        uint256             currentCap,
-        bool                hasPending,
-        uint256             pendingCap
-    ) internal view {
-        Id id = MarketParamsLib.id(config);
-
-        assertEq(IMetaMorpho(vault).config(id).cap, currentCap);
-
-        PendingUint192 memory pendingCap_ = IMetaMorpho(vault).pendingCap(id);
-
-        if (hasPending) {
-            assertEq(pendingCap_.value,   pendingCap);
-            assertGt(pendingCap_.validAt, 0);
-        } else {
-            assertEq(pendingCap_.value,   0);
-            assertEq(pendingCap_.validAt, 0);
-        }
-    }
-
-    function _assertMorphoCap(
-        address             vault,
-        MarketParams memory config,
-        uint256             currentCap,
-        uint256             pendingCap
-    ) internal view {
-        _assertMorphoCap(vault, config, currentCap, true, pendingCap);
-    }
-
-    function _assertMorphoCap(
-        address             vault,
-        MarketParams memory config,
-        uint256             currentCap
-    ) internal view {
-        _assertMorphoCap(vault, config, currentCap, false, 0);
-    }
 
 }

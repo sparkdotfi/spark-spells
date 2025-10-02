@@ -47,7 +47,7 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 import { ProtocolV3TestBase }    from "./ProtocolV3TestBase.sol";
 import { SpellRunner }           from "./SpellRunner.sol";
 
-// TODO: MDL, only used by `SparkEthereumTests`.
+// TODO: MDL, only used by `SparkTestBase`.
 /// @dev assertions specific to sparklend, which are not run on chains where it is not deployed
 abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
@@ -802,6 +802,14 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
+
+    function _assertBorrowCapConfigNotSet(address asset) internal view {
+        _assertBorrowCapConfig(asset, 0, 0, 0);
+    }
+
+    function _assertSupplyCapConfigNotSet(address asset) internal view {
+        _assertSupplyCapConfig(asset, 0, 0, 0);
+    }
 
     function _assertBorrowCapConfig(address asset, uint48 max, uint48 gap, uint48 increaseCooldown) internal view {
         (
