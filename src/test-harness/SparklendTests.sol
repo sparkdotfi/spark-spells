@@ -9,6 +9,8 @@ import { IERC20 } from "erc20-helpers/interfaces/IERC20.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 import { Gnosis }   from "spark-address-registry/Gnosis.sol";
 
+import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from "sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol";
+
 import { ISparkLendFreezerMom } from "sparklend-freezer/interfaces/ISparkLendFreezerMom.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
@@ -37,7 +39,8 @@ import {
     IExecutableLike,
     IRateSourceLike,
     ISparkProxyLike,
-    ITargetBaseIRMLike
+    ITargetBaseIRMLike,
+    ITargetKinkIRMLike
 } from "../interfaces/Interfaces.sol";
 
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
@@ -66,6 +69,14 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         address irm;
         uint256 baseRateSpread;
         uint256 variableRateSlope1;
+        uint256 variableRateSlope2;
+        uint256 optimalUsageRatio;
+    }
+
+    struct RateTargetKinkIRMParams {
+        address irm;
+        uint256 baseRate;
+        int256  variableRateSlope1Spread;
         uint256 variableRateSlope2;
         uint256 optimalUsageRatio;
     }
@@ -713,6 +724,79 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
         );
 
         assertEq(ITargetBaseIRMLike(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
+    }
+
+    // TODO: MDL, seems to be Sparklend.
+    function _testRateTargetKinkIRMUpdate(
+        string                  memory symbol,
+        RateTargetKinkIRMParams memory oldParams,
+        RateTargetKinkIRMParams memory newParams
+    )
+        internal
+    {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Rate source should be the same
+        assertEq(ICustomIRMLike(newParams.irm).RATE_SOURCE(), ICustomIRMLike(oldParams.irm).RATE_SOURCE());
+
+        uint256 ssrRateDecimals = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).decimals();
+
+        int256 ssrRate = IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR() * int256(10 ** (27 - ssrRateDecimals));
+
+        // TODO: MDL, not writing to config, so we don't need a clone.
+        ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
+
+        _validateInterestRateStrategy(
+            configBefore.interestRateStrategy,
+            oldParams.irm,
+            InterestStrategyValues({
+                addressesProvider:             address(ctx.poolAddressesProvider),
+                optimalUsageRatio:             oldParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          uint256(ssrRate + oldParams.variableRateSlope1Spread),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        oldParams.baseRate,
+                variableRateSlope1:            uint256(ssrRate + oldParams.variableRateSlope1Spread),
+                variableRateSlope2:            oldParams.variableRateSlope2
+            })
+        );
+
+        assertEq(uint256(ITargetKinkIRMLike(configBefore.interestRateStrategy).getVariableRateSlope1Spread()), uint256(oldParams.variableRateSlope1Spread));
+
+        _executeAllPayloadsAndBridges();
+
+        // TODO: MDL, not writing to config, so we don't need a clone.
+        ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
+
+        _validateInterestRateStrategy(
+            configAfter.interestRateStrategy,
+            newParams.irm,
+            InterestStrategyValues({
+                addressesProvider:             address(ctx.poolAddressesProvider),
+                optimalUsageRatio:             newParams.optimalUsageRatio,
+                optimalStableToTotalDebtRatio: 0,
+                baseStableBorrowRate:          uint256(ssrRate + newParams.variableRateSlope1Spread),
+                stableRateSlope1:              0,
+                stableRateSlope2:              0,
+                baseVariableBorrowRate:        newParams.baseRate,
+                variableRateSlope1:            uint256(ssrRate + newParams.variableRateSlope1Spread),
+                variableRateSlope2:            newParams.variableRateSlope2
+            })
+        );
+
+        assertEq(uint256(ITargetKinkIRMLike(configAfter.interestRateStrategy).getVariableRateSlope1Spread()), uint256(newParams.variableRateSlope1Spread));
+
+        address expectedIRM = address(new RateTargetKinkInterestRateStrategy(
+            IPoolAddressesProvider(address(ctx.poolAddressesProvider)),
+            ICustomIRMLike(newParams.irm).RATE_SOURCE(),
+            newParams.optimalUsageRatio,
+            newParams.baseRate,
+            newParams.variableRateSlope1Spread,
+            newParams.variableRateSlope2
+        ));
+
+        _assertBytecodeMatches(expectedIRM, newParams.irm);
     }
 
     /**********************************************************************************************/
