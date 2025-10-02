@@ -98,8 +98,8 @@ contract SparkEthereum_20251002 is SparkPayloadEthereum {
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
-    address internal constant AAVE_INCENTIVE_CONTROLLER = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
     address internal constant GROVE_SUBDAO_PROXY        = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
+    address internal constant AAVE_INCENTIVE_CONTROLLER = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
     address internal constant PYUSD                     = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
     address internal constant SYRUP                     = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
 

@@ -39,9 +39,9 @@ import { SparkPayloadEthereum, IEngine, EngineFlags } from "../../SparkPayloadEt
 contract SparkEthereum_20250821 is SparkPayloadEthereum {
 
     uint256 internal constant MORPHO_SPARK_USDS_VAULT_FEE     = 0.1e18;
-    uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
     uint256 internal constant USDS_AMOUNT_TO_AAVE             = 19_411.17e18;
-
+    uint256 internal constant USDS_AMOUNT_TO_SPARK_FOUNDATION = 800_000e18;
+    
     address internal constant AAVE_V3_COLLECTOR = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
     address internal constant MORPHO_TOKEN      = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
     address internal constant SPARK_FOUNDATION  = 0x92e4629a4510AF5819d7D1601464C233599fF5ec;
