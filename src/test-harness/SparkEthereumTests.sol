@@ -32,7 +32,6 @@ import {
     IMorphoOracleFactoryLike,
     IPendleLinearDiscountOracleLike,
     IRateSourceLike,
-    ITargetBaseIRMLike,
     ITargetKinkIRMLike
 } from "../interfaces/Interfaces.sol";
 
@@ -55,14 +54,6 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
     using WadRayMath for uint256;
 
-    struct RateTargetBaseIRMParams {
-        address irm;
-        uint256 baseRateSpread;
-        uint256 variableRateSlope1;
-        uint256 variableRateSlope2;
-        uint256 optimalUsageRatio;
-    }
-
     struct RateTargetKinkIRMParams {
         address irm;
         uint256 baseRate;
@@ -77,7 +68,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    // TODO: MDL, is this a SLL or SL test?
+    // TODO: MDL, seems to be SLL, but may be neither.
     function _testMorphoCapUpdate(
         address             vault,
         MarketParams memory config,
@@ -114,7 +105,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
     }
 
-    // TODO: MDL, is this a SLL or SL test?
+    // TODO: MDL, seems to be SLL, but may be neither.
     function _testMorphoPendlePTOracleConfig(
         address pt,
         address loanToken,
@@ -182,67 +173,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertBytecodeMatches(expectedBaseFeed, address(baseFeed));
     }
 
-    // TODO: MDL, not used anywhere.
-    function _testRateTargetBaseIRMUpdate(
-        string                  memory symbol,
-        RateTargetBaseIRMParams memory oldParams,
-        RateTargetBaseIRMParams memory newParams
-    )
-        internal
-    {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        // Rate source should be the same
-        assertEq(ICustomIRMLike(newParams.irm).RATE_SOURCE(), ICustomIRMLike(oldParams.irm).RATE_SOURCE());
-
-        uint256 ssrRate = uint256(IRateSourceLike(ICustomIRMLike(newParams.irm).RATE_SOURCE()).getAPR());
-
-        // TODO: MDL, not writing to config, so we don't need a clone.
-        ReserveConfig memory configBefore = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
-
-        _validateInterestRateStrategy(
-            configBefore.interestRateStrategy,
-            oldParams.irm,
-            InterestStrategyValues({
-                addressesProvider:             address(ctx.poolAddressesProvider),
-                optimalUsageRatio:             oldParams.optimalUsageRatio,
-                optimalStableToTotalDebtRatio: 0,
-                baseStableBorrowRate:          oldParams.variableRateSlope1,
-                stableRateSlope1:              0,
-                stableRateSlope2:              0,
-                baseVariableBorrowRate:        ssrRate + oldParams.baseRateSpread,
-                variableRateSlope1:            oldParams.variableRateSlope1,
-                variableRateSlope2:            oldParams.variableRateSlope2
-            })
-        );
-
-        assertEq(ITargetBaseIRMLike(configBefore.interestRateStrategy).getBaseVariableBorrowRateSpread(), oldParams.baseRateSpread);
-
-        _executeAllPayloadsAndBridges();
-
-        // TODO: MDL, not writing to config, so we don't need a clone.
-        ReserveConfig memory configAfter = _findReserveConfigBySymbol(_createConfigurationSnapshot("", ctx.pool), symbol);
-
-        _validateInterestRateStrategy(
-            configAfter.interestRateStrategy,
-            newParams.irm,
-            InterestStrategyValues({
-                addressesProvider:             address(ctx.poolAddressesProvider),
-                optimalUsageRatio:             newParams.optimalUsageRatio,
-                optimalStableToTotalDebtRatio: 0,
-                baseStableBorrowRate:          newParams.variableRateSlope1,
-                stableRateSlope1:              0,
-                stableRateSlope2:              0,
-                baseVariableBorrowRate:        ssrRate + newParams.baseRateSpread,
-                variableRateSlope1:            newParams.variableRateSlope1,
-                variableRateSlope2:            newParams.variableRateSlope2
-            })
-        );
-
-        assertEq(ITargetBaseIRMLike(configAfter.interestRateStrategy).getBaseVariableBorrowRateSpread(), newParams.baseRateSpread);
-    }
-
-    // TODO: MDL, not used anywhere.
+    // TODO: MDL, seems to be Sparklend.
     function _testRateTargetKinkIRMUpdate(
         string                  memory symbol,
         RateTargetKinkIRMParams memory oldParams,
@@ -315,7 +246,7 @@ abstract contract SparkEthereumTests is SparklendTests, SparkLiquidityLayerTests
         _assertBytecodeMatches(expectedIRM, newParams.irm);
     }
 
-    // TODO: MDL, not used anywhere.
+    // TODO: MDL, seems to be SLL, but may be neither.
     function _testMorphoVaultCreation(
         address               asset,
         string         memory name,
