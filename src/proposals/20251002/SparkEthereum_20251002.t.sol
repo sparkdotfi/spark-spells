@@ -20,6 +20,7 @@ import { ChainIdUtils } from "src/libraries/ChainId.sol";
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
+import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import { MorphoTests }              from "src/test-harness/MorphoTests.sol";
 
 interface INetworkRegistry {
@@ -731,6 +732,21 @@ contract SparkEthereum_20251002_MorphoTests is MorphoTests {
             currentCap: 500_000_000e18,
             newCap:     1_000_000_000e18
         });
+    }
+
+}
+
+contract SparkEthereum_20251002_SpellTests is SpellTests {
+
+    constructor() {
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
 
 }
