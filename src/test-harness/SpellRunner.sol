@@ -47,7 +47,6 @@ abstract contract SpellRunner is Test {
 
     // ChainData is already taken in StdChains
     struct DomainData {
-        address                        skySpell;
         address                        payload;
         IExecutor                      executor;
         Domain                         domain;
@@ -60,6 +59,8 @@ abstract contract SpellRunner is Test {
         address                        prevController;
         address                        newController;
     }
+
+    address internal skySpell;
 
     mapping(ChainId => DomainData) internal chainData;
 
@@ -255,11 +256,9 @@ abstract contract SpellRunner is Test {
     }
 
     function logTimestamps(string memory label) internal {
-        uint256 blockTimestampValue = block.timestamp        > 1758289691 ? block.timestamp        - 1758289691 : block.timestamp;
-        uint256 vmTimestampValue    = vm.getBlockTimestamp() > 1758289691 ? vm.getBlockTimestamp() - 1758289691 : vm.getBlockTimestamp();
+        uint256 blockTimestampValue = block.timestamp >= 1758289691 ? (block.timestamp - 1758289691) * 100 / 1 days : block.timestamp;
         console.log("-------------", label, "---");
         console.log("block.timestamp", blockTimestampValue);
-        console.log("VM timestamp   ", vmTimestampValue);
         console.log("");
     }
 
@@ -367,9 +366,9 @@ abstract contract SpellRunner is Test {
 
     function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
         // If Sky spell is deployed, execute through full callstack
-        if (chainData[ChainIdUtils.Ethereum()].skySpell != address(0)) {
-            _vote(chainData[ChainIdUtils.Ethereum()].skySpell);
-            _scheduleWaitAndCast(chainData[ChainIdUtils.Ethereum()].skySpell);
+        if (skySpell != address(0)) {
+            _vote(skySpell);
+            _scheduleWaitAndCast(skySpell);
             return;
         }
 
