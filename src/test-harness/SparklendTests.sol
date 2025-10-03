@@ -60,11 +60,11 @@ import { SpellRunner } from "./SpellRunner.sol";
 /// @dev assertions specific to sparklend, which are not run on chains where it is not deployed
 abstract contract SparklendTests is SpellRunner {
 
+    using DomainHelpers        for Domain;
+    using DomainHelpers        for StdChains.Chain;
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
-    using DomainHelpers for StdChains.Chain;
-    using DomainHelpers for Domain;
-    using SafeERC20 for IERC20;
-    using WadRayMath for uint256;
+    using SafeERC20            for IERC20;
+    using WadRayMath           for uint256;
 
     struct InterestStrategyValues {
         address addressesProvider;
