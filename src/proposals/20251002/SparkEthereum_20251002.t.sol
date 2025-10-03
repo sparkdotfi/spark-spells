@@ -13,10 +13,15 @@ import { Ethereum } from "spark-address-registry/Ethereum.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { ChainIdUtils }  from "src/libraries/ChainId.sol";
-import { SparkTestBase } from "src/test-harness/SparkTestBase.sol";
-
 import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
+
+import { ChainIdUtils } from "src/libraries/ChainId.sol";
+
+import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
+import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
+import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
+import { SpellTests }               from "src/test-harness/SpellTests.sol";
+import { MorphoTests }              from "src/test-harness/MorphoTests.sol";
 
 interface INetworkRegistry {
     function isEntity(address entity_) external view returns (bool);
@@ -79,109 +84,20 @@ interface IVetoSlasher {
     ) external view returns (uint256);
 }
 
-contract SparkEthereum_20251002Test is SparkTestBase {
+contract SparkEthereum_20251002_SparkLiquidityLayerTests is SparkLiquidityLayerTests {
 
     uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
     uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
-    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
-    address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
-
-    address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
-    address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
-
-    uint256 internal constant AMOUNT_TO_GROVE            = 1_031_866e18;
-    uint256 internal constant AMOUNT_TO_SPARK_FOUNDATION = 1_100_000e18;
-
-    // Symbiotic addresses
-    address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
-    address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
-    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
-    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
-    address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
-    address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
-    address constant VAULT_FACTORY     = 0xAEb6bdd95c502390db8f52c8909F703E9Af6a346;
-    address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
-
-    IERC20     spk   = IERC20(Ethereum.SPK);
-    IStakedSPK stSpk = IStakedSPK(Ethereum.STSPK);
-
-    bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
-
-    bytes32 constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
-
-    error NotNetworkMiddleware();
-
     constructor() {
-        id = "20251002";
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
     }
 
-    function setUp() public {
-        _setupDomains("2025-09-29T14:06:00Z");
-
-        _deployPayloads();
+    function setUp() public override {
+        super.setUp();
 
         chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
-    }
-
-    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
-        _testMorphoCapUpdate({
-            vault: Ethereum.MORPHO_VAULT_USDS,
-            config: MarketParams({
-                loanToken:       Ethereum.USDS,
-                collateralToken: PT_USDE_27NOV2025,
-                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.915e18
-            }),
-            currentCap: 500_000_000e18,
-            newCap:     1_000_000_000e18
-        });
-    }
-
-    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
-        _assertSupplyCapConfig(Ethereum.LBTC, 2500, 250, 12 hours);
-
-        _executeAllPayloadsAndBridges();
-
-        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
-    }
-
-    function test_ETHEREUM_sparkLend_reserveFactor() external onChain(ChainIdUtils.Ethereum()) {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
-
-        ReserveConfig memory usdc = _findReserveConfigBySymbol(allConfigsBefore, "USDC");
-        ReserveConfig memory usdt = _findReserveConfigBySymbol(allConfigsBefore, "USDT");
-
-        assertEq(usdc.reserveFactor, 10_00);
-        assertEq(usdt.reserveFactor, 10_00);
-
-        _executeAllPayloadsAndBridges();
-
-        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
-
-        usdc.reserveFactor = 1_00;
-        usdt.reserveFactor = 1_00;
-
-        _validateReserveConfig(usdc, allConfigsAfter);
-        _validateReserveConfig(usdt, allConfigsAfter);
-    }
-
-    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-
-        assertEq(spDaiBalanceBefore,  427_922_362.907882814087376337e18);
-        assertEq(spUsdsBalanceBefore, 292_375_858.985571105560773831e18);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 35_634.125995826351175598e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 33_954.083079896392213769e18);
     }
 
     function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Ethereum()) {
@@ -337,16 +253,6 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         );
     }
 
-    function test_ETHEREUM_claimAaveRewards() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
-
-        assertEq(aUSDSBalanceBefore, 0.003724174222078038e18);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547364810826229364e18);
-    }
-
     function test_ETHEREUM_sll_addTransferAssetRateLimitForSYRUP() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
@@ -367,6 +273,116 @@ contract SparkEthereum_20251002Test is SparkTestBase {
             transferKey:    transferKey,
             transferAmount: 200_000e18
         }));
+    }
+
+}
+
+contract SparkEthereum_20251002_SparklendTests is SparklendTests {
+
+    constructor() {
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+    }
+
+    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
+        _assertSupplyCapConfig(Ethereum.LBTC, 2500, 250, 12 hours);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
+    }
+
+    function test_ETHEREUM_sparkLend_reserveFactor() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
+
+        // TODO: MDL, only writing to config at end of test, so we don't need a clone.
+        ReserveConfig memory usdc = _findReserveConfigBySymbol(allConfigsBefore, "USDC");
+        ReserveConfig memory usdt = _findReserveConfigBySymbol(allConfigsBefore, "USDT");
+
+        assertEq(usdc.reserveFactor, 10_00);
+        assertEq(usdt.reserveFactor, 10_00);
+
+        _executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
+
+        usdc.reserveFactor = 1_00;
+        usdt.reserveFactor = 1_00;
+
+        _validateReserveConfig(usdc, allConfigsAfter);
+        _validateReserveConfig(usdt, allConfigsAfter);
+    }
+
+    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+
+        assertEq(spDaiBalanceBefore,  427_922_362.907882814087376337e18);
+        assertEq(spUsdsBalanceBefore, 292_375_858.985571105560773831e18);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 35_634.125995826351175598e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 33_954.083079896392213769e18);
+    }
+
+}
+
+contract SparkEthereum_20251002_GenericTests is SpellRunner {
+
+    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
+
+    uint256 internal constant AMOUNT_TO_GROVE            = 1_031_866e18;
+    uint256 internal constant AMOUNT_TO_SPARK_FOUNDATION = 1_100_000e18;
+
+    // Symbiotic addresses
+    address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
+    address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
+    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
+    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
+    address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
+    address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
+    address constant VAULT_FACTORY     = 0xAEb6bdd95c502390db8f52c8909F703E9Af6a346;
+    address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+
+    IERC20     spk   = IERC20(Ethereum.SPK);
+    IStakedSPK stSpk = IStakedSPK(Ethereum.STSPK);
+
+    bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
+
+    bytes32 constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
+    error NotNetworkMiddleware();
+
+    constructor() {
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+    }
+
+    function test_ETHEREUM_claimAaveRewards() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
+
+        assertEq(aUSDSBalanceBefore, 0.003724174222078038e18);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547364810826229364e18);
     }
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
@@ -683,6 +699,54 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         // No roles
         (bool success6, ) = address(slasher).call(abi.encodeWithSignature("hasRole(bytes32,address)", DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY));
         assertFalse(success6);
+    }
+
+}
+
+contract SparkEthereum_20251002_MorphoTests is MorphoTests {
+
+    address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
+    address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
+
+    constructor() {
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+    }
+
+    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
+        _testMorphoCapUpdate({
+            vault: Ethereum.MORPHO_VAULT_USDS,
+            config: MarketParams({
+                loanToken:       Ethereum.USDS,
+                collateralToken: PT_USDE_27NOV2025,
+                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.915e18
+            }),
+            currentCap: 500_000_000e18,
+            newCap:     1_000_000_000e18
+        });
+    }
+
+}
+
+contract SparkEthereum_20251002_SpellTests is SpellTests {
+
+    constructor() {
+        _spellId   = 20251002;
+        _blockDate = "2025-09-29T14:06:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
 
 }

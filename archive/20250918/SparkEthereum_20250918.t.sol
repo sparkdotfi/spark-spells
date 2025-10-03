@@ -33,13 +33,12 @@ contract SparkEthereum_20250918Test is SparkTestBase {
     address internal constant SPARK_MULTISIG_BASE     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
 
     constructor() {
-        id = "20250918";
+        _spellId = 20250918;
+        _blockDate = "2025-09-15T16:42:00Z";
     }
 
-    function setUp() public {
-        _setupDomains("2025-09-15T16:42:00Z");
-
-        _deployPayloads();
+    function setUp() public override {
+        super.setUp();
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER_ETHEREUM;
