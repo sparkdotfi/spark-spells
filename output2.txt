@@ -1,7 +1,7 @@
 No files changed, compilation skipped
 
 Ran 35 tests for src/proposals/20250918/SparkEthereum_20250918.t.sol:SparkEthereum_20250918Test
-[PASS] test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 600716371)
+[PASS] test_ARBITRUM_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 599955763)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -30,217 +30,175 @@ Logs:
   rateLimits LU   86400
 
   ------------- PRE EXECUTE ---
-  block.timestamp 86400
-  VM timestamp    86400
+  block.timestamp 100
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   --- STEP Step 1a ---
   block.timestamp 346309
@@ -272,7 +230,7 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
 
-[PASS] test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 600759966)
+[PASS] test_BASE_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 599999245)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -309,217 +267,175 @@ Logs:
   VM timestamp    86400
 
   ------------- PRE EXECUTE ---
-  block.timestamp 86400
-  VM timestamp    86400
+  block.timestamp 100
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------------------------- PRE E2E 2 --
   block.timestamp 259909
@@ -559,7 +475,7 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
 
-[PASS] test_BASE_cctpRateLimits() (gas: 100824771)
+[PASS] test_BASE_cctpRateLimits() (gas: 100570339)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -571,443 +487,177 @@ Logs:
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
   block.timestamp 1758289681
-  VM timestamp    1758289681
 
   ------------- PRE RELAY ---
   block.timestamp 1758289681
-  VM timestamp    1758289681
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
 
-[PASS] test_BASE_controllerUpgrade() (gas: 100757558)
-Logs:
-  Mainnet block:   23397523
-  Base block:      35750167
-  Arbitrum block:  380806467
-  Optimism block:  141345452
-  skipping spell deployment for network:  Gnosis
-  skipping spell deployment for network:  ArbitrumOne
-  skipping spell deployment for network:  Optimism
-  skipping spell deployment for network:  Unichain
-  ------------- PRE EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  ------------- PRE RELAY ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  Executing bridge for chain:  Base
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  Base
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  Gnosis
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  ArbitrumOne
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  ArbitrumOne
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  Optimism
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  Optimism
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  Unichain
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing bridge for chain:  Unichain
-  ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  Executing foreign payload for chain:  Ethereum
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  Executing foreign payload for chain:  Base
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
-
-  simulating execution payload for network:  Base
-  mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
-  ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  Executing foreign payload for chain:  Gnosis
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  simulating execution payload for network:  Gnosis
-  mainnetSpellPayload 0x0000000000000000000000000000000000000000
-  ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  Executing foreign payload for chain:  ArbitrumOne
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  simulating execution payload for network:  ArbitrumOne
-  mainnetSpellPayload 0x0000000000000000000000000000000000000000
-  ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  Executing foreign payload for chain:  Optimism
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  simulating execution payload for network:  Optimism
-  mainnetSpellPayload 0x0000000000000000000000000000000000000000
-  ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  Executing foreign payload for chain:  Unichain
-  ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  simulating execution payload for network:  Unichain
-  mainnetSpellPayload 0x0000000000000000000000000000000000000000
-  ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-  ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
-
-
-[PASS] test_BASE_spark_morphoTransferLimit() (gas: 100956694)
+[PASS] test_BASE_controllerUpgrade() (gas: 100502847)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -1019,219 +669,177 @@ Logs:
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
   block.timestamp 1758289681
-  VM timestamp    1758289681
 
   ------------- PRE RELAY ---
   block.timestamp 1758289681
-  VM timestamp    1758289681
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
 
-[PASS] test_ETHEREUM_AllReservesSeeded() (gas: 101386465)
+[PASS] test_BASE_spark_morphoTransferLimit() (gas: 100702322)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -1242,220 +850,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 1758289681
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 1758289681
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 99
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 99
 
 
-[PASS] test_ETHEREUM_CapAutomator() (gas: 128165301)
+[PASS] test_ETHEREUM_AllReservesSeeded() (gas: 101132493)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -1466,217 +1032,357 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 300
+
+
+[PASS] test_ETHEREUM_CapAutomator() (gas: 127833364)
+Logs:
+  Mainnet block:   23397523
+  Base block:      35750167
+  Arbitrum block:  380806467
+  Optimism block:  141345452
+  skipping spell deployment for network:  Gnosis
+  skipping spell deployment for network:  ArbitrumOne
+  skipping spell deployment for network:  Optimism
+  skipping spell deployment for network:  Unichain
+  ------------- PRE EXECUTE ---
+  block.timestamp 0
+
+  ------------- PRE RELAY ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Base
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- Optimism ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Base
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- CCTP To ---
+  block.timestamp 300
+
+  ------------- CCTP From ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Gnosis
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- AMB ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  ArbitrumOne
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- Arbitrum ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  ArbitrumOne
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- CCTP To ---
+  block.timestamp 300
+
+  ------------- CCTP From ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Optimism
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- Optimism ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Optimism
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- CCTP To ---
+  block.timestamp 300
+
+  ------------- CCTP From ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Unichain
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- Optimism ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  Executing bridge for chain:  Unichain
+  ------------- PRE BRIDGE ---
+  block.timestamp 300
+
+  ------------- CCTP To ---
+  block.timestamp 300
+
+  ------------- CCTP From ---
+  block.timestamp 300
+
+  ------------- POST BRIDGE ---
+  block.timestamp 300
+
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 300
+
+  Executing foreign payload for chain:  Ethereum
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 300
+
+  Executing foreign payload for chain:  Base
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 300
+
+  simulating execution payload for network:  Base
+  mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
+  ------------- POST FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  Executing foreign payload for chain:  Gnosis
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  simulating execution payload for network:  Gnosis
+  mainnetSpellPayload 0x0000000000000000000000000000000000000000
+  ------------- POST FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  Executing foreign payload for chain:  ArbitrumOne
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  simulating execution payload for network:  ArbitrumOne
+  mainnetSpellPayload 0x0000000000000000000000000000000000000000
+  ------------- POST FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  Executing foreign payload for chain:  Optimism
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  simulating execution payload for network:  Optimism
+  mainnetSpellPayload 0x0000000000000000000000000000000000000000
+  ------------- POST FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  Executing foreign payload for chain:  Unichain
+  ------------- PRE FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  simulating execution payload for network:  Unichain
+  mainnetSpellPayload 0x0000000000000000000000000000000000000000
+  ------------- POST FOREIGN EXECUTE ---
+  block.timestamp 99
+
+  ------------- POST FOREIGN EXECUTE LOOP ---
+  block.timestamp 99
+
+  ------------- POST FOREIGN EXECUTE ---
+  block.timestamp 300
 
 
 [PASS] test_ETHEREUM_E2E_sparkLiquidityLayer() (gas: 36027378)
@@ -1763,7 +1469,7 @@ Logs:
   Running SLL E2E test for CURVE_SWAP-PYUSDUSDS
   Running SLL E2E test for CURVE_LP-PYUSDUSDS
 
-[PASS] test_ETHEREUM_FreezerMom() (gas: 164710794)
+[PASS] test_ETHEREUM_FreezerMom() (gas: 164390936)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -1774,220 +1480,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 346309
-  VM timestamp    346309
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_FreezerMom_Multisig() (gas: 145864273)
+[PASS] test_ETHEREUM_FreezerMom_Multisig() (gas: 145562719)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -1998,220 +1662,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 346309
-  VM timestamp    346309
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 346309
-  VM timestamp    346309
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 432709
-  VM timestamp    432709
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 0
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_Oracles() (gas: 103622466)
+[PASS] test_ETHEREUM_Oracles() (gas: 103368414)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -2222,217 +1844,175 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
 [PASS] test_ETHEREUM_PayloadBytecodeMatches() (gas: 3049344)
@@ -2457,7 +2037,7 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
 
-[PASS] test_ETHEREUM_RewardsConfiguration() (gas: 102162606)
+[PASS] test_ETHEREUM_RewardsConfiguration() (gas: 101907846)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -2468,220 +2048,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_SparkProxyStorage() (gas: 100860980)
+[PASS] test_ETHEREUM_SparkProxyStorage() (gas: 100606919)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -2692,220 +2230,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_SpellExecutionDiff() (gas: 326101989)
+[PASS] test_ETHEREUM_SpellExecutionDiff() (gas: 325511932)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -2916,220 +2412,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 299
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 299
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 299
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 299
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_TokenImplementationsMatch() (gas: 101519633)
+[PASS] test_ETHEREUM_TokenImplementationsMatch() (gas: 101265661)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -3140,220 +2594,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 400
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758462481
+  postTimestamp 1758462481
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 199
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_cctpRateLimits() (gas: 100815510)
+[PASS] test_ETHEREUM_cctpRateLimits() (gas: 100561679)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -3364,220 +2776,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_controllerUpgrade() (gas: 100861522)
+[PASS] test_ETHEREUM_controllerUpgrade() (gas: 100607532)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -3588,220 +2958,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 400
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_curvePoolOnboarding() (gas: 101709612)
+[PASS] test_ETHEREUM_curvePoolOnboarding() (gas: 101455417)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -3812,220 +3140,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[FAIL: custom error 0x6677a596] test_ETHEREUM_morpho_onboardPTUSDSSPK18Dec2025() (gas: 101939697)
+[PASS] test_ETHEREUM_morpho_onboardPTUSDSSPK18Dec2025() (gas: 101117319)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -4036,220 +3322,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 100
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 100
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_sll_onboardUsdsSpkFarm() (gas: 101080112)
+[PASS] test_ETHEREUM_sll_onboardUsdsSpkFarm() (gas: 100826041)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -4260,220 +3504,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758289681
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_sparkLend_usdtCapAutomatorUpdates() (gas: 100689573)
+[PASS] test_ETHEREUM_sparkLend_usdtCapAutomatorUpdates() (gas: 100435723)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -4484,220 +3686,178 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
-[PASS] test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() (gas: 100697347)
+[PASS] test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() (gas: 100443393)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -4708,217 +3868,175 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
   ------------- PRE EXECUTE ---
-  block.timestamp 1758289691
-  VM timestamp    1758289691
+  block.timestamp 0
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
 
 [SKIP] test_GNOSIS_AllReservesSeeded() (gas: 0)
@@ -4976,7 +4094,7 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
 
-[PASS] test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 600690380)
+[PASS] test_OPTIMISM_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 599929600)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -5005,235 +4123,193 @@ Logs:
   rateLimits LU   86400
 
   ------------- PRE EXECUTE ---
-  block.timestamp 86400
-  VM timestamp    86400
+  block.timestamp 100
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 400
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 86390
-  VM timestamp    86390
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 346309
-  VM timestamp    346309
+  block.timestamp 300
 
   --- STEP Step 1a ---
-  block.timestamp 432709
-  VM timestamp    432709
+  block.timestamp 346309
+  VM timestamp    346309
   jug rho         259909
   rateLimits LU   86400
 
   --- STEP Step 1b ---
-  block.timestamp 432709
-  VM timestamp    432709
-  jug rho         432709
-  rateLimits LU   432709
+  block.timestamp 346309
+  VM timestamp    346309
+  jug rho         346309
+  rateLimits LU   346309
 
   --- STEP Step 6 ---
-  block.timestamp 432709
-  VM timestamp    432709
-  jug rho         432709
-  rateLimits LU   432709
+  block.timestamp 346309
+  VM timestamp    346309
+  jug rho         346309
+  rateLimits LU   346309
 
 
 [SKIP] test_OPTIMISM_PayloadBytecodeMatches() (gas: 0)
@@ -5247,7 +4323,7 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
 
-[PASS] test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 600692528)
+[PASS] test_UNICHAIN_E2E_sparkLiquidityLayerCrossChainSetup() (gas: 599929888)
 Logs:
   Mainnet block:   23397523
   Base block:      35750167
@@ -5276,217 +4352,175 @@ Logs:
   rateLimits LU   86400
 
   ------------- PRE EXECUTE ---
-  block.timestamp 86400
-  VM timestamp    86400
+  block.timestamp 100
 
   ------------- PRE RELAY ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 400
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Base
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Gnosis
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- AMB ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Arbitrum ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  ArbitrumOne
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Optimism
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- Optimism ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing bridge for chain:  Unichain
   ------------- PRE BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP To ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- CCTP From ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- POST BRIDGE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Ethereum
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   Executing foreign payload for chain:  Base
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   simulating execution payload for network:  Base
   mainnetSpellPayload 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318
+  IN IF STATEMENT
+  actionsSetId 11
+  executionTime 1758376081
+  prevTimestamp 1758376081
+  postTimestamp 1758376081
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Gnosis
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Gnosis
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  ArbitrumOne
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  ArbitrumOne
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Optimism
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Optimism
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   Executing foreign payload for chain:  Unichain
   ------------- PRE FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   simulating execution payload for network:  Unichain
   mainnetSpellPayload 0x0000000000000000000000000000000000000000
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE LOOP ---
-  block.timestamp 172790
-  VM timestamp    172790
+  block.timestamp 99
 
   ------------- POST FOREIGN EXECUTE ---
-  block.timestamp 259909
-  VM timestamp    259909
+  block.timestamp 300
 
   --- STEP Step 1a ---
   block.timestamp 346309
@@ -5518,12 +4552,6 @@ Logs:
   skipping spell deployment for network:  Optimism
   skipping spell deployment for network:  Unichain
 
-Suite result: FAILED. 26 passed; 1 failed; 8 skipped; finished in 3.36s (7.97s CPU time)
+Suite result: ok. 27 passed; 0 failed; 8 skipped; finished in 3.07s (7.37s CPU time)
 
-Ran 1 test suite in 3.36s (3.36s CPU time): 26 tests passed, 1 failed, 8 skipped (35 total tests)
-
-Failing tests:
-Encountered 1 failing test in src/proposals/20250918/SparkEthereum_20250918.t.sol:SparkEthereum_20250918Test
-[FAIL: custom error 0x6677a596] test_ETHEREUM_morpho_onboardPTUSDSSPK18Dec2025() (gas: 101939697)
-
-Encountered a total of 1 failing tests, 26 tests succeeded
+Ran 1 test suite in 3.07s (3.07s CPU time): 27 tests passed, 0 failed, 8 skipped (35 total tests)

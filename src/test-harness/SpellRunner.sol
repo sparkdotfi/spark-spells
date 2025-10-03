@@ -325,9 +325,14 @@ abstract contract SpellRunner is Test {
                 chainData[chainId].domain.selectFork();
                 uint256 actionsSetId = executor.actionsSetCount() - 1;
                 uint256 prevTimestamp = block.timestamp;
+                console.log("IN IF STATEMENT");
+                console.log("actionsSetId", actionsSetId);
+                console.log("executionTime", executor.getActionsSetById(actionsSetId).executionTime);
+                console.log("prevTimestamp", prevTimestamp);
                 vm.warp(executor.getActionsSetById(actionsSetId).executionTime);
                 executor.execute(actionsSetId);
                 vm.warp(prevTimestamp);
+                console.log("postTimestamp", block.timestamp);
             } else {
                 // We will simulate execution until the real spell is deployed in the mainnet spell
                 address payload = chainData[chainId].payload;
