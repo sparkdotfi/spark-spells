@@ -40,7 +40,8 @@ import {
     IFarmLike,
     IMapleStrategyLike,
     IPoolManagerLike,
-    IPsmLike,
+    IPSMLike,
+    IPSM3Like,
     ISparkVaultV2Like,
     ISuperstateTokenLike,
     ISUSDELike,
@@ -193,6 +194,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address                    psm;
         uint256                    swapAmount;
         bytes32                    swapKey;
+    }
+
+    struct PSM3E2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    psm3;
+        address                    asset;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        bytes32                    withdrawKey;
+        uint256                    tolerance;
     }
 
     struct RateLimitData {
@@ -1004,7 +1015,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         IERC20 usdc = IERC20(Ethereum.USDC);
         IERC20 usds = IERC20(Ethereum.USDS);
 
-        address pocket = IPsmLike(p.psm).pocket();
+        address pocket = IPSMLike(p.psm).pocket();
 
         uint256 usdsSwapAmount = p.swapAmount * 1e12;  // Convert USDC to USDS
 
@@ -1733,6 +1744,119 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.totalSupply(),   vaultTotalSupply);
         assertEq(vault.balanceOf(user), 0);
         assertEq(vault.assetsOf(user),  0);
+    }
+
+    function _testPSM3Integration(PSM3E2ETestParams memory p) internal {
+        IPSM3Like psm   = IPSM3Like(p.psm3);
+        IERC20    asset = IERC20(p.asset);
+
+        deal(address(asset), address(p.ctx.proxy), p.depositAmount);
+
+        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        bool unlimitedDeposit  = depositLimit == type(uint256).max;
+        bool unlimitedWithdraw = withdrawLimit == type(uint256).max;
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        if (depositLimit != type(uint256).max) {
+            vm.prank(p.ctx.relayer);
+            vm.expectRevert("RateLimits/rate-limit-exceeded");
+            ForeignController(p.ctx.controller).depositPSM(address(asset), depositLimit + 1);
+        }
+
+        /****************************************************/
+        /*** Step 2: Deposit and check resulting position ***/
+        /****************************************************/
+
+        uint256 assetBalancePSM = asset.balanceOf(address(psm));
+        uint256 startingShares  = psm.shares(address(p.ctx.proxy));
+        uint256 startingAssets  = psm.convertToAssets(p.asset, startingShares);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);  // Set by deal
+        assertEq(asset.balanceOf(address(psm)),         assetBalancePSM);
+
+        assertEq(psm.shares(address(p.ctx.proxy)),             startingShares);
+        assertEq(psm.convertToAssets(p.asset, startingShares), startingAssets);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+
+        vm.prank(p.ctx.relayer);
+        uint256 shares = ForeignController(p.ctx.controller).depositPSM(address(asset), p.depositAmount);
+
+        if (!unlimitedDeposit) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        } else {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), type(uint256).max);
+        }
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(address(psm)),         assetBalancePSM + p.depositAmount);
+
+        assertEq(psm.shares(address(p.ctx.proxy)), startingShares + shares);
+
+        assertApproxEqAbs(
+            psm.convertToAssets(p.asset, startingShares + shares),
+            startingAssets + p.depositAmount,
+            p.tolerance
+        );
+
+        /*************************************************/
+        /*** Step 3: Warp to check rate limit recharge ***/
+        /*************************************************/
+
+        skip(10 days);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+
+        /*****************************************************/
+        /*** Step 4: Withdraw and check resulting position ***/
+        /*****************************************************/
+
+        assetBalancePSM = asset.balanceOf(address(psm));
+        startingShares  = psm.shares(address(p.ctx.proxy));
+        startingAssets  = psm.convertToAssets(p.asset, startingShares);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset.balanceOf(address(psm)),         assetBalancePSM);
+
+        assertEq(psm.shares(address(p.ctx.proxy)),             startingShares);
+        assertEq(psm.convertToAssets(p.asset, startingShares), startingAssets);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
+
+        vm.prank(p.ctx.relayer);
+        shares = ForeignController(p.ctx.controller).withdrawPSM(address(asset), p.depositAmount);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        assertEq(asset.balanceOf(address(psm)),         assetBalancePSM - p.depositAmount);
+
+        uint256 sharesBurned = startingShares - psm.shares(address(p.ctx.proxy));
+
+        assertApproxEqAbs(
+            psm.convertToAssets(p.asset, sharesBurned),
+            p.depositAmount,
+            p.tolerance
+        );
+
+        if (!unlimitedWithdraw) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit - p.depositAmount);
+        } else {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), type(uint256).max);
+        }
+
+        /**************************************************/
+        /*** Step 5: Warp to check rate limit recharge ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), p.ctx.rateLimits.getRateLimitData(p.withdrawKey).maxAmount);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {

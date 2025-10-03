@@ -134,6 +134,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
+
         RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
         _executeAllPayloadsAndBridges();
@@ -145,9 +149,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
     }
 
     /**********************************************************************************************/
@@ -374,6 +378,24 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 transferAmount:  amount * 10 ** decimals,
                 userVaultAmount: amount * 10 ** decimals,
                 tolerance:       10
+            }));
+        }
+
+        else if (integration.category == Category.PSM3) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            address asset = abi.decode(integration.extraData, (address));
+
+            uint256 decimals = IERC20(asset).decimals();
+
+            _testPSM3Integration(PSM3E2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                psm3:          integration.integration,
+                asset:         asset,
+                depositAmount: 10_000_000 * 10 ** decimals,
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId,
+                tolerance:     10
             }));
         }
 
@@ -627,7 +649,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         if (category == Category.PSM3) {
             entryId   = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset);
             exitId    = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_WITHDRAW(), asset);
-            extraData = abi.encode(integration);
+            extraData = abi.encode(asset);
         } else {
             revert("Invalid category");
         }
@@ -635,7 +657,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         return SLLIntegration({
             label:       label,
             category:    category,
-            integration: asset,
+            integration: integration,
             entryId:     entryId,
             entryId2:    entryId2,
             exitId:      exitId,
