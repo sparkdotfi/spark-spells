@@ -56,7 +56,6 @@ import { ProxyHelpers }          from "../libraries/ProxyHelpers.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-// TODO: MDL, only used by `SparkTestBase`.
 /// @dev assertions specific to sparklend, which are not run on chains where it is not deployed
 abstract contract SparklendTests is SpellRunner {
 
@@ -675,7 +674,6 @@ abstract contract SparklendTests is SpellRunner {
         IExecutableLike(spell).execute();
     }
 
-    // TODO: MDL, not used anywhere.
     function _testAssetOnboardings(SparkLendAssetOnboardingParams[] memory collaterals) internal {
         SparkLendContext memory ctx              = _getSparkLendContext();
         ReserveConfig[]  memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
@@ -693,7 +691,6 @@ abstract contract SparklendTests is SpellRunner {
         }
     }
 
-    // TODO: MDL, only used by `_testAssetOnboardings` above.
     function _testAssetOnboarding(
         ReserveConfig[]                memory allReserveConfigs,
         SparkLendAssetOnboardingParams memory params
@@ -768,7 +765,6 @@ abstract contract SparklendTests is SpellRunner {
         );
     }
 
-    // TODO: MDL, not used anywhere.
     function _testRateTargetBaseIRMUpdate(
         string                  memory symbol,
         RateTargetBaseIRMParams memory oldParams,

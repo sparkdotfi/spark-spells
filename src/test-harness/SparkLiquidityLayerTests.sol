@@ -57,7 +57,6 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-// TODO: MDL, only used by `SparkTestBase`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 

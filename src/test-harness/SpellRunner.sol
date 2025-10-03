@@ -30,7 +30,6 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
 
-// TODO: MDL, Use by `SparklendTests` and `SparkLiquidityLayerTests`.
 abstract contract SpellRunner is Test {
 
     using DomainHelpers for Domain;
