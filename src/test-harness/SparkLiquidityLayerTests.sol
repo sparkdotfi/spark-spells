@@ -67,6 +67,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32                    withdrawKey;
     }
 
+    struct CCTPE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    cctp;
+        uint256                    transferAmount;
+        bytes32                    transferKey;
+        uint32                     cctpId;
+    }
+
     struct CoreE2ETestParams {
         SparkLiquidityLayerContext ctx;
         uint256                    mintAmount;
@@ -1857,6 +1865,56 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), p.ctx.rateLimits.getRateLimitData(p.withdrawKey).maxAmount);
+    }
+
+    function _testCCTPIntegration(CCTPE2ETestParams memory p) internal {
+        // NOTE: MainnetController and ForeignController share the same CCTP interfaces
+        ///      so this works for both.
+        IERC20 usdc = IERC20(MainnetController(p.ctx.controller).usdc());
+
+        deal(address(usdc), address(p.ctx.proxy), p.transferAmount);
+
+        uint256 transferLimit = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        MainnetController(p.ctx.controller).transferUSDCToCCTP(transferLimit + 1, p.cctpId);
+
+        /**************************************************/
+        /*** Step 2: Transfer and check resulting state ***/
+        /**************************************************/
+
+        uint256 totalSupply = usdc.totalSupply();
+
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), p.transferAmount);
+        assertEq(usdc.totalSupply(),                   totalSupply);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).transferUSDCToCCTP(p.transferAmount, p.cctpId);
+
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(usdc.totalSupply(),               totalSupply - p.transferAmount);
+
+        if (transferLimit != type(uint256).max) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - p.transferAmount);
+        } else {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), type(uint256).max);
+        }
+
+        /**************************************************/
+        /*** Step 3: Warp to check rate limit recharge ***/
+        /**************************************************/
+
+        skip(10 days);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), p.ctx.rateLimits.getRateLimitData(p.transferKey).maxAmount);
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {

@@ -399,24 +399,19 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
-        // else if (integration.category == Category.CCTP) {
-        //     // console2.log("Running SLL E2E test for", integration.label);
+        else if (integration.category == Category.CCTP) {
+            console2.log("Running SLL E2E test for", integration.label);
 
-        //     // TODO: Add back in once multichain is configured
-        //     // ChainId domainId;
+            ( uint32 cctpId ) = abi.decode(integration.extraData, (uint32));
 
-        //     // if      (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE))) domainId = ChainIdUtils.ArbitrumOne();
-        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE)))         domainId = ChainIdUtils.Base();
-        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM)))     domainId = ChainIdUtils.Optimism();
-        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN)))     domainId = ChainIdUtils.Unichain();
-        //     // else revert("Invalid domain ID");
-
-        //     // _testE2ESLLCrossChainForDomain(
-        //     //     domainId,
-        //     //     MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).controller),
-        //     //     ForeignController(_getSparkLiquidityLayerContext(domainId).controller)
-        //     // );
-        // }
+            _testCCTPIntegration(CCTPE2ETestParams({
+                ctx:            _getSparkLiquidityLayerContext(),
+                cctp:           integration.integration,
+                transferAmount: 50_000_000e6,
+                transferKey:    integration.entryId,
+                cctpId:         cctpId
+            }));
+        }
 
         else {
             console2.log("NOT running SLL E2E test for", integration.label);
@@ -690,12 +685,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ForeignController foreignController,
         string memory label,
         Category category,
-        uint32 domain
+        uint32 cctpId
     ) internal returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
+        bytes32 entryId     = bytes32(0);
+        address integration = address(0);
+
+        bytes memory extraData = new bytes(0);
 
         if (category == Category.CCTP) {
-            entryId = RateLimitHelpers.makeDomainKey(foreignController.LIMIT_USDC_TO_DOMAIN(), domain);
+            entryId     = RateLimitHelpers.makeDomainKey(foreignController.LIMIT_USDC_TO_DOMAIN(), cctpId);
+            integration = address(foreignController.cctp());
+            extraData   = abi.encode(cctpId);
         } else {
             revert("Invalid category");
         }
@@ -703,12 +703,12 @@ abstract contract SparkTestBase is SparkEthereumTests {
         return SLLIntegration({
             label:       label,
             category:    category,
-            integration: address(uint160(domain)),  // Unique ID
+            integration: integration,
             entryId:     entryId,
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   new bytes(0)
+            extraData:   extraData
         });
     }
 
