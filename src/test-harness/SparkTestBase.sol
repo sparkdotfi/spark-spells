@@ -892,12 +892,17 @@ abstract contract SparkTestBase is SparkEthereumTests {
         MainnetController        mainnetController,
         string            memory label,
         Category                 category,
-        uint32                   domain
+        uint32                   cctpId
     ) internal view returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
+        bytes32 entryId     = bytes32(0);
+        address integration = address(0);
+
+        bytes memory extraData = new bytes(0);
 
         if (category == Category.CCTP) {
-            entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
+            entryId     = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), cctpId);
+            integration = address(mainnetController.cctp());
+            extraData   = abi.encode(cctpId);
         } else {
             revert("Invalid category");
         }
@@ -905,12 +910,12 @@ abstract contract SparkTestBase is SparkEthereumTests {
         return SLLIntegration({
             label:       label,
             category:    category,
-            integration: address(uint160(domain)),  // Unique ID
+            integration: integration,
             entryId:     entryId,
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   new bytes(0)
+            extraData:   extraData
         });
     }
 
@@ -997,8 +1002,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 assertTrue(found, "Rate limit key mismatch");
             }
         }
-
-        console2.log("Rate limit keys", rateLimitKeys.length);
 
         assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
     }
