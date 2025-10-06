@@ -2111,7 +2111,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
+        console2.log("\nDOMAIN", ChainIdUtils.toDomainString(domainId));
+
+        console2.log("block.number   ", block.number);
+        console2.log("block.timestamp", block.timestamp);
+
         chainData[domainId].domain.selectFork();
+
+        console2.log("block.number   ", block.number);
+        console2.log("block.timestamp", block.timestamp);
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 

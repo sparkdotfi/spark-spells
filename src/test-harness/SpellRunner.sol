@@ -57,7 +57,7 @@ abstract contract SpellRunner is Test {
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
 
-        if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
+        chainData[chainId].domain.selectFork();
 
         _;
 

@@ -188,6 +188,58 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
     }
 
+    function test_ARBITRUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.ArbitrumOne()) {
+        console2.log("block.number", block.number);
+        console2.log("block.timestamp", block.timestamp);
+
+        _runFullLayer2TestSuite(ChainIdUtils.ArbitrumOne());
+    }
+
+    function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
+        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
+
+        console2.log("block.number", block.number);
+        console2.log("block.timestamp", block.timestamp);
+
+        Bridge storage bridge = chainData[chainId].bridges[0];
+
+        bytes32[] memory rateLimitKeys = _getForeignRateLimitKeys(bridge, false);
+
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrationsForeign(foreignController, chainId);
+
+        _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
+
+        // RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+
+        // _executeAllPayloadsAndBridges();
+
+        // chainData[chainId].domain.selectFork();
+
+        // rateLimitKeys = _getForeignRateLimitKeys(bridge, true);
+        // integrations = _appendPostExecutionIntegrationsForeign(integrations, foreignController, chainId);
+
+        // _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
+    }
+
+    function test_LAYER2_E2E_sparkLiquidityLayer() external {
+        uint256 snapshot = vm.snapshot();
+        for (uint256 i = 0; i < allChains.length; ++i) {
+            if (allChains[i] == ChainIdUtils.Ethereum() || allChains[i] == ChainIdUtils.Gnosis()) continue;
+            console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
+            _runFullLayer2TestSuite(allChains[i]);
+
+            vm.revertToState(snapshot);
+        }
+    }
+
     /**********************************************************************************************/
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
@@ -611,7 +663,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         ForeignController foreignController,
         ChainId chainId
     ) internal returns (SLLIntegration[] memory integrations) {
-        if (chainId == ChainIdUtils.Optimism() ) {
+        if (chainId == ChainIdUtils.Optimism() || chainId == ChainIdUtils.ArbitrumOne() || chainId == ChainIdUtils.Unichain()) {
             integrations = new SLLIntegration[](5);
 
             integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Optimism.PSM3, Optimism.USDC);
