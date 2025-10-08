@@ -8,6 +8,12 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
+interface IArbSysLike {
+
+    function getBlockNumber() external view returns (uint256);
+
+}
+
 interface IProxyLike {
 
     function implementation() external view returns (address);

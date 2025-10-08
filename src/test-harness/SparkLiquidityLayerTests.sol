@@ -302,7 +302,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _testE2ESLLCrossChainForDomain(
                 domainChainId,
                 MainnetController(isPostExecution ? ctxMainnet.controller : ctxMainnet.prevController),
-                ForeignController(isPostExecution ? domainCtx.controller : domainCtx.prevController)
+                ForeignController(isPostExecution ? domainCtx.controller  : domainCtx.prevController)
             );
         }
     }

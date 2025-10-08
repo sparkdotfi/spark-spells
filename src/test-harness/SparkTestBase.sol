@@ -19,16 +19,15 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol"; // Keep as code using it is currently commented.
 
+import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.sol";
 import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
+import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
-import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
+import { ICurvePoolLike, ISparkVaultV2Like, IArbSysLike } from "../interfaces/Interfaces.sol";
 
-import { ChainId, ChainIdUtils }             from "../libraries/ChainId.sol"; // Keep as code using it is currently commented.
-import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
-import { SparkEthereumTests }                from "./SparkEthereumTests.sol";
-
-import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
+import { ChainId, ChainIdUtils } from "../libraries/ChainId.sol"; // Keep as code using it is currently commented.
+import { SparkEthereumTests }    from "./SparkEthereumTests.sol";
 
 // TODO: MDL inherited by the specific `SparkEthereum_x.t.sol` proposal test contract.
 /// @dev Convenience contract meant to be the single point of entry for all spell-specific test contracts.
@@ -113,7 +112,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
         _executeAllPayloadsAndBridges();
 
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
@@ -186,6 +184,51 @@ abstract contract SparkTestBase is SparkEthereumTests {
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(integrations[i]);
         }
+    }
+
+    function test_demo_arbitrum_issue() external {
+        console2.log("\n\nLOG ISSUE");
+
+        console2.log("block.number   ", block.number);
+        console2.log("block.timestamp", block.timestamp);
+        console2.log("chainId        ", block.chainid);
+
+        vm.createSelectFork(getChain("arbitrum_one").rpcUrl, 385025871);
+
+        console2.log("block.number   ", block.number);
+        console2.log("block.timestamp", block.timestamp);
+        console2.log("chainId        ", block.chainid);
+    }
+
+    function test_ARBITRUM2_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.ArbitrumOne()) {
+        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
+
+        Bridge storage bridge = chainData[ChainIdUtils.ArbitrumOne()].bridges[0];
+
+        bytes32[] memory rateLimitKeys = _getForeignRateLimitKeys(bridge, false);
+
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrationsForeign(foreignController, ChainIdUtils.ArbitrumOne());
+
+        _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
+
+        // RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+
+        // _executeAllPayloadsAndBridges();
+
+        // chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+
+        // rateLimitKeys = _getForeignRateLimitKeys(bridge, true);
+        // integrations = _appendPostExecutionIntegrationsForeign(integrations, foreignController, ChainIdUtils.ArbitrumOne());
+
+        // _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
     }
 
     function test_ARBITRUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -559,9 +602,16 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
+        console2.log("block.chainid", block.chainid);
+        console2.log("block.number ", IArbSysLike(address(0x842eC2c7D803033Edf55E478F461FC547Bc54EB2)).getBlockNumber());
+
+        uint256 blockNumber = ChainIdUtils.fromUint(block.chainid) == ChainIdUtils.ArbitrumOne()
+            ? IArbSysLike(address(100)).getBlockNumber()
+            : block.number;
+
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             0,
-            block.number,
+            blockNumber,
             address(_getSparkLiquidityLayerContext().rateLimits),
             topics
         );
