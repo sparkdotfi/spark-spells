@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
@@ -10,34 +10,34 @@ import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignContro
 import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
 /**
- * @dev    Base smart contract for Arbitrum One.
+ * @dev    Base smart contract for Avalanche.
  * @author Phoenix Labs
  */
-abstract contract SparkPayloadArbitrumOne {
+abstract contract SparkPayloadAvalanche {
 
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
-        relayers[0] = Arbitrum.ALM_RELAYER;
-        relayers[1] = Arbitrum.ALM_RELAYER2;
+        relayers[0] = Avalanche.ALM_RELAYER;
+        relayers[1] = Avalanche.ALM_RELAYER2;
 
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
-                almProxy:    Arbitrum.ALM_PROXY,
+                almProxy:    Avalanche.ALM_PROXY,
                 controller:  newController,
-                rateLimits:  Arbitrum.ALM_RATE_LIMITS
+                rateLimits:  Avalanche.ALM_RATE_LIMITS
             }),
             ForeignControllerInit.ConfigAddressParams({
-                freezer:       Arbitrum.ALM_FREEZER,
+                freezer:       Avalanche.ALM_FREEZER,
                 relayers:      relayers,
                 oldController: oldController
             }),
             ForeignControllerInit.CheckAddressParams({
-                admin : Arbitrum.SPARK_EXECUTOR,
-                psm   : Arbitrum.PSM3,
-                cctp  : Arbitrum.CCTP_TOKEN_MESSENGER,
-                usdc  : Arbitrum.USDC,
-                susds : Arbitrum.SUSDS,
-                usds  : Arbitrum.USDS
+                admin : Avalanche.SPARK_EXECUTOR,
+                psm   : address(0),
+                cctp  : Avalanche.CCTP_TOKEN_MESSENGER,
+                usdc  : Avalanche.USDC,
+                susds : address(0),
+                usds  : address(0)
             }),
             true
         );
@@ -45,7 +45,7 @@ abstract contract SparkPayloadArbitrumOne {
 
     function _configureAaveToken(address token, uint256 depositMax, uint256 depositSlope) internal {
         SLLHelpers.configureAaveToken(
-            Arbitrum.ALM_RATE_LIMITS,
+            Avalanche.ALM_RATE_LIMITS,
             token,
             depositMax,
             depositSlope
@@ -54,7 +54,7 @@ abstract contract SparkPayloadArbitrumOne {
 
     function _configureERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
         SLLHelpers.configureERC4626Vault(
-            Arbitrum.ALM_RATE_LIMITS,
+            Avalanche.ALM_RATE_LIMITS,
             vault,
             depositMax,
             depositSlope
@@ -64,7 +64,7 @@ abstract contract SparkPayloadArbitrumOne {
     function _activateMorphoVault(address vault) internal {
         SLLHelpers.activateMorphoVault(
             vault,
-            Arbitrum.ALM_RELAYER
+            Avalanche.ALM_RELAYER
         );
     }
 

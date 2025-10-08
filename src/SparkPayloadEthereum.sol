@@ -46,6 +46,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
     address public immutable PAYLOAD_GNOSIS;
     address public immutable PAYLOAD_OPTIMISM;
     address public immutable PAYLOAD_UNICHAIN;
+    address public immutable PAYLOAD_AVALANCHE;
 
     function execute() public override {
         super.execute();

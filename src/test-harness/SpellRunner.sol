@@ -6,12 +6,13 @@ import { Test }      from "forge-std/Test.sol";
 import { StdChains } from "forge-std/StdChains.sol";
 import { console }   from "forge-std/console.sol";
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
-import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { Gnosis }   from "spark-address-registry/Gnosis.sol";
-import { Optimism } from "spark-address-registry/Optimism.sol";
-import { Unichain } from "spark-address-registry/Unichain.sol";
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Base }      from "spark-address-registry/Base.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Gnosis }    from "spark-address-registry/Gnosis.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 
@@ -74,13 +75,15 @@ abstract contract SpellRunner is Test {
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
         chains[3] = "opt-mainnet";
+        chains[4] = "avax-mainnet";
 
         uint256[] memory blocks = _getBlocksFromDate(date, chains);
 
-        console.log("Mainnet block:  ", blocks[0]);
-        console.log("Base block:     ", blocks[1]);
-        console.log("Arbitrum block: ", blocks[2]);
-        console.log("Optimism block: ", blocks[3]);
+        console.log("Mainnet block:  ",  blocks[0]);
+        console.log("Base block:     ",  blocks[1]);
+        console.log("Arbitrum block: ",  blocks[2]);
+        console.log("Optimism block: ",  blocks[3]);
+        console.log("Avalanche block: ", blocks[4]);
 
         setChain("unichain", ChainData({
             name: "Unichain",
@@ -95,6 +98,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(28407198);
+        chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[4]);
     }
 
     /// @dev to be called in setUp
@@ -110,6 +114,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Optimism()].executor    = IExecutor(Optimism.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Avalanche()].executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
 
         // Arbitrum One
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
@@ -179,12 +184,21 @@ abstract contract SpellRunner is Test {
             )
         );
 
+        // Avalanche
+        chainData[ChainIdUtils.Avalanche()].bridges.push(
+            CCTPBridgeTesting.createCircleBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Avalanche()].domain
+            )
+        );
+
         allChains.push(ChainIdUtils.Ethereum());
         allChains.push(ChainIdUtils.Base());
         allChains.push(ChainIdUtils.Gnosis());
         allChains.push(ChainIdUtils.ArbitrumOne());
         allChains.push(ChainIdUtils.Optimism());
         allChains.push(ChainIdUtils.Unichain());
+        allChains.push(ChainIdUtils.Avalanche());
     }
 
     function _deployPayload(ChainId chainId) internal onChain(chainId) returns (address) {
@@ -315,6 +329,8 @@ abstract contract SpellRunner is Test {
         if (chainId == ChainIdUtils.Optimism()) return spell.PAYLOAD_OPTIMISM();
 
         if (chainId == ChainIdUtils.Unichain()) return spell.PAYLOAD_UNICHAIN();
+
+        if (chainId == ChainIdUtils.Avalanche()) return spell.PAYLOAD_AVALANCHE();
 
         revert("Unsupported chainId");
     }
