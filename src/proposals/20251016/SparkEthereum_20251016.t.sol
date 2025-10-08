@@ -1,228 +1,79 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { IVaultTokenized } from "lib/core/src/interfaces/vault/IVaultTokenized.sol";
-
-import { MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
-
-import { IAccessControl }    from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 import { ChainIdUtils }  from "src/libraries/ChainId.sol";
+import { SLLHelpers }    from "src/libraries/SLLHelpers.sol";
 import { SparkTestBase } from "src/test-harness/SparkTestBase.sol";
 
 import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 
-interface INetworkRegistry {
-    function isEntity(address entity_) external view returns (bool);
-}
-
-interface IOperatorRegistry {
-    function isEntity(address entity_) external view returns (bool);
-}
-
-interface IOptInService {
-    function isOptedIn(address who, address where) external view returns (bool);
-}
-
-interface INetworkMiddlewareService {
-    function middleware(address network) external view returns (address);
-    function setMiddleware(address middleware) external;
-}
-
-interface INetworkRestakeDelegator {
-    function hasRole(bytes32 role, address account) external returns (bool);
-    function HOOK_SET_ROLE() external view returns (bytes32);
-    function hook() external returns (address);
-    function maxNetworkLimit(bytes32 subnetwork) external returns (uint256);
-    function networkLimit(bytes32 subnetwork) external returns (uint256);
-    function NETWORK_LIMIT_SET_ROLE() external view returns (bytes32);
-    function OPERATOR_NETWORK_OPT_IN_SERVICE() external view returns (address);
-    function OPERATOR_NETWORK_SHARES_SET_ROLE() external returns (bytes32);
-    function OPERATOR_VAULT_OPT_IN_SERVICE() external view returns (address);
-    function operatorNetworkShares(bytes32 subnetwork, address operator) external view returns (uint256);
-    function stake(bytes32 subnetwork, address operator) external view returns (uint256);
-    function totalOperatorNetworkShares(bytes32 subnetwork) external view returns (uint256);
-}
-
-interface IOwnable {
-    function owner() external view returns (address);
-}
-
-interface IStakedSPK is IERC20, IVaultTokenized, IAccessControl {}
-
-interface IVetoSlasher {
-    function executeSlash(uint256 slashIndex, bytes calldata hints) external returns (uint256 slashedAmount);
-
-    function NETWORK_MIDDLEWARE_SERVICE() external returns (address);
-
-    function resolver(bytes32 subnetwork, bytes memory hint) external view returns (address);
-
-    function requestSlash(
-        bytes32 subnetwork,
-        address operator,
-        uint256 amount,
-        uint48 captureTimestamp,
-        bytes calldata hints
-    ) external returns (uint256 slashIndex);
-
-    function slashableStake(
-        bytes32 subnetwork,
-        address operator,
-        uint48 captureTimestamp,
-        bytes memory hints
-    ) external view returns (uint256);
-}
-
 contract SparkEthereum_20251002Test is SparkTestBase {
 
-    uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212448e27;
     uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
-    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
-    address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
-
-    address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
-    address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
-
-    uint256 internal constant AMOUNT_TO_GROVE            = 1_031_866e18;
-    uint256 internal constant AMOUNT_TO_SPARK_FOUNDATION = 1_100_000e18;
-
-    // Symbiotic addresses
-    address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
-    address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
-    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
-    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
-    address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
-    address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
-    address constant VAULT_FACTORY     = 0xAEb6bdd95c502390db8f52c8909F703E9Af6a346;
-    address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
-
-    IERC20     spk   = IERC20(Ethereum.SPK);
-    IStakedSPK stSpk = IStakedSPK(Ethereum.STSPK);
-
-    bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
-
-    bytes32 constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
-
-    error NotNetworkMiddleware();
+    address internal constant aAvaxUSDC          = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant AVALANCHE_DEPLOYER = 0x50198eb43ffD192634f741b01E9507A1038d87A0;
 
     constructor() {
-        id = "20251002";
+        id = "20251016";
     }
 
     function setUp() public {
-        _setupDomains("2025-09-29T14:06:00Z");
+        _setupDomains("2025-10-08T18:12:00Z");
 
         _deployPayloads();
 
-        chainData[ChainIdUtils.Ethereum()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+        // chainData[ChainIdUtils.Avalanche()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
 
-    function test_ETHEREUM_sparkMorphoVault_increasePTUSDE27NovSupplyCap() external onChain(ChainIdUtils.Ethereum()) {
-        _testMorphoCapUpdate({
-            vault: Ethereum.MORPHO_VAULT_USDS,
-            config: MarketParams({
-                loanToken:       Ethereum.USDS,
-                collateralToken: PT_USDE_27NOV2025,
-                oracle:          PT_USDE_27NOV2025_PRICE_FEED,
-                irm:             Ethereum.MORPHO_DEFAULT_IRM,
-                lltv:            0.915e18
-            }),
-            currentCap: 500_000_000e18,
-            newCap:     1_000_000_000e18
-        });
-    }
+    function test_ETHEREUM_sll_disableUnusedProducts() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
-        _assertSupplyCapConfig(Ethereum.LBTC, 2500, 250, 12 hours);
+        bytes32 jstryDeposit = RateLimitHelpers.makeAssetKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
+                Ethereum.JTRSY_VAULT
+            );
+
+        bytes32 buidlDeposit = RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                Ethereum.BUIDLI_DEPOSIT
+            );
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit), 2e14);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit), 5e14);
 
         _executeAllPayloadsAndBridges();
 
-        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit), 0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit), 0);
     }
 
-    function test_ETHEREUM_sparkLend_reserveFactor() external onChain(ChainIdUtils.Ethereum()) {
-        SparkLendContext memory ctx = _getSparkLendContext();
-
-        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
-
-        ReserveConfig memory usdc = _findReserveConfigBySymbol(allConfigsBefore, "USDC");
-        ReserveConfig memory usdt = _findReserveConfigBySymbol(allConfigsBefore, "USDT");
-
-        assertEq(usdc.reserveFactor, 10_00);
-        assertEq(usdt.reserveFactor, 10_00);
-
-        _executeAllPayloadsAndBridges();
-
-        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
-
-        usdc.reserveFactor = 1_00;
-        usdt.reserveFactor = 1_00;
-
-        _validateReserveConfig(usdc, allConfigsAfter);
-        _validateReserveConfig(usdt, allConfigsAfter);
-    }
-
-    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-
-        assertEq(spDaiBalanceBefore,  427_922_362.907882814087376337e18);
-        assertEq(spUsdsBalanceBefore, 292_375_858.985571105560773831e18);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 35_634.125995826351175598e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 33_954.083079896392213769e18);
-    }
-
-    function test_ETHEREUM_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Ethereum()) {
+    function test_AVALANCHE_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Avalanche()) {
         _testVaultConfiguration({
-            asset:      Ethereum.USDC,
+            asset:      Avalanche.USDC,
             name:       "Spark Savings USDC",
             symbol:     "spUSDC",
-            rho:        1758286595,
-            vault_:     Ethereum.SPARK_VAULT_V2_SPUSDC,
+            rho:        1759945564,
+            vault_:     Avalanche.SPARK_VAULT_V2_SPUSDC,
             minVsr:     1e27,
             maxVsr:     TEN_PCT_APY,
             depositCap: 50_000_000e6,
             amount:     1_000_000e6
-        });
-    }
-
-    function test_ETHEREUM_sparkVaultsV2_configureSPUSDT() external onChain(ChainIdUtils.Ethereum()) {
-        _testVaultConfiguration({
-            asset:      Ethereum.USDT,
-            name:       "Spark Savings USDT",
-            symbol:     "spUSDT",
-            rho:        1758288359,
-            vault_:     Ethereum.SPARK_VAULT_V2_SPUSDT,
-            minVsr:     1e27,
-            maxVsr:     TEN_PCT_APY,
-            depositCap: 50_000_000e6,
-            amount:     1_000_000e6
-        });
-    }
-
-    function test_ETHEREUM_sparkVaultsV2_configureSPETH() external onChain(ChainIdUtils.Ethereum()) {
-        _testVaultConfiguration({
-            asset:      Ethereum.WETH,
-            name:       "Spark Savings ETH",
-            symbol:     "spETH",
-            rho:        1758289979,
-            vault_:     Ethereum.SPARK_VAULT_V2_SPETH,
-            minVsr:     1e27,
-            maxVsr:     FIVE_PCT_APY,
-            depositCap: 10_000e18,
-            amount:     1_000e18
         });
     }
 
@@ -242,18 +93,18 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
 
         bytes32 takeKey = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
+            ForeignController(Avalanche.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
             vault_
         );
         bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            ForeignController(Avalanche.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             vault.asset(),
             vault_
         );
 
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Avalanche.SPARK_EXECUTOR),  true);
         assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), false);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        false);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Avalanche.ALM_PROXY),       false);
 
         assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        0);
@@ -274,9 +125,9 @@ contract SparkEthereum_20251002Test is SparkTestBase {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Avalanche.SPARK_EXECUTOR),  true);
         assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), true);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        true);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Avalanche.ALM_PROXY),       true);
 
         assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        1);
@@ -294,7 +145,7 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         uint256 initialChi = vault.nowChi();
 
         vm.prank(Ethereum.ALM_OPS_MULTISIG);
-        vault.setVsr(FIVE_PCT_APY);
+        vault.setVsr(TEN_PCT_APY);
 
         skip(1 days);
 
@@ -328,361 +179,207 @@ contract SparkEthereum_20251002Test is SparkTestBase {
         vm.stopPrank();
     }
 
-    function test_ETHEREUM_sll_onboardSparklendETH() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_onboardSparklendETH() external onChain(ChainIdUtils.Avalanche()) {
         _testAaveOnboarding(
-            Ethereum.WETH_SPTOKEN,
-            1_000e18,
-            50_000e18,
-            10_000e18 / uint256(1 days)
+            aAvaxUSDC,
+            1_000e6,
+            20_000_000e6,
+            10_000_000e6 / uint256(1 days)
         );
     }
 
-    function test_ETHEREUM_claimAaveRewards() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 aUSDSBalanceBefore = IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY);
-
-        assertEq(aUSDSBalanceBefore, 0.003724174222078038e18);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(IERC20(Ethereum.ATOKEN_CORE_USDS).balanceOf(Ethereum.ALM_PROXY), 243_167.547364810826229364e18);
-    }
-
-    function test_ETHEREUM_sll_addTransferAssetRateLimitForSYRUP() external onChain(ChainIdUtils.Ethereum()) {
-        bytes32 transferKey = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            SYRUP,
-            Ethereum.ALM_OPS_MULTISIG
+    function test_ETHEREUM_avalancheCctpConfiguration() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 avalancheKey = RateLimitHelpers.makeDomainKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
+            CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE
         );
 
-        _assertRateLimit(transferKey, 0, 0);
+        _assertRateLimit(avalancheKey, 0, 0);
+        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), bytes32(0));
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(transferKey, 200_000e18, 200_000e18 / uint256(1 days));
-
-        _testTransferAssetIntegration(TransferAssetE2ETestParams({
-            ctx:            _getSparkLiquidityLayerContext(),
-            asset:          SYRUP,
-            destination:    Ethereum.ALM_OPS_MULTISIG,
-            transferKey:    transferKey,
-            transferAmount: 200_000e18
-        }));
+        _assertRateLimit(avalancheKey, 100_000_000e6, 50_000_000e6 / uint256(1 days));
+        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY));
     }
 
-    function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION);
-        uint256 groveUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY);
-        uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+    function test_AVALANCHE_almControllerDeployment() public onChain(ChainIdUtils.Avalanche()) {
+        // Copied from the init library, but no harm checking this here
+        IALMProxy         almProxy   = IALMProxy(Avalanche.ALM_PROXY);
+        IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
+        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
 
-        assertEq(sparkUsdsBalanceBefore,      32_163_684.945801365846236778e18);
-        assertEq(foundationUsdsBalanceBefore, 292_388.004e18);
-        assertEq(groveUsdsBalanceBefore,      30_654e18);
+        assertEq(almProxy.hasRole(0x0,   Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-almProxy");
+        assertEq(rateLimits.hasRole(0x0, Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-rateLimits");
+        assertEq(controller.hasRole(0x0, Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-controller");
+
+        assertEq(almProxy.hasRole(0x0,   AVALANCHE_DEPLOYER), false, "incorrect-admin-almProxy");
+        assertEq(rateLimits.hasRole(0x0, AVALANCHE_DEPLOYER), false, "incorrect-admin-rateLimits");
+        assertEq(controller.hasRole(0x0, AVALANCHE_DEPLOYER), false, "incorrect-admin-controller");
+
+        assertEq(address(controller.proxy()),      Avalanche.ALM_PROXY,            "incorrect-almProxy");
+        assertEq(address(controller.rateLimits()), Avalanche.ALM_RATE_LIMITS,      "incorrect-rateLimits");
+        assertEq(address(controller.psm()),        address(0),                     "incorrect-psm");
+        assertEq(address(controller.usdc()),       Avalanche.USDC,                 "incorrect-usdc");
+        assertEq(address(controller.cctp()),       Avalanche.CCTP_TOKEN_MESSENGER, "incorrect-cctp");
+    }
+
+    function test_AVALANCHE_almControllerConfiguration() public onChain(ChainIdUtils.Avalanche()) {
+        IALMProxy         almProxy   = IALMProxy(Avalanche.ALM_PROXY);
+        IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
+        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
+
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Avalanche.ALM_CONTROLLER), false, "incorrect-controller-almProxy");
+        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Avalanche.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
+        assertEq(controller.hasRole(controller.FREEZER(),    Avalanche.ALM_FREEZER),    false, "incorrect-freezer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER),    false, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER2),   false, "incorrect-relayer-controller");
+
+        _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
+        _assertRateLimit(
+            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            0,
+            0
+        );
+
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),      sparkUsdsBalanceBefore - AMOUNT_TO_GROVE - AMOUNT_TO_SPARK_FOUNDATION);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION), foundationUsdsBalanceBefore + AMOUNT_TO_SPARK_FOUNDATION);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY),        groveUsdsBalanceBefore + AMOUNT_TO_GROVE);
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Avalanche.ALM_CONTROLLER), true, "incorrect-controller-almProxy");
+        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Avalanche.ALM_CONTROLLER), true, "incorrect-controller-rateLimits");
+        assertEq(controller.hasRole(controller.FREEZER(),    Avalanche.ALM_FREEZER),    true, "incorrect-freezer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER),    true, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER2),   true, "incorrect-relayer-controller");
+
+        _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
+        _assertRateLimit(
+            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            100_000_000e6,
+            50_000_000e6 / uint256(1 days)
+        );
+
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
     }
 
-    function test_ETHEREUM_symbioticConfiguration() external onChain(ChainIdUtils.Ethereum()) {
-        address NETWORK   = Ethereum.SPARK_PROXY;
-        address OWNER     = Ethereum.SPARK_PROXY;
-        address OPERATOR  = Ethereum.SPARK_PROXY;
+    // function test_ETHEREUM_OPTIMISM_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
+    //     // Use mainnet timestamp to make PSM3 sUSDS conversion data realistic
+    //     skip(2 days);  // Skip two days ahead to ensure there is enough rate limit capacity
+    //     uint256 mainnetTimestamp = block.timestamp;
 
-        INetworkRestakeDelegator delegator        = INetworkRestakeDelegator(NETWORK_DELEGATOR);
-        INetworkRegistry         networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
-        IOperatorRegistry        operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
-        IVetoSlasher             slasher          = IVetoSlasher(VETO_SLASHER);
+    //     executeAllPayloadsAndBridges();
 
-        IOptInService networkOptInService = IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE());
-        IOptInService vaultOptInService   = IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE());
+    //     IERC20 opSUsds = IERC20(Optimism.SUSDS);
+    //     IERC20 opUsdc  = IERC20(Optimism.USDC);
+    //     IERC20 opUsds  = IERC20(Optimism.USDS);
 
-        _testOwnershipConfiguration();
+    //     MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+    //     ForeignController opController      = ForeignController(Optimism.ALM_CONTROLLER);
 
-        bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+    //     uint256 susdsShares        = IERC4626(Ethereum.SUSDS).convertToShares(100_000_000e18);
+    //     uint256 susdsDepositShares = IERC4626(Ethereum.SUSDS).convertToShares(10_000_000e18);
 
-        assertEq(networkRegistry.isEntity(NETWORK),   false);
-        assertEq(operatorRegistry.isEntity(OPERATOR), false);
+    //     chainData[ChainIdUtils.Optimism()].domain.selectFork();
+    //     vm.warp(mainnetTimestamp);
 
-        assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), false);
+    //     assertEq(opUsds.balanceOf(Optimism.ALM_PROXY), 100_000_000e18);
+    //     assertEq(opUsds.balanceOf(Optimism.PSM3),      0);
 
-        assertEq(delegator.maxNetworkLimit(subnetwork),                 0);
-        assertEq(delegator.networkLimit(subnetwork),                    0);
-        assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
-        assertEq(delegator.totalOperatorNetworkShares(subnetwork),      0);
-        assertEq(delegator.hook(),                                      address(0));
-        assertEq(delegator.stake(subnetwork, OPERATOR),                 0);
+    //     assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares, 1);  // $100m
+        
+    //     assertEq(opSUsds.balanceOf(Optimism.PSM3), 0);
 
-        assertEq(slasher.resolver(subnetwork, ""), address(0));
+    //     // --- Step 1: Deposit 10m USDS and 10m sUSDS into the PSM ---
 
-        assertEq(networkOptInService.isOptedIn(OPERATOR, NETWORK),        false);
-        assertEq(vaultOptInService.isOptedIn(OPERATOR, STAKED_SPK_VAULT), false);
+    //     vm.startPrank(Optimism.ALM_RELAYER);
+    //     opController.depositPSM(Optimism.USDS,  10_000_000e18);
+    //     opController.depositPSM(Optimism.SUSDS, susdsDepositShares);  // $10m
+    //     vm.stopPrank();
 
-        _executeAllPayloadsAndBridges();
+    //     IPSMLike psm = IPSMLike(Optimism.PSM3);
 
-        _testOwnershipConfiguration();
+    //     assertApproxEqAbs(psm.convertToAssetValue(psm.shares(Optimism.ALM_PROXY)), 20_000_000e18, 31);
 
-        assertEq(networkRegistry.isEntity(NETWORK),   true);
-        assertEq(operatorRegistry.isEntity(OPERATOR), true);
+    //     assertEq(opUsds.balanceOf(Optimism.ALM_PROXY), 90_000_000e18);
+    //     assertEq(opUsds.balanceOf(Optimism.PSM3),      10_000_000e18);
 
-        assertEq(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK), true);
+    //     assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares - susdsDepositShares, 1);  // $90m
+    //     assertApproxEqAbs(opSUsds.balanceOf(Optimism.PSM3),      susdsDepositShares,               1);  // $10m
 
-        assertEq(delegator.maxNetworkLimit(subnetwork),                 type(uint256).max);
-        assertEq(delegator.networkLimit(subnetwork),                    type(uint256).max);
-        assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
-        assertEq(delegator.totalOperatorNetworkShares(subnetwork),      1e18);
-        assertEq(delegator.hook(),                                      RESET_HOOK);
-        assertEq(delegator.stake(subnetwork, OPERATOR),                 282_889_123.997229026703302369e18);
-        assertEq(delegator.stake(subnetwork, OPERATOR),                 stSpk.activeStake());
+    //     chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+    //     vm.warp(mainnetTimestamp);
 
-        assertEq(slasher.resolver(subnetwork, ""), OWNER);
+    //     // --- Step 2: Mint and bridge 10m USDC to Optimism ---
 
-        assertEq(networkOptInService.isOptedIn(OPERATOR, NETWORK),        true);
-        assertEq(vaultOptInService.isOptedIn(OPERATOR, STAKED_SPK_VAULT), true);
+    //     uint256 usdcAmount = 10_000_000e6;
+    //     uint256 usdcSeed   = 1e6;
 
-        _testSlashingIsDisabledUnlessMiddlewareIsSet();
-    }
+    //     vm.startPrank(Ethereum.ALM_RELAYER);
+    //     mainnetController.mintUSDS(usdcAmount * 1e12);
+    //     mainnetController.swapUSDSToUSDC(usdcAmount);
+    //     mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+    //     vm.stopPrank();
 
-    function test_ETHEREUM_userStakingSPKE2E() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 snapshot = vm.snapshotState();
+    //     chainData[ChainIdUtils.Optimism()].domain.selectFork();
+    //     vm.warp(mainnetTimestamp);
 
-        _testUserStaking(1_000_000e18, false);
+    //     assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), 0);
+    //     assertEq(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed);
 
-        vm.revertToState(snapshot);
+    //     _relayMessageOverBridges();
 
-        _executeAllPayloadsAndBridges();
+    //     assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), usdcAmount);
+    //     assertEq(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed);
 
-        _testUserStaking(1_000_000e18, true);
-    }
+    //     // --- Step 3: Deposit 10m USDC into PSM3 ---
 
-    function _testUserStaking(uint256 amount, bool stakingLive) internal {
-        address NETWORK   = Ethereum.SPARK_PROXY;
-        address OPERATOR  = Ethereum.SPARK_PROXY;
+    //     vm.startPrank(Optimism.ALM_RELAYER);
+    //     opController.depositPSM(Optimism.USDC, usdcAmount);
+    //     vm.stopPrank();
 
-        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+    //     assertEq(opUsdc.balanceOf(Optimism.ALM_PROXY), 0);
+    //     assertEq(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed + usdcAmount);
 
-        bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+    //     // --- Step 4: Withdraw all assets from PSM3 ---
 
-        address user = makeAddr("user");
+    //     vm.startPrank(Optimism.ALM_RELAYER);
+    //     opController.withdrawPSM(Optimism.USDS,  10_000_000e18);
+    //     opController.withdrawPSM(Optimism.SUSDS, susdsDepositShares);  // $10m
+    //     opController.withdrawPSM(Optimism.USDC,  usdcAmount);
+    //     vm.stopPrank();
 
-        deal(address(spk), user, amount);
+    //     assertEq(opUsds.balanceOf(Optimism.PSM3),  0);
+    //     assertEq(opSUsds.balanceOf(Optimism.PSM3), 0);
 
-        vm.startPrank(user);
+    //     assertApproxEqAbs(opUsdc.balanceOf(Optimism.PSM3),      usdcSeed,   1);
+    //     assertApproxEqAbs(opUsdc.balanceOf(Optimism.ALM_PROXY), usdcAmount, 1);
 
-        // Step 1: Deposit
+    //     assertEq(opUsds.balanceOf(Optimism.ALM_PROXY),  100_000_000e18);
+    //     assertApproxEqAbs(opSUsds.balanceOf(Optimism.ALM_PROXY), susdsShares, 1);
 
-        uint256 stSpkStake        = stSpk.activeStake();
-        uint256 stSpkTotalSupply  = stSpk.totalSupply();
-        uint256 spkBalanceOfStSpk = spk.balanceOf(address(stSpk));
+    //     usdcAmount -= 1;  // Rounding
 
-        uint256 stakedAmount  = stakingLive ? amount     : 0;
-        uint256 startingStake = stakingLive ? stSpkStake : 0;
+    //     // --- Step 5: Bridge USDC back to mainnet and burn USDS
 
-        assertEq(stSpk.activeStake(),                   stSpkStake);
-        assertEq(delegator.stake(subnetwork, OPERATOR), startingStake);
+    //     vm.startPrank(Optimism.ALM_RELAYER);
+    //     ForeignController(Optimism.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+    //     vm.stopPrank();
 
-        assertEq(stSpk.totalSupply(),   stSpkTotalSupply);
-        assertEq(stSpk.balanceOf(user), 0);
+    //     assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY), 0);
 
-        assertEq(spk.balanceOf(user),           amount);
-        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk);
+    //     chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+    //     vm.warp(mainnetTimestamp);
 
-        if (stakingLive) {
-            assertEq(delegator.stake(subnetwork, OPERATOR), stSpk.activeStake());
-        } else {
-            assertEq(delegator.stake(subnetwork, OPERATOR), 0);
-        }
+    //     uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
 
-        spk.approve(address(stSpk), amount);
-        stSpk.deposit(user, amount);
+    //     _relayMessageOverBridges();
 
-        assertEq(stSpk.activeStake(),                   stSpkStake    + amount);
-        assertEq(delegator.stake(subnetwork, OPERATOR), startingStake + stakedAmount);
+    //     assertEq(IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY), usdcPrevBalance + usdcAmount);
 
-        assertEq(stSpk.totalSupply(),   stSpkTotalSupply + amount);
-        assertEq(stSpk.balanceOf(user), amount);
-
-        assertEq(spk.balanceOf(user),           0);
-        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + amount);
-
-        if (stakingLive) {
-            assertEq(delegator.stake(subnetwork, OPERATOR), stSpk.activeStake());
-        } else {
-            assertEq(delegator.stake(subnetwork, OPERATOR), 0);
-        }
-
-        // Step 2: Withdraw and claim
-
-        stSpk.withdraw(user, amount);
-
-        uint256 currentEpoch   = stSpk.currentEpoch();
-        uint256 withdrawalTime = stSpk.currentEpochStart() + 4 weeks;  // Between 2 and 4 weeks
-
-        vm.warp(withdrawalTime + 1);
-        stSpk.claim(user, currentEpoch + 1);
-
-        assertEq(stSpk.activeStake(),                   stSpkStake);
-        assertEq(delegator.stake(subnetwork, OPERATOR), startingStake);
-
-        assertEq(stSpk.totalSupply(),   stSpkTotalSupply);
-        assertEq(stSpk.balanceOf(user), 0);
-
-        assertEq(spk.balanceOf(user),           amount);
-        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk);
-
-        if (stakingLive) {
-            assertEq(delegator.stake(subnetwork, OPERATOR), stSpk.activeStake());
-        } else {
-            assertEq(delegator.stake(subnetwork, OPERATOR), 0);
-        }
-
-        vm.stopPrank();
-    }
-
-    function _testSlashingIsDisabledUnlessMiddlewareIsSet() internal {
-        address alice      = makeAddr("alice");
-        address bob        = makeAddr("bob");
-        address NETWORK    = Ethereum.SPARK_PROXY;
-        address OPERATOR   = Ethereum.SPARK_PROXY;
-        address MIDDLEWARE = makeAddr("middleware");
-
-        IVetoSlasher slasher = IVetoSlasher(VETO_SLASHER);
-
-        INetworkMiddlewareService middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
-
-        bytes32 subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
-
-        uint256 ACTIVE_STAKE = stSpk.activeStake();
-
-        // --- Step 1: Deposit 10m SPK to stSPK as two users
-
-        deal(address(spk), alice, 6_000_000e18);
-        deal(address(spk), bob,   4_000_000e18);
-
-        vm.startPrank(alice);
-        spk.approve(address(stSpk), 6_000_000e18);
-        stSpk.deposit(alice, 6_000_000e18);
-        vm.stopPrank();
-
-        vm.startPrank(bob);
-        spk.approve(address(stSpk), 4_000_000e18);
-        stSpk.deposit(bob, 4_000_000e18);
-        vm.stopPrank();
-
-        uint48 depositTimestamp = uint48(block.timestamp);
-
-        skip(24 hours);  // Warp 24 hours
-
-        // --- Step 2: Request a slash of all staked SPK (show that network limit is hit)
-
-        uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);  // Can't capture current timestamp and above
-
-        // Demonstrate that the slashable stake increases with new deposits
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), ACTIVE_STAKE + 10_000_000e18);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), ACTIVE_STAKE + 10_000_000e18);
-
-        // There is no middleware, so slashing is impossible
-        assertEq(middlewareService.middleware(NETWORK), address(0));
-
-        vm.prank(NETWORK);
-        vm.expectRevert(NotNetworkMiddleware.selector);
-        slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
-
-        // Show how it would work if middleware was set
-        vm.prank(NETWORK);
-        middlewareService.setMiddleware(MIDDLEWARE);
-
-        // Its now possible
-        assertEq(middlewareService.middleware(NETWORK), MIDDLEWARE);
-
-        vm.prank(MIDDLEWARE);
-        uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
-
-        skip(3 days + 1);
-
-        vm.prank(MIDDLEWARE);
-        slasher.executeSlash(slashIndex, "");
-    }
-
-    function _testOwnershipConfiguration() internal {
-        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
-        IVetoSlasher             slasher   = IVetoSlasher(VETO_SLASHER);
-
-        // 1: BurnerRouter
-        // Correct owner
-        assertEq(IOwnable(BURNER_ROUTER).owner(), Ethereum.SPARK_PROXY);
-
-        // No admin()
-        (bool success, ) = BURNER_ROUTER.call(abi.encodeWithSignature("admin()"));
-        assertFalse(success);
-
-        // No admin slot
-        assertEq(vm.load(BURNER_ROUTER, ADMIN_SLOT), bytes32(0));
-
-        // 2. Vault
-        // Correct owner
-        assertEq(IOwnable(address(stSpk)).owner(), Ethereum.SPARK_PROXY);
-
-        // Admin is Vault Factory (not Multisig)
-        bytes32 adminSlot = vm.load(address(stSpk), ADMIN_SLOT);
-        address admin = address(uint160(uint256(adminSlot))); // lower 20 bytes
-        assertEq(admin, VAULT_FACTORY);
-
-        // Correct roles
-        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), Ethereum.SPARK_PROXY));
-        assertTrue(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   Ethereum.SPARK_PROXY));
-        assertTrue(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  Ethereum.SPARK_PROXY));
-        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     Ethereum.SPARK_PROXY));
-
-        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), Ethereum.SPK_BRIDGING_MULTISIG));
-        assertFalse(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   Ethereum.SPK_BRIDGING_MULTISIG));
-        assertFalse(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  Ethereum.SPK_BRIDGING_MULTISIG));
-        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     Ethereum.SPK_BRIDGING_MULTISIG));
-
-        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE,  Ethereum.SPARK_PROXY));
-        assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPK_BRIDGING_MULTISIG));
-
-        // 3. Delegator
-        // No owner
-        (bool success2, ) = address(delegator).call(abi.encodeWithSignature("owner()"));
-        assertFalse(success2);
-
-        // No admin()
-        (bool success3, ) = address(delegator).call(abi.encodeWithSignature("admin()"));
-        assertFalse(success3);
-
-        // No admin slot
-        assertEq(vm.load(address(delegator), ADMIN_SLOT), bytes32(0));
-
-        // Correct roles
-        assertTrue(delegator.hasRole(delegator.HOOK_SET_ROLE(),                    Ethereum.SPARK_PROXY));
-        assertTrue(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(),           Ethereum.SPARK_PROXY));
-        assertTrue(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), Ethereum.SPARK_PROXY));
-
-        assertFalse(delegator.hasRole(delegator.HOOK_SET_ROLE(),                    Ethereum.SPK_BRIDGING_MULTISIG));
-        assertFalse(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(),           Ethereum.SPK_BRIDGING_MULTISIG));
-        assertFalse(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), Ethereum.SPK_BRIDGING_MULTISIG));
-
-        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE,  Ethereum.SPARK_PROXY));
-        assertFalse(delegator.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPK_BRIDGING_MULTISIG));
-
-        // 4. Slasher
-        // No owner
-        (bool success4, ) = address(slasher).call(abi.encodeWithSignature("owner()"));
-        assertFalse(success4);
-
-        // No admin()
-        (bool success5, ) = address(slasher).call(abi.encodeWithSignature("admin()"));
-        assertFalse(success5);
-
-        // No admin slot
-        assertEq(vm.load(address(slasher), ADMIN_SLOT), bytes32(0));
-
-        // No roles
-        (bool success6, ) = address(slasher).call(abi.encodeWithSignature("hasRole(bytes32,address)", DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY));
-        assertFalse(success6);
-    }
+    //     vm.startPrank(Ethereum.ALM_RELAYER);
+    //     mainnetController.swapUSDCToUSDS(usdcAmount);
+    //     mainnetController.burnUSDS(usdcAmount * 1e12);
+    //     vm.stopPrank();
+    // }
 
 }

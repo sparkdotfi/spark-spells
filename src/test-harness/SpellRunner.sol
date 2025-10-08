@@ -21,6 +21,7 @@ import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBr
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
 import { ArbitrumBridgeTesting } from "xchain-helpers/testing/bridges/ArbitrumBridgeTesting.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
@@ -70,7 +71,7 @@ abstract contract SpellRunner is Test {
     /**********************************************************************************************/
 
     function _setupBlocksFromDate(string memory date) internal {
-        string[] memory chains = new string[](4);
+        string[] memory chains = new string[](5);
         chains[0] = "eth-mainnet";
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
@@ -186,6 +187,13 @@ abstract contract SpellRunner is Test {
 
         // Avalanche
         chainData[ChainIdUtils.Avalanche()].bridges.push(
+            LZBridgeTesting.createLZBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Avalanche()].domain
+            )
+        );
+
+        chainData[ChainIdUtils.Avalanche()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.Avalanche()].domain
@@ -270,6 +278,8 @@ abstract contract SpellRunner is Test {
             AMBBridgeTesting.relayMessagesToDestination(bridge, false);
         } else if (bridge.bridgeType == BridgeType.ARBITRUM) {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
+        } else if (bridge.bridgeType == BridgeType.LZ) {
+            LZBridgeTesting.relayMessagesToDestination(bridge, false, Ethereum.SPARK_PROXY, Avalanche.SPARK_RECEIVER);
         }
     }
 

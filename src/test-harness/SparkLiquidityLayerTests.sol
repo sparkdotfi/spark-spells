@@ -8,11 +8,12 @@ import { VmSafe }   from "forge-std/Vm.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
-import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { Optimism } from "spark-address-registry/Optimism.sol";
-import { Unichain } from "spark-address-registry/Unichain.sol";
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Base }      from "spark-address-registry/Base.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -501,10 +502,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
-
-        vm.prank(ctx.relayer);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        MainnetController(ctx.prevController).depositAave(aToken, expectedDepositAmount);
 
         _executeAllPayloadsAndBridges();
 
@@ -2082,6 +2079,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 IRateLimits(Unichain.ALM_RATE_LIMITS),
                 Unichain.ALM_RELAYER,
                 Unichain.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Avalanche()) {
+            ctx = SparkLiquidityLayerContext(
+                Avalanche.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Avalanche.ALM_PROXY),
+                IRateLimits(Avalanche.ALM_RATE_LIMITS),
+                Avalanche.ALM_RELAYER,
+                Avalanche.ALM_FREEZER
             );
         } else {
             revert("SLL/executing on unknown chain");

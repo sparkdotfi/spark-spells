@@ -43,6 +43,8 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
+    address internal constant aAvaxUSDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+
     function execute() external {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
         mintRecipients[0] = ForeignControllerInit.MintRecipient({
@@ -86,7 +88,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeDomainKey(
                 ForeignController(Avalanche.ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
-                0  // Ethereum domain id (https://developers.circle.com/stablecoins/evm-smart-contracts)
+                CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM
             ),
             Avalanche.ALM_RATE_LIMITS,
             100_000_000e6,
@@ -106,9 +108,9 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         });
 
         _configureAaveToken(
-            Avalanche.SPARK_VAULT_V2_SPUSDC,
-            50_000_000e6,
-            50_000_000e6 / uint256(1 days)
+            aAvaxUSDC,
+            20_000_000e6,
+            10_000_000e6 / uint256(1 days)
         );
     }
 
@@ -127,7 +129,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
 
         // Grant TAKER_ROLE to Alm Proxy
-        vault.grantRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY);
+        vault.grantRole(vault.TAKER_ROLE(), Avalanche.ALM_PROXY);
 
         // Set VSR bounds
         vault.setVsrBounds(minVsr, maxVsr);

@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IMetaMorpho, MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
-
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
-import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
+import { SLLHelpers }                       from "src/libraries/SLLHelpers.sol";
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 
 /**
@@ -28,15 +27,40 @@ contract SparkEthereum_20251016 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         // Disable Unused Products
-        SLLHelpers.setRateLimitData(
+        IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
             RateLimitHelpers.makeAssetKey(
                 MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
-                Ethereum.JTRSY
+                Ethereum.JTRSY_VAULT
+            ),
+            0,
+            0
+        );
+
+        IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                Ethereum.BUIDLI_DEPOSIT
+            ),
+            0,
+            0
+        );
+
+        // Set CCTP for Avalanche
+        MainnetController(Ethereum.ALM_CONTROLLER).setMintRecipient(
+            CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE,
+            SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY)
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeDomainKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
+                CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE
             ),
             Ethereum.ALM_RATE_LIMITS,
-            0,
-            0,
-            18
+            100_000_000e6,
+            50_000_000e6 / uint256(1 days),
+            6
         );
     }
 
