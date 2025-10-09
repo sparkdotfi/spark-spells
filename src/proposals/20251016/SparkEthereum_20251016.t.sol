@@ -40,7 +40,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     }
 
     function setUp() public {
-        _setupDomains("2025-10-09T16:36:00Z");
+        _setupDomains("2025-10-09T18:19:00Z");
 
         _deployPayloads();
 

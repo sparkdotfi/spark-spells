@@ -1686,13 +1686,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams memory p) internal {
-        IAllowlistV2Like allowlist = IAllowlistV2Like(0x02f1fA8B196d21c7b733EB2700B825611d8A38E5);
-
-        // Allowlist for USCC to be transferred to almProxy
-        vm.startPrank(allowlist.owner());
-        allowlist.setEntityAllowedForPrivateInstrument(129, "USCC", true);
-        vm.stopPrank();
-
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx:            p.ctx,
             asset:          p.depositAsset,
