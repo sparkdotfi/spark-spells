@@ -395,10 +395,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
             ( uint256 maxAmount, , , ) = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
 
-            console2.log("Max amount", maxAmount);
-            // console2.log("Key", allLogs[i].topics[1]);
-            console2.log("Containing", _contains(rateLimitKeys, allLogs[i].topics[1]));
-            console2.log("i", i);
+            // console2.log("Max amount", maxAmount);
+            // // console2.log("Key", allLogs[i].topics[1]);
+            // console2.log("Containing", _contains(rateLimitKeys, allLogs[i].topics[1]));
+            // console2.log("i", i);
 
             // If the last event has a max amount of 0, remove the key and
             // consider the rate limit as offboarded
@@ -495,9 +495,12 @@ abstract contract SparkTestBase is SparkEthereumTests {
     ) internal returns (SLLIntegration[] memory newIntegrations) {
         newIntegrations = new SLLIntegration[](integrations.length - 2);
 
-        SLLIntegration[] memory integrationsToRemove = new SLLIntegration[](integrations.length);
+        for (uint256 i = 0; i < newIntegrations.length; ++i) {
+            if (
+                _isEqual(integrations[i].label, "BUIDL-USDC") ||
+                _isEqual(integrations[i].label, "CENTRIFUGE-JTRSY_VAULT")
+            ) continue;
 
-        for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
 
@@ -650,6 +653,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
         for (uint256 i = 0; i < integrations.length; ++i) {
+            console2.log("integrations[i].label", integrations[i].label);
             require(
                 integrations[i].entryId  != bytes32(0) ||
                 integrations[i].entryId2 != bytes32(0) ||

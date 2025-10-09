@@ -2,6 +2,9 @@
   "lib/aave-v3-periphery": {
     "rev": "72fdcca18838c2f4e05ecd25bbfb44f0db5383f7"
   },
+  "lib/core": {
+    "rev": "a7b6bbdcd917ad4fe4e4607b26b8cf7a5ff3fa81"
+  },
   "lib/erc20-helpers": {
     "rev": "3c66d2b38ae12f5c0f81068fdb6a59f4079c799a"
   },
