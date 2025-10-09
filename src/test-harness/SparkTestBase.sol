@@ -44,6 +44,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     address internal constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
+    address internal constant USCC_DEPOSIT       = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -66,6 +67,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         REWARDS_TRANSFER,
         SPARK_VAULT_V2,
         SUPERSTATE,
+        SUPERSTATE_USCC,
         TREASURY
     }
 
@@ -320,6 +322,29 @@ abstract contract SparkTestBase is SparkEthereumTests {
             }));
         }
 
+        else if (integration.category == Category.SUPERSTATE_USCC) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            (
+                address depositAsset,
+                address depositDestination,
+                address withdrawAsset,
+                address withdrawDestination
+            ) = abi.decode(integration.extraData, (address, address, address, address));
+
+            _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
+                ctx:                 _getSparkLiquidityLayerContext(),
+                depositAsset:        depositAsset,
+                depositDestination:  depositDestination,
+                depositAmount:       1_000_000e6,
+                depositKey:          integration.entryId,
+                withdrawAsset:       withdrawAsset,
+                withdrawDestination: withdrawDestination,
+                withdrawAmount:      1_000_000e6,
+                withdrawKey:         integration.exitId
+            }));
+        }
+
         else if (integration.category == Category.SPARK_VAULT_V2) {
             console2.log("Running SLL E2E test for", integration.label);
 
@@ -416,7 +441,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     function _getPreExecutionIntegrations(
         MainnetController mainnetController
     ) internal returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](35);
+        integrations = new SLLIntegration[](36);
 
         integrations[0] = _createSLLIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
         integrations[1] = _createSLLIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
@@ -467,6 +492,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
         integrations[33] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0));
 
         integrations[34] = _createSLLIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
+
+        integrations[35] = _createSLLIntegration(mainnetController, "SUPERSTATE-USCC", Category.SUPERSTATE_USCC, Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
     }
 
     function _appendPostExecutionIntegrations(
@@ -611,6 +638,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
             exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
             exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
             extraData = abi.encode(assetIn, assetOut, withdrawDestination);
+        } else if (category == Category.SUPERSTATE_USCC) {
+            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
+            exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
         } else if (category == Category.REWARDS_TRANSFER) {
             entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
             extraData = abi.encode(assetIn, depositDestination);

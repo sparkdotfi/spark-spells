@@ -44,7 +44,8 @@ import {
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
-    IWithdrawalManagerLike
+    IWithdrawalManagerLike,
+    IAllowlistV2Like
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
@@ -223,6 +224,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SparkLiquidityLayerContext ctx;
         address                    vault;
         address                    depositAsset;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        address                    withdrawAsset;
+        address                    withdrawDestination;
+        uint256                    withdrawAmount;
+        bytes32                    withdrawKey;
+    }
+
+    struct SuperstateUsccE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    depositAsset;
+        address                    depositDestination;
         uint256                    depositAmount;
         bytes32                    depositKey;
         address                    withdrawAsset;
@@ -1543,7 +1556,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         controller.transferAsset(address(asset), p.destination, transferAmount1);
 
-        assertEq(asset.balanceOf(p.destination),        transferAmount1);
+        if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+            assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
+        } else {
+            assertEq(asset.balanceOf(p.destination), transferAmount1);
+        }
+
         assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount2);
 
         assertEq(
@@ -1559,7 +1577,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         controller.transferAsset(address(asset), p.destination, transferAmount2);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(asset.balanceOf(p.destination),        transferAmount1 + transferAmount2);
+        
+        if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+            assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
+        } else {
+            assertEq(asset.balanceOf(p.destination), transferAmount1 + transferAmount2);
+        }
 
         assertEq(
             p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
@@ -1660,6 +1683,31 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+    }
+
+    function _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams memory p) internal {
+        IAllowlistV2Like allowlist = IAllowlistV2Like(0x02f1fA8B196d21c7b733EB2700B825611d8A38E5);
+
+        // Allowlist for USCC to be transferred to almProxy
+        vm.startPrank(allowlist.owner());
+        allowlist.setEntityAllowedForPrivateInstrument(129, "USCC", true);
+        vm.stopPrank();
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.depositAsset,
+            destination:    p.depositDestination,
+            transferKey:    p.depositKey,
+            transferAmount: p.depositAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.withdrawAsset,
+            destination:    p.withdrawDestination,
+            transferKey:    p.withdrawKey,
+            transferAmount: p.withdrawAmount
+        }));
     }
 
     function _testVaultTakeIntegration(VaultTakeE2ETestParams memory p) internal {

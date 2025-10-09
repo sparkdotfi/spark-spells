@@ -8,6 +8,11 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
+interface IAllowlistV2Like {
+    function owner() external view returns (address);
+    function setEntityAllowedForPrivateInstrument(uint256 entityId, string memory fundSymbol, bool isAllowed) external;
+}
+
 interface IProxyLike {
 
     function implementation() external view returns (address);

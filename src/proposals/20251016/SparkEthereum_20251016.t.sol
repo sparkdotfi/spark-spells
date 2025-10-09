@@ -371,4 +371,38 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         vm.stopPrank();
     }
 
+    function test_ETHEREUM_sll_onboardUSCC() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usccDeposit =  RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                USCC_DEPOSIT
+            );
+
+        bytes32 usccWithdraw = RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USCC,
+                Ethereum.USCC
+            );
+
+        _assertRateLimit(usccDeposit,  0, 0);
+        _assertRateLimit(usccWithdraw, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usccDeposit, 100_000_000e6, 50_000_000e6 / uint256(1 days));
+
+        _assertUnlimitedRateLimit(usccWithdraw);
+
+        _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
+            ctx:                 _getSparkLiquidityLayerContext(),
+            depositAsset:        Ethereum.USDC,
+            depositDestination:  USCC_DEPOSIT,
+            depositAmount:       1_000_000e6,
+            depositKey:          usccDeposit,
+            withdrawAsset:       Ethereum.USCC,
+            withdrawDestination: Ethereum.USCC,
+            withdrawAmount:      1_000_000e6,
+            withdrawKey:         usccWithdraw
+        }));
+    }
 }
