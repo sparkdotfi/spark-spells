@@ -39,7 +39,7 @@ abstract contract SparkPayloadAvalanche {
                 susds : address(0),
                 usds  : address(0)
             }),
-            true
+            false
         );
     }
 

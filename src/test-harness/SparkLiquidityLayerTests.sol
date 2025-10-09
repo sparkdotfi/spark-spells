@@ -505,6 +505,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
+        vm.prank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        MainnetController(ctx.prevController).depositAave(aToken, expectedDepositAmount);
+
         _executeAllPayloadsAndBridges();
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
