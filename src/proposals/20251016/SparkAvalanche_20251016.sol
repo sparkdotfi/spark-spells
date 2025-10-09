@@ -43,7 +43,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
-    address internal constant aAvaxUSDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant aAvaUSDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
 
     function execute() external {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
@@ -109,7 +109,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         });
 
         _configureAaveToken(
-            aAvaxUSDC,
+            aAvaUSDC,
             20_000_000e6,
             10_000_000e6 / uint256(1 days)
         );

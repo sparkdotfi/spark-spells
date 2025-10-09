@@ -28,9 +28,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
     using DomainHelpers for Domain;
 
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
-    address internal constant aAvaxUSDC          = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant aAvaUSDC          = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AVALANCHE_DEPLOYER = 0x50198eb43ffD192634f741b01E9507A1038d87A0;
 
     constructor() {
@@ -50,26 +52,26 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         bytes32 jstryDeposit = RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
-                Ethereum.JTRSY_VAULT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
+            Ethereum.JTRSY_VAULT
+        );
         
         bytes32 jstryRedeem = RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
-                Ethereum.JTRSY_VAULT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
+            Ethereum.JTRSY_VAULT
+        );
 
         bytes32 buidlDeposit = RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                Ethereum.BUIDLI_DEPOSIT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            Ethereum.BUIDLI_DEPOSIT
+        );
 
         bytes32 buidlWithdraw = RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.BUIDLI,
-                Ethereum.BUIDLI_REDEEM
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.BUIDLI,
+            Ethereum.BUIDLI_REDEEM
+        );
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit),  200_000_000e6);
         assertEq(ctx.rateLimits.getCurrentRateLimit(jstryRedeem),   type(uint256).max);
@@ -204,7 +206,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
     function test_AVALANCHE_sll_onboardAaveUSDC() external onChain(ChainIdUtils.Avalanche()) {
         _testAaveConfiguration(
-            aAvaxUSDC,
+            aAvaUSDC,
             1_000e6,
             20_000_000e6,
             10_000_000e6 / uint256(1 days)
