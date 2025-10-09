@@ -24,7 +24,7 @@ import { SparkTestBase } from "src/test-harness/SparkTestBase.sol";
 
 import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 
-contract SparkEthereum_20251002Test is SparkTestBase {
+contract SparkEthereum_20251016Test is SparkTestBase {
 
     using DomainHelpers for Domain;
 
