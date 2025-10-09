@@ -35,12 +35,29 @@ contract SparkEthereum_20251016 is SparkPayloadEthereum {
             0,
             0
         );
+        IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
+            RateLimitHelpers.makeAssetKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
+                Ethereum.JTRSY_VAULT
+            ),
+            0,
+            0
+        );
 
         IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
             RateLimitHelpers.makeAssetDestinationKey(
                 MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
                 Ethereum.USDC,
                 Ethereum.BUIDLI_DEPOSIT
+            ),
+            0,
+            0
+        );
+        IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.BUIDLI,
+                Ethereum.BUIDLI_REDEEM
             ),
             0,
             0

@@ -56,6 +56,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         address[] memory relayers = new address[](1);
         relayers[0] = Avalanche.ALM_RELAYER;
 
+        // NOTE: PSM, USDS, and sUSDS are all zero because the PSM3 is not going to be used on avalanche. This is why checkPsm is false.
         ForeignControllerInit.initAlmSystem({
             controllerInst: ControllerInstance({
                 almProxy   : Avalanche.ALM_PROXY,
@@ -126,7 +127,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
 
         // Grant SETTER_ROLE to Spark Operations Safe
-        vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        vault.grantRole(vault.SETTER_ROLE(), Avalanche.ALM_OPS_MULTISIG);
 
         // Grant TAKER_ROLE to Alm Proxy
         vault.grantRole(vault.TAKER_ROLE(), Avalanche.ALM_PROXY);
