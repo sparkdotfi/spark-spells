@@ -40,11 +40,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     }
 
     function setUp() public {
-        _setupDomains("2025-10-08T18:12:00Z");
+        _setupDomains("2025-10-09T16:36:00Z");
 
         _deployPayloads();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x61Ba24E4735aB76d66EB9771a3888d6c414cd9D7;
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
 
@@ -407,4 +407,5 @@ contract SparkEthereum_20251016Test is SparkTestBase {
             withdrawKey:         usccWithdraw
         }));
     }
+
 }

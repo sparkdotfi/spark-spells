@@ -105,7 +105,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
                 _dstEid:        LZForwarder.ENDPOINT_ID_AVALANCHE,
                 _receiver:      SLLHelpers.addrToBytes32(Avalanche.SPARK_RECEIVER),
                 endpoint:       ILayerZeroEndpointV2(LZForwarder.ENDPOINT_ETHEREUM),
-                _message:       _encodePayloadQueue(PAYLOAD_UNICHAIN),
+                _message:       _encodePayloadQueue(PAYLOAD_AVALANCHE),
                 _options:       options,
                 _refundAddress: Ethereum.SPARK_PROXY,
                 _payInLzToken:  false

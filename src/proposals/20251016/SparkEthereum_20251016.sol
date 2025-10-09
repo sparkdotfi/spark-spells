@@ -29,6 +29,10 @@ contract SparkEthereum_20251016 is SparkPayloadEthereum {
 
     address internal constant USCC_DEPOSIT = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
 
+    constructor() {
+        PAYLOAD_AVALANCHE = 0x61Ba24E4735aB76d66EB9771a3888d6c414cd9D7;
+    }
+
     function _postExecute() internal override {
         // Disable Unused Products
         IRateLimits(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
