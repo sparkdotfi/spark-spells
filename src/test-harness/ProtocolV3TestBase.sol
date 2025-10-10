@@ -346,7 +346,7 @@ contract ProtocolV3TestBase is Test {
 
         // Step 2: Warp to increase interest in system
 
-        skip(8 hours);
+        skip(12 hours);
 
         // Step 3: Repay original borrow amount, without accrued interest,
         //         assert updated state of borrow reserve
@@ -357,9 +357,9 @@ contract ProtocolV3TestBase is Test {
 
         DataTypes.ReserveData memory afterReserve = pool.getReserveData(borrowConfig.underlying);
 
-        _assertReserveChange(beforeReserve, afterReserve, int256(amount), 8 hours);
+        _assertReserveChange(beforeReserve, afterReserve, int256(amount), 12 hours);
 
-        skip(8 hours);
+        skip(12 hours);
 
         // Step 4: Try to withdraw all collateral, demonstrate it's not possible without paying back
         //         accrued debt
@@ -391,7 +391,7 @@ contract ProtocolV3TestBase is Test {
         afterReserve = pool.getReserveData(collateralConfig.underlying);
 
         // If collateral == borrow asset, reserve was updated during repay step
-        uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 hours : 17 hours;
+        uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 hours : 1 days + 1 hours;
 
         _assertReserveChange(beforeReserve, afterReserve, -int256(amount), timePassed);
     }
