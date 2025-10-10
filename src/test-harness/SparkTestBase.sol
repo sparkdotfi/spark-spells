@@ -102,16 +102,16 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
-        // _executeMainnetPayload();
+        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
+        _executeMainnetPayload();
 
-        // rateLimitKeys = _getRateLimitKeys(true);
-        // integrations  = _getPostExecutionIntegrations(integrations, mainnetController);
+        rateLimitKeys = _getRateLimitKeys(true);
+        integrations  = _getPostExecutionIntegrations(integrations, mainnetController);
 
-        // console2.log("Rate limit keys", rateLimitKeys.length);
-        // console2.log("Integrations", integrations.length);
+        console2.log("Rate limit keys", rateLimitKeys.length);
+        console2.log("Integrations", integrations.length);
 
-        // _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(integrations, rateLimitKeys);
 
         // for (uint256 i = 0; i < integrations.length; ++i) {
         //     _runSLLE2ETests(integrations[i]);
