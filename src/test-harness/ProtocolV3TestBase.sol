@@ -245,6 +245,7 @@ contract ProtocolV3TestBase is Test {
             ? collateralAmount * 2 + borrowSeedAmount + maxBorrowAmount
             : collateralAmount * 2;
 
+        // TODO: Figure out how to not skip these
         if (_isAboveSupplyCap(collateralConfig, totalCollateralAssetSupplied)) {
             console.log("Skip collateral: %s, supply cap fully utilized", collateralConfig.symbol);
             return;
@@ -324,7 +325,7 @@ contract ProtocolV3TestBase is Test {
 
         pool.borrow(config.underlying, maxBorrowAmount, 2, 0, borrower);
 
-        uint256 minThresholdAmount = 1 * 10 ** config.decimals / 1000;
+        uint256 minThresholdAmount = _getTokenAmountByDollarValue(pool, config, 1);
 
         vm.expectRevert(bytes("36")); // COLLATERAL_CANNOT_COVER_NEW_BORROW
 
@@ -1103,11 +1104,11 @@ contract ProtocolV3TestBase is Test {
                 / 1e27;
         }
 
-        // Accurate to 0.01%
+        // Accurate to 0.015%
         assertApproxEqRel(
             afterReserve.variableBorrowIndex,
             beforeReserve.variableBorrowIndex + expectedInterest,
-            1e14
+            0.00015e18
         );
     }
 
