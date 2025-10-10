@@ -88,12 +88,12 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     function test_ETHEREUM_sll_disableUnusedProducts() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        bytes32 jstryDeposit = RateLimitHelpers.makeAssetKey(
+        bytes32 jtrsyDeposit = RateLimitHelpers.makeAssetKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
             Ethereum.JTRSY_VAULT
         );
         
-        bytes32 jstryRedeem = RateLimitHelpers.makeAssetKey(
+        bytes32 jtrsyRedeem = RateLimitHelpers.makeAssetKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
             Ethereum.JTRSY_VAULT
         );
@@ -113,15 +113,15 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         assertEq(IERC20(Ethereum.JTRSY).balanceOf(address(ctx.proxy)),  0);
         assertEq(IERC20(Ethereum.BUIDLI).balanceOf(address(ctx.proxy)), 0);
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit),  200_000_000e6);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(jstryRedeem),   type(uint256).max);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(jtrsyDeposit),  200_000_000e6);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(jtrsyRedeem),   type(uint256).max);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit),  500_000_000e6);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlWithdraw), type(uint256).max);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit),  0);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(jstryRedeem),   0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(jtrsyDeposit),  0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(jtrsyRedeem),   0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit),  0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlWithdraw), 0);
 
