@@ -431,7 +431,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         skip(1 days);  // Refill ratelimits
 
-                assertEq(
+        assertEq(
             ctx.rateLimits.getCurrentRateLimit(ForeignController(Avalanche.ALM_CONTROLLER).LIMIT_USDC_TO_CCTP()),
             type(uint256).max
         );
@@ -456,16 +456,16 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
     function test_ETHEREUM_sll_onboardUSCC() public onChain(ChainIdUtils.Ethereum()) {
         bytes32 usccDeposit =  RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                USCC_DEPOSIT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            USCC_DEPOSIT
+        );
 
         bytes32 usccWithdraw = RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USCC,
-                Ethereum.USCC
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USCC,
+            Ethereum.USCC
+        );
 
         _assertRateLimit(usccDeposit,  0, 0);
         _assertRateLimit(usccWithdraw, 0, 0);
