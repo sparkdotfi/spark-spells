@@ -418,6 +418,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
             topics
         );
 
+        bytes32 CCTP_GENERAL = 0x0476a9fd902eafdb5bcdabd9f0523dd7aacf7aa0c38c0e6ab912f5fed00f8e11;
+
         rateLimitKeys = new bytes32[](0);
 
         // Collect unique keys from topics[1] (`key`)
@@ -431,11 +433,20 @@ abstract contract SparkTestBase is SparkEthereumTests {
             // console2.log("Containing", _contains(rateLimitKeys, allLogs[i].topics[1]));
             // console2.log("i", i);
 
+            if (allLogs[i].topics[1] == CCTP_GENERAL) {
+                console2.log("CCTP_GENERAL");
+                console2.logBytes32(allLogs[i].topics[1]);
+            }
+
             // If the last event has a max amount of 0, remove the key and
             // consider the rate limit as offboarded
             rateLimitKeys = maxAmount == 0
                 ? _removeIfContaining(rateLimitKeys, allLogs[i].topics[1])
                 : _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
+
+            if (allLogs[i].topics[1] == CCTP_GENERAL) {
+                console2.log("_contains(rateLimitKeys, allLogs[i].topics[1])", _contains(rateLimitKeys, allLogs[i].topics[1]));
+            }
         }
 
         // Collects all new logs from rate limits after spell is executed
@@ -447,15 +458,33 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
                 ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
 
+                if (newLogs[i].topics[1] == CCTP_GENERAL) {
+                    console2.log("CCTP_GENERAL POST");
+                    console2.logBytes32(newLogs[i].topics[1]);
+                }
+
+                console2.logBytes32(newLogs[i].topics[1]);
+                console2.log("maxAmount", maxAmount);
+
                 // If the last event has a max amount of 0, remove the key and
                 // consider the rate limit as offboarded
                 rateLimitKeys = maxAmount == 0
-                    ? _removeIfContaining(rateLimitKeys, allLogs[i].topics[1])
-                    : _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
+                    ? _removeIfContaining(rateLimitKeys, newLogs[i].topics[1])
+                    : _appendIfNotContaining(rateLimitKeys, newLogs[i].topics[1]);
+
+                if (newLogs[i].topics[1] == CCTP_GENERAL) {
+                    console2.log("_contains(rateLimitKeys, newLogs[i].topics[1])", _contains(rateLimitKeys, newLogs[i].topics[1]));
+                }
             }
         }
 
         console2.log("Rate limit keys", rateLimitKeys.length);
+
+        console2.log("\nALL KEYS");
+
+        for (uint256 i = 0; i < rateLimitKeys.length; ++i) {
+            console2.logBytes32(rateLimitKeys[i]);
+        }
     }
 
     function _getPreExecutionIntegrations(
@@ -524,17 +553,29 @@ abstract contract SparkTestBase is SparkEthereumTests {
         SLLIntegration[]  memory integrations,
         MainnetController        mainnetController
     ) internal returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length - 2);
+        newIntegrations = new SLLIntegration[](integrations.length - 2 + 2);
 
-        for (uint256 i = 0; i < newIntegrations.length; ++i) {
+        uint256 writeIndex = 0;
+
+        for (uint256 readIndex = 0; readIndex < integrations.length; ++readIndex) {
             if (
-                _isEqual(integrations[i].label, "BUIDL-USDC") ||
-                _isEqual(integrations[i].label, "CENTRIFUGE-JTRSY_VAULT")
+                _isEqual(integrations[readIndex].label, "BUIDL-USDC") ||
+                _isEqual(integrations[readIndex].label, "CENTRIFUGE-JTRSY_VAULT")
             ) continue;
 
-            newIntegrations[i] = integrations[i];
+            console2.log("\nAdding integration", integrations[readIndex].label);
+            console2.logBytes32(integrations[readIndex].entryId);
+            console2.logBytes32(integrations[readIndex].entryId2);
+            console2.logBytes32(integrations[readIndex].exitId);
+            console2.logBytes32(integrations[readIndex].exitId2);
+
+            newIntegrations[writeIndex++] = integrations[readIndex];
         }
 
+        newIntegrations[newIntegrations.length - 2]
+            = _createSLLIntegration(mainnetController, "SUPERSTATE_TRANSFER-USCC", Category.SUPERSTATE_USCC, Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+
+        newIntegrations[newIntegrations.length - 1] = _createSLLIntegration(mainnetController, "CCTP-AVALANCHE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
     }
 
     /**********************************************************************************************/
@@ -689,6 +730,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
     function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
         for (uint256 i = 0; i < integrations.length; ++i) {
             console2.log("integrations[i].label", integrations[i].label);
+            console2.logBytes32(integrations[i].entryId);
+            console2.logBytes32(integrations[i].entryId2);
+            console2.logBytes32(integrations[i].exitId);
+            console2.logBytes32(integrations[i].exitId2);
+
             require(
                 integrations[i].entryId  != bytes32(0) ||
                 integrations[i].entryId2 != bytes32(0) ||
@@ -700,18 +746,22 @@ abstract contract SparkTestBase is SparkEthereumTests {
             bool found;
 
             if (integrations[i].entryId != bytes32(0)) {
+                console2.log("Removing entryId");
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
             }
 
             if (integrations[i].entryId2 != bytes32(0)) {
+                console2.log("Removing entryId2");
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
             }
 
             if (integrations[i].exitId != bytes32(0)) {
+                console2.log("Removing exitId");
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId);
             }
 
             if (integrations[i].exitId2 != bytes32(0)) {
+                console2.log("Removing exitId2");
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId2);
             }
         }
