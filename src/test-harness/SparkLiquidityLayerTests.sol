@@ -533,6 +533,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testAaveIntegration(E2ETestParams memory p) internal {
         IERC20 asset = IERC20(IAToken(p.vault).UNDERLYING_ASSET_ADDRESS());
 
+        // Withdraw funds to avoid supply caps getting hit
+        if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
+            uint256 maxWithdrawAmount = IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
+                ? asset.balanceOf(p.vault)
+                : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
+
+            // Subtract 10 to avoid rounding issues
+            vm.prank(p.ctx.relayer);
+            MainnetController(p.ctx.controller).withdrawAave(p.vault, maxWithdrawAmount - 10);
+        }
+
         deal(address(asset), address(p.ctx.proxy), p.depositAmount);
 
         uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
@@ -1576,7 +1587,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         controller.transferAsset(address(asset), p.destination, transferAmount2);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
-        
+
         if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
             assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
         } else {
