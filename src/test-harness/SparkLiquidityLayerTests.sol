@@ -5,8 +5,6 @@ pragma solidity ^0.8.0;
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -537,8 +535,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Withdraw funds to avoid supply caps getting hit
         if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
-            console2.log("Withdrawing some funds to avoid supply caps getting hit");
-
             uint256 maxWithdrawAmount = IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
                 ? asset.balanceOf(p.vault)
                 : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
@@ -1591,7 +1587,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         controller.transferAsset(address(asset), p.destination, transferAmount2);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
-        
+
         if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
             assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
         } else {

@@ -154,7 +154,7 @@ abstract contract SparklendTests is ProtocolV3TestBase, SpellRunner {
 
         _executeAllPayloadsAndBridges();
 
-        // _e2eTest(ctx.pool);
+        _e2eTest(ctx.pool);
     }
 
     function _testMatchingTokenImplementations(ChainId chainId) internal onChain(chainId) {
