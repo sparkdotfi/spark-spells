@@ -1566,7 +1566,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         controller.transferAsset(address(asset), p.destination, transferAmount1);
 
-        if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+        if (address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
             assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
         } else {
             assertEq(asset.balanceOf(p.destination), transferAmount1);

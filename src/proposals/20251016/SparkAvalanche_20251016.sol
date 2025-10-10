@@ -35,7 +35,7 @@ interface ISparkVaultV2 {
  *         - Onboard Aave v3 Avalanche USDC
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/october-16-2025-proposed-changes-to-spark-for-upcoming-spell/27215
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x56cbdcf3f29f3b3f03c65ebb779106ebfe34e4582a177b5987c90cc5cf5a37ea
  */
 contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
 

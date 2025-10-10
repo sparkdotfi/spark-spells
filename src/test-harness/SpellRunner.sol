@@ -278,7 +278,7 @@ abstract contract SpellRunner is Test {
             AMBBridgeTesting.relayMessagesToDestination(bridge, false);
         } else if (bridge.bridgeType == BridgeType.ARBITRUM) {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
-        } else if (bridge.bridgeType == BridgeType.LZ) {
+        } else if (bridge.bridgeType == BridgeType.LZ) {  // TODO: Figure out how to make this chain agnostic
             LZBridgeTesting.relayMessagesToDestination(bridge, false, Ethereum.SPARK_PROXY, Avalanche.SPARK_RECEIVER);
         }
     }

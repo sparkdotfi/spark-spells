@@ -50,7 +50,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
-    address internal constant aAvaUSDC          = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant aAvaUSDC           = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AVALANCHE_DEPLOYER = 0x50198eb43ffD192634f741b01E9507A1038d87A0;
 
     constructor() {
@@ -247,7 +247,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     function test_AVALANCHE_sll_onboardAaveUSDC() external onChain(ChainIdUtils.Avalanche()) {
         _testAaveConfiguration(
             aAvaUSDC,
-            1_000e6,
+            10_000_000e6,
             20_000_000e6,
             10_000_000e6 / uint256(1 days)
         );
