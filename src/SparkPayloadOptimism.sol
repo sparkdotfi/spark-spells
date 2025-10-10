@@ -38,7 +38,8 @@ abstract contract SparkPayloadOptimism {
                 usdc  : Optimism.USDC,
                 susds : Optimism.SUSDS,
                 usds  : Optimism.USDS
-            })
+            }),
+            true
         );
     }
 

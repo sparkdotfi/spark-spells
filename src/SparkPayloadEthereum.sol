@@ -4,17 +4,20 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 
+import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+
 import { IMetaMorpho, MarketParams, Id, IERC4626 } from "metamorpho/interfaces/IMetaMorpho.sol";
 import { IMetaMorphoFactory }                      from "metamorpho/interfaces/IMetaMorphoFactory.sol";
 
 import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
-import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { Gnosis }   from "spark-address-registry/Gnosis.sol";
-import { Optimism } from "spark-address-registry/Optimism.sol";
-import { Unichain } from "spark-address-registry/Unichain.sol";
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Base }      from "spark-address-registry/Base.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Gnosis }    from "spark-address-registry/Gnosis.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
@@ -24,9 +27,10 @@ import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 import { IPool }   from "sparklend-v1-core/interfaces/IPool.sol";
 
-import { AMBForwarder }      from "xchain-helpers/forwarders/AMBForwarder.sol";
-import { ArbitrumForwarder } from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
-import { OptimismForwarder } from "xchain-helpers/forwarders/OptimismForwarder.sol";
+import { AMBForwarder }                      from "xchain-helpers/forwarders/AMBForwarder.sol";
+import { ArbitrumForwarder }                 from "xchain-helpers/forwarders/ArbitrumForwarder.sol";
+import { LZForwarder, ILayerZeroEndpointV2 } from "xchain-helpers/forwarders/LZForwarder.sol";
+import { OptimismForwarder }                 from "xchain-helpers/forwarders/OptimismForwarder.sol";
 
 import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
@@ -40,12 +44,15 @@ import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
  */
 abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGINE) {
 
+    using OptionsBuilder for bytes;
+
     // These need to be immutable (delegatecall) and can only be set in constructor
     address public immutable PAYLOAD_ARBITRUM;
     address public immutable PAYLOAD_BASE;
     address public immutable PAYLOAD_GNOSIS;
     address public immutable PAYLOAD_OPTIMISM;
     address public immutable PAYLOAD_UNICHAIN;
+    address public immutable PAYLOAD_AVALANCHE;
 
     function execute() public override {
         super.execute();
@@ -89,6 +96,19 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
                 target:        Unichain.SPARK_RECEIVER,
                 message:       _encodePayloadQueue(PAYLOAD_UNICHAIN),
                 gasLimit:      1_000_000
+            });
+        }
+        if (PAYLOAD_AVALANCHE != address(0)) {
+            bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0);
+
+            LZForwarder.sendMessage({
+                _dstEid:        LZForwarder.ENDPOINT_ID_AVALANCHE,
+                _receiver:      SLLHelpers.addrToBytes32(Avalanche.SPARK_RECEIVER),
+                endpoint:       ILayerZeroEndpointV2(LZForwarder.ENDPOINT_ETHEREUM),
+                _message:       _encodePayloadQueue(PAYLOAD_AVALANCHE),
+                _options:       options,
+                _refundAddress: Ethereum.SPARK_PROXY,
+                _payInLzToken:  false
             });
         }
     }

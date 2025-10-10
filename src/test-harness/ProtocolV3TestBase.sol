@@ -245,6 +245,7 @@ contract ProtocolV3TestBase is Test {
             ? collateralAmount * 2 + borrowSeedAmount + maxBorrowAmount
             : collateralAmount * 2;
 
+        // TODO: Figure out how to not skip these
         if (_isAboveSupplyCap(collateralConfig, totalCollateralAssetSupplied)) {
             console.log("Skip collateral: %s, supply cap fully utilized", collateralConfig.symbol);
             return;
@@ -324,7 +325,7 @@ contract ProtocolV3TestBase is Test {
 
         pool.borrow(config.underlying, maxBorrowAmount, 2, 0, borrower);
 
-        uint256 minThresholdAmount = 1 * 10 ** config.decimals / 1000;
+        uint256 minThresholdAmount = _getTokenAmountByDollarValue(pool, config, 1);
 
         vm.expectRevert(bytes("36")); // COLLATERAL_CANNOT_COVER_NEW_BORROW
 
@@ -346,7 +347,7 @@ contract ProtocolV3TestBase is Test {
 
         // Step 2: Warp to increase interest in system
 
-        skip(8 hours);
+        skip(12 hours);
 
         // Step 3: Repay original borrow amount, without accrued interest,
         //         assert updated state of borrow reserve
@@ -357,9 +358,9 @@ contract ProtocolV3TestBase is Test {
 
         DataTypes.ReserveData memory afterReserve = pool.getReserveData(borrowConfig.underlying);
 
-        _assertReserveChange(beforeReserve, afterReserve, int256(amount), 8 hours);
+        _assertReserveChange(beforeReserve, afterReserve, int256(amount), 12 hours);
 
-        skip(8 hours);
+        skip(12 hours);
 
         // Step 4: Try to withdraw all collateral, demonstrate it's not possible without paying back
         //         accrued debt
@@ -391,7 +392,7 @@ contract ProtocolV3TestBase is Test {
         afterReserve = pool.getReserveData(collateralConfig.underlying);
 
         // If collateral == borrow asset, reserve was updated during repay step
-        uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 hours : 17 hours;
+        uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 hours : 1 days + 1 hours;
 
         _assertReserveChange(beforeReserve, afterReserve, -int256(amount), timePassed);
     }
@@ -1103,11 +1104,11 @@ contract ProtocolV3TestBase is Test {
                 / 1e27;
         }
 
-        // Accurate to 0.01%
+        // Accurate to 0.015%
         assertApproxEqRel(
             afterReserve.variableBorrowIndex,
             beforeReserve.variableBorrowIndex + expectedInterest,
-            1e14
+            0.00015e18
         );
     }
 

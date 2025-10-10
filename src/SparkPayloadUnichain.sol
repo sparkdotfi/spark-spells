@@ -38,7 +38,8 @@ abstract contract SparkPayloadUnichain {
                 usdc  : Unichain.USDC,
                 susds : Unichain.SUSDS,
                 usds  : Unichain.USDS
-            })
+            }),
+            true
         );
     }
 
