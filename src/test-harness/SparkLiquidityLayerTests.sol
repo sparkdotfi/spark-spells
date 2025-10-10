@@ -44,7 +44,7 @@ import {
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
-    IWithdrawalManagerLipke
+    IWithdrawalManagerLike
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";

@@ -73,6 +73,9 @@ contract SparkEthereum_20251016Test is SparkTestBase {
             Ethereum.BUIDLI_REDEEM
         );
 
+        assertEq(IERC20(Ethereum.JTRSY).balanceOf(address(ctx.proxy)),  0);
+        assertEq(IERC20(Ethereum.BUIDLI).balanceOf(address(ctx.proxy)), 0);
+
         assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit),  200_000_000e6);
         assertEq(ctx.rateLimits.getCurrentRateLimit(jstryRedeem),   type(uint256).max);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit),  500_000_000e6);
@@ -321,10 +324,6 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     }
 
     function test_ETHEREUM_AVALANCHE_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
-        // Use mainnet timestamp to make PSM3 sUSDS conversion data realistic
-        skip(2 days);  // Skip two days ahead to ensure there is enough rate limit capacity
-        uint256 mainnetTimestamp = block.timestamp;
-
         _executeAllPayloadsAndBridges();
 
         IERC20 avaxUsdc = IERC20(Avalanche.USDC);
@@ -342,7 +341,6 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         vm.stopPrank();
 
         chainData[ChainIdUtils.Avalanche()].domain.selectFork();
-        vm.warp(mainnetTimestamp);
 
         assertEq(avaxUsdc.balanceOf(Avalanche.ALM_PROXY), 0);
 
@@ -352,14 +350,12 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         // --- Step 2: Bridge USDC back to mainnet and burn USDS
 
-        vm.startPrank(Avalanche.ALM_RELAYER);
+        vm.prank(Avalanche.ALM_RELAYER);
         ForeignController(Avalanche.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
-        vm.stopPrank();
 
         assertEq(IERC20(Avalanche.USDC).balanceOf(Avalanche.ALM_PROXY), 0);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-        vm.warp(mainnetTimestamp);
 
         uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
 

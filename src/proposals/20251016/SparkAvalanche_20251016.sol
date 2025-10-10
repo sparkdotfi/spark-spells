@@ -53,8 +53,9 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         });
         ForeignControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new ForeignControllerInit.LayerZeroRecipient[](0);
 
-        address[] memory relayers = new address[](1);
+        address[] memory relayers = new address[](2);
         relayers[0] = Avalanche.ALM_RELAYER;
+        relayers[1] = Avalanche.ALM_RELAYER2;
 
         // NOTE: PSM, USDS, and sUSDS are all zero because the PSM3 is not going to be used on avalanche. This is why checkPsm is false.
         ForeignControllerInit.initAlmSystem({
@@ -96,8 +97,6 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
             50_000_000e6 / uint256(1 days),
             6
         );
-
-        ForeignController(Avalanche.ALM_CONTROLLER).grantRole(ForeignController(Avalanche.ALM_CONTROLLER).RELAYER(), Avalanche.ALM_RELAYER2);
 
         // --- Launch Savings v2 Vaults for USDC ---
         _configureVaultsV2({
