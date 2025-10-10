@@ -58,12 +58,12 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     }
 
     function setUp() public {
-        _setupDomains("2025-10-09T18:19:00Z");
+        _setupDomains("2025-10-10T17:44:00Z");
 
         _deployPayloads();
 
-        chainData[ChainIdUtils.Avalanche()].payload = 0x61Ba24E4735aB76d66EB9771a3888d6c414cd9D7;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
     }
 
     function test_AVALANCHE_deployConfig() external onChain(ChainIdUtils.Avalanche()) {
