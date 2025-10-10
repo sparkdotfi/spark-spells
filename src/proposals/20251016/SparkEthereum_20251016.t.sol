@@ -28,9 +28,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
     using DomainHelpers for Domain;
 
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
-    address internal constant aAvaxUSDC          = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant aAvaUSDC          = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AVALANCHE_DEPLOYER = 0x50198eb43ffD192634f741b01E9507A1038d87A0;
 
     constructor() {
@@ -38,11 +40,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     }
 
     function setUp() public {
-        _setupDomains("2025-10-08T18:12:00Z");
+        _setupDomains("2025-10-09T18:19:00Z");
 
         _deployPayloads();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x61Ba24E4735aB76d66EB9771a3888d6c414cd9D7;
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xD1919a5D4d320c07ca55e7936d3C25bE831A9561;
     }
 
@@ -50,26 +52,29 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         bytes32 jstryDeposit = RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
-                Ethereum.JTRSY_VAULT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
+            Ethereum.JTRSY_VAULT
+        );
         
         bytes32 jstryRedeem = RateLimitHelpers.makeAssetKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
-                Ethereum.JTRSY_VAULT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
+            Ethereum.JTRSY_VAULT
+        );
 
         bytes32 buidlDeposit = RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                Ethereum.BUIDLI_DEPOSIT
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            Ethereum.BUIDLI_DEPOSIT
+        );
 
         bytes32 buidlWithdraw = RateLimitHelpers.makeAssetDestinationKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.BUIDLI,
-                Ethereum.BUIDLI_REDEEM
-            );
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.BUIDLI,
+            Ethereum.BUIDLI_REDEEM
+        );
+
+        assertEq(IERC20(Ethereum.JTRSY).balanceOf(address(ctx.proxy)),  0);
+        assertEq(IERC20(Ethereum.BUIDLI).balanceOf(address(ctx.proxy)), 0);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(jstryDeposit),  200_000_000e6);
         assertEq(ctx.rateLimits.getCurrentRateLimit(jstryRedeem),   type(uint256).max);
@@ -204,7 +209,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
     function test_AVALANCHE_sll_onboardAaveUSDC() external onChain(ChainIdUtils.Avalanche()) {
         _testAaveConfiguration(
-            aAvaxUSDC,
+            aAvaUSDC,
             1_000e6,
             20_000_000e6,
             10_000_000e6 / uint256(1 days)
@@ -319,10 +324,6 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     }
 
     function test_ETHEREUM_AVALANCHE_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
-        // Use mainnet timestamp to make PSM3 sUSDS conversion data realistic
-        skip(2 days);  // Skip two days ahead to ensure there is enough rate limit capacity
-        uint256 mainnetTimestamp = block.timestamp;
-
         _executeAllPayloadsAndBridges();
 
         IERC20 avaxUsdc = IERC20(Avalanche.USDC);
@@ -340,7 +341,6 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         vm.stopPrank();
 
         chainData[ChainIdUtils.Avalanche()].domain.selectFork();
-        vm.warp(mainnetTimestamp);
 
         assertEq(avaxUsdc.balanceOf(Avalanche.ALM_PROXY), 0);
 
@@ -350,14 +350,12 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         // --- Step 2: Bridge USDC back to mainnet and burn USDS
 
-        vm.startPrank(Avalanche.ALM_RELAYER);
+        vm.prank(Avalanche.ALM_RELAYER);
         ForeignController(Avalanche.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
-        vm.stopPrank();
 
         assertEq(IERC20(Avalanche.USDC).balanceOf(Avalanche.ALM_PROXY), 0);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-        vm.warp(mainnetTimestamp);
 
         uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
 
@@ -369,6 +367,41 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         mainnetController.swapUSDCToUSDS(usdcAmount);
         mainnetController.burnUSDS(usdcAmount * 1e12);
         vm.stopPrank();
+    }
+
+    function test_ETHEREUM_sll_onboardUSCC() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usccDeposit =  RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                USCC_DEPOSIT
+            );
+
+        bytes32 usccWithdraw = RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USCC,
+                Ethereum.USCC
+            );
+
+        _assertRateLimit(usccDeposit,  0, 0);
+        _assertRateLimit(usccWithdraw, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usccDeposit, 100_000_000e6, 50_000_000e6 / uint256(1 days));
+
+        _assertUnlimitedRateLimit(usccWithdraw);
+
+        _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
+            ctx:                 _getSparkLiquidityLayerContext(),
+            depositAsset:        Ethereum.USDC,
+            depositDestination:  USCC_DEPOSIT,
+            depositAmount:       1_000_000e6,
+            depositKey:          usccDeposit,
+            withdrawAsset:       Ethereum.USCC,
+            withdrawDestination: Ethereum.USCC,
+            withdrawAmount:      1_000_000e6,
+            withdrawKey:         usccWithdraw
+        }));
     }
 
 }

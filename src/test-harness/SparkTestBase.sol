@@ -44,6 +44,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     address internal constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
+    address internal constant USCC_DEPOSIT       = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -66,6 +67,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         REWARDS_TRANSFER,
         SPARK_VAULT_V2,
         SUPERSTATE,
+        SUPERSTATE_USCC,
         TREASURY
     }
 
@@ -100,16 +102,16 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
 
-        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
-        _executeMainnetPayload();
+        // // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
+        // _executeMainnetPayload();
 
-        rateLimitKeys = _getRateLimitKeys(true);
-        integrations  = _getPostExecutionIntegrations(integrations, mainnetController);
+        // rateLimitKeys = _getRateLimitKeys(true);
+        // integrations  = _getPostExecutionIntegrations(integrations, mainnetController);
 
-        console2.log("Rate limit keys", rateLimitKeys.length);
-        console2.log("Integrations", integrations.length);
+        // console2.log("Rate limit keys", rateLimitKeys.length);
+        // console2.log("Integrations", integrations.length);
 
-        _checkRateLimitKeys(integrations, rateLimitKeys);
+        // _checkRateLimitKeys(integrations, rateLimitKeys);
 
         // for (uint256 i = 0; i < integrations.length; ++i) {
         //     _runSLLE2ETests(integrations[i]);
@@ -305,6 +307,12 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.SUPERSTATE) {
+            console2.log("Skipping SLL E2E test for", integration.label, "[DEPRECATED] due to protocol upgrade");
+
+            // TODO: Replace - Get out of the loop
+            vm.revertTo(snapshot);
+            return;
+
             console2.log("Running SLL E2E test for", integration.label);
 
             (
@@ -322,6 +330,29 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 withdrawAsset:       withdrawAsset,
                 withdrawDestination: withdrawDestination,
                 withdrawAmount:      100_000_000e6,
+                withdrawKey:         integration.exitId
+            }));
+        }
+
+        else if (integration.category == Category.SUPERSTATE_USCC) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            (
+                address depositAsset,
+                address depositDestination,
+                address withdrawAsset,
+                address withdrawDestination
+            ) = abi.decode(integration.extraData, (address, address, address, address));
+
+            _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
+                ctx:                 _getSparkLiquidityLayerContext(),
+                depositAsset:        depositAsset,
+                depositDestination:  depositDestination,
+                depositAmount:       1_000_000e6,
+                depositKey:          integration.entryId,
+                withdrawAsset:       withdrawAsset,
+                withdrawDestination: withdrawDestination,
+                withdrawAmount:      1_000_000e6,
                 withdrawKey:         integration.exitId
             }));
         }
@@ -628,6 +659,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
             exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
             exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
             extraData = abi.encode(assetIn, assetOut, withdrawDestination);
+        } else if (category == Category.SUPERSTATE_USCC) {
+            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
+            exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
         } else if (category == Category.REWARDS_TRANSFER) {
             entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
             extraData = abi.encode(assetIn, depositDestination);

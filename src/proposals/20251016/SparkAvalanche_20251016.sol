@@ -43,7 +43,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
-    address internal constant aAvaxUSDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant aAvaUSDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
 
     function execute() external {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
@@ -53,8 +53,9 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         });
         ForeignControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new ForeignControllerInit.LayerZeroRecipient[](0);
 
-        address[] memory relayers = new address[](1);
+        address[] memory relayers = new address[](2);
         relayers[0] = Avalanche.ALM_RELAYER;
+        relayers[1] = Avalanche.ALM_RELAYER2;
 
         // NOTE: PSM, USDS, and sUSDS are all zero because the PSM3 is not going to be used on avalanche. This is why checkPsm is false.
         ForeignControllerInit.initAlmSystem({
@@ -97,8 +98,6 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
             6
         );
 
-        ForeignController(Avalanche.ALM_CONTROLLER).grantRole(ForeignController(Avalanche.ALM_CONTROLLER).RELAYER(), Avalanche.ALM_RELAYER2);
-
         // --- Launch Savings v2 Vaults for USDC ---
         _configureVaultsV2({
             vault_        : Avalanche.SPARK_VAULT_V2_SPUSDC,
@@ -109,7 +108,7 @@ contract SparkAvalanche_20251016 is SparkPayloadAvalanche {
         });
 
         _configureAaveToken(
-            aAvaxUSDC,
+            aAvaUSDC,
             20_000_000e6,
             10_000_000e6 / uint256(1 days)
         );

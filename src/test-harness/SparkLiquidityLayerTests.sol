@@ -233,6 +233,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32                    withdrawKey;
     }
 
+    struct SuperstateUsccE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    depositAsset;
+        address                    depositDestination;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        address                    withdrawAsset;
+        address                    withdrawDestination;
+        uint256                    withdrawAmount;
+        bytes32                    withdrawKey;
+    }
+
     struct TransferAssetE2ETestParams {
         SparkLiquidityLayerContext ctx;
         address                    asset;
@@ -1558,7 +1570,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         controller.transferAsset(address(asset), p.destination, transferAmount1);
 
-        assertEq(asset.balanceOf(p.destination),        transferAmount1);
+        if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+            assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
+        } else {
+            assertEq(asset.balanceOf(p.destination), transferAmount1);
+        }
+
         assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount2);
 
         assertEq(
@@ -1574,7 +1591,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         controller.transferAsset(address(asset), p.destination, transferAmount2);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(asset.balanceOf(p.destination),        transferAmount1 + transferAmount2);
+        
+        if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+            assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
+        } else {
+            assertEq(asset.balanceOf(p.destination), transferAmount1 + transferAmount2);
+        }
 
         assertEq(
             p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
@@ -1675,6 +1697,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+    }
+
+    function _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams memory p) internal {
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.depositAsset,
+            destination:    p.depositDestination,
+            transferKey:    p.depositKey,
+            transferAmount: p.depositAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.withdrawAsset,
+            destination:    p.withdrawDestination,
+            transferKey:    p.withdrawKey,
+            transferAmount: p.withdrawAmount
+        }));
     }
 
     function _testVaultTakeIntegration(VaultTakeE2ETestParams memory p) internal {

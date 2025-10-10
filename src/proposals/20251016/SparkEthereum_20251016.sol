@@ -19,11 +19,19 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  * @title  October 16, 2025 Spark Ethereum Proposal
  * @notice Spark Liquidity Layer:
  *          - Disable Unused Products
+ *          - Set CCTP for Avalanche
+ *          - Onboard USCC
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/october-16-2025-proposed-changes-to-spark-for-upcoming-spell/27215
  * Vote:   
  */
 contract SparkEthereum_20251016 is SparkPayloadEthereum {
+
+    address internal constant USCC_DEPOSIT = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
+
+    constructor() {
+        PAYLOAD_AVALANCHE = 0x61Ba24E4735aB76d66EB9771a3888d6c414cd9D7;
+    }
 
     function _postExecute() internal override {
         // Disable Unused Products
@@ -78,6 +86,26 @@ contract SparkEthereum_20251016 is SparkPayloadEthereum {
             100_000_000e6,
             50_000_000e6 / uint256(1 days),
             6
+        );
+
+        // Onboard USCC
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                USCC_DEPOSIT
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            100_000_000e6,
+            50_000_000e6 / uint256(1 days),
+            6
+        );
+        IRateLimits(Ethereum.ALM_RATE_LIMITS).setUnlimitedRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USCC,
+                Ethereum.USCC
+            )
         );
     }
 
