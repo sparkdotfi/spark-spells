@@ -606,9 +606,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
-        console2.log("block.chainid", block.chainid);
-        console2.log("block.number ", IArbSysLike(address(0x842eC2c7D803033Edf55E478F461FC547Bc54EB2)).getBlockNumber());
-
         uint256 blockNumber = ChainIdUtils.fromUint(block.chainid) == ChainIdUtils.ArbitrumOne()
             ? IArbSysLike(address(100)).getBlockNumber()
             : block.number;
