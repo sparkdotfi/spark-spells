@@ -88,24 +88,26 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     function test_ETHEREUM_sll_disableUnusedProducts() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+
         bytes32 jtrsyDeposit = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
+            mainnetController.LIMIT_7540_DEPOSIT(),
             Ethereum.JTRSY_VAULT
         );
-        
+
         bytes32 jtrsyRedeem = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
+            mainnetController.LIMIT_7540_REDEEM(),
             Ethereum.JTRSY_VAULT
         );
 
         bytes32 buidlDeposit = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            mainnetController.LIMIT_ASSET_TRANSFER(),
             Ethereum.USDC,
             Ethereum.BUIDLI_DEPOSIT
         );
 
         bytes32 buidlWithdraw = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            mainnetController.LIMIT_ASSET_TRANSFER(),
             Ethereum.BUIDLI,
             Ethereum.BUIDLI_REDEEM
         );
@@ -125,6 +127,13 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit),  0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlWithdraw), 0);
 
+        vm.startPrank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        mainnetController.transferAsset(Ethereum.USDC, Ethereum.BUIDLI_DEPOSIT, 1_000_000e6);
+
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        mainnetController.requestDepositERC7540(Ethereum.JTRSY_VAULT, 1_000_000e6);
+        vm.stopPrank();
     }
 
     function test_AVALANCHE_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Avalanche()) {
@@ -389,6 +398,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
         mainnetController.swapUSDSToUSDC(usdcAmount);
+
+        // Transferring more than ratelimit fails
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        mainnetController.transferUSDCToCCTP(100_000_000e6 + 1, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+
         mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
         vm.stopPrank();
 
@@ -418,6 +432,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         );
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(ethereumKey), 100_000_000e6);
+
+        // Transferring more than ratelimit fails
+        vm.prank(Avalanche.ALM_RELAYER);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        ForeignController(Avalanche.ALM_CONTROLLER).transferUSDCToCCTP(100_000_000e6 + 1, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
         vm.prank(Avalanche.ALM_RELAYER);
         ForeignController(Avalanche.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);

@@ -49,6 +49,10 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+interface IATokenWithPool is IAToken {
+    function POOL() external view returns(address);
+}
+
 // TODO: MDL, only used by `SparkEthereumTests`.
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
@@ -533,6 +537,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testAaveIntegration(E2ETestParams memory p) internal {
         IERC20 asset = IERC20(IAToken(p.vault).UNDERLYING_ASSET_ADDRESS());
 
+        address pool = IATokenWithPool(p.vault).POOL();
+
         // Withdraw funds to avoid supply caps getting hit
         if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
             uint256 maxWithdrawAmount = IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
@@ -570,6 +576,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).depositAave(p.vault, p.depositAmount);
+
+        assertEq(asset.allowance(address(p.ctx.proxy), pool), 0);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey),  depositLimit - p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
