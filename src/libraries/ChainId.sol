@@ -32,6 +32,7 @@ library ChainIdUtils {
         if (id == 42161) return ChainId.wrap(id);
         if (id == 10) return ChainId.wrap(id);
         if (id == 130) return ChainId.wrap(id);
+        if (id == 43114) return ChainId.wrap(id);
 
         require(false, "ChainIdUtils/invalid-chain-id");
     }
@@ -43,6 +44,7 @@ library ChainIdUtils {
         if (ChainId.unwrap(id) == 42161) return "ArbitrumOne";
         if (ChainId.unwrap(id) == 10) return "Optimism";
         if (ChainId.unwrap(id) == 130) return "Unichain";
+        if (ChainId.unwrap(id) == 43114) return "Avalanche";
 
         require(false, "ChainIdUtils/invalid-chain-id");
     }
@@ -69,6 +71,10 @@ library ChainIdUtils {
 
     function Unichain() internal pure returns (ChainId) {
         return ChainId.wrap(130);
+    }
+
+    function Avalanche() internal pure returns (ChainId) {
+        return ChainId.wrap(43114);
     }
 
 }

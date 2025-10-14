@@ -439,7 +439,8 @@ library SLLHelpers {
     function upgradeForeignController(
         ControllerInstance memory controllerInst,
         ForeignControllerInit.ConfigAddressParams memory configAddresses,
-        ForeignControllerInit.CheckAddressParams memory checkAddresses
+        ForeignControllerInit.CheckAddressParams memory checkAddresses,
+        bool checkPsm
     ) internal {
         ForeignControllerInit.MintRecipient[] memory mintRecipients = new ForeignControllerInit.MintRecipient[](1);
 
@@ -455,7 +456,8 @@ library SLLHelpers {
             configAddresses:     configAddresses,
             checkAddresses:      checkAddresses,
             mintRecipients:      mintRecipients,
-            layerZeroRecipients: layerZeroRecipients
+            layerZeroRecipients: layerZeroRecipients,
+            checkPsm:            checkPsm
         });
     }
 

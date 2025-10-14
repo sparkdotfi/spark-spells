@@ -38,7 +38,8 @@ abstract contract SparkPayloadBase {
                 usdc  : Base.USDC,
                 susds : Base.SUSDS,
                 usds  : Base.USDS
-            })
+            }),
+            true
         );
     }
 

@@ -10,11 +10,12 @@ import { console2 } from "forge-std/console2.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
-import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { Optimism } from "spark-address-registry/Optimism.sol";
-import { Unichain } from "spark-address-registry/Unichain.sol";
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Base }      from "spark-address-registry/Base.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -243,6 +244,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SparkLiquidityLayerContext ctx;
         address                    vault;
         address                    depositAsset;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        address                    withdrawAsset;
+        address                    withdrawDestination;
+        uint256                    withdrawAmount;
+        bytes32                    withdrawKey;
+    }
+
+    struct SuperstateUsccE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    depositAsset;
+        address                    depositDestination;
         uint256                    depositAmount;
         bytes32                    depositKey;
         address                    withdrawAsset;
@@ -497,6 +510,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _testAaveIntegration(E2ETestParams memory p) internal {
         IERC20 asset = IERC20(IAToken(p.vault).UNDERLYING_ASSET_ADDRESS());
+
+        // Withdraw funds to avoid supply caps getting hit
+        if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
+            uint256 maxWithdrawAmount = IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
+                ? asset.balanceOf(p.vault)
+                : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
+
+            // Subtract 10 to avoid rounding issues
+            vm.prank(p.ctx.relayer);
+            MainnetController(p.ctx.controller).withdrawAave(p.vault, maxWithdrawAmount - 10);
+        }
 
         deal(address(asset), address(p.ctx.proxy), p.depositAmount);
 
@@ -1520,7 +1544,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         controller.transferAsset(address(asset), p.destination, transferAmount1);
 
-        assertEq(asset.balanceOf(p.destination),        transferAmount1);
+        if (address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+            assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
+        } else {
+            assertEq(asset.balanceOf(p.destination), transferAmount1);
+        }
+
         assertEq(asset.balanceOf(address(p.ctx.proxy)), transferAmount2);
 
         assertEq(
@@ -1536,7 +1565,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         controller.transferAsset(address(asset), p.destination, transferAmount2);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(asset.balanceOf(p.destination),        transferAmount1 + transferAmount2);
+
+        if(address(asset) == Ethereum.USCC && p.destination == Ethereum.USCC) {
+            assertEq(asset.balanceOf(p.destination), 0);  // USCC is burned on transfer to USCC
+        } else {
+            assertEq(asset.balanceOf(p.destination), transferAmount1 + transferAmount2);
+        }
 
         assertEq(
             p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),
@@ -1637,6 +1671,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
+    }
+
+    function _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams memory p) internal {
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.depositAsset,
+            destination:    p.depositDestination,
+            transferKey:    p.depositKey,
+            transferAmount: p.depositAmount
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            p.ctx,
+            asset:          p.withdrawAsset,
+            destination:    p.withdrawDestination,
+            transferKey:    p.withdrawKey,
+            transferAmount: p.withdrawAmount
+        }));
     }
 
     function _testVaultTakeIntegration(VaultTakeE2ETestParams memory p) internal {
@@ -2231,6 +2283,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 IRateLimits(Unichain.ALM_RATE_LIMITS),
                 Unichain.ALM_RELAYER,
                 Unichain.ALM_FREEZER
+            );
+        } else if (chain == ChainIdUtils.Avalanche()) {
+            ctx = SparkLiquidityLayerContext(
+                Avalanche.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Avalanche.ALM_PROXY),
+                IRateLimits(Avalanche.ALM_RATE_LIMITS),
+                Avalanche.ALM_RELAYER,
+                Avalanche.ALM_FREEZER
             );
         } else {
             revert("SLL/executing on unknown chain");
