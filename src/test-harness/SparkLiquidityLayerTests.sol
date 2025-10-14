@@ -571,7 +571,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).depositAave(p.vault, p.depositAmount);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey),  depositLimit - p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
 
@@ -594,7 +595,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).withdrawAave(p.vault, p.depositAmount);
 
-        assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)),               p.depositAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
 
         assertGt(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
     }
