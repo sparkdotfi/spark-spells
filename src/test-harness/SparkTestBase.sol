@@ -226,7 +226,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         uint256 snapshot = vm.snapshot();
         for (uint256 i = 0; i < allChains.length; ++i) {
             if (
-                // allChains[i] == ChainIdUtils.Ethereum() ||
                 allChains[i] == ChainIdUtils.Gnosis() ||
                 allChains[i] == ChainIdUtils.ArbitrumOne() ||  // TODO: Remove this once block number is figured out
                 allChains[i] == ChainIdUtils.Unichain() ||     // TODO: Remove this once 10k block limit is figured out
