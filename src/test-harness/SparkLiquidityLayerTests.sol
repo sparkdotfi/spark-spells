@@ -467,9 +467,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
 
         // Assert value accrual
-        // TODO: Fix this, its just for fluid with a small existing amount
-        assertGt(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets - 2);  // Rounding
-        assertGt(vault.balanceOf(address(p.ctx.proxy)),                        startingShares - 2);  // Rounding
+        assertGt(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets);
+        assertGt(vault.balanceOf(address(p.ctx.proxy)),                        startingShares);
     }
 
     function _testAaveOnboarding(
@@ -2163,15 +2162,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
-        console2.log("\nDOMAIN", ChainIdUtils.toDomainString(domainId));
-
-        console2.log("block.number   ", block.number);
-        console2.log("block.timestamp", block.timestamp);
-
         chainData[domainId].domain.selectFork();
-
-        console2.log("block.number   ", block.number);
-        console2.log("block.timestamp", block.timestamp);
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 

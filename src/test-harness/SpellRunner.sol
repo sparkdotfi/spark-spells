@@ -59,7 +59,7 @@ abstract contract SpellRunner is Test {
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
 
-        chainData[chainId].domain.selectFork();
+        if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
 
         _;
 
@@ -95,11 +95,7 @@ abstract contract SpellRunner is Test {
         // TODO: MDL, magic values should be top-level constants.
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
-        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createSelectFork(blocks[2]);
-
-        console.log("Arbitrum block:     ", block.number);
-        console.log("Arbitrum timestamp: ", block.timestamp);
-
+        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(29270907);
