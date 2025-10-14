@@ -102,7 +102,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
-        SLLIntegration[] memory integrations  = _getPreExecutionIntegrationsMainnet(mainnetController);
+        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(address(mainnetController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -112,12 +112,12 @@ abstract contract SparkTestBase is SparkEthereumTests {
             _runSLLE2ETests(integrations[i]);
         }
 
-        RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        RecordedLogs.init();
 
         _executeAllPayloadsAndBridges();
 
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        integrations  = _getPostExecutionIntegrationsMainnet(integrations, mainnetController);
+        integrations  = _getPostExecutionIntegrations(integrations, address(mainnetController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -131,9 +131,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         Bridge storage bridge = chainData[ChainIdUtils.Optimism()].bridges[0];
 
-        bytes32[] memory rateLimitKeys = _getForeignRateLimitKeys(bridge, false);
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
 
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrationsForeign(foreignController, ChainIdUtils.Optimism());
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -141,14 +141,14 @@ abstract contract SparkTestBase is SparkEthereumTests {
             _runSLLE2ETests(integrations[i]);
         }
 
-        RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        RecordedLogs.init();
 
         _executeAllPayloadsAndBridges();
 
         chainData[ChainIdUtils.Optimism()].domain.selectFork();
 
-        rateLimitKeys = _getForeignRateLimitKeys(bridge, true);
-        integrations = _getPostExecutionIntegrationsForeign(integrations, foreignController, ChainIdUtils.Optimism());
+        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -162,9 +162,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         Bridge storage bridge = chainData[ChainIdUtils.Base()].bridges[0];
 
-        bytes32[] memory rateLimitKeys = _getForeignRateLimitKeys(bridge, false);
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
 
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrationsForeign(foreignController, ChainIdUtils.Base());
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -172,58 +172,20 @@ abstract contract SparkTestBase is SparkEthereumTests {
             _runSLLE2ETests(integrations[i]);
         }
 
-        RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        RecordedLogs.init();
 
         _executeAllPayloadsAndBridges();
 
         chainData[ChainIdUtils.Base()].domain.selectFork();
 
-        rateLimitKeys = _getForeignRateLimitKeys(bridge, true);
-        integrations = _getPostExecutionIntegrationsForeign(integrations, foreignController, ChainIdUtils.Base());
+        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(integrations[i]);
         }
-    }
-
-    function test_ARBITRUM2_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.ArbitrumOne()) {
-        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
-
-        Bridge storage bridge = chainData[ChainIdUtils.ArbitrumOne()].bridges[0];
-
-        bytes32[] memory rateLimitKeys = _getForeignRateLimitKeys(bridge, false);
-
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrationsForeign(foreignController, ChainIdUtils.ArbitrumOne());
-
-        _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
-
-        // RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
-
-        // _executeAllPayloadsAndBridges();
-
-        // chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
-
-        // rateLimitKeys = _getForeignRateLimitKeys(bridge, true);
-        // integrations = _getPostExecutionIntegrationsForeign(integrations, foreignController, ChainIdUtils.ArbitrumOne());
-
-        // _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
-    }
-
-    function test_ARBITRUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.ArbitrumOne()) {
-        console2.log("block.number", block.number);
-        console2.log("block.timestamp", block.timestamp);
-
-        _runFullLayer2TestSuite(ChainIdUtils.ArbitrumOne());
     }
 
     function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
@@ -234,36 +196,42 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
         Bridge storage bridge = chainData[chainId].bridges[0];
 
-        bytes32[] memory rateLimitKeys = _getForeignRateLimitKeys(bridge, false);
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
 
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrationsForeign(foreignController, chainId);
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
 
-        // RecordedLogs.init();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        RecordedLogs.init();
 
-        // _executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        // chainData[chainId].domain.selectFork();
+        chainData[chainId].domain.selectFork();
 
-        // rateLimitKeys = _getForeignRateLimitKeys(bridge, true);
-        // integrations = _getPostExecutionIntegrationsForeign(integrations, foreignController, chainId);
+        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
 
-        // _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
     }
 
     function test_LAYER2_E2E_sparkLiquidityLayer() external {
         uint256 snapshot = vm.snapshot();
         for (uint256 i = 0; i < allChains.length; ++i) {
-            if (allChains[i] == ChainIdUtils.Ethereum() || allChains[i] == ChainIdUtils.Gnosis()) continue;
+            if (
+                // allChains[i] == ChainIdUtils.Ethereum() ||
+                allChains[i] == ChainIdUtils.Gnosis() ||
+                allChains[i] == ChainIdUtils.ArbitrumOne() ||  // TODO: Remove this once block number is figured out
+                allChains[i] == ChainIdUtils.Unichain() ||     // TODO: Remove this once 10k block limit is figured out
+                allChains[i] == ChainIdUtils.Avalanche()       // TODO: Remove this once 10k block limit is figured out
+                ) continue;
             console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
             _runFullLayer2TestSuite(allChains[i]);
 
@@ -602,61 +570,9 @@ abstract contract SparkTestBase is SparkEthereumTests {
         console2.log("Rate limit keys 2", rateLimitKeys.length);
     }
 
-    function _getForeignRateLimitKeys(Bridge storage bridge, bool isPostExecution) internal returns (bytes32[] memory rateLimitKeys) {
-        bytes32[] memory topics = new bytes32[](1);
-        topics[0] = IRateLimits.RateLimitDataSet.selector;
+    function _getPreExecutionIntegrationsMainnet(address controller) internal returns (SLLIntegration[] memory integrations) {
+        MainnetController mainnetController = MainnetController(controller);
 
-        uint256 blockNumber = ChainIdUtils.fromUint(block.chainid) == ChainIdUtils.ArbitrumOne()
-            ? IArbSysLike(address(100)).getBlockNumber()
-            : block.number;
-
-        VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            0,
-            blockNumber,
-            address(_getSparkLiquidityLayerContext().rateLimits),
-            topics
-        );
-
-        rateLimitKeys = new bytes32[](0);
-
-        // Collect unique keys from topics[1] (`key`)
-        for (uint256 i = 0; i < allLogs.length; ++i) {
-            if (allLogs[i].topics.length <= 1) continue;
-
-            ( uint256 maxAmount, , , ) = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
-
-            if (maxAmount == 0) continue;
-
-            rateLimitKeys = _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
-        }
-
-        // Collects all new logs from rate limits after spell is executed
-        if (isPostExecution) {
-            VmSafe.Log[] memory newLogs = bridge.ingestAndFilterLogs(
-                true,
-                IRateLimits.RateLimitDataSet.selector,
-                address(_getSparkLiquidityLayerContext().rateLimits)
-            );
-
-            console2.log("New logs", newLogs.length);
-
-            for (uint256 i = 0; i < newLogs.length; ++i) {
-                if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
-
-                ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
-
-                if (maxAmount == 0) continue;
-
-                rateLimitKeys = _appendIfNotContaining(rateLimitKeys, newLogs[i].topics[1]);
-            }
-        }
-
-        console2.log("Rate limit keys", rateLimitKeys.length);
-    }
-
-    function _getPreExecutionIntegrationsMainnet(
-        MainnetController mainnetController
-    ) internal returns (SLLIntegration[] memory integrations) {
         integrations = new SLLIntegration[](40);
 
         integrations[0]  = _createSLLMainnetIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
@@ -714,47 +630,72 @@ abstract contract SparkTestBase is SparkEthereumTests {
         integrations[38] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
 
         integrations[39] = _createSLLMainnetIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
+
+        return integrations;
     }
 
-    function _getPreExecutionIntegrationsForeign(
-        ForeignController foreignController,
-        ChainId chainId
-    ) internal returns (SLLIntegration[] memory integrations) {
-        if (chainId == ChainIdUtils.Optimism() || chainId == ChainIdUtils.ArbitrumOne() || chainId == ChainIdUtils.Unichain()) {
-            integrations = new SLLIntegration[](5);
+    function _getPreExecutionIntegrationsBasicPsm(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ForeignController foreignController = ForeignController(controller);
 
-            integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Optimism.PSM3, Optimism.USDC);
-            integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Optimism.PSM3, Optimism.USDS);
-            integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Optimism.PSM3, Optimism.SUSDS);
+        integrations = new SLLIntegration[](5);
 
-            integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Optimism.PSM3, Optimism.USDC);
+        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Optimism.PSM3, Optimism.USDS);
+        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Optimism.PSM3, Optimism.SUSDS);
 
-            integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Optimism.USDC);
+        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-            return integrations;
+        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Optimism.USDC);
+
+        return integrations;
+    }
+
+    function _getPreExecutionIntegrationsBase(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ForeignController foreignController = ForeignController(controller);
+
+        integrations = new SLLIntegration[](9);
+
+        // TODO: Alphabetical order
+        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Base.PSM3, Base.USDC);
+        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Base.PSM3, Base.USDS);
+        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Base.PSM3, Base.SUSDS);
+
+        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Base.USDC);
+
+        // TODO: Remove mainnet and foreign keywords
+        integrations[5] = _createSLLForeignIntegration(foreignController, "ERC4626-MORPHO_VAULT_SUSDC", Category.ERC4626, Base.MORPHO_VAULT_SUSDC);
+        integrations[6] = _createSLLForeignIntegration(foreignController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Base.FLUID_SUSDS);
+
+        integrations[7] = _createSLLForeignIntegration(foreignController, "AAVE-ATOKEN_USDC", Category.AAVE, Base.ATOKEN_USDC);
+
+        integrations[8] = _createSLLForeignIntegrationTransferAsset(foreignController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
+
+        return integrations;
+    }
+
+    function _getPreExecutionIntegrations(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ChainId chainId = ChainIdUtils.fromUint(block.chainid);
+
+        if (chainId == ChainIdUtils.Ethereum()) {
+            return _getPreExecutionIntegrationsMainnet(controller);
         }
 
-        else if (chainId == ChainIdUtils.Base()) {
-            integrations = new SLLIntegration[](9);
+        if (
+            chainId == ChainIdUtils.Optimism() ||
+            chainId == ChainIdUtils.ArbitrumOne() ||
+            chainId == ChainIdUtils.Unichain()
+        ) {
+            return _getPreExecutionIntegrationsBasicPsm(controller);
+        }
 
-            // TODO: Alphabetical order
-            integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Base.PSM3, Base.USDC);
-            integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Base.PSM3, Base.USDS);
-            integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Base.PSM3, Base.SUSDS);
+        if (chainId == ChainIdUtils.Base()) {
+            return _getPreExecutionIntegrationsBase(controller);
+        }
 
-            integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
-
-            integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Base.USDC);
-
-            // TODO: Remove mainnet and foreign keywords
-            integrations[5] = _createSLLForeignIntegration(foreignController, "ERC4626-MORPHO_VAULT_SUSDC", Category.ERC4626, Base.MORPHO_VAULT_SUSDC);
-            integrations[6] = _createSLLForeignIntegration(foreignController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Base.FLUID_SUSDS);
-
-            integrations[7] = _createSLLForeignIntegration(foreignController, "AAVE-ATOKEN_USDC", Category.AAVE, Base.ATOKEN_USDC);
-
-            integrations[8] = _createSLLForeignIntegrationTransferAsset(foreignController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
-
-            return integrations;
+        if (chainId == ChainIdUtils.Avalanche()) {
+            // TODO
         }
 
         else {
@@ -897,10 +838,45 @@ abstract contract SparkTestBase is SparkEthereumTests {
         });
     }
 
+    // TODO: Maybe make these virtual functions that can be overriden?
+    function _getPostExecutionIntegrations(
+        SLLIntegration[]  memory integrations,
+        address controller
+    )
+        internal returns (SLLIntegration[] memory newIntegrations)
+    {
+        ChainId chainId = ChainIdUtils.fromUint(block.chainid);
+
+        newIntegrations = new SLLIntegration[](integrations.length);
+
+        if (chainId == ChainIdUtils.Ethereum()) {
+            return _getPostExecutionIntegrationsMainnet(integrations, controller);
+        }
+
+        if (
+            chainId == ChainIdUtils.Optimism() ||
+            chainId == ChainIdUtils.ArbitrumOne() ||
+            chainId == ChainIdUtils.Unichain() ||
+            chainId == ChainIdUtils.Base()
+        ) {
+            return _getPostExecutionIntegrationsForeign(integrations, controller);
+        }
+
+        if (chainId == ChainIdUtils.Avalanche()) {
+            // TODO
+        }
+
+        else {
+            revert("Invalid chainId");
+        }
+    }
+
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[]  memory integrations,
-        MainnetController        mainnetController
+        address                  controller
     ) internal returns (SLLIntegration[] memory newIntegrations) {
+        MainnetController mainnetController = MainnetController(controller);
+
         newIntegrations = new SLLIntegration[](integrations.length - 2 + 2);
 
         uint256 writeIndex = 0;
@@ -922,9 +898,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
     function _getPostExecutionIntegrationsForeign(
         SLLIntegration[] memory integrations,
-        ForeignController foreignController,
-        ChainId chainId
+        address                  controller
     ) internal returns (SLLIntegration[] memory newIntegrations) {
+        ForeignController foreignController = ForeignController(controller);
+
         newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
