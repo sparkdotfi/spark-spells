@@ -44,6 +44,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
     address internal constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
+    address internal constant USCC_DEPOSIT       = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -66,6 +67,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         REWARDS_TRANSFER,
         SPARK_VAULT_V2,
         SUPERSTATE,
+        SUPERSTATE_USCC,
         TREASURY
     }
 
@@ -104,7 +106,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         _executeMainnetPayload();
 
         rateLimitKeys = _getRateLimitKeys(true);
-        integrations  = _appendPostExecutionIntegrations(integrations, mainnetController);
+        integrations  = _getPostExecutionIntegrations(integrations, mainnetController);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -124,12 +126,15 @@ abstract contract SparkTestBase is SparkEthereumTests {
         if (integration.category == Category.AAVE) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            uint256 decimals = IERC20(IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS()).decimals();
+            address asset    = IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS();
+            uint256 decimals = IERC20(asset).decimals();
+
+            uint256 normalizedDepositAmount = asset == Ethereum.WETH ? 1_000 : 50_000_000;
 
             _testAaveIntegration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
                 vault:         integration.integration,
-                depositAmount: 1 * 10 ** decimals,  // Lower to avoid supply cap issues (TODO: Fix)
+                depositAmount: normalizedDepositAmount * 10 ** decimals,
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
                 tolerance:     10
@@ -144,7 +149,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
             _testERC4626Integration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
                 vault:         integration.integration,
-                depositAmount: 1 * 10 ** decimals,  // Lower to avoid supply cap issues  (TODO: Fix)
+                depositAmount: 1 * 10 ** decimals,  // Lower to avoid supply cap issues (TODO: Fix)
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
                 tolerance:     10
@@ -299,23 +304,28 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         else if (integration.category == Category.SUPERSTATE) {
+            console2.log("Skipping SLL E2E test for", integration.label, "[DEPRECATED] due to protocol upgrade");
+        }
+
+        else if (integration.category == Category.SUPERSTATE_USCC) {
             console2.log("Running SLL E2E test for", integration.label);
 
             (
                 address depositAsset,
+                address depositDestination,
                 address withdrawAsset,
                 address withdrawDestination
-            ) = abi.decode(integration.extraData, (address, address, address));
+            ) = abi.decode(integration.extraData, (address, address, address, address));
 
-            _testSuperstateIntegration(SuperstateE2ETestParams({
+            _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
                 ctx:                 _getSparkLiquidityLayerContext(),
-                vault:               integration.integration,
                 depositAsset:        depositAsset,
-                depositAmount:       100_000_000e6,
+                depositDestination:  depositDestination,
+                depositAmount:       1_000_000e6,
                 depositKey:          integration.entryId,
                 withdrawAsset:       withdrawAsset,
                 withdrawDestination: withdrawDestination,
-                withdrawAmount:      100_000_000e6,
+                withdrawAmount:      1_000_000e6,
                 withdrawKey:         integration.exitId
             }));
         }
@@ -389,10 +399,11 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
             ( uint256 maxAmount, , , ) = abi.decode(allLogs[i].data, (uint256,uint256,uint256,uint256));
 
-            if (maxAmount == 0) continue;
-
-            rateLimitKeys = _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
-
+            // If the last event has a max amount of 0, remove the key and
+            // consider the rate limit as offboarded
+            rateLimitKeys = maxAmount == 0
+                ? _removeIfContaining(rateLimitKeys, allLogs[i].topics[1])
+                : _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
         }
 
         // Collects all new logs from rate limits after spell is executed
@@ -404,89 +415,98 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
                 ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
 
-                if (maxAmount == 0) continue;
-
-                rateLimitKeys = _appendIfNotContaining(rateLimitKeys, newLogs[i].topics[1]);
+                // If the last event has a max amount of 0, remove the key and
+                // consider the rate limit as offboarded
+                rateLimitKeys = maxAmount == 0
+                    ? _removeIfContaining(rateLimitKeys, newLogs[i].topics[1])
+                    : _appendIfNotContaining(rateLimitKeys, newLogs[i].topics[1]);
             }
         }
-
-        console2.log("Rate limit keys", rateLimitKeys.length);
     }
 
     function _getPreExecutionIntegrations(
         MainnetController mainnetController
     ) internal returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](35);
+        integrations = new SLLIntegration[](40);
 
-        integrations[0] = _createSLLIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
-        integrations[1] = _createSLLIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
-        integrations[2] = _createSLLIntegration(mainnetController, "AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS);
-        integrations[3] = _createSLLIntegration(mainnetController, "AAVE-ETH_USDC",      Category.AAVE, AAVE_ETH_USDC);
-        integrations[4] = _createSLLIntegration(mainnetController, "AAVE-ETH_USDS",      Category.AAVE, AAVE_ETH_USDS);
-        integrations[5] = _createSLLIntegration(mainnetController, "AAVE-PYUSD_SPTOKEN", Category.AAVE, Ethereum.PYUSD_SPTOKEN);
-        integrations[6] = _createSLLIntegration(mainnetController, "AAVE-USDC_SPTOKEN",  Category.AAVE, Ethereum.USDC_SPTOKEN); // SparkLend
-        integrations[7] = _createSLLIntegration(mainnetController, "AAVE-USDE_ATOKEN",   Category.AAVE, USDE_ATOKEN);
-        integrations[8] = _createSLLIntegration(mainnetController, "AAVE-USDS_SPTOKEN",  Category.AAVE, Ethereum.USDS_SPTOKEN);
-        integrations[9] = _createSLLIntegration(mainnetController, "AAVE-USDT_SPTOKEN",  Category.AAVE, Ethereum.USDT_SPTOKEN);
+        integrations[0]  = _createSLLIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
+        integrations[1]  = _createSLLIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
+        integrations[2]  = _createSLLIntegration(mainnetController, "AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS);
+        integrations[3]  = _createSLLIntegration(mainnetController, "AAVE-ETH_USDC",      Category.AAVE, AAVE_ETH_USDC);
+        integrations[4]  = _createSLLIntegration(mainnetController, "AAVE-ETH_USDS",      Category.AAVE, AAVE_ETH_USDS);
+        integrations[5]  = _createSLLIntegration(mainnetController, "AAVE-PYUSD_SPTOKEN", Category.AAVE, Ethereum.PYUSD_SPTOKEN);
+        integrations[6]  = _createSLLIntegration(mainnetController, "AAVE-SPETH",         Category.AAVE, Ethereum.WETH_SPTOKEN);
+        integrations[7]  = _createSLLIntegration(mainnetController, "AAVE-USDC_SPTOKEN",  Category.AAVE, Ethereum.USDC_SPTOKEN); // SparkLend
+        integrations[8]  = _createSLLIntegration(mainnetController, "AAVE-USDE_ATOKEN",   Category.AAVE, USDE_ATOKEN);
+        integrations[9]  = _createSLLIntegration(mainnetController, "AAVE-USDS_SPTOKEN",  Category.AAVE, Ethereum.USDS_SPTOKEN);
+        integrations[10] = _createSLLIntegration(mainnetController, "AAVE-USDT_SPTOKEN",  Category.AAVE, Ethereum.USDT_SPTOKEN);
 
-        integrations[10] = _createSLLIntegration(mainnetController, "BUIDL-USDC", Category.BUIDL, Ethereum.USDC, Ethereum.BUIDLI, BUIDL_DEPOSIT, BUIDL_REDEEM);
+        integrations[11] = _createSLLIntegration(mainnetController, "BUIDL-USDC", Category.BUIDL, Ethereum.USDC, Ethereum.BUIDLI, BUIDL_DEPOSIT, BUIDL_REDEEM);
 
-        integrations[11] = _createSLLIntegration(mainnetController, "CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC);
+        integrations[12] = _createSLLIntegration(mainnetController, "CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC);
 
-        integrations[12] = _createSLLIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[13] = _createSLLIntegration(mainnetController, "CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[14] = _createSLLIntegration(mainnetController, "CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[15] = _createSLLIntegration(mainnetController, "CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[13] = _createSLLIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[14] = _createSLLIntegration(mainnetController, "CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        integrations[15] = _createSLLIntegration(mainnetController, "CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        integrations[16] = _createSLLIntegration(mainnetController, "CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
 
-        integrations[16] = _createSLLIntegration(mainnetController, "CENTRIFUGE-JTRSY_VAULT", Category.CENTRIFUGE, Ethereum.JTRSY_VAULT);
+        integrations[17] = _createSLLIntegration(mainnetController, "CENTRIFUGE-JTRSY_VAULT", Category.CENTRIFUGE, Ethereum.JTRSY_VAULT);
 
-        integrations[17] = _createSLLIntegration(mainnetController, "CORE-USDS", Category.CORE, Ethereum.USDS);
+        integrations[18] = _createSLLIntegration(mainnetController, "CORE-USDS", Category.CORE, Ethereum.USDS);
 
-        integrations[18] = _createSLLIntegration(mainnetController, "CURVE_LP-PYUSDUSDS", Category.CURVE_LP, Ethereum.CURVE_PYUSDUSDS);
-        integrations[19] = _createSLLIntegration(mainnetController, "CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT);
+        integrations[19] = _createSLLIntegration(mainnetController, "CURVE_LP-PYUSDUSDS", Category.CURVE_LP, Ethereum.CURVE_PYUSDUSDS);
+        integrations[20] = _createSLLIntegration(mainnetController, "CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT);
 
-        integrations[20] = _createSLLIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDC);
-        integrations[21] = _createSLLIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDS);
-        integrations[22] = _createSLLIntegration(mainnetController, "CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT);
-        integrations[23] = _createSLLIntegration(mainnetController, "CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT);
+        integrations[21] = _createSLLIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDC);
+        integrations[22] = _createSLLIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDS);
+        integrations[23] = _createSLLIntegration(mainnetController, "CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT);
+        integrations[24] = _createSLLIntegration(mainnetController, "CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT);
 
-        integrations[24] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC);
-        integrations[25] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1);
-        integrations[26] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS);
-        integrations[27] = _createSLLIntegration(mainnetController, "ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS);
-        integrations[28] = _createSLLIntegration(mainnetController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
+        integrations[25] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC);
+        integrations[26] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1);
+        integrations[27] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS);
+        integrations[28] = _createSLLIntegration(mainnetController, "ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS);
+        integrations[29] = _createSLLIntegration(mainnetController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
 
-        integrations[29] = _createSLLIntegration(mainnetController, "ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE);
+        integrations[30] = _createSLLIntegration(mainnetController, "ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE);
 
-        integrations[30] = _createSLLIntegration(mainnetController, "FARM-USDS_SPK_FARM",   Category.FARM,       USDS_SPK_FARM);
+        integrations[31] = _createSLLIntegration(mainnetController, "FARM-USDS_SPK_FARM", Category.FARM, USDS_SPK_FARM);
 
-        integrations[31] = _createSLLIntegration(mainnetController, "MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC);
+        integrations[32] = _createSLLIntegration(mainnetController, "MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC);
 
-        integrations[32] = _createSLLIntegration(mainnetController, "PSM-USDS", Category.PSM, Ethereum.PSM);
+        integrations[33] = _createSLLIntegration(mainnetController, "PSM-USDS", Category.PSM, Ethereum.PSM);
 
-        integrations[33] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0));
+        integrations[34] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0));
+        integrations[35] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-SYRUP",        Category.REWARDS_TRANSFER, SYRUP,        address(0), SPARK_MULTISIG, address(0));
 
-        integrations[34] = _createSLLIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
+        integrations[36] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[37] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[38] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
+
+        integrations[39] = _createSLLIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
     }
 
-    function _appendPostExecutionIntegrations(
+    function _getPostExecutionIntegrations(
         SLLIntegration[]  memory integrations,
         MainnetController        mainnetController
     ) internal returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 5);
+        newIntegrations = new SLLIntegration[](integrations.length - 2 + 2);
 
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
+        uint256 writeIndex = 0;
+
+        for (uint256 readIndex = 0; readIndex < integrations.length; ++readIndex) {
+            if (
+                _isEqual(integrations[readIndex].label, "BUIDL-USDC") ||
+                _isEqual(integrations[readIndex].label, "CENTRIFUGE-JTRSY_VAULT")
+            ) continue;
+
+            newIntegrations[writeIndex++] = integrations[readIndex];
         }
 
-        newIntegrations[integrations.length] = _createSLLIntegration(mainnetController, "AAVE-SPETH", Category.AAVE, Ethereum.WETH_SPTOKEN);
+        newIntegrations[newIntegrations.length - 2]
+            = _createSLLIntegration(mainnetController, "SUPERSTATE_TRANSFER-USCC", Category.SUPERSTATE_USCC, Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
 
-        newIntegrations[integrations.length + 1] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-SYRUP", Category.REWARDS_TRANSFER, SYRUP, address(0), SPARK_MULTISIG, address(0));
-
-        // TODO: When moving into pre section, remove setVsr step in tests
-        newIntegrations[integrations.length + 2] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH);
-        newIntegrations[integrations.length + 3] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC);
-        newIntegrations[integrations.length + 4] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
+        newIntegrations[newIntegrations.length - 1] = _createSLLIntegration(mainnetController, "CCTP-AVALANCHE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
     }
 
     /**********************************************************************************************/
@@ -611,6 +631,10 @@ abstract contract SparkTestBase is SparkEthereumTests {
             exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
             exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
             extraData = abi.encode(assetIn, assetOut, withdrawDestination);
+        } else if (category == Category.SUPERSTATE_USCC) {
+            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
+            exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
+            extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
         } else if (category == Category.REWARDS_TRANSFER) {
             entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
             extraData = abi.encode(assetIn, depositDestination);
@@ -647,23 +671,19 @@ abstract contract SparkTestBase is SparkEthereumTests {
             bool found;
 
             if (integrations[i].entryId != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId);
-                assertTrue(found);
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
             }
 
             if (integrations[i].entryId2 != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].entryId2);
-                assertTrue(found);
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
             }
 
             if (integrations[i].exitId != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId);
-                assertTrue(found);
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId);
             }
 
             if (integrations[i].exitId2 != bytes32(0)) {
-                ( rateLimitKeys, found ) = _remove(rateLimitKeys, integrations[i].exitId2);
-                assertTrue(found);
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId2);
             }
         }
 
@@ -690,7 +710,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
         return false;
     }
 
-    function _remove(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray, bool found) {
+    function _removeAndReturnFound(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray, bool found) {
         // Assume `array` was built using `_appendIfNotContaining`.
         newArray = new bytes32[](array.length - 1);
 
@@ -707,6 +727,16 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
 
         return (newArray, true);
+    }
+
+    function _remove(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
+        bool found;
+        (newArray, found) = _removeAndReturnFound(array, value);
+        assertTrue(found, "Value not found");
+    }
+
+    function _removeIfContaining(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
+        ( newArray, ) = _removeAndReturnFound(array, value);
     }
 
 }
