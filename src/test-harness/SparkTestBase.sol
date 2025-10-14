@@ -188,20 +188,6 @@ abstract contract SparkTestBase is SparkEthereumTests {
         }
     }
 
-    function test_demo_arbitrum_issue() external {
-        console2.log("\n\nLOG ISSUE");
-
-        console2.log("block.number   ", block.number);
-        console2.log("block.timestamp", block.timestamp);
-        console2.log("chainId        ", block.chainid);
-
-        vm.createSelectFork(getChain("arbitrum_one").rpcUrl, 385025871);
-
-        console2.log("block.number   ", block.number);
-        console2.log("block.timestamp", block.timestamp);
-        console2.log("chainId        ", block.chainid);
-    }
-
     function test_ARBITRUM2_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.ArbitrumOne()) {
         ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
 
@@ -567,10 +553,12 @@ abstract contract SparkTestBase is SparkEthereumTests {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
+        address rateLimits = address(_getSparkLiquidityLayerContext().rateLimits);
+
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             0,
             block.number,
-            Ethereum.ALM_RATE_LIMITS,
+            rateLimits,
             topics
         );
 
@@ -589,6 +577,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
                 : _appendIfNotContaining(rateLimitKeys, allLogs[i].topics[1]);
         }
 
+        console2.log("Rate limit keys 1", rateLimitKeys.length);
+
         // Collects all new logs from rate limits after spell is executed
         if (isPostExecution) {
             VmSafe.Log[] memory newLogs = RecordedLogs.getLogs();
@@ -597,6 +587,7 @@ abstract contract SparkTestBase is SparkEthereumTests {
 
             for (uint256 i = 0; i < newLogs.length; ++i) {
                 if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
+                if (newLogs[i].emitter != rateLimits) continue;
 
                 ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
 
@@ -607,6 +598,8 @@ abstract contract SparkTestBase is SparkEthereumTests {
                     : _appendIfNotContaining(rateLimitKeys, newLogs[i].topics[1]);
             }
         }
+
+        console2.log("Rate limit keys 2", rateLimitKeys.length);
     }
 
     function _getForeignRateLimitKeys(Bridge storage bridge, bool isPostExecution) internal returns (bytes32[] memory rateLimitKeys) {
