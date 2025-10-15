@@ -377,3 +377,17 @@ interface ICentrifugeTokenLike is IERC7540 {
     function poolId() external view returns (uint64);
 
 }
+
+interface IATokenLike {
+
+    function POOL() external view returns(address);
+
+}
+
+interface IERC20Like {
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function decimals() external view returns (uint8);
+
+}
