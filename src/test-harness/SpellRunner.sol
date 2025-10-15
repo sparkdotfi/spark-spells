@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
 import { console }   from "forge-std/console.sol";
@@ -6,27 +7,27 @@ import { IERC20 }    from "forge-std/interfaces/IERC20.sol";
 import { StdChains } from "forge-std/StdChains.sol";
 import { Test }      from "forge-std/Test.sol";
 
-import { Address } from '../libraries/Address.sol';
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Base }      from "spark-address-registry/Base.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Gnosis }    from "spark-address-registry/Gnosis.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
-import { Arbitrum } from 'spark-address-registry/Arbitrum.sol';
-import { Base }     from 'spark-address-registry/Base.sol';
-import { Ethereum } from 'spark-address-registry/Ethereum.sol';
-import { Gnosis }   from 'spark-address-registry/Gnosis.sol';
-import { Optimism } from 'spark-address-registry/Optimism.sol';
-import { Unichain } from 'spark-address-registry/Unichain.sol';
-
-import { IExecutor } from 'lib/spark-gov-relay/src/interfaces/IExecutor.sol';
+import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBridgeTesting.sol";
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
 import { ArbitrumBridgeTesting } from "xchain-helpers/testing/bridges/ArbitrumBridgeTesting.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
+import { Address }               from "../libraries/Address.sol";
 import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { SparkPayloadEthereum }  from "../SparkPayloadEthereum.sol";
 
 interface IChiefLike {
     function hat() external view returns (address);
@@ -41,7 +42,11 @@ interface IDssSpellLike {
     function cast() external;
 }
 
+import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
+
+// TODO: MDL, Use by `SparklendTests` and `SparkLiquidityLayerTests`.
 abstract contract SpellRunner is Test {
+
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
 
@@ -65,73 +70,37 @@ abstract contract SpellRunner is Test {
     mapping(ChainId => DomainData) internal chainData;
 
     ChainId[] internal allChains;
-    string internal    id;
+    string    internal id;
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
-        // uint256 currentTimestamp = vm.getBlockTimestamp();
         if (chainData[chainId].domain.forkId != currentFork) chainData[chainId].domain.selectFork();
+
         _;
+
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
         // vm.warp(currentTimestamp);
     }
 
-    /// @dev maximum 3 chains in 1 query
-    function getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
-        blocks = new uint256[](chains.length);
+    /**********************************************************************************************/
+    /*** State-Modifying Functions                                                              ***/
+    /**********************************************************************************************/
 
-        // Process chains in batches of 3
-        for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
-            uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
-            string[] memory batchChains = new string[](batchSize);
-
-            // Create batch of chains
-            for (uint256 i = 0; i < batchSize; i++) {
-                batchChains[i] = chains[batchStart + i];
-            }
-
-            // Build networks parameter for this batch
-            string memory networks = "";
-            for (uint256 i = 0; i < batchSize; i++) {
-                if (i == 0) {
-                    networks = string(abi.encodePacked("networks=", batchChains[i]));
-                } else {
-                    networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
-                }
-            }
-
-            string[] memory inputs = new string[](8);
-            inputs[0] = "curl";
-            inputs[1] = "-s";
-            inputs[2] = "--request";
-            inputs[3] = "GET";
-            inputs[4] = "--url";
-            inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
-            inputs[6] = "--header";
-            inputs[7] = "accept: application/json";
-
-            string memory response = string(vm.ffi(inputs));
-
-            // Store results in the correct positions of the final blocks array
-            for (uint256 i = 0; i < batchSize; i++) {
-                blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
-            }
-        }
-    }
-
-    function setupBlocksFromDate(string memory date) internal {
-        string[] memory chains = new string[](4);
+    function _setupBlocksFromDate(string memory date) internal {
+        string[] memory chains = new string[](5);
         chains[0] = "eth-mainnet";
         chains[1] = "base-mainnet";
         chains[2] = "arb-mainnet";
         chains[3] = "opt-mainnet";
+        chains[4] = "avax-mainnet";
 
-        uint256[] memory blocks = getBlocksFromDate(date, chains);
+        uint256[] memory blocks = _getBlocksFromDate(date, chains);
 
-        console.log("Mainnet block:  ", blocks[0]);
-        console.log("Base block:     ", blocks[1]);
-        console.log("Arbitrum block: ", blocks[2]);
-        console.log("Optimism block: ", blocks[3]);
+        console.log("Mainnet block:   ", blocks[0]);
+        console.log("Base block:      ", blocks[1]);
+        console.log("Arbitrum block:  ", blocks[2]);
+        console.log("Optimism block:  ", blocks[3]);
+        console.log("Avalanche block: ", blocks[4]);
 
         setChain("unichain", ChainData({
             name: "Unichain",
@@ -139,17 +108,19 @@ abstract contract SpellRunner is Test {
             chainId: 130
         }));
 
+        // TODO: MDL, magic values should be top-level constants.
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(27541311);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(29270907);
+        chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[4]);
     }
 
     /// @dev to be called in setUp
-    function setupDomains(string memory date) internal {
-        setupBlocksFromDate(date);
+    function _setupDomains(string memory date) internal {
+        _setupBlocksFromDate(date);
 
         // We default to Ethereum domain
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
@@ -160,6 +131,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].executor = IExecutor(Arbitrum.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Optimism()].executor    = IExecutor(Optimism.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Avalanche()].executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
 
         // Arbitrum One
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
@@ -168,6 +140,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.ArbitrumOne()].domain
             )
         );
+
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -182,6 +155,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Base()].domain
             )
         );
+
         chainData[ChainIdUtils.Base()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -204,6 +178,7 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Optimism()].domain
             )
         );
+
         chainData[ChainIdUtils.Optimism()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
@@ -218,10 +193,26 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Unichain()].domain
             )
         );
+
         chainData[ChainIdUtils.Unichain()].bridges.push(
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.Unichain()].domain
+            )
+        );
+
+        // Avalanche
+        chainData[ChainIdUtils.Avalanche()].bridges.push(
+            LZBridgeTesting.createLZBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Avalanche()].domain
+            )
+        );
+
+        chainData[ChainIdUtils.Avalanche()].bridges.push(
+            CCTPBridgeTesting.createCircleBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Avalanche()].domain
             )
         );
 
@@ -231,24 +222,21 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.ArbitrumOne());
         allChains.push(ChainIdUtils.Optimism());
         allChains.push(ChainIdUtils.Unichain());
+        allChains.push(ChainIdUtils.Avalanche());
     }
 
-    function spellIdentifier(ChainId chainId) private view returns(string memory) {
-        string memory slug       = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
-        string memory identifier = string(abi.encodePacked(slug, ".sol:", slug));
-        return identifier;
+    function _deployPayload(ChainId chainId) internal onChain(chainId) returns (address) {
+        return deployCode(_getSpellIdentifier(chainId));
     }
 
-    function deployPayload(ChainId chainId) internal onChain(chainId) returns(address) {
-        return deployCode(spellIdentifier(chainId));
-    }
-
-    function deployPayloads() internal {
-        for (uint256 i = 0; i < allChains.length; i++) {
+    function _deployPayloads() internal {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            string memory identifier = spellIdentifier(chainId);
+
+            string memory identifier = _getSpellIdentifier(chainId);
+
             try vm.getCode(identifier) {
-                chainData[chainId].payload = deployPayload(chainId);
+                chainData[chainId].payload = _deployPayload(chainId);
             } catch {
                 console.log("skipping spell deployment for network: ", chainId.toDomainString());
             }
@@ -263,22 +251,45 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev takes care to revert the selected fork to what was chosen before
-    function executeAllPayloadsAndBridges() internal {
-        logTimestamps("PRE EXECUTE");
+    function _executeAllPayloadsAndBridges() internal {
         // only execute mainnet payload
-        executeMainnetPayload();
-        logTimestamps("PRE RELAY");
+        _executeMainnetPayload();
+
         // then use bridges to execute other chains' payloads
         _relayMessageOverBridges();
-        logTimestamps("PRE FOREIGN EXECUTE");
+
         // execute the foreign payloads (either by simulation or real execute)
         _executeForeignPayloads();
         logTimestamps("POST FOREIGN EXECUTE");
     }
 
+    function _executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
+        address   payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
+        IExecutor executor       = chainData[ChainIdUtils.Ethereum()].executor;
+
+        require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
+
+        // If Sky spell is deployed, execute through full callstack
+        if (skySpell != address(0)) {
+            _vote(skySpell);
+            _scheduleWaitAndCast(skySpell);
+            return;
+        }
+
+        vm.prank(Ethereum.PAUSE_PROXY);
+
+        ( bool success, ) = address(executor).call(abi.encodeWithSignature(
+            "exec(address,bytes)",
+            payloadAddress,
+            abi.encodeWithSignature("execute()")
+        ));
+
+        require(success, "FAILED TO EXECUTE PAYLOAD");
+    }
+
     /// @dev bridge contracts themselves are stored on mainnet
     function _relayMessageOverBridges() internal onChain(ChainIdUtils.Ethereum()) {
-        for (uint256 i = 0; i < allChains.length; i++) {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
             for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
                 console.log("Executing bridge for chain: ", chainId.toDomainString());
@@ -290,7 +301,7 @@ abstract contract SpellRunner is Test {
     }
 
     /// @dev this does not relay messages from L2s to mainnet except in the case of USDC
-    function _executeBridge(Bridge storage bridge) private {
+    function _executeBridge(Bridge storage bridge) internal {
         uint256 prevTimestamp = block.timestamp;
         if (bridge.bridgeType == BridgeType.OPTIMISM) {
             OptimismBridgeTesting.relayMessagesToDestination(bridge, false);
@@ -306,42 +317,53 @@ abstract contract SpellRunner is Test {
         } else if (bridge.bridgeType == BridgeType.ARBITRUM) {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
             logTimestamps("Arbitrum");
+        } else if (bridge.bridgeType == BridgeType.LZ) {  // TODO: Figure out how to make this chain agnostic
+            LZBridgeTesting.relayMessagesToDestination(bridge, false, Ethereum.SPARK_PROXY, Avalanche.SPARK_RECEIVER);
         }
         vm.warp(prevTimestamp);
     }
 
-    function _executeForeignPayloads() private onChain(ChainIdUtils.Ethereum()) {
-        for (uint256 i = 0; i < allChains.length; i++) {
+    function _executeForeignPayloads() internal onChain(ChainIdUtils.Ethereum()) {
+        for (uint256 i = 0; i < allChains.length; ++i) {
             console.log("Executing foreign payload for chain: ", allChains[i].toDomainString());
             logTimestamps("PRE FOREIGN EXECUTE");
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
-            address mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
-            IExecutor executor = chainData[chainId].executor;
-            console.log("simulating execution payload for network: ", chainId.toDomainString());
-            console.log("mainnetSpellPayload", mainnetSpellPayload);
+
+            address   mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
+            IExecutor executor            = chainData[chainId].executor;
+
+            // TODO: Move each of the two flows below into their own functions.
+
             if (mainnetSpellPayload != address(0)) {
                 // We assume the payload has been queued in the executor (will revert otherwise)
                 chainData[chainId].domain.selectFork();
-                uint256 actionsSetId = executor.actionsSetCount() - 1;
+
+                uint256 actionsSetId  = executor.actionsSetCount() - 1;
                 uint256 prevTimestamp = block.timestamp;
                 console.log("IN IF STATEMENT");
                 console.log("actionsSetId", actionsSetId);
                 console.log("executionTime", executor.getActionsSetById(actionsSetId).executionTime);
                 console.log("prevTimestamp", prevTimestamp);
                 vm.warp(executor.getActionsSetById(actionsSetId).executionTime);
+
                 executor.execute(actionsSetId);
+
                 vm.warp(prevTimestamp);
                 console.log("postTimestamp", block.timestamp);
             } else {
                 // We will simulate execution until the real spell is deployed in the mainnet spell
                 address payload = chainData[chainId].payload;
+
                 if (payload != address(0)) {
                     chainData[chainId].domain.selectFork();
+
                     vm.prank(address(executor));
+
                     executor.executeDelegateCall(
                         payload,
-                        abi.encodeWithSignature('execute()')
+                        abi.encodeWithSignature("execute()")
                     );
 
                     console.log("simulating execution payload for network: ", chainId.toDomainString());
@@ -354,40 +376,20 @@ abstract contract SpellRunner is Test {
 
     function _getForeignPayloadFromMainnetSpell(ChainId chainId) internal onChain(ChainIdUtils.Ethereum()) returns (address) {
         SparkPayloadEthereum spell = SparkPayloadEthereum(chainData[ChainIdUtils.Ethereum()].payload);
-        if (chainId == ChainIdUtils.Base()) {
-            return spell.PAYLOAD_BASE();
-        } else if (chainId == ChainIdUtils.Gnosis()) {
-            return spell.PAYLOAD_GNOSIS();
-        } else if (chainId == ChainIdUtils.ArbitrumOne()) {
-            return spell.PAYLOAD_ARBITRUM();
-        } else if (chainId == ChainIdUtils.Optimism()) {
-            return spell.PAYLOAD_OPTIMISM();
-        } else if (chainId == ChainIdUtils.Unichain()) {
-            return spell.PAYLOAD_UNICHAIN();
-        } else {
-            revert("Unsupported chainId");
-        }
-    }
 
-    function executeMainnetPayload() internal onChain(ChainIdUtils.Ethereum()) {
-        // If Sky spell is deployed, execute through full callstack
-        if (skySpell != address(0)) {
-            _vote(skySpell);
-            _scheduleWaitAndCast(skySpell);
-            return;
-        }
+        if (chainId == ChainIdUtils.Base()) return spell.PAYLOAD_BASE();
 
-        address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
-        IExecutor executor     = chainData[ChainIdUtils.Ethereum()].executor;
-        require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
+        if (chainId == ChainIdUtils.Gnosis()) return spell.PAYLOAD_GNOSIS();
 
-        vm.prank(Ethereum.PAUSE_PROXY);
-        (bool success,) = address(executor).call(abi.encodeWithSignature(
-            'exec(address,bytes)',
-            payloadAddress,
-            abi.encodeWithSignature('execute()')
-        ));
-        require(success, "FAILED TO EXECUTE PAYLOAD");
+        if (chainId == ChainIdUtils.ArbitrumOne()) return spell.PAYLOAD_ARBITRUM();
+
+        if (chainId == ChainIdUtils.Optimism()) return spell.PAYLOAD_OPTIMISM();
+
+        if (chainId == ChainIdUtils.Unichain()) return spell.PAYLOAD_UNICHAIN();
+
+        if (chainId == ChainIdUtils.Avalanche()) return spell.PAYLOAD_AVALANCHE();
+
+        revert("Unsupported chainId");
     }
 
     function _vote(address spell_) internal {
@@ -437,14 +439,127 @@ abstract contract SpellRunner is Test {
     function _clearLogs() internal {
         RecordedLogs.clearLogs();
 
-        // Need to also reset all bridge indicies
-        for (uint256 i = 0; i < allChains.length; i++) {
+        // Need to also reset all bridge indices
+        for (uint256 i = 0; i < allChains.length; ++i) {
             ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-            for (uint256 j = 0; j < chainData[chainId].bridges.length ; j++){
+
+            for (uint256 j = 0; j < chainData[chainId].bridges.length; ++j) {
                 chainData[chainId].bridges[j].lastSourceLogIndex = 0;
                 chainData[chainId].bridges[j].lastDestinationLogIndex = 0;
             }
         }
+    }
+
+    /// @dev maximum 3 chains in 1 query
+    function _getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
+        blocks = new uint256[](chains.length);
+
+        // Process chains in batches of 3
+        for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
+            uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
+
+            string[] memory batchChains = new string[](batchSize);
+
+            // Create batch of chains
+            for (uint256 i = 0; i < batchSize; ++i) {
+                batchChains[i] = chains[batchStart + i];
+            }
+
+            // Build networks parameter for this batch
+            string memory networks = "";
+            for (uint256 i = 0; i < batchSize; ++i) {
+                if (i == 0) {
+                    networks = string(abi.encodePacked("networks=", batchChains[i]));
+                } else {
+                    networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
+                }
+            }
+
+            string[] memory inputs = new string[](8);
+            inputs[0] = "curl";
+            inputs[1] = "-s";
+            inputs[2] = "--request";
+            inputs[3] = "GET";
+            inputs[4] = "--url";
+            inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
+            inputs[6] = "--header";
+            inputs[7] = "accept: application/json";
+
+            string memory response = string(vm.ffi(inputs));
+
+            // Store results in the correct positions of the final blocks array
+            for (uint256 i = 0; i < batchSize; ++i) {
+                blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
+            }
+        }
+    }
+
+    function _testPayloadBytecodeMatches(ChainId chainId) internal onChain(chainId) {
+        address actualPayload = chainData[chainId].payload;
+
+        vm.skip(actualPayload == address(0));
+
+        require(Address.isContract(actualPayload), "PAYLOAD IS NOT A CONTRACT");
+
+        address expectedPayload = _deployPayload(chainId);
+
+        _assertBytecodeMatches(expectedPayload, actualPayload);
+    }
+
+    /**********************************************************************************************/
+    /*** View/Pure Functions                                                                     **/
+    /**********************************************************************************************/
+
+    function _assertBytecodeMatches(address expectedPayload, address actualPayload) internal view {
+        uint256 expectedBytecodeSize = expectedPayload.code.length;
+        uint256 actualBytecodeSize   = actualPayload.code.length;
+
+        uint256 metadataLength = _getBytecodeMetadataLength(expectedPayload);
+        assertTrue(metadataLength <= expectedBytecodeSize);
+        expectedBytecodeSize -= metadataLength;
+
+        metadataLength = _getBytecodeMetadataLength(actualPayload);
+        assertTrue(metadataLength <= actualBytecodeSize);
+        actualBytecodeSize -= metadataLength;
+
+        assertEq(actualBytecodeSize, expectedBytecodeSize);
+
+        uint256 size = actualBytecodeSize;
+        uint256 expectedHash;
+        uint256 actualHash;
+
+        assembly {
+            let ptr := mload(0x40)
+
+            extcodecopy(expectedPayload, ptr, 0, size)
+            expectedHash := keccak256(ptr, size)
+
+            extcodecopy(actualPayload, ptr, 0, size)
+            actualHash := keccak256(ptr, size)
+        }
+
+        assertEq(actualHash, expectedHash);
+    }
+
+    function _getBytecodeMetadataLength(address a) internal view returns (uint256 length) {
+        // The Solidity compiler encodes the metadata length in the last two bytes of the contract bytecode.
+        assembly {
+            let ptr  := mload(0x40)
+            let size := extcodesize(a)
+
+            if iszero(lt(size, 2)) {
+                extcodecopy(a, ptr, sub(size, 2), 2)
+                length := mload(ptr)
+                length := shr(240, length)
+                length := add(length, 2)  // The two bytes used to specify the length are not counted in the length
+            }
+            // Return zero if the bytecode is shorter than two bytes.
+        }
+    }
+
+    function _getSpellIdentifier(ChainId chainId) internal view returns (string memory) {
+        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
+        return string(abi.encodePacked(slug, ".sol:", slug));
     }
 
 }

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
+
 pragma solidity ^0.8.0;
 
-import { Base } from 'spark-address-registry/Base.sol';
+import { Base } from "spark-address-registry/Base.sol";
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { ForeignControllerInit } from "spark-alm-controller/deploy/ForeignControllerInit.sol";
 
-import { SLLHelpers } from './libraries/SLLHelpers.sol';
+import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
 /**
- * @dev Base smart contract for Base Chain.
+ * @dev    Base smart contract for Base Chain.
  * @author Phoenix Labs
  */
 abstract contract SparkPayloadBase {
@@ -37,7 +38,8 @@ abstract contract SparkPayloadBase {
                 usdc  : Base.USDC,
                 susds : Base.SUSDS,
                 usds  : Base.USDS
-            })
+            }),
+            true
         );
     }
 
