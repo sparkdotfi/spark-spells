@@ -10,13 +10,18 @@ import { SafeERC20 } from "erc20-helpers/SafeERC20.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 import { Gnosis }   from "spark-address-registry/Gnosis.sol";
 
-import { IPoolAddressesProvider, RateTargetKinkInterestRateStrategy } from "sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol";
+import {
+    IPoolAddressesProvider,
+    RateTargetKinkInterestRateStrategy
+} from "sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol";
 
 import { ISparkLendFreezerMom } from "sparklend-freezer/interfaces/ISparkLendFreezerMom.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { InitializableAdminUpgradeabilityProxy } from "sparklend-v1-core/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
+import {
+    InitializableAdminUpgradeabilityProxy
+} from "sparklend-v1-core/dependencies/openzeppelin/upgradeability/InitializableAdminUpgradeabilityProxy.sol";
 
 import { IAaveOracle }                  from "sparklend-v1-core/interfaces/IAaveOracle.sol";
 import { IACLManager }                  from "sparklend-v1-core/interfaces/IACLManager.sol";
@@ -421,6 +426,7 @@ abstract contract SparklendTests is SpellRunner {
         ReserveConfig   memory config           = _findReserveConfig(allConfigsBefore, asset);
 
         IDefaultInterestRateStrategy prevIRM = IDefaultInterestRateStrategy(config.interestRateStrategy);
+
         _validateInterestRateStrategy(
             address(prevIRM),
             address(prevIRM),
@@ -440,7 +446,10 @@ abstract contract SparklendTests is SpellRunner {
         _executeAllPayloadsAndBridges();
 
         // TODO: MDL, not writing to config, so we don't need a clone.
-        address newIRM = _findReserveConfig(_createConfigurationSnapshot("", _getSparkLendContext().pool), asset).interestRateStrategy;
+        address newIRM = _findReserveConfig(
+            _createConfigurationSnapshot("", _getSparkLendContext().pool), asset
+        ).interestRateStrategy;
+
         assertNotEq(newIRM, address(prevIRM));
 
         _validateInterestRateStrategy(
@@ -607,9 +616,12 @@ abstract contract SparklendTests is SpellRunner {
         ( max, gap, cooldown, , ) = capAutomator.supplyCapConfigs(asset);
 
         if (max > 0) {
-            uint256 currentSupply = (IScaledBalanceToken(reserveDataAfter.aTokenAddress).scaledTotalSupply() + uint256(reserveDataAfter.accruedToTreasury))
-                .rayMul(reserveDataAfter.liquidityIndex)
-                / 10 ** IERC20(reserveDataAfter.aTokenAddress).decimals();
+            uint256 currentSupply = (
+                    IScaledBalanceToken(reserveDataAfter.aTokenAddress).scaledTotalSupply() +
+                    uint256(reserveDataAfter.accruedToTreasury)
+                )
+                .rayMul(reserveDataAfter.liquidityIndex) /
+                10 ** IERC20(reserveDataAfter.aTokenAddress).decimals();
 
             uint256 expectedSupplyCap = uint256(max) < currentSupply + uint256(gap)
                 ? uint256(max)
@@ -627,7 +639,9 @@ abstract contract SparklendTests is SpellRunner {
         ( max, gap, cooldown, , ) = capAutomator.borrowCapConfigs(asset);
 
         if (max > 0) {
-            uint256 currentBorrows = IERC20(reserveDataAfter.variableDebtTokenAddress).totalSupply() / 10 ** IERC20(reserveDataAfter.variableDebtTokenAddress).decimals();
+            uint256 currentBorrows =
+                IERC20(reserveDataAfter.variableDebtTokenAddress).totalSupply() /
+                10 ** IERC20(reserveDataAfter.variableDebtTokenAddress).decimals();
 
             uint256 expectedBorrowCap = uint256(max) < currentBorrows + uint256(gap)
                 ? uint256(max)
@@ -1361,7 +1375,12 @@ abstract contract SparklendTests is SpellRunner {
 
         SafeERC20.safeApprove(IERC20(borrow.underlying), address(pool), balances.debtBefore);
 
-        console.log("LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s", collateral.symbol, borrow.symbol, _formattedAmount(balances.debtBefore, borrow.decimals));
+        console.log(
+            "LIQUIDATE: Collateral: %s, Debt: %s, Debt Amount: %s",
+            collateral.symbol,
+            borrow.symbol,
+            _formattedAmount(balances.debtBefore, borrow.decimals)
+        );
 
         pool.liquidationCall(collateral.underlying, borrow.underlying, user, balances.debtBefore, false);
 
@@ -1646,12 +1665,27 @@ abstract contract SparklendTests is SpellRunner {
 
             if (block.chainid == 1) {
                 ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
-                (uint48 maxBorrowCap, uint48 borrowCapGap, uint48 borrowCapIncreaseCooldown,, ) = capAutomator.borrowCapConfigs(config.underlying);
+
+                (
+                    uint48 maxBorrowCap,
+                    uint48 borrowCapGap,
+                    uint48 borrowCapIncreaseCooldown,
+                    , // lastUpdateBlock
+                      // lastIncreaseTime
+                ) = capAutomator.borrowCapConfigs(config.underlying);
+
                 vm.serializeUint(key, "maxBorrowCap", maxBorrowCap);
                 vm.serializeUint(key, "borrowCapGap", borrowCapGap);
                 vm.serializeUint(key, "borrowCapIncreaseCooldown", borrowCapIncreaseCooldown);
 
-                (uint48 maxSupplyCap, uint48 supplyCapGap, uint48 supplyCapIncreaseCooldown,, ) = capAutomator.supplyCapConfigs(config.underlying);
+                (
+                    uint48 maxSupplyCap,
+                    uint48 supplyCapGap,
+                    uint48 supplyCapIncreaseCooldown,
+                    , // lastUpdateBlock
+                      // lastIncreaseTime
+                ) = capAutomator.supplyCapConfigs(config.underlying);
+
                 vm.serializeUint(key, "maxSupplyCap", maxSupplyCap);
                 vm.serializeUint(key, "supplyCapGap", supplyCapGap);
                 vm.serializeUint(key, "supplyCapIncreaseCooldown", supplyCapIncreaseCooldown);
@@ -1700,6 +1734,7 @@ abstract contract SparklendTests is SpellRunner {
 
         // oracles
         vm.serializeAddress(poolConfigKey, "oracle", addressesProvider.getPriceOracle());
+
         vm.serializeAddress(
             poolConfigKey,
             "priceOracleSentinel",
@@ -1707,17 +1742,18 @@ abstract contract SparklendTests is SpellRunner {
         );
 
         // pool configurator
-        IPoolConfigurator configurator = IPoolConfigurator(addressesProvider.getPoolConfigurator());
-        vm.serializeAddress(poolConfigKey, "poolConfigurator", address(configurator));
+        address configurator = addressesProvider.getPoolConfigurator();
+
+        vm.serializeAddress(poolConfigKey, "poolConfigurator", configurator);
+
         vm.serializeAddress(
             poolConfigKey,
             "poolConfiguratorImpl",
-            ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(address(configurator))
+            ProxyHelpers.getInitializableAdminUpgradeabilityProxyImplementation(configurator)
         );
 
         // PoolDataProvider
-        IPoolDataProvider pdp = IPoolDataProvider(addressesProvider.getPoolDataProvider());
-        vm.serializeAddress(poolConfigKey, "protocolDataProvider", address(pdp));
+        vm.serializeAddress(poolConfigKey, "protocolDataProvider", addressesProvider.getPoolDataProvider());
 
         // pool
         vm.serializeAddress(
@@ -2234,7 +2270,11 @@ abstract contract SparklendTests is SpellRunner {
     }
 
     function _formattedAmount(uint256 amount, uint256 decimals) internal pure returns (string memory) {
-        return string(abi.encodePacked(vm.toString(amount / 10 ** decimals), ".", vm.toString(amount % 10 ** decimals)));
+        return string(abi.encodePacked(
+            vm.toString(amount / 10 ** decimals),
+            ".",
+            vm.toString(amount % 10 ** decimals)
+        ));
     }
 
     function _getReservesConfigs(IPool pool) internal view returns (ReserveConfig[] memory) {
@@ -2265,8 +2305,11 @@ abstract contract SparklendTests is SpellRunner {
         IPoolDataProvider pdp,
         address           underlyingAddress
     ) internal view returns (ReserveTokens memory reserveTokens) {
-        (reserveTokens.aToken, reserveTokens.stableDebtToken, reserveTokens.variableDebtToken) = pdp
-            .getReserveTokensAddresses(underlyingAddress);
+        (
+            reserveTokens.aToken,
+            reserveTokens.stableDebtToken,
+            reserveTokens.variableDebtToken
+        ) = pdp.getReserveTokensAddresses(underlyingAddress);
     }
 
     function _getStructReserveConfig(

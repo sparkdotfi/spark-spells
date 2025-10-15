@@ -466,10 +466,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Note: ERC4626 signature is the same for mainnet and foreign
         deal(address(asset), address(ctx.proxy), expectedDepositAmount);
+
         bytes32 depositKey = RateLimitHelpers.makeAssetKey(
             MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
             vault
         );
+
         bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
             MainnetController(ctx.controller).LIMIT_4626_WITHDRAW(),
             vault
@@ -593,12 +595,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        IERC20 underlying = IERC20(IAToken(aToken).UNDERLYING_ASSET_ADDRESS());
+        address underlying = IAToken(aToken).UNDERLYING_ASSET_ADDRESS();
 
         MainnetController controller = MainnetController(ctx.controller);
 
         // Note: Aave signature is the same for mainnet and foreign
-        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
+        deal(underlying, address(ctx.proxy), expectedDepositAmount);
 
         bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
         bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
@@ -628,9 +630,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Withdraw funds to avoid supply caps getting hit
         if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
-            uint256 maxWithdrawAmount = IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
-                ? asset.balanceOf(p.vault)
-                : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
+            uint256 maxWithdrawAmount =
+                IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
+                    ? asset.balanceOf(p.vault)
+                    : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
 
             // Subtract 10 to avoid rounding issues
             vm.prank(p.ctx.relayer);
@@ -671,7 +674,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
 
-        assertApproxEqAbs(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance + p.depositAmount, p.tolerance);
+        assertApproxEqAbs(
+            IERC20(p.vault).balanceOf(address(p.ctx.proxy)),
+            startingATokenBalance + p.depositAmount,
+            p.tolerance
+        );
 
         /*************************************************/
         /*** Step 3: Warp to check rate limit recharge ***/
@@ -775,16 +782,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         v.totalEscrowedShares = syrup.balanceOf(withdrawalManager);
 
-        assertEq(syrup.balanceOf(address(withdrawalManager)), v.totalEscrowedShares);
-        assertEq(syrup.balanceOf(address(p.ctx.proxy)),       v.startingShares + v.shares);
+        assertEq(syrup.balanceOf(withdrawalManager),    v.totalEscrowedShares);
+        assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares);
 
         assertEq(syrup.allowance(address(p.ctx.proxy), withdrawalManager), 0);
 
         vm.prank(p.ctx.relayer);
         controller.requestMapleRedemption(address(syrup), v.shares);
 
-        assertEq(syrup.balanceOf(address(withdrawalManager)), v.totalEscrowedShares + v.shares);
-        assertEq(syrup.balanceOf(address(p.ctx.proxy)),       v.startingShares);
+        assertEq(syrup.balanceOf(withdrawalManager),    v.totalEscrowedShares + v.shares);
+        assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares);
 
         assertEq(syrup.allowance(address(p.ctx.proxy), withdrawalManager), 0);
 
@@ -856,6 +863,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vars.depositAmounts = new uint256[](2);
         vars.depositAmounts[0] = expectedDepositAmountToken0;
+
         // Derive the second amount to be balanced with the first
         vars.depositAmounts[1] = expectedDepositAmountToken0 * vars.rates[0] / vars.rates[1];
 
@@ -911,8 +919,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             // Go slightly above maxSlippage due to rounding
             vars.withdrawAmounts = new uint256[](2);
-            vars.withdrawAmounts[0] = vars.lpBalance * vars.pool.balances(0) * (maxSlippage + 0.001e18) / vars.pool.get_virtual_price() / vars.pool.totalSupply();
-            vars.withdrawAmounts[1] = vars.lpBalance * vars.pool.balances(1) * (maxSlippage + 0.001e18) / vars.pool.get_virtual_price() / vars.pool.totalSupply();
+
+            vars.withdrawAmounts[0] =
+                vars.lpBalance *
+                vars.pool.balances(0) *
+                (maxSlippage + 0.001e18) /
+                vars.pool.get_virtual_price() /
+                vars.pool.totalSupply();
+
+            vars.withdrawAmounts[1] =
+                vars.lpBalance *
+                vars.pool.balances(1) *
+                (maxSlippage + 0.001e18) /
+                vars.pool.get_virtual_price() /
+                vars.pool.totalSupply();
 
             vm.prank(vars.ctx.relayer);
             vars.controller.removeLiquidityCurve(
@@ -942,6 +962,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         deal(vars.pool.coins(0), address(vars.ctx.proxy), expectedSwapAmountToken0);
+
         vars.minAmountOut = expectedSwapAmountToken0 * vars.rates[0] * maxSlippage / vars.rates[1] / 1e18;
 
         assertEq(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), expectedSwapAmountToken0);
@@ -1913,6 +1934,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(vault.assetsOf(user),  p.userVaultAmount);
 
         uint256 totalVaultAssets = vault.totalAssets();
+
         deal(address(asset), p.vault, totalVaultAssets);
 
         vm.prank(user);
@@ -2016,13 +2038,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertOldControllerEvents(address _oldController) internal {
+        uint256 startBlock = 22218000;
+
         MainnetController oldController = MainnetController(_oldController);
 
         bytes32[] memory topics = new bytes32[](1);
+
         topics[0] = MainnetController.MaxSlippageSet.selector;
-
-        uint256 startBlock = 22218000;
-
         VmSafe.EthGetLogs[] memory slippageLogs = vm.eth_getLogs(
             startBlock,
             block.number,
@@ -2255,15 +2277,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (integration.category == Category.AAVE) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            address asset    = IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS();
-            uint256 decimals = IERC20Like(asset).decimals();
-
-            uint256 normalizedDepositAmount = asset == Ethereum.WETH ? 1_000 : 50_000_000;
+            address asset         = IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS();
+            uint256 depositAmount = (asset == Ethereum.WETH ? 1_000 : 50_000_000) * 10 ** IERC20Like(asset).decimals();
 
             _testAaveIntegration(E2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
                 vault:         integration.integration,
-                depositAmount: normalizedDepositAmount * 10 ** decimals,
+                depositAmount: depositAmount,
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
                 tolerance:     10
@@ -2289,20 +2309,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             // Must be set to infinite
-            assertEq(IRateLimits(_getSparkLiquidityLayerContext().rateLimits).getCurrentRateLimit(integration.entryId), type(uint256).max);
+            assertEq(
+                IRateLimits(_getSparkLiquidityLayerContext().rateLimits).getCurrentRateLimit(integration.entryId),
+                type(uint256).max
+            );
         }
 
         else if (integration.category == Category.CURVE_LP) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            address asset0 = ICurvePoolLike(integration.integration).coins(0);
-            address asset1 = ICurvePoolLike(integration.integration).coins(1);
-
             _testCurveLPIntegration(CurveLPE2ETestParams({
                 ctx:            _getSparkLiquidityLayerContext(),
                 pool:           integration.integration,
-                asset0:         asset0,
-                asset1:         asset1,
+                asset0:         ICurvePoolLike(integration.integration).coins(0),
+                asset1:         ICurvePoolLike(integration.integration).coins(1),
                 depositAmount:  1_000_000e18,  // Amount across both assets
                 depositKey:     integration.entryId,
                 withdrawKey:    integration.exitId,
@@ -2313,14 +2333,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         else if (integration.category == Category.CURVE_SWAP) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            address asset0 = ICurvePoolLike(integration.integration).coins(0);
-            address asset1 = ICurvePoolLike(integration.integration).coins(1);
-
             _testCurveSwapIntegration(CurveSwapE2ETestParams({
                 ctx:            _getSparkLiquidityLayerContext(),
                 pool:           integration.integration,
-                asset0:         asset0,
-                asset1:         asset1,
+                asset0:         ICurvePoolLike(integration.integration).coins(0),
+                asset1:         ICurvePoolLike(integration.integration).coins(1),
                 swapAmount:     1e18,  // Normalized to 18 decimals (TODO: Figure out how to raise, getting slippage reverts)
                 swapKey:        integration.entryId
             }));
