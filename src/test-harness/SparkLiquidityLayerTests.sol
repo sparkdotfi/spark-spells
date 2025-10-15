@@ -44,6 +44,7 @@ import {
     IATokenLike,
     ICurvePoolLike,
     ICurveStableswapFactoryLike,
+    IERC20Like,
     IFarmLike,
     IMapleStrategyLike,
     IPoolManagerLike,
@@ -2255,7 +2256,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             address asset    = IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS();
-            uint256 decimals = IERC20(asset).decimals();
+            uint256 decimals = IERC20Like(asset).decimals();
 
             uint256 normalizedDepositAmount = asset == Ethereum.WETH ? 1_000 : 50_000_000;
 
@@ -2617,7 +2618,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _appendPostExecutionIntegrations(
         SLLIntegration[]  memory integrations,
         MainnetController        mainnetController
-    ) internal returns (SLLIntegration[] memory newIntegrations) {
+    ) internal view returns (SLLIntegration[] memory newIntegrations) {
         newIntegrations = new SLLIntegration[](integrations.length - 2 + 2);
 
         uint256 writeIndex = 0;
@@ -2647,7 +2648,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         string            memory label,
         Category                 category,
         address                  integration
-    ) internal returns (SLLIntegration memory) {
+    ) internal view returns (SLLIntegration memory) {
         bytes32 entryId  = bytes32(0);
         bytes32 entryId2 = bytes32(0);
         bytes32 exitId   = bytes32(0);
@@ -2946,8 +2947,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 integrations[i].exitId2  != bytes32(0),
                 "Empty integration"
             );
-
-            bool found;
 
             if (integrations[i].entryId != bytes32(0)) {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);

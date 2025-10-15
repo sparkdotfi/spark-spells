@@ -1143,7 +1143,7 @@ abstract contract SparklendTests is SpellRunner {
         afterReserve = pool.getReserveData(collateralConfig.underlying);
 
         // If collateral == borrow asset, reserve was updated during repay step
-        uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 days + 1 hours;
+        uint256 timePassed = collateralConfig.underlying == borrowConfig.underlying ? 1 hours : 1 days + 1 hours;
 
         _assertReserveChange(beforeReserve, afterReserve, -int256(amount), timePassed);
     }
@@ -2057,10 +2057,6 @@ abstract contract SparklendTests is SpellRunner {
             config.interestRateStrategy == expectedConfig.interestRateStrategy,
             "_validateConfigsInAave: INVALID_INTEREST_RATE_STRATEGY"
         );
-    }
-
-    function _isEqual(string memory a, string memory b) internal pure returns (bool) {
-        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
     }
 
     /**

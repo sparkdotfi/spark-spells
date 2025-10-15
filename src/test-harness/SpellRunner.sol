@@ -480,4 +480,8 @@ abstract contract SpellRunner is Test {
         return string(abi.encodePacked(slug, ".sol:", slug));
     }
 
+    function _isEqual(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
 }
