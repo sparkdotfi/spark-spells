@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
+import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
 
 import { ISparkProxyLike } from "../interfaces/Interfaces.sol";
 
@@ -20,7 +20,7 @@ abstract contract SpellTests is SpellRunner {
 
     function test_ETHEREUM_PayloadsConfigured() external onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; ++i) {
-            ChainId chainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+            uint256 chainId = chainData[allChains[i]].domain.chain.chainId;
 
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Checking only foreign payloads
 

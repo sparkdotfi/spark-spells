@@ -36,9 +36,9 @@ import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs
 
 import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
 
-import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { MorphoHelpers }         from "../libraries/MorphoHelpers.sol";
-import { SLLHelpers }            from "../libraries/SLLHelpers.sol";
+import { ChainIdUtils }  from "../libraries/ChainIdUtils.sol";
+import { MorphoHelpers } from "../libraries/MorphoHelpers.sol";
+import { SLLHelpers }    from "../libraries/SLLHelpers.sol";
 
 import {
     IATokenLike,
@@ -412,9 +412,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    function _setControllerUpgrade(ChainId chain, address prevController, address newController) internal {
-        chainData[chain].prevController = prevController;
-        chainData[chain].newController  = newController;
+    function _setControllerUpgrade(uint256 chainId, address prevController, address newController) internal {
+        chainData[chainId].prevController = prevController;
+        chainData[chainId].newController  = newController;
     }
 
     function _testERC4626Onboarding(
@@ -2167,8 +2167,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testControllerUpgrade(address oldController, address newController) internal {
-        ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
-
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         // Note the functions used are interchangeable with mainnet and foreign controllers
@@ -2188,7 +2186,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(controller.hasRole(relayerRole, ALM_RELAYER_BACKUP), false);
         assertEq(controller.hasRole(freezerRole, ctx.freezer),        false);
 
-        if (currentChain == ChainIdUtils.Ethereum()) {
+        if (block.chainid == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(address(0)));
@@ -2215,7 +2213,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(controller.hasRole(relayerRole, ALM_RELAYER_BACKUP), true);
         assertEq(controller.hasRole(freezerRole, ctx.freezer),        true);
 
-        if (currentChain == ChainIdUtils.Ethereum()) {
+        if (block.chainid == ChainIdUtils.Ethereum()) {
             _assertOldControllerEvents(oldController);
 
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(Base.ALM_PROXY));
@@ -2287,7 +2285,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testE2ESLLCrossChainForDomain(
-        ChainId           domainId,
+        uint256           domainId,
         MainnetController mainnetController,
         ForeignController foreignController
     )
@@ -2483,9 +2481,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         for (uint256 i = 0; i < allChains.length; ++i) {
             if (allChains[i] == ChainIdUtils.Ethereum() || allChains[i] == ChainIdUtils.Gnosis()) continue;
 
-            console2.log("Testing cross chain setup for", allChains[i].toDomainString());
+            console2.log("Testing cross chain setup for", ChainIdUtils.toDomainString(allChains[i]));
 
-            ChainId domainChainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+            uint256 domainChainId = chainData[allChains[i]].domain.chain.chainId;
 
             SparkLiquidityLayerContext memory domainCtx = _getSparkLiquidityLayerContext(domainChainId);
 
@@ -2774,7 +2772,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     // TODO: Rename to _runSLLE2ETestsFor and take log init and execution function calls as parameters, execute mainnet as well
-    function _runSLLE2ETestsForDomain(ChainId chainId) internal onChain(chainId) {
+    function _runSLLE2ETestsForDomain(uint256 chainId) internal onChain(chainId) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
 
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
@@ -2980,29 +2978,27 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     // TODO: Use domain specific helper function naming here
     function _getPreExecutionIntegrations() internal view returns (SLLIntegration[] memory integrations) {
-        ChainId chainId = ChainIdUtils.fromUint(block.chainid);
-
-        if (chainId == ChainIdUtils.Avalanche()) {
+        if (block.chainid == ChainIdUtils.Avalanche()) {
             return _getPreExecutionIntegrationsAvalanche();
         }
 
-        if (chainId == ChainIdUtils.ArbitrumOne()) {
+        if (block.chainid == ChainIdUtils.ArbitrumOne()) {
             return _getPreExecutionIntegrationsArbitrumOne();
         }
 
-        if (chainId == ChainIdUtils.Base()) {
+        if (block.chainid == ChainIdUtils.Base()) {
             return _getPreExecutionIntegrationsBase();
         }
 
-        if (chainId == ChainIdUtils.Ethereum()) {
+        if (block.chainid == ChainIdUtils.Ethereum()) {
             return _getPreExecutionIntegrationsMainnet();
         }
 
-        if (chainId == ChainIdUtils.Optimism()) {
+        if (block.chainid == ChainIdUtils.Optimism()) {
             return _getPreExecutionIntegrationsBasicPsm3(Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
         }
 
-        if (chainId == ChainIdUtils.Unichain()) {
+        if (block.chainid == ChainIdUtils.Unichain()) {
             return _getPreExecutionIntegrationsBasicPsm3(Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
         }
 
@@ -3024,21 +3020,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     )
         internal view returns (SLLIntegration[] memory newIntegrations)
     {
-        ChainId chainId = ChainIdUtils.fromUint(block.chainid);
-
         newIntegrations = new SLLIntegration[](integrations.length);
 
-        if (chainId == ChainIdUtils.Ethereum()) {
+        if (block.chainid == ChainIdUtils.Ethereum()) {
             return _getPostExecutionIntegrationsMainnet(integrations);
         }
 
         // TODO: Use a function selector getter here to dynamically call the correct helper function based on chainId.
         if (
-            chainId == ChainIdUtils.ArbitrumOne() ||
-            chainId == ChainIdUtils.Avalanche() ||
-            chainId == ChainIdUtils.Base() ||
-            chainId == ChainIdUtils.Optimism() ||
-            chainId == ChainIdUtils.Unichain()
+            block.chainid == ChainIdUtils.ArbitrumOne() ||
+            block.chainid == ChainIdUtils.Avalanche() ||
+            block.chainid == ChainIdUtils.Base() ||
+            block.chainid == ChainIdUtils.Optimism() ||
+            block.chainid == ChainIdUtils.Unichain()
         ) {
             return _getPostExecutionIntegrationsNoChange(integrations);
         }
@@ -3397,8 +3391,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    function _getSparkLiquidityLayerContext(ChainId chain) internal view returns (SparkLiquidityLayerContext memory ctx) {
-        if (chain == ChainIdUtils.Ethereum()) {
+    function _getSparkLiquidityLayerContext(uint256 chainId) internal view returns (SparkLiquidityLayerContext memory ctx) {
+        if (chainId == ChainIdUtils.Ethereum()) {
             ctx = SparkLiquidityLayerContext(
                 Ethereum.ALM_CONTROLLER,
                 address(0),
@@ -3407,7 +3401,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 Ethereum.ALM_RELAYER,
                 Ethereum.ALM_FREEZER
             );
-        } else if (chain == ChainIdUtils.Base()) {
+        } else if (chainId == ChainIdUtils.Base()) {
             ctx = SparkLiquidityLayerContext(
                 Base.ALM_CONTROLLER,
                 address(0),
@@ -3416,7 +3410,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 Base.ALM_RELAYER,
                 Base.ALM_FREEZER
             );
-        } else if (chain == ChainIdUtils.ArbitrumOne()) {
+        } else if (chainId == ChainIdUtils.ArbitrumOne()) {
             ctx = SparkLiquidityLayerContext(
                 Arbitrum.ALM_CONTROLLER,
                 address(0),
@@ -3425,7 +3419,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 Arbitrum.ALM_RELAYER,
                 Arbitrum.ALM_FREEZER
             );
-        } else if (chain == ChainIdUtils.Optimism()) {
+        } else if (chainId == ChainIdUtils.Optimism()) {
             ctx = SparkLiquidityLayerContext(
                 Optimism.ALM_CONTROLLER,
                 address(0),
@@ -3434,7 +3428,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 Optimism.ALM_RELAYER,
                 Optimism.ALM_FREEZER
             );
-        } else if (chain == ChainIdUtils.Unichain()) {
+        } else if (chainId == ChainIdUtils.Unichain()) {
             ctx = SparkLiquidityLayerContext(
                 Unichain.ALM_CONTROLLER,
                 address(0),
@@ -3443,7 +3437,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 Unichain.ALM_RELAYER,
                 Unichain.ALM_FREEZER
             );
-        } else if (chain == ChainIdUtils.Avalanche()) {
+        } else if (chainId == ChainIdUtils.Avalanche()) {
             ctx = SparkLiquidityLayerContext(
                 Avalanche.ALM_CONTROLLER,
                 address(0),
@@ -3457,20 +3451,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         // Override if there is controller upgrades
-        if (chainData[chain].prevController != address(0)) {
-            ctx.prevController = chainData[chain].prevController;
-            ctx.controller     = chainData[chain].newController;
+        if (chainData[chainId].prevController != address(0)) {
+            ctx.prevController = chainData[chainId].prevController;
+            ctx.controller     = chainData[chainId].newController;
         } else {
             ctx.prevController = ctx.controller;
         }
     }
 
     function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
-        return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
+        return _getSparkLiquidityLayerContext(block.chainid);
     }
 
     function _getSparkLiquidityLayerContext(bool isPostExecution) internal view returns (SparkLiquidityLayerContext memory ctx) {
-        ctx = _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
+        ctx = _getSparkLiquidityLayerContext(block.chainid);
 
         // Use the existing controller for all tests if spell hasn't executed yet
         if (isPostExecution) return ctx;

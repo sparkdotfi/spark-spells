@@ -18,7 +18,7 @@ import { IPool }                from "sparklend-v1-core/interfaces/IPool.sol";
 import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 
-import { ChainIdUtils } from "src/libraries/ChainId.sol";
+import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";

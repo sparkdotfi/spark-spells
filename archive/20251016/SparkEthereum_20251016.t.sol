@@ -18,7 +18,7 @@ import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.s
 import { LZForwarder }           from "xchain-helpers/forwarders/LZForwarder.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
-import { ChainIdUtils } from "src/libraries/ChainId.sol";
+import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 import { SLLHelpers }   from "src/libraries/SLLHelpers.sol";
 
 import { MorphoTests }              from "src/test-harness/MorphoTests.sol";
