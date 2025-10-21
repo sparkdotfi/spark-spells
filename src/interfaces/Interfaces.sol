@@ -75,6 +75,8 @@ interface ISparkVaultV2Like {
 
     function rho() external view returns (uint64);
 
+    function setDepositCap(uint256 newCap) external;
+
     function SETTER_ROLE() external view returns (bytes32);
 
     function setVsr(uint256 newVsr) external;
