@@ -9,7 +9,7 @@ import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimi
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { ReserveConfiguration } from "sparklend-v1-core/contracts/protocol/libraries/configuration/ReserveConfiguration.sol";
+import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 
@@ -36,6 +36,7 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
  */
 contract SparkEthereum_20251030 is SparkPayloadEthereum {
 
+    address internal constant PYUSD      = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
     address internal constant SYRUP_USDT = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
 
     constructor() {
@@ -49,19 +50,19 @@ contract SparkEthereum_20251030 is SparkPayloadEthereum {
         // Remove Supply and Borrow Caps for Non Collateral Stablecoins (USDC, USDT, PYUSD)
         LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.USDC,  ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
         LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.USDT,  ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
-        LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.PYUSD, ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(PYUSD,          ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
 
         LISTING_ENGINE.POOL_CONFIGURATOR().setBorrowCap(Ethereum.USDC, ReserveConfiguration.MAX_VALID_BORROW_CAP);
         LISTING_ENGINE.POOL_CONFIGURATOR().setBorrowCap(Ethereum.USDT, ReserveConfiguration.MAX_VALID_BORROW_CAP);
-        LISTING_ENGINE.POOL_CONFIGURATOR().setBorrowCap(Ethereum.PYUSD, ReserveConfiguration.MAX_VALID_BORROW_CAP);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setBorrowCap(PYUSD,         ReserveConfiguration.MAX_VALID_BORROW_CAP);
 
         ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.USDC);
         ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.USDT);
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.PYUSD);
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(PYUSD);
 
         ICapAutomator(Ethereum.CAP_AUTOMATOR).removeBorrowCapConfig(Ethereum.USDC);
         ICapAutomator(Ethereum.CAP_AUTOMATOR).removeBorrowCapConfig(Ethereum.USDT);
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeBorrowCapConfig(Ethereum.PYUSD);
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeBorrowCapConfig(PYUSD);
 
         // Increase cbBTC Supply and Borrow Caps
         ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
