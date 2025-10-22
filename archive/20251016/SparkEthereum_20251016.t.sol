@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
@@ -16,21 +15,26 @@ import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimi
 import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 
 import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.sol";
-import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { LZForwarder }           from "xchain-helpers/forwarders/LZForwarder.sol";
+import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 
-import { ChainIdUtils }  from "src/libraries/ChainId.sol";
-import { SLLHelpers }    from "src/libraries/SLLHelpers.sol";
-import { SparkTestBase } from "src/test-harness/SparkTestBase.sol";
+import { ChainIdUtils } from "src/libraries/ChainId.sol";
+import { SLLHelpers }   from "src/libraries/SLLHelpers.sol";
 
-import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
+import { MorphoTests }              from "src/test-harness/MorphoTests.sol";
+import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
+import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
+import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
+import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-interface ISparkExecutor {
+import { IERC20Like, ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
+
+interface ISparkExecutorLike {
     function delay() external view returns (uint256);
     function gracePeriod() external view returns (uint256);
 }
 
-interface ISparkReceiver {
+interface ISparkReceiverLike {
     function endpoint() external view returns (address);
     function owner() external view returns (address);
     function sourceAuthority() external view returns (bytes32);
@@ -38,37 +42,33 @@ interface ISparkReceiver {
     function target() external view returns (address);
 }
 
-interface IEndpoint {
+interface IEndpointLike {
     function delegates(address) external view returns (address);
 }
 
-contract SparkEthereum_20251016Test is SparkTestBase {
-
-    using DomainHelpers for Domain;
+contract SparkEthereum_20251016_GenericTests is SpellRunner {
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
 
-    address internal constant aAvaUSDC           = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AVALANCHE_DEPLOYER = 0x50198eb43ffD192634f741b01E9507A1038d87A0;
 
     constructor() {
-        id = "20251016";
+        _spellId   = 20251016;
+        _blockDate = "2025-10-10T17:44:00Z";
     }
 
-    function setUp() public {
-        _setupDomains("2025-10-10T17:44:00Z");
-
-        _deployPayloads();
+    function setUp() public override {
+        super.setUp();
 
         chainData[ChainIdUtils.Avalanche()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
         chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
     }
 
     function test_AVALANCHE_deployConfig() external onChain(ChainIdUtils.Avalanche()) {
-        ISparkExecutor executor = ISparkExecutor(Avalanche.SPARK_EXECUTOR);
-        ISparkReceiver receiver = ISparkReceiver(Avalanche.SPARK_RECEIVER);
+        ISparkExecutorLike executor = ISparkExecutorLike(Avalanche.SPARK_EXECUTOR);
+        ISparkReceiverLike receiver = ISparkReceiverLike(Avalanche.SPARK_RECEIVER);
 
         assertEq(executor.delay(),       0);
         assertEq(executor.gracePeriod(), 7 days);
@@ -80,38 +80,86 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         assertEq(receiver.target(),            Avalanche.SPARK_EXECUTOR);
 
         assertEq(
-            IEndpoint(LZForwarder.ENDPOINT_AVALANCHE).delegates(Avalanche.SPARK_RECEIVER),
+            IEndpointLike(LZForwarder.ENDPOINT_AVALANCHE).delegates(Avalanche.SPARK_RECEIVER),
             Avalanche.SPARK_EXECUTOR
         );
+    }
+
+    function test_AVALANCHE_almControllerDeployment() public onChain(ChainIdUtils.Avalanche()) {
+        // Copied from the init library, but no harm checking this here
+        IALMProxy         almProxy   = IALMProxy(Avalanche.ALM_PROXY);
+        IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
+        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
+
+        assertEq(almProxy.hasRole(0x0,   Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-almProxy");
+        assertEq(rateLimits.hasRole(0x0, Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-rateLimits");
+        assertEq(controller.hasRole(0x0, Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-controller");
+
+        assertEq(almProxy.hasRole(0x0,   AVALANCHE_DEPLOYER), false, "incorrect-admin-almProxy");
+        assertEq(rateLimits.hasRole(0x0, AVALANCHE_DEPLOYER), false, "incorrect-admin-rateLimits");
+        assertEq(controller.hasRole(0x0, AVALANCHE_DEPLOYER), false, "incorrect-admin-controller");
+
+        assertEq(address(controller.proxy()),      Avalanche.ALM_PROXY,            "incorrect-almProxy");
+        assertEq(address(controller.rateLimits()), Avalanche.ALM_RATE_LIMITS,      "incorrect-rateLimits");
+        assertEq(address(controller.psm()),        address(0),                     "incorrect-psm");
+        assertEq(address(controller.usdc()),       Avalanche.USDC,                 "incorrect-usdc");
+        assertEq(address(controller.cctp()),       Avalanche.CCTP_TOKEN_MESSENGER, "incorrect-cctp");
+    }
+
+}
+
+contract SparkEthereum_20251016_SLLTests is SparkLiquidityLayerTests {
+
+    using DomainHelpers for Domain;
+
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
+    uint256 internal constant TEN_PCT_APY  = 1.000000003022265980097387650e27;
+
+    address internal constant aAvaUSDC           = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant AVALANCHE_DEPLOYER = 0x50198eb43ffD192634f741b01E9507A1038d87A0;
+
+    constructor() {
+        _spellId   = 20251016;
+        _blockDate = "2025-10-10T17:44:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Avalanche()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
     }
 
     function test_ETHEREUM_sll_disableUnusedProducts() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+
         bytes32 jtrsyDeposit = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_DEPOSIT(),
+            mainnetController.LIMIT_7540_DEPOSIT(),
             Ethereum.JTRSY_VAULT
         );
-        
+
         bytes32 jtrsyRedeem = RateLimitHelpers.makeAssetKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_7540_REDEEM(),
+            mainnetController.LIMIT_7540_REDEEM(),
             Ethereum.JTRSY_VAULT
         );
 
         bytes32 buidlDeposit = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            mainnetController.LIMIT_ASSET_TRANSFER(),
             Ethereum.USDC,
             Ethereum.BUIDLI_DEPOSIT
         );
 
         bytes32 buidlWithdraw = RateLimitHelpers.makeAssetDestinationKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            mainnetController.LIMIT_ASSET_TRANSFER(),
             Ethereum.BUIDLI,
             Ethereum.BUIDLI_REDEEM
         );
 
-        assertEq(IERC20(Ethereum.JTRSY).balanceOf(address(ctx.proxy)),  0);
-        assertEq(IERC20(Ethereum.BUIDLI).balanceOf(address(ctx.proxy)), 0);
+        assertEq(IERC20Like(Ethereum.JTRSY).balanceOf(address(ctx.proxy)),  0);
+        assertEq(IERC20Like(Ethereum.BUIDLI).balanceOf(address(ctx.proxy)), 0);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(jtrsyDeposit),  200_000_000e6);
         assertEq(ctx.rateLimits.getCurrentRateLimit(jtrsyRedeem),   type(uint256).max);
@@ -125,6 +173,66 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlDeposit),  0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(buidlWithdraw), 0);
 
+        vm.startPrank(ctx.relayer);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        mainnetController.transferAsset(Ethereum.USDC, Ethereum.BUIDLI_DEPOSIT, 1_000_000e6);
+
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        mainnetController.requestDepositERC7540(Ethereum.JTRSY_VAULT, 1_000_000e6);
+        vm.stopPrank();
+    }
+
+    function test_ETHEREUM_avalancheCctpConfiguration() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 avalancheKey = RateLimitHelpers.makeDomainKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
+            CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE
+        );
+
+        _assertRateLimit(avalancheKey, 0, 0);
+        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), bytes32(0));
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(avalancheKey, 100_000_000e6, 50_000_000e6 / uint256(1 days));
+        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY));
+    }
+
+    function test_AVALANCHE_almControllerConfiguration() public onChain(ChainIdUtils.Avalanche()) {
+        IALMProxy         almProxy   = IALMProxy(Avalanche.ALM_PROXY);
+        IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
+        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
+
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Avalanche.ALM_CONTROLLER), false, "incorrect-controller-almProxy");
+        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Avalanche.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
+        assertEq(controller.hasRole(controller.FREEZER(),    Avalanche.ALM_FREEZER),    false, "incorrect-freezer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER),    false, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER2),   false, "incorrect-relayer-controller");
+
+        _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
+        _assertRateLimit(
+            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            0,
+            0
+        );
+
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Avalanche.ALM_CONTROLLER), true, "incorrect-controller-almProxy");
+        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Avalanche.ALM_CONTROLLER), true, "incorrect-controller-rateLimits");
+        assertEq(controller.hasRole(controller.FREEZER(),    Avalanche.ALM_FREEZER),    true, "incorrect-freezer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER),    true, "incorrect-relayer-controller");
+        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER2),   true, "incorrect-relayer-controller");
+
+        _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
+        _assertRateLimit(
+            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            100_000_000e6,
+            50_000_000e6 / uint256(1 days)
+        );
+
+        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
     }
 
     function test_AVALANCHE_sparkVaultsV2_configureSPUSDC() external onChain(ChainIdUtils.Avalanche()) {
@@ -176,7 +284,7 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         assertEq(vault.asset(),      asset);
         assertEq(vault.name(),       name);
-        assertEq(vault.decimals(),   IERC20Metadata(vault.asset()).decimals());
+        assertEq(vault.decimals(),   IERC20Like(vault.asset()).decimals());
         assertEq(vault.symbol(),     symbol);
         assertEq(vault.rho(),        rho);
         assertEq(vault.chi(),        uint192(1e27));
@@ -262,12 +370,12 @@ contract SparkEthereum_20251016Test is SparkTestBase {
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        IERC20 underlying = IERC20(IAToken(aToken).UNDERLYING_ASSET_ADDRESS());
+        address underlying = IAToken(aToken).UNDERLYING_ASSET_ADDRESS();
 
         MainnetController controller = MainnetController(ctx.controller);
 
         // Note: Aave signature is the same for mainnet and foreign
-        deal(address(underlying), address(ctx.proxy), expectedDepositAmount);
+        deal(underlying, address(ctx.proxy), expectedDepositAmount);
 
         bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
         bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
@@ -286,80 +394,6 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         _testAaveIntegration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
     }
 
-    function test_ETHEREUM_avalancheCctpConfiguration() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 avalancheKey = RateLimitHelpers.makeDomainKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN(),
-            CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE
-        );
-
-        _assertRateLimit(avalancheKey, 0, 0);
-        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), bytes32(0));
-
-        _executeAllPayloadsAndBridges();
-
-        _assertRateLimit(avalancheKey, 100_000_000e6, 50_000_000e6 / uint256(1 days));
-        assertEq(MainnetController(Ethereum.ALM_CONTROLLER).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY));
-    }
-
-    function test_AVALANCHE_almControllerDeployment() public onChain(ChainIdUtils.Avalanche()) {
-        // Copied from the init library, but no harm checking this here
-        IALMProxy         almProxy   = IALMProxy(Avalanche.ALM_PROXY);
-        IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
-        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
-
-        assertEq(almProxy.hasRole(0x0,   Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-almProxy");
-        assertEq(rateLimits.hasRole(0x0, Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-rateLimits");
-        assertEq(controller.hasRole(0x0, Avalanche.SPARK_EXECUTOR), true, "incorrect-admin-controller");
-
-        assertEq(almProxy.hasRole(0x0,   AVALANCHE_DEPLOYER), false, "incorrect-admin-almProxy");
-        assertEq(rateLimits.hasRole(0x0, AVALANCHE_DEPLOYER), false, "incorrect-admin-rateLimits");
-        assertEq(controller.hasRole(0x0, AVALANCHE_DEPLOYER), false, "incorrect-admin-controller");
-
-        assertEq(address(controller.proxy()),      Avalanche.ALM_PROXY,            "incorrect-almProxy");
-        assertEq(address(controller.rateLimits()), Avalanche.ALM_RATE_LIMITS,      "incorrect-rateLimits");
-        assertEq(address(controller.psm()),        address(0),                     "incorrect-psm");
-        assertEq(address(controller.usdc()),       Avalanche.USDC,                 "incorrect-usdc");
-        assertEq(address(controller.cctp()),       Avalanche.CCTP_TOKEN_MESSENGER, "incorrect-cctp");
-    }
-
-    function test_AVALANCHE_almControllerConfiguration() public onChain(ChainIdUtils.Avalanche()) {
-        IALMProxy         almProxy   = IALMProxy(Avalanche.ALM_PROXY);
-        IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
-        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
-
-        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Avalanche.ALM_CONTROLLER), false, "incorrect-controller-almProxy");
-        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Avalanche.ALM_CONTROLLER), false, "incorrect-controller-rateLimits");
-        assertEq(controller.hasRole(controller.FREEZER(),    Avalanche.ALM_FREEZER),    false, "incorrect-freezer-controller");
-        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER),    false, "incorrect-relayer-controller");
-        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER2),   false, "incorrect-relayer-controller");
-
-        _assertRateLimit(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
-        _assertRateLimit(
-            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
-            0,
-            0
-        );
-
-        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),     Avalanche.ALM_CONTROLLER), true, "incorrect-controller-almProxy");
-        assertEq(rateLimits.hasRole(rateLimits.CONTROLLER(), Avalanche.ALM_CONTROLLER), true, "incorrect-controller-rateLimits");
-        assertEq(controller.hasRole(controller.FREEZER(),    Avalanche.ALM_FREEZER),    true, "incorrect-freezer-controller");
-        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER),    true, "incorrect-relayer-controller");
-        assertEq(controller.hasRole(controller.RELAYER(),    Avalanche.ALM_RELAYER2),   true, "incorrect-relayer-controller");
-
-        _assertUnlimitedRateLimit(controller.LIMIT_USDC_TO_CCTP());
-        _assertRateLimit(
-            RateLimitHelpers.makeDomainKey(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
-            100_000_000e6,
-            50_000_000e6 / uint256(1 days)
-        );
-
-        assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
-    }
-
     function test_ETHEREUM_AVALANCHE_sparkLiquidityLayerE2E() public onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
@@ -375,8 +409,6 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         _executeAllPayloadsAndBridges();
 
-        IERC20 avaxUsdc = IERC20(Avalanche.USDC);
-
         MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
         // --- Step 1: Mint and bridge 10m USDC to Avalanche ---
@@ -389,6 +421,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.mintUSDS(usdcAmount * 1e12);
         mainnetController.swapUSDSToUSDC(usdcAmount);
+
+        // Transferring more than ratelimit fails
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        mainnetController.transferUSDCToCCTP(100_000_000e6 + 1, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+
         mainnetController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
         vm.stopPrank();
 
@@ -404,11 +441,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         ctx = _getSparkLiquidityLayerContext();
 
-        assertEq(avaxUsdc.balanceOf(Avalanche.ALM_PROXY), 0);
+        assertEq(IERC20Like(Avalanche.USDC).balanceOf(Avalanche.ALM_PROXY), 0);
 
         _relayMessageOverBridges();
 
-        assertEq(avaxUsdc.balanceOf(Avalanche.ALM_PROXY), usdcAmount);
+        assertEq(IERC20Like(Avalanche.USDC).balanceOf(Avalanche.ALM_PROXY), usdcAmount);
 
         // --- Step 2: Bridge USDC back to mainnet and burn USDS
 
@@ -418,6 +455,11 @@ contract SparkEthereum_20251016Test is SparkTestBase {
         );
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(ethereumKey), 100_000_000e6);
+
+        // Transferring more than ratelimit fails
+        vm.prank(Avalanche.ALM_RELAYER);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        ForeignController(Avalanche.ALM_CONTROLLER).transferUSDCToCCTP(100_000_000e6 + 1, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
         vm.prank(Avalanche.ALM_RELAYER);
         ForeignController(Avalanche.ALM_CONTROLLER).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
@@ -438,15 +480,15 @@ contract SparkEthereum_20251016Test is SparkTestBase {
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(ethereumKey), 100_000_000e6);
 
-        assertEq(IERC20(Avalanche.USDC).balanceOf(Avalanche.ALM_PROXY), 0);
+        assertEq(IERC20Like(Avalanche.USDC).balanceOf(Avalanche.ALM_PROXY), 0);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 usdcPrevBalance = IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
+        uint256 usdcPrevBalance = IERC20Like(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY);
 
         _relayMessageOverBridges();
 
-        assertEq(IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY), usdcPrevBalance + usdcAmount);
+        assertEq(IERC20Like(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY), usdcPrevBalance + usdcAmount);
 
         vm.startPrank(Ethereum.ALM_RELAYER);
         mainnetController.swapUSDCToUSDS(usdcAmount);
@@ -487,6 +529,40 @@ contract SparkEthereum_20251016Test is SparkTestBase {
             withdrawAmount:      1_000_000e6,
             withdrawKey:         usccWithdraw
         }));
+    }
+
+}
+
+contract SparkEthereum_20251016_SparklendTests is SparklendTests {
+
+    constructor() {
+        _spellId   = 20251016;
+        _blockDate = "2025-10-10T17:44:00Z";
+    }
+
+}
+
+contract SparkEthereum_20251016_MorphoTests is MorphoTests {
+
+    constructor() {
+        _spellId   = 20251016;
+        _blockDate = "2025-10-10T17:44:00Z";
+    }
+
+}
+
+contract SparkEthereum_20251016_SpellTests is SpellTests {
+
+    constructor() {
+        _spellId   = 20251016;
+        _blockDate = "2025-10-10T17:44:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.Avalanche()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
     }
 
 }

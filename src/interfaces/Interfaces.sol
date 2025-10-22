@@ -71,6 +71,8 @@ interface ISparkVaultV2Like {
 
     function minVsr() external view returns (uint256);
 
+    function maxDeposit(address) external view returns (uint256);
+
     function maxVsr() external view returns (uint256);
 
     function name() external view returns (string memory);
@@ -80,6 +82,8 @@ interface ISparkVaultV2Like {
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     function rho() external view returns (uint64);
+
+    function setDepositCap(uint256 newCap) external;
 
     function SETTER_ROLE() external view returns (bytes32);
 
@@ -383,7 +387,8 @@ interface ICentrifugeTokenLike is IERC7540 {
     function poolId() external view returns (uint64);
 
 }
- interface IPSM3Like {
+
+interface IPSM3Like {
 
     function convertToAssets(address asset, uint256 shares) external view returns (uint256);
 
@@ -391,4 +396,18 @@ interface ICentrifugeTokenLike is IERC7540 {
 
     function shares(address account) external view returns (uint256);
 
- }
+}
+
+interface IATokenLike {
+
+    function POOL() external view returns(address);
+
+}
+
+interface IERC20Like {
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function decimals() external view returns (uint8);
+
+}

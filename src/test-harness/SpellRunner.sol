@@ -30,7 +30,6 @@ import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
 
 import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
 
-// TODO: MDL, Use by `SparklendTests` and `SparkLiquidityLayerTests`.
 abstract contract SpellRunner is Test {
 
     using DomainHelpers for Domain;
@@ -51,10 +50,13 @@ abstract contract SpellRunner is Test {
         address                        newController;
     }
 
+    uint256 internal immutable _spellId;
+
+    string internal _blockDate;
+
     mapping(ChainId => DomainData) internal chainData;
 
     ChainId[] internal allChains;
-    string    internal id;
 
     modifier onChain(ChainId chainId) {
         uint256 currentFork = vm.activeFork();
@@ -64,6 +66,11 @@ abstract contract SpellRunner is Test {
         _;
 
         if (vm.activeFork() != currentFork) vm.selectFork(currentFork);
+    }
+
+    function setUp() public virtual {
+        _setupDomains();
+        _deployPayloads();
     }
 
     /**********************************************************************************************/
@@ -98,13 +105,15 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(29270907);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(30224844);
         chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[4]);
     }
 
     /// @dev to be called in setUp
-    function _setupDomains(string memory date) internal {
-        _setupBlocksFromDate(date);
+    function _setupDomains() internal {
+        require(bytes(_blockDate).length > 0, "Block Date not set");
+
+        _setupBlocksFromDate(_blockDate);
 
         // We default to Ethereum domain
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
@@ -467,8 +476,12 @@ abstract contract SpellRunner is Test {
     }
 
     function _getSpellIdentifier(ChainId chainId) internal view returns (string memory) {
-        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", id));
+        string memory slug = string(abi.encodePacked("Spark", chainId.toDomainString(), "_", vm.toString(_spellId)));
         return string(abi.encodePacked(slug, ".sol:", slug));
+    }
+
+    function _isEqual(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
     }
 
 }
