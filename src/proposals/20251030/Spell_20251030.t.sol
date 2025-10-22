@@ -58,6 +58,15 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
     function setUp() public override {
         super.setUp();
 
+        chainData[ChainIdUtils.ArbitrumOne()].prevController = Arbitrum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.ArbitrumOne()].newController  = ARBITRUM_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Optimism()].prevController = Optimism.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Optimism()].newController  = OPTIMISM_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Unichain()].prevController = Unichain.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Unichain()].newController  = UNICHAIN_NEW_ALM_CONTROLLER;
+
         // chainData[ChainIdUtils.ArbitrumOne()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
         // chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
         // chainData[ChainIdUtils.Optimism()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
