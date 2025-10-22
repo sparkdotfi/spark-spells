@@ -22,7 +22,21 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-import { ISparkVaultV2Like, IERC20Like, ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
+import { 
+    ISyrupLike,
+    ISparkVaultV2Like,
+    IERC20Like,
+    ISparkVaultV2Like
+} from "src/interfaces/Interfaces.sol";
+
+interface IPermissionManagerLike {
+    function admin() external view returns (address);
+    function setLenderAllowlist(
+        address            poolManager_,
+        address[] calldata lenders_,
+        bool[]    calldata booleans_
+    ) external;
+}
 
 contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
@@ -31,6 +45,9 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
     address internal constant UNICHAIN_NEW_ALM_CONTROLLER = 0x7CD6EC14785418aF694efe154E7ff7d9ba99D99b;
 
     address internal constant SYRUP_USDT = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+
+    IPermissionManagerLike internal constant permissionManager
+        = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
     constructor() {
         _spellId   = 20251030;
@@ -88,6 +105,23 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), 0);
 
         _executeAllPayloadsAndBridges();
+
+        // Maple onboarding process
+        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
+
+        address[] memory lenders  = new address[](1);
+        bool[]    memory booleans = new bool[](1);
+
+        lenders[0]  = address(Ethereum.ALM_PROXY);
+        booleans[0] = true;
+
+        vm.startPrank(permissionManager.admin());
+        permissionManager.setLenderAllowlist(
+            syrup.manager(),
+            lenders,
+            booleans
+        );
+        vm.stopPrank();
 
         _testMapleIntegration(MapleE2ETestParams({
             ctx:           ctx,
