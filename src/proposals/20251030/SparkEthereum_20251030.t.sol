@@ -25,8 +25,7 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import { 
     ISyrupLike,
     ISparkVaultV2Like,
-    IERC20Like,
-    ISparkVaultV2Like
+    IERC20Like
 } from "src/interfaces/Interfaces.sol";
 
 interface IPermissionManagerLike {
