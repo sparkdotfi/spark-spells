@@ -58,6 +58,8 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+import { console } from "forge-std/console.sol";
+
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
@@ -1948,6 +1950,63 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.assetsOf(user),  0);
     }
 
+    function getEvents(uint256 chainId, address target, bytes32 topic0) internal returns (VmSafe.EthGetLogs[] memory logs) {
+        string memory apiKey = vm.envString("ETHERSCAN_API_KEY");
+
+        string[] memory inputs = new string[](8);
+        inputs[0] = "curl";
+        inputs[1] = "-s";
+        inputs[2] = "--request";
+        inputs[3] = "GET";
+        inputs[4] = "--url";
+        inputs[5] = string(
+            abi.encodePacked(
+                "https://api.etherscan.io/v2/api?",
+                "chainid=",
+                vm.toString(chainId),
+                "&module=logs&action=getLogs",
+                "&fromBlock=0",
+                "&toBlock=latest",
+                "&address=",
+                vm.toString(target),
+                "&topic0=",
+                vm.toString(topic0),
+                "&page=1",
+                "&offset=1000",
+                "&apikey=",
+                apiKey
+            )
+        );
+        inputs[6] = "--header";
+        inputs[7] = "accept: application/json";
+
+        string memory response = string(vm.ffi(inputs));
+
+        // Get Result Array Length
+        uint i;
+        for(; i < 1000; i++) {
+            try vm.parseJsonAddress(response, string(abi.encodePacked(".result[", vm.toString(i), "].address"))) {
+            } catch {
+                logs = new VmSafe.EthGetLogs[](i);
+                break;
+            }
+        }
+
+        for(uint j; j < i; ++j) {
+            logs[j] = VmSafe.EthGetLogs({
+                emitter:          vm.parseJsonAddress(response,      string(abi.encodePacked(".result[", vm.toString(j), "].address"))),
+                topics:           vm.parseJsonBytes32Array(response, string(abi.encodePacked(".result[", vm.toString(j), "].topics"))),
+                data:             vm.parseJsonBytes(response,        string(abi.encodePacked(".result[", vm.toString(j), "].data"))),
+                blockNumber:      uint64(vm.parseJsonUint(response,  string(abi.encodePacked(".result[", vm.toString(j), "].blockNumber")))),
+                blockHash:        vm.parseJsonBytes32(response,      string(abi.encodePacked(".result[", vm.toString(j), "].blockHash"))),
+                transactionHash:  vm.parseJsonBytes32(response,      string(abi.encodePacked(".result[", vm.toString(j), "].transactionHash"))),
+                transactionIndex: uint64(vm.parseJsonUint(response,  string(abi.encodePacked(".result[", vm.toString(j), "].transactionIndex")))),
+                logIndex:         uint8(vm.parseJsonUint(response,   string(abi.encodePacked(".result[", vm.toString(j), "].logIndex")))),
+                removed:          false
+            });
+        }
+    }
+
     function _testControllerUpgrade(address oldController, address newController) internal {
         ChainId currentChain = ChainIdUtils.fromUint(block.chainid);
 
@@ -2018,15 +2077,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
         } else {
-            bytes32[] memory topics = new bytes32[](1);
-            topics[0] = ForeignController.MintRecipientSet.selector;
-
-            VmSafe.EthGetLogs[] memory cctpLogs = vm.eth_getLogs(
-                0,
-                block.number,
-                oldController,
-                topics
-            );
+            VmSafe.EthGetLogs[] memory cctpLogs = getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
 
             assertEq(cctpLogs.length, 1);
 
@@ -2042,31 +2093,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         MainnetController oldController = MainnetController(_oldController);
 
-        bytes32[] memory topics = new bytes32[](1);
-
-        topics[0] = MainnetController.MaxSlippageSet.selector;
-        VmSafe.EthGetLogs[] memory slippageLogs = vm.eth_getLogs(
-            startBlock,
-            block.number,
-            _oldController,
-            topics
-        );
-
-        topics[0] = MainnetController.MintRecipientSet.selector;
-        VmSafe.EthGetLogs[] memory cctpLogs = vm.eth_getLogs(
-            startBlock,
-            block.number,
-            _oldController,
-            topics
-        );
-
-        topics[0] = MainnetController.LayerZeroRecipientSet.selector;
-        VmSafe.EthGetLogs[] memory layerZeroLogs = vm.eth_getLogs(
-            startBlock,
-            block.number,
-            _oldController,
-            topics
-        );
+        VmSafe.EthGetLogs[] memory slippageLogs  = getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
+        VmSafe.EthGetLogs[] memory cctpLogs      = getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory layerZeroLogs = getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
 
         assertEq(slippageLogs.length,  5);
         assertEq(cctpLogs.length,      4);
