@@ -65,6 +65,8 @@ interface ISparkVaultV2Like {
 
     function minVsr() external view returns (uint256);
 
+    function maxDeposit(address) external view returns (uint256);
+
     function maxVsr() external view returns (uint256);
 
     function name() external view returns (string memory);

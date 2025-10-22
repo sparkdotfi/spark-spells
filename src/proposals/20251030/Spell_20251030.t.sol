@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
@@ -279,6 +279,8 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20251030_SpellTests is SpellTests {
 
+    using SafeERC20 for IERC20;
+
     constructor() {
         _spellId   = 20251030;
         _blockDate = "2025-10-22T07:32:00Z";
@@ -289,23 +291,105 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Ethereum()) {
-        assertEq(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).depositCap(), 50_000_000e6);
-        assertEq(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).depositCap(), 50_000_000e6);
-        assertEq(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).depositCap(),  10_000e18);
+        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
+        ISparkVaultV2Like usdtVault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
+        ISparkVaultV2Like ethVault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
+
+        assertEq(usdcVault.depositCap(), 50_000_000e6);
+        assertEq(usdtVault.depositCap(), 50_000_000e6);
+        assertEq(ethVault.depositCap(),  10_000e18);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).depositCap(), 250_000_000e6);
-        assertEq(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).depositCap(), 250_000_000e6);
-        assertEq(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).depositCap(),  50_000e18);
+        assertEq(usdcVault.depositCap(), 250_000_000e6);
+        assertEq(usdtVault.depositCap(), 250_000_000e6);
+        assertEq(ethVault.depositCap(),  50_000e18);
+
+        // Boundary deposit test for Spark Savings V2 USDC //
+
+        uint256 maxDepositUsdc = usdcVault.maxDeposit(address(this));
+
+        // Fails on depositing more than max
+        vm.expectRevert("SparkVault/deposit-cap-exceeded");
+        usdcVault.deposit(maxDepositUsdc + 1, address(this));
+
+        // Can deposit less than or equal to maxDeposit
+        
+        assertEq(usdcVault.balanceOf(address(this)), 0);
+
+        deal(Ethereum.USDC, address(this), maxDepositUsdc);
+        IERC20(Ethereum.USDC).approve(address(usdcVault), maxDepositUsdc);
+
+        uint256 shares = usdcVault.deposit(maxDepositUsdc, address(this));
+
+        assertEq(usdcVault.balanceOf(address(this)), shares);
+
+        // Boundary deposit test for Spark Savings V2 USDT //
+
+        uint256 maxDepositUsdt = usdtVault.maxDeposit(address(this));
+
+        // Fails on depositing more than max
+        vm.expectRevert("SparkVault/deposit-cap-exceeded");
+        usdtVault.deposit(maxDepositUsdt + 1, address(this));
+
+        // Can deposit less than or equal to maxDeposit
+
+        assertEq(usdtVault.balanceOf(address(this)), 0);
+
+        deal(Ethereum.USDT, address(this), maxDepositUsdt);
+        IERC20(Ethereum.USDT).safeIncreaseAllowance(address(usdtVault), maxDepositUsdt);
+
+        shares = usdtVault.deposit(maxDepositUsdt, address(this));
+
+        assertEq(usdtVault.balanceOf(address(this)), shares);
+
+        // Boundary deposit test for Spark Savings V2 ETH //
+
+        uint256 maxDepositEth = ethVault.maxDeposit(address(this));
+
+        // Fails on depositing more than max
+        vm.expectRevert("SparkVault/deposit-cap-exceeded");
+        ethVault.deposit(maxDepositEth + 1, address(this));
+
+        // Can deposit less than or equal to maxDeposit
+
+        assertEq(ethVault.balanceOf(address(this)), 0);
+
+        deal(Ethereum.WETH, address(this), maxDepositEth);
+        IERC20(Ethereum.WETH).approve(address(ethVault), maxDepositEth);
+
+        shares = ethVault.deposit(maxDepositEth, address(this));
+
+        assertEq(ethVault.balanceOf(address(this)), shares);
     }
 
     function test_AVALANCHE_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Avalanche()) {
-        assertEq(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).depositCap(), 50_000_000e6);
+        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
+
+        assertEq(usdcVault.depositCap(), 50_000_000e6);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).depositCap(), 150_000_000e6);
+        assertEq(usdcVault.depositCap(), 150_000_000e6);
+
+        // Boundary deposit test for Spark Savings V2 USDC //
+
+        uint256 maxDepositUsdc = usdcVault.maxDeposit(address(this));
+
+        // Fails on depositing more than max
+        vm.expectRevert("SparkVault/deposit-cap-exceeded");
+        usdcVault.deposit(maxDepositUsdc + 1, address(this));
+
+        // Can deposit less than or equal to maxDeposit
+
+        assertEq(usdcVault.balanceOf(address(this)), 0);
+
+        deal(Avalanche.USDC, address(this), maxDepositUsdc);
+        IERC20(Avalanche.USDC).approve(address(usdcVault), maxDepositUsdc);
+
+        uint256 shares = usdcVault.deposit(maxDepositUsdc, address(this));
+
+        assertEq(usdcVault.balanceOf(address(this)), shares);
     }
 
 }
