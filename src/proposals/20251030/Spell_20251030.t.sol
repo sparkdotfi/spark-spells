@@ -12,6 +12,8 @@ import { Unichain }  from "spark-address-registry/Unichain.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+
 import { IPool }                from "sparklend-v1-core/interfaces/IPool.sol";
 import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
@@ -99,11 +101,16 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
             SYRUP_USDT
         );
 
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  0);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(redeemKey),   0);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), 0);
+        _assertRateLimit(depositKey,  0, 0);
+        _assertRateLimit(redeemKey,   0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
 
         _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey, 50_000_000e6, 10_000_000e6 / uint256(1 days));
+
+        _assertUnlimitedRateLimit(redeemKey);
+        _assertUnlimitedRateLimit(withdrawKey);
 
         // Maple onboarding process
         ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
@@ -150,45 +157,87 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
         _assertSupplyCapConfig(Ethereum.USDC, 1_000_000_000, 150_000_000, 12 hours);
         _assertBorrowCapConfig(Ethereum.USDC, 950_000_000,   50_000_000,  12 hours);
 
+        DataTypes.ReserveConfigurationMap memory config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDC);
+
+        assertEq(config.getSupplyCap(), 183_143_502);
+        assertEq(config.getBorrowCap(), 83_933_418);
+
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.USDC, 0, 0, 0);
         _assertBorrowCapConfig(Ethereum.USDC, 0, 0, 0);
 
-        DataTypes.ReserveConfigurationMap memory currentConfig = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDC);
+        config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDC);
 
-        assertEq(currentConfig.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
-        assertEq(currentConfig.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
+        assertEq(config.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        assertEq(config.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
+
+        // Caps can’t be changed with automator
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).execSupply(Ethereum.USDC);
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).execBorrow(Ethereum.USDC);
+
+        config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDC);
+
+        assertEq(config.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        assertEq(config.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
     }
 
     function test_ETHEREUM_sparkLend_usdtCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.USDT, 5_000_000_000, 1_000_000_000, 12 hours);
         _assertBorrowCapConfig(Ethereum.USDT, 5_000_000_000, 200_000_000,   12 hours);
 
+        DataTypes.ReserveConfigurationMap memory config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDT);
+
+        assertEq(config.getSupplyCap(), 1_904_511_069);
+        assertEq(config.getBorrowCap(), 821_423_249);
+
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.USDT, 0, 0, 0);
         _assertBorrowCapConfig(Ethereum.USDT, 0, 0, 0);
 
-        DataTypes.ReserveConfigurationMap memory currentConfig = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDT);
+        config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDT);
 
-        assertEq(currentConfig.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
-        assertEq(currentConfig.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
+        assertEq(config.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        assertEq(config.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
+
+        // Caps can’t be changed with automator
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).execSupply(Ethereum.USDT);
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).execBorrow(Ethereum.USDT);
+
+        config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDT);
+
+        assertEq(config.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        assertEq(config.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
     }
 
     function test_ETHEREUM_sparkLend_pyusdCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(PYUSD, 500_000_000, 50_000_000, 12 hours);
         _assertBorrowCapConfig(PYUSD, 475_000_000, 25_000_000, 12 hours);
 
+        DataTypes.ReserveConfigurationMap memory config = IPool(Ethereum.POOL).getConfiguration(PYUSD);
+
+        assertEq(config.getSupplyCap(), 500_000_000);
+        assertEq(config.getBorrowCap(), 363_906_088);
+
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(PYUSD, 0, 0, 0);
         _assertBorrowCapConfig(PYUSD, 0, 0, 0);
 
-        DataTypes.ReserveConfigurationMap memory currentConfig = IPool(Ethereum.POOL).getConfiguration(PYUSD);
+        config = IPool(Ethereum.POOL).getConfiguration(PYUSD);
 
-        assertEq(currentConfig.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
-        assertEq(currentConfig.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
+        assertEq(config.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        assertEq(config.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
+
+        // Caps can’t be changed with automator
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).execSupply(PYUSD);
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).execBorrow(PYUSD);
+
+        config = IPool(Ethereum.POOL).getConfiguration(PYUSD);
+
+        assertEq(config.getSupplyCap(), ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+        assertEq(config.getBorrowCap(), ReserveConfiguration.MAX_VALID_BORROW_CAP);
     }
 
     function test_ETHEREUM_sparkLend_cbbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
@@ -215,15 +264,15 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  404_320_160.818926086778450517e18);
-        assertEq(spUsdsBalanceBefore, 592_424_783.583591603436341145e18);
+        assertEq(spDaiBalanceBefore,  407_568_011.143768143248809289e18);
+        assertEq(spUsdsBalanceBefore, 172_648_019.339848759936460960e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 33_225.584380788531641492e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_626.185445845175175216e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 65_557.659034227304964786e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 33_086.258380656692096081e18);
     }
 
 }

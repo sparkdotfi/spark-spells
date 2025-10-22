@@ -27,7 +27,7 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
            Spark Liquidity Layer:
            - Onboard syrupUSDT
  * @author Phoenix Labs
- * Forum:  https://forum.sky.money/t/october-16-2025-proposed-changes-to-spark-for-upcoming-spell/27215
+ * Forum:  https://forum.sky.money/t/october-30-2025-proposed-changes-to-spark-for-upcoming-spell/27309
  * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xeea0e2648f55df4e57f8717831a5949f2a35852e32aa0f98a7e16e7ed56268a8
            https://snapshot.box/#/s:sparkfi.eth/proposal/0x95138f104ff84defb64985368f348af4d7500b2641b88b396e37426126f5ce0d
            https://snapshot.box/#/s:sparkfi.eth/proposal/0xab448e3d135620340da30616c0dabaa293f816a9edd4dc009f29b0ffb5bcbad2
