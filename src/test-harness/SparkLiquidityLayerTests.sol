@@ -58,8 +58,6 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
-import { console } from "forge-std/console.sol";
-
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
