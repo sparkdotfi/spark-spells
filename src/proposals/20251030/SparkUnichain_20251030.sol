@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import { SparkPayloadUnichain, Unichain } from "../../SparkPayloadUnichain.sol";
 
 /**
- * @title  October 10, 2025 Spark Unichain Proposal
+ * @title  October 30, 2025 Spark Unichain Proposal
  * @notice Spark Liquidity Layer - Update Controller to v1.7
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/october-30-2025-proposed-changes-to-spark-for-upcoming-spell/27309
