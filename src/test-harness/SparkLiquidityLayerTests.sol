@@ -67,6 +67,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant BASE_MORPHO_TOKEN   = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
     address internal constant BASE_SPARK_MULTISIG = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
     address internal constant SYRUP_USDT          = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+    address internal constant AAVE_ATOKEN_USDC    = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
 
     enum Category {
         AAVE,
@@ -444,6 +445,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // for (uint256 i = 0; i < integrations.length; ++i) {
         //     _runSLLE2ETests(integrations[i]);
         // }
+    }
+
+    function test_LAYER2_E2E_sparkLiquidityLayer() external {
+        uint256 snapshot = vm.snapshot();
+        for (uint256 i = 0; i < allChains.length; ++i) {
+            if (
+                allChains[i] == ChainIdUtils.Gnosis() ||
+                allChains[i] == ChainIdUtils.ArbitrumOne() ||  // TODO: Remove this once block number is figured out
+                allChains[i] == ChainIdUtils.Unichain()     // TODO: Remove this once rate limit keys are figured out
+            ) continue;
+
+            if (allChains[i] != ChainIdUtils.Ethereum()) continue;
+
+            console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
+            _runFullLayer2TestSuite(allChains[i]);
+
+            vm.revertToState(snapshot);
+        }
     }
 
     /**********************************************************************************************/
@@ -2172,15 +2191,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         for(uint j; j < i; ++j) {
+            // Set unused fields to 0 to save computation
             logs[j] = VmSafe.EthGetLogs({
                 emitter:          vm.parseJsonAddress(response,      string(abi.encodePacked(".result[", vm.toString(j), "].address"))),
                 topics:           vm.parseJsonBytes32Array(response, string(abi.encodePacked(".result[", vm.toString(j), "].topics"))),
                 data:             vm.parseJsonBytes(response,        string(abi.encodePacked(".result[", vm.toString(j), "].data"))),
-                blockNumber:      uint64(vm.parseJsonUint(response,  string(abi.encodePacked(".result[", vm.toString(j), "].blockNumber")))),
-                blockHash:        vm.parseJsonBytes32(response,      string(abi.encodePacked(".result[", vm.toString(j), "].blockHash"))),
-                transactionHash:  vm.parseJsonBytes32(response,      string(abi.encodePacked(".result[", vm.toString(j), "].transactionHash"))),
-                transactionIndex: uint64(vm.parseJsonUint(response,  string(abi.encodePacked(".result[", vm.toString(j), "].transactionIndex")))),
-                logIndex:         uint8(vm.parseJsonUint(response,   string(abi.encodePacked(".result[", vm.toString(j), "].logIndex")))),
+                blockNumber:      uint64(0),
+                blockHash:        bytes32(0),
+                transactionHash:  bytes32(0),
+                transactionIndex: uint64(0),
+                logIndex:         uint8(0),
                 removed:          false
             });
         }
@@ -2478,56 +2498,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
-    function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
-        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
-
-        console2.log("block.number", block.number);
-        console2.log("block.timestamp", block.timestamp);
-
-        Bridge storage bridge = chainData[chainId].bridges[0];
-
-        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
-
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
-
-        _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
-        }
-
-        RecordedLogs.init();
-
-        _executeAllPayloadsAndBridges();
-
-        chainData[chainId].domain.selectFork();
-
-        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
-
-        _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
-        }
-    }
-
-    function test_LAYER2_E2E_sparkLiquidityLayer() external {
-        uint256 snapshot = vm.snapshot();
-        for (uint256 i = 0; i < allChains.length; ++i) {
-            if (
-                allChains[i] == ChainIdUtils.Gnosis() ||
-                allChains[i] == ChainIdUtils.ArbitrumOne()  // TODO: Remove this once block number is figured out
-                // allChains[i] == ChainIdUtils.Unichain() ||     // TODO: Remove this once 10k block limit is figured out
-                // allChains[i] == ChainIdUtils.Avalanche()       // TODO: Remove this once 10k block limit is figured out
-                ) continue;
-            console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
-            _runFullLayer2TestSuite(allChains[i]);
-
-            vm.revertToState(snapshot);
-        }
-    }
-
     // TODO: MDL, this function should be broken up into one function per test.
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
         uint256 snapshot = vm.snapshot();
@@ -2793,6 +2763,46 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.revertTo(snapshot);
     }
 
+    function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
+        address controller = _getSparkLiquidityLayerContext().controller;
+
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
+
+        console2.log("rateLimitKeys pre execution", rateLimitKeys.length);
+
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(controller);
+        console2.log("integrations pre execution", integrations.length);
+
+        _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
+
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        chainData[chainId].domain.selectFork();
+
+        console2.log("_getRateLimitKeys");
+        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        console2.log("rateLimitKeys post execution", rateLimitKeys.length);
+        console2.log("_getPostExecutionIntegrations");
+        integrations = _getPostExecutionIntegrations(integrations, controller);
+
+        console2.log("integrations post execution", integrations.length);
+
+        console2.log("checkRateLimitKeys");
+        _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        console2.log("runSLLE2ETests");
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
+    }
+
     /**********************************************************************************************/
     /*** Data populating helper functions                                                       ***/
     /**********************************************************************************************/
@@ -2824,8 +2834,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (isPostExecution) {
             VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
 
+            console2.log("\n\n NEW LOGS: ", newLogs.length);
+
             for (uint256 i = 0; i < newLogs.length; ++i) {
+                console2.log("newLogs[i].emitter  ", vm.toString(newLogs[i].emitter));
+                console2.log("newLogs[i].topics[0]", vm.toString(newLogs[i].topics[0]));
+                console2.log("newLogs[i].data     ", vm.toString(newLogs[i].data));
+
                 if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
+
+                console2.log("newLogs[i].topics[1]", vm.toString(newLogs[i].topics[1]));
+                console2.log("newLogs[i].data", vm.toString(newLogs[i].data));
 
                 ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
 
@@ -2841,7 +2860,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsMainnet(address controller) internal returns (SLLIntegration[] memory integrations) {
         MainnetController mainnetController = MainnetController(controller);
 
+        console2.log("check1");
+
         integrations = new SLLIntegration[](40);
+
+        console2.log("check1");
 
         integrations[0]  = _createSLLMainnetIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
         integrations[1]  = _createSLLMainnetIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
@@ -2897,7 +2920,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[37] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC);
         integrations[38] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
 
+        console2.log("check1");
+
         integrations[39] = _createSLLMainnetIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
+
+        console2.log("check1");
 
         return integrations;
     }
@@ -2943,6 +2970,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
+    function _getPreExecutionIntegrationsAvalanche(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ForeignController foreignController = ForeignController(controller);
+
+        integrations = new SLLIntegration[](7);
+
+        // TODO: Alphabetical order
+        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Base.PSM3, Base.USDC);
+        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Base.PSM3, Base.USDS);
+        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Base.PSM3, Base.SUSDS);
+
+        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Base.USDC);
+
+        // TODO: This is a workaround to get this to work until renaming is done
+        integrations[5] = _createSLLMainnetIntegration(MainnetController(address(foreignController)), "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Avalanche.SPARK_VAULT_V2_SPUSDC);
+
+        integrations[6] = _createSLLForeignIntegration(foreignController, "AAVE-ATOKEN_USDC", Category.AAVE, AAVE_ATOKEN_USDC);
+
+        return integrations;
+    }
+
     function _getPreExecutionIntegrations(address controller) internal returns (SLLIntegration[] memory integrations) {
         ChainId chainId = ChainIdUtils.fromUint(block.chainid);
 
@@ -2963,7 +3012,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         if (chainId == ChainIdUtils.Avalanche()) {
-            // TODO
+            return _getPreExecutionIntegrationsAvalanche(controller);
         }
 
         else {
@@ -3151,7 +3200,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[integrations.length + 1] = _createSLLMainnetIntegration(mainnetController, "MAPLE-SYRUP_USDT", Category.MAPLE, SYRUP_USDT);
+        newIntegrations[newIntegrations.length - 1] = _createSLLMainnetIntegration(mainnetController, "MAPLE-SYRUP_USDT", Category.MAPLE, SYRUP_USDT);
     }
 
     function _getPostExecutionIntegrationsForeign(
@@ -3483,10 +3532,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             );
 
             console2.log("integration", integrations[i].label);
-            console2.log("entryId", vm.toString(integrations[i].entryId));
-            console2.log("entryId2", vm.toString(integrations[i].entryId2));
-            console2.log("exitId", vm.toString(integrations[i].exitId));
-            console2.log("exitId2", vm.toString(integrations[i].exitId2));
+            // console2.log("entryId", vm.toString(integrations[i].entryId));
+            // console2.log("entryId2", vm.toString(integrations[i].entryId2));
+            // console2.log("exitId", vm.toString(integrations[i].exitId));
+            // console2.log("exitId2", vm.toString(integrations[i].exitId2));
+
+            console2.log("rateLimitKeys", rateLimitKeys.length);
 
             if (integrations[i].entryId != bytes32(0)) {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
