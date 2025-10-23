@@ -24,7 +24,7 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-import { 
+import {
     ISyrupLike,
     ISparkVaultV2Like,
     IERC20Like
@@ -45,7 +45,7 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
     address internal constant OPTIMISM_NEW_ALM_CONTROLLER = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
     address internal constant UNICHAIN_NEW_ALM_CONTROLLER = 0x7CD6EC14785418aF694efe154E7ff7d9ba99D99b;
 
-    address internal constant SYRUP_USDT = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+    // address internal constant SYRUP_USDT = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
 
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
@@ -323,7 +323,7 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         usdcVault.deposit(maxDepositUsdc + 1, address(this));
 
         // Can deposit less than or equal to maxDeposit
-        
+
         assertEq(usdcVault.balanceOf(address(this)), 0);
 
         deal(Ethereum.USDC, address(this), maxDepositUsdc);

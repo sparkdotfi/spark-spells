@@ -63,6 +63,10 @@ import { SpellRunner } from "./SpellRunner.sol";
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
+    // TODO: Move
+    address internal constant BASE_MORPHO_TOKEN   = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
+    address internal constant BASE_SPARK_MULTISIG = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant SYRUP_USDT          = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
 
     enum Category {
         AAVE,
@@ -81,6 +85,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         REWARDS_TRANSFER,
         SPARK_VAULT_V2,
         SUPERSTATE,
+        PSM3,
         SUPERSTATE_USCC,
         TREASURY
     }
@@ -382,33 +387,63 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function test_ETHEREUM_E2E_sparkLiquidityLayer() external {
+    function test_ETHEREUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Ethereum()) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        bytes32[]        memory rateLimitKeys = _getRateLimitKeys(false);
-        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(mainnetController);
+        bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
+        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(address(mainnetController));
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        skip(2 days);  // Ensure rate limits are recharged
+        // skip(2 days);  // Ensure rate limits are recharged
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
+
+        // RecordedLogs.init();
+
+        // _executeAllPayloadsAndBridges();
+
+        // rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        // integrations  = _getPostExecutionIntegrations(integrations, address(mainnetController));
+
+        // _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
+    }
+
+    function test_OPTIMISM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Optimism()) {
+        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
+
+        Bridge storage bridge = chainData[ChainIdUtils.Optimism()].bridges[0];
+
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
+
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
+
+        _checkRateLimitKeys(integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(integrations[i]);
         }
 
-        vm.recordLogs();  // Used for vm.getRecordedLogs() in populateRateLimitKeys() to get new keys
+        // RecordedLogs.init();
 
-        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
-        _executeMainnetPayload();
+        // _executeAllPayloadsAndBridges();
 
-        rateLimitKeys = _getRateLimitKeys(true);
-        integrations  = _appendPostExecutionIntegrations(integrations, mainnetController);
+        // chainData[ChainIdUtils.Optimism()].domain.selectFork();
 
-        _checkRateLimitKeys(integrations, rateLimitKeys);
+        // rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        // integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
 
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
-        }
+        // _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        // for (uint256 i = 0; i < integrations.length; ++i) {
+        //     _runSLLE2ETests(integrations[i]);
+        // }
     }
 
     /**********************************************************************************************/
@@ -2443,6 +2478,56 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
+    function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
+        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
+
+        console2.log("block.number", block.number);
+        console2.log("block.timestamp", block.timestamp);
+
+        Bridge storage bridge = chainData[chainId].bridges[0];
+
+        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
+
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
+
+        _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
+
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        chainData[chainId].domain.selectFork();
+
+        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
+
+        _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
+    }
+
+    function test_LAYER2_E2E_sparkLiquidityLayer() external {
+        uint256 snapshot = vm.snapshot();
+        for (uint256 i = 0; i < allChains.length; ++i) {
+            if (
+                allChains[i] == ChainIdUtils.Gnosis() ||
+                allChains[i] == ChainIdUtils.ArbitrumOne()  // TODO: Remove this once block number is figured out
+                // allChains[i] == ChainIdUtils.Unichain() ||     // TODO: Remove this once 10k block limit is figured out
+                // allChains[i] == ChainIdUtils.Avalanche()       // TODO: Remove this once 10k block limit is figured out
+                ) continue;
+            console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
+            _runFullLayer2TestSuite(allChains[i]);
+
+            vm.revertToState(snapshot);
+        }
+    }
+
     // TODO: MDL, this function should be broken up into one function per test.
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
         uint256 snapshot = vm.snapshot();
@@ -2669,24 +2754,37 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }));
         }
 
-        // else if (integration.category == Category.CCTP) {
-        //     // console2.log("Running SLL E2E test for", integration.label);
+        else if (integration.category == Category.PSM3) {
+            console2.log("Running SLL E2E test for", integration.label);
 
-        //     // TODO: Add back in once multichain is configured
-        //     // ChainId domainId;
+            address asset = abi.decode(integration.extraData, (address));
 
-        //     // if      (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE))) domainId = ChainIdUtils.ArbitrumOne();
-        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE)))         domainId = ChainIdUtils.Base();
-        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM)))     domainId = ChainIdUtils.Optimism();
-        //     // else if (integration.integration == address(uint160(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN)))     domainId = ChainIdUtils.Unichain();
-        //     // else revert("Invalid domain ID");
+            uint256 decimals = IERC20Metadata(asset).decimals();
 
-        //     // _testE2ESLLCrossChainForDomain(
-        //     //     domainId,
-        //     //     MainnetController(_getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).controller),
-        //     //     ForeignController(_getSparkLiquidityLayerContext(domainId).controller)
-        //     // );
-        // }
+            _testPSM3Integration(PSM3E2ETestParams({
+                ctx:           _getSparkLiquidityLayerContext(),
+                psm3:          integration.integration,
+                asset:         asset,
+                depositAmount: 10_000_000 * 10 ** decimals,
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId,
+                tolerance:     10
+            }));
+        }
+
+        else if (integration.category == Category.CCTP) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            ( uint32 cctpId ) = abi.decode(integration.extraData, (uint32));
+
+            _testCCTPIntegration(CCTPE2ETestParams({
+                ctx:            _getSparkLiquidityLayerContext(),
+                cctp:           integration.integration,
+                transferAmount: 50_000_000e6,
+                transferKey:    integration.entryId,
+                cctpId:         cctpId
+            }));
+        }
 
         else {
             console2.log("NOT running SLL E2E test for", integration.label);
@@ -2703,12 +2801,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = IRateLimits.RateLimitDataSet.selector;
 
-        VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            START_BLOCK,
-            block.number,
-            Ethereum.ALM_RATE_LIMITS,
-            topics
-        );
+        address rateLimits = address(_getSparkLiquidityLayerContext().rateLimits);
+
+        VmSafe.EthGetLogs[] memory allLogs = getEvents(block.chainid, rateLimits, topics[0]);
 
         rateLimitKeys = new bytes32[](0);
 
@@ -2743,89 +2838,333 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _getPreExecutionIntegrations(
-        MainnetController mainnetController
-    ) internal returns (SLLIntegration[] memory integrations) {
+    function _getPreExecutionIntegrationsMainnet(address controller) internal returns (SLLIntegration[] memory integrations) {
+        MainnetController mainnetController = MainnetController(controller);
+
         integrations = new SLLIntegration[](40);
 
-        integrations[0]  = _createSLLIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
-        integrations[1]  = _createSLLIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
-        integrations[2]  = _createSLLIntegration(mainnetController, "AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS);
-        integrations[3]  = _createSLLIntegration(mainnetController, "AAVE-ETH_USDC",      Category.AAVE, AAVE_ETH_USDC);
-        integrations[4]  = _createSLLIntegration(mainnetController, "AAVE-ETH_USDS",      Category.AAVE, AAVE_ETH_USDS);
-        integrations[5]  = _createSLLIntegration(mainnetController, "AAVE-PYUSD_SPTOKEN", Category.AAVE, Ethereum.PYUSD_SPTOKEN);
-        integrations[6]  = _createSLLIntegration(mainnetController, "AAVE-SPETH",         Category.AAVE, Ethereum.WETH_SPTOKEN);
-        integrations[7]  = _createSLLIntegration(mainnetController, "AAVE-USDC_SPTOKEN",  Category.AAVE, Ethereum.USDC_SPTOKEN); // SparkLend
-        integrations[8]  = _createSLLIntegration(mainnetController, "AAVE-USDE_ATOKEN",   Category.AAVE, USDE_ATOKEN);
-        integrations[9]  = _createSLLIntegration(mainnetController, "AAVE-USDS_SPTOKEN",  Category.AAVE, Ethereum.USDS_SPTOKEN);
-        integrations[10] = _createSLLIntegration(mainnetController, "AAVE-USDT_SPTOKEN",  Category.AAVE, Ethereum.USDT_SPTOKEN);
+        integrations[0]  = _createSLLMainnetIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
+        integrations[1]  = _createSLLMainnetIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
+        integrations[2]  = _createSLLMainnetIntegration(mainnetController, "AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS);
+        integrations[3]  = _createSLLMainnetIntegration(mainnetController, "AAVE-ETH_USDC",      Category.AAVE, AAVE_ETH_USDC);
+        integrations[4]  = _createSLLMainnetIntegration(mainnetController, "AAVE-ETH_USDS",      Category.AAVE, AAVE_ETH_USDS);
+        integrations[5]  = _createSLLMainnetIntegration(mainnetController, "AAVE-PYUSD_SPTOKEN", Category.AAVE, Ethereum.PYUSD_SPTOKEN);
+        integrations[6]  = _createSLLMainnetIntegration(mainnetController, "AAVE-SPETH",         Category.AAVE, Ethereum.WETH_SPTOKEN);
+        integrations[7]  = _createSLLMainnetIntegration(mainnetController, "AAVE-USDC_SPTOKEN",  Category.AAVE, Ethereum.USDC_SPTOKEN); // SparkLend
+        integrations[8]  = _createSLLMainnetIntegration(mainnetController, "AAVE-USDE_ATOKEN",   Category.AAVE, USDE_ATOKEN);
+        integrations[9]  = _createSLLMainnetIntegration(mainnetController, "AAVE-USDS_SPTOKEN",  Category.AAVE, Ethereum.USDS_SPTOKEN);
+        integrations[10] = _createSLLMainnetIntegration(mainnetController, "AAVE-USDT_SPTOKEN",  Category.AAVE, Ethereum.USDT_SPTOKEN);
 
-        integrations[11] = _createSLLIntegration(mainnetController, "BUIDL-USDC", Category.BUIDL, Ethereum.USDC, Ethereum.BUIDLI, BUIDL_DEPOSIT, BUIDL_REDEEM);
+        integrations[11] = _createSLLMainnetIntegration(mainnetController, "SUPERSTATE_TRANSFER-USCC", Category.SUPERSTATE_USCC, Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);  // TODO: Use proper order
 
-        integrations[12] = _createSLLIntegration(mainnetController, "CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC);
+        integrations[12] = _createSLLMainnetIntegration(mainnetController, "CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC);
 
-        integrations[13] = _createSLLIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[14] = _createSLLIntegration(mainnetController, "CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[15] = _createSLLIntegration(mainnetController, "CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[16] = _createSLLIntegration(mainnetController, "CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[13] = _createSLLMainnetIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[14] = _createSLLMainnetIntegration(mainnetController, "CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        integrations[15] = _createSLLMainnetIntegration(mainnetController, "CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        integrations[16] = _createSLLMainnetIntegration(mainnetController, "CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
 
-        integrations[17] = _createSLLIntegration(mainnetController, "CENTRIFUGE-JTRSY_VAULT", Category.CENTRIFUGE, Ethereum.JTRSY_VAULT);
+        integrations[17] = _createSLLMainnetIntegration(mainnetController, "CCTP-AVALANCHE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);  // TODO: Use proper order
 
-        integrations[18] = _createSLLIntegration(mainnetController, "CORE-USDS", Category.CORE, Ethereum.USDS);
+        integrations[18] = _createSLLMainnetIntegration(mainnetController, "CORE-USDS", Category.CORE, Ethereum.USDS);
 
-        integrations[19] = _createSLLIntegration(mainnetController, "CURVE_LP-PYUSDUSDS", Category.CURVE_LP, Ethereum.CURVE_PYUSDUSDS);
-        integrations[20] = _createSLLIntegration(mainnetController, "CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT);
+        integrations[19] = _createSLLMainnetIntegration(mainnetController, "CURVE_LP-PYUSDUSDS", Category.CURVE_LP, Ethereum.CURVE_PYUSDUSDS);
+        integrations[20] = _createSLLMainnetIntegration(mainnetController, "CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT);
 
-        integrations[21] = _createSLLIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDC);
-        integrations[22] = _createSLLIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDS);
-        integrations[23] = _createSLLIntegration(mainnetController, "CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT);
-        integrations[24] = _createSLLIntegration(mainnetController, "CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT);
+        integrations[21] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDC);
+        integrations[22] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDS);
+        integrations[23] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT);
+        integrations[24] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT);
 
-        integrations[25] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC);
-        integrations[26] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1);
-        integrations[27] = _createSLLIntegration(mainnetController, "ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS);
-        integrations[28] = _createSLLIntegration(mainnetController, "ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS);
-        integrations[29] = _createSLLIntegration(mainnetController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
+        integrations[25] = _createSLLMainnetIntegration(mainnetController, "ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC);
+        integrations[26] = _createSLLMainnetIntegration(mainnetController, "ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1);
+        integrations[27] = _createSLLMainnetIntegration(mainnetController, "ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS);
+        integrations[28] = _createSLLMainnetIntegration(mainnetController, "ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS);
+        integrations[29] = _createSLLMainnetIntegration(mainnetController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
 
-        integrations[30] = _createSLLIntegration(mainnetController, "ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE);
+        integrations[30] = _createSLLMainnetIntegration(mainnetController, "ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE);
 
-        integrations[31] = _createSLLIntegration(mainnetController, "FARM-USDS_SPK_FARM", Category.FARM, USDS_SPK_FARM);
+        integrations[31] = _createSLLMainnetIntegration(mainnetController, "FARM-USDS_SPK_FARM", Category.FARM, USDS_SPK_FARM);
 
-        integrations[32] = _createSLLIntegration(mainnetController, "MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC);
+        integrations[32] = _createSLLMainnetIntegration(mainnetController, "MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC);
 
-        integrations[33] = _createSLLIntegration(mainnetController, "PSM-USDS", Category.PSM, Ethereum.PSM);
+        integrations[33] = _createSLLMainnetIntegration(mainnetController, "PSM-USDS", Category.PSM, Ethereum.PSM);
 
-        integrations[34] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0));
-        integrations[35] = _createSLLIntegration(mainnetController, "REWARDS_TRANSFER-SYRUP",        Category.REWARDS_TRANSFER, SYRUP,        address(0), SPARK_MULTISIG, address(0));
+        integrations[34] = _createSLLMainnetIntegration(mainnetController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0));
+        integrations[35] = _createSLLMainnetIntegration(mainnetController, "REWARDS_TRANSFER-SYRUP",        Category.REWARDS_TRANSFER, SYRUP,        address(0), SPARK_MULTISIG, address(0));
 
-        integrations[36] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[37] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[38] = _createSLLIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[36] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[37] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[38] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-        integrations[39] = _createSLLIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
+        integrations[39] = _createSLLMainnetIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
+
+        return integrations;
     }
 
-    function _appendPostExecutionIntegrations(
-        SLLIntegration[]  memory integrations,
-        MainnetController        mainnetController
-    ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length - 2 + 2);
+    function _getPreExecutionIntegrationsBasicPsm(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ForeignController foreignController = ForeignController(controller);
 
-        uint256 writeIndex = 0;
+        integrations = new SLLIntegration[](5);
 
-        for (uint256 readIndex = 0; readIndex < integrations.length; ++readIndex) {
-            if (
-                _isEqual(integrations[readIndex].label, "BUIDL-USDC") ||
-                _isEqual(integrations[readIndex].label, "CENTRIFUGE-JTRSY_VAULT")
-            ) continue;
+        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Optimism.PSM3, Optimism.USDC);
+        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Optimism.PSM3, Optimism.USDS);
+        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Optimism.PSM3, Optimism.SUSDS);
 
-            newIntegrations[writeIndex++] = integrations[readIndex];
+        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Optimism.USDC);
+
+        return integrations;
+    }
+
+    function _getPreExecutionIntegrationsBase(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ForeignController foreignController = ForeignController(controller);
+
+        integrations = new SLLIntegration[](9);
+
+        // TODO: Alphabetical order
+        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Base.PSM3, Base.USDC);
+        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Base.PSM3, Base.USDS);
+        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Base.PSM3, Base.SUSDS);
+
+        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Base.USDC);
+
+        // TODO: Remove mainnet and foreign keywords
+        integrations[5] = _createSLLForeignIntegration(foreignController, "ERC4626-MORPHO_VAULT_SUSDC", Category.ERC4626, Base.MORPHO_VAULT_SUSDC);
+        integrations[6] = _createSLLForeignIntegration(foreignController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Base.FLUID_SUSDS);
+
+        integrations[7] = _createSLLForeignIntegration(foreignController, "AAVE-ATOKEN_USDC", Category.AAVE, Base.ATOKEN_USDC);
+
+        integrations[8] = _createSLLForeignIntegrationTransferAsset(foreignController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
+
+        return integrations;
+    }
+
+    function _getPreExecutionIntegrations(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ChainId chainId = ChainIdUtils.fromUint(block.chainid);
+
+        if (chainId == ChainIdUtils.Ethereum()) {
+            return _getPreExecutionIntegrationsMainnet(controller);
         }
 
-        newIntegrations[newIntegrations.length - 2]
-            = _createSLLIntegration(mainnetController, "SUPERSTATE_TRANSFER-USCC", Category.SUPERSTATE_USCC, Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        if (
+            chainId == ChainIdUtils.Optimism() ||
+            chainId == ChainIdUtils.ArbitrumOne() ||
+            chainId == ChainIdUtils.Unichain()
+        ) {
+            return _getPreExecutionIntegrationsBasicPsm(controller);
+        }
 
-        newIntegrations[newIntegrations.length - 1] = _createSLLIntegration(mainnetController, "CCTP-AVALANCHE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+        if (chainId == ChainIdUtils.Base()) {
+            return _getPreExecutionIntegrationsBase(controller);
+        }
+
+        if (chainId == ChainIdUtils.Avalanche()) {
+            // TODO
+        }
+
+        else {
+            revert("Invalid chainId");
+        }
+    }
+
+    function _createSLLForeignIntegration(
+        ForeignController foreignController,
+        string memory label,
+        Category category,
+        address integration
+    ) internal returns (SLLIntegration memory) {
+        bytes32 entryId = bytes32(0);
+        bytes32 entryId2 = bytes32(0);
+        bytes32 exitId = bytes32(0);
+        bytes32 exitId2 = bytes32(0);
+
+        if (category == Category.AAVE) {
+            entryId = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_AAVE_DEPOSIT(),  integration);
+            exitId  = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_AAVE_WITHDRAW(), integration);
+        } else if (category == Category.ERC4626) {
+            entryId = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_4626_DEPOSIT(),  integration);
+            exitId  = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_4626_WITHDRAW(), integration);
+        } else if (category == Category.CCTP_GENERAL) {
+            entryId = foreignController.LIMIT_USDC_TO_CCTP();
+        }
+        else if (category == Category.SPARK_VAULT_V2) {
+            entryId = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_SPARK_VAULT_TAKE(), integration);
+            exitId  = RateLimitHelpers.makeAssetDestinationKey(foreignController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration);
+        }
+        else {
+            revert("Invalid category");
+        }
+
+        return SLLIntegration({
+            label:       label,
+            category:    category,
+            integration: integration,
+            entryId:     entryId,
+            entryId2:    entryId2,
+            exitId:      exitId,
+            exitId2:     exitId2,
+            extraData:   new bytes(0)
+        });
+    }
+
+    function _createSLLForeignIntegration(
+        ForeignController foreignController,
+        string memory label,
+        Category category,
+        address integration,
+        address asset
+    ) internal returns (SLLIntegration memory) {
+        bytes32 entryId  = bytes32(0);
+        bytes32 entryId2 = bytes32(0);
+        bytes32 exitId   = bytes32(0);
+        bytes32 exitId2  = bytes32(0);
+
+        bytes memory extraData = new bytes(0);
+
+        if (category == Category.PSM3) {
+            entryId   = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset);
+            exitId    = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_WITHDRAW(), asset);
+            extraData = abi.encode(asset);
+        } else {
+            revert("Invalid category");
+        }
+
+        return SLLIntegration({
+            label:       label,
+            category:    category,
+            integration: integration,
+            entryId:     entryId,
+            entryId2:    entryId2,
+            exitId:      exitId,
+            exitId2:     exitId2,
+            extraData:   extraData
+        });
+    }
+
+    // TODO: Consolidate this with mainnet
+    function _createSLLForeignIntegrationTransferAsset(
+        ForeignController foreignController,
+        string memory label,
+        Category category,
+        address assetIn,
+        address depositDestination
+    ) internal returns (SLLIntegration memory) {
+        bytes32 entryId = bytes32(0);
+        bytes memory extraData = new bytes(0);
+
+        if (category == Category.REWARDS_TRANSFER) {
+            entryId   = RateLimitHelpers.makeAssetDestinationKey(foreignController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
+            extraData = abi.encode(assetIn, depositDestination);
+        } else {
+            revert("Invalid category");
+        }
+
+        return SLLIntegration({
+            label:       label,
+            category:    category,
+            integration: assetIn,
+            entryId:     entryId,
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   extraData
+        });
+    }
+
+    function _createSLLForeignIntegration(
+        ForeignController foreignController,
+        string memory label,
+        Category category,
+        uint32 cctpId
+    ) internal returns (SLLIntegration memory) {
+        bytes32 entryId     = bytes32(0);
+        address integration = address(0);
+
+        bytes memory extraData = new bytes(0);
+
+        if (category == Category.CCTP) {
+            entryId     = RateLimitHelpers.makeDomainKey(foreignController.LIMIT_USDC_TO_DOMAIN(), cctpId);
+            integration = address(foreignController.cctp());
+            extraData   = abi.encode(cctpId);
+        } else {
+            revert("Invalid category");
+        }
+
+        return SLLIntegration({
+            label:       label,
+            category:    category,
+            integration: integration,
+            entryId:     entryId,
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   extraData
+        });
+    }
+
+    // TODO: Maybe make these virtual functions that can be overriden?
+    function _getPostExecutionIntegrations(
+        SLLIntegration[]  memory integrations,
+        address controller
+    )
+        internal returns (SLLIntegration[] memory newIntegrations)
+    {
+        ChainId chainId = ChainIdUtils.fromUint(block.chainid);
+
+        newIntegrations = new SLLIntegration[](integrations.length);
+
+        if (chainId == ChainIdUtils.Ethereum()) {
+            return _getPostExecutionIntegrationsMainnet(integrations, controller);
+        }
+
+        if (
+            chainId == ChainIdUtils.Optimism() ||
+            chainId == ChainIdUtils.ArbitrumOne() ||
+            chainId == ChainIdUtils.Unichain() ||
+            chainId == ChainIdUtils.Base()
+        ) {
+            return _getPostExecutionIntegrationsForeign(integrations, controller);
+        }
+
+        if (chainId == ChainIdUtils.Avalanche()) {
+            // TODO
+        }
+
+        else {
+            revert("Invalid chainId");
+        }
+    }
+
+    function _getPostExecutionIntegrationsMainnet(
+        SLLIntegration[]  memory integrations,
+        address                  controller
+    ) internal returns (SLLIntegration[] memory newIntegrations) {
+        MainnetController mainnetController = MainnetController(controller);
+
+        newIntegrations = new SLLIntegration[](integrations.length + 1);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            newIntegrations[i] = integrations[i];
+        }
+
+        newIntegrations[integrations.length + 1] = _createSLLMainnetIntegration(mainnetController, "MAPLE-SYRUP_USDT", Category.MAPLE, SYRUP_USDT);
+    }
+
+    function _getPostExecutionIntegrationsForeign(
+        SLLIntegration[] memory integrations,
+        address                  controller
+    ) internal returns (SLLIntegration[] memory newIntegrations) {
+        ForeignController foreignController = ForeignController(controller);
+
+        newIntegrations = new SLLIntegration[](integrations.length);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            newIntegrations[i] = integrations[i];
+        }
     }
 
     /**********************************************************************************************/
@@ -2833,7 +3172,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /**********************************************************************************************/
 
     // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
-    function _createSLLIntegration(
+    function _createSLLMainnetIntegration(
         MainnetController        mainnetController,
         string            memory label,
         Category                 category,
@@ -2896,16 +3235,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
-    function _createSLLIntegration(
+    function _createSLLMainnetIntegration(
         MainnetController        mainnetController,
         string            memory label,
         Category                 category,
-        uint32                   domain
+        uint32                   cctpId
     ) internal view returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
+        bytes32 entryId     = bytes32(0);
+        address integration = address(0);
+
+        bytes memory extraData = new bytes(0);
 
         if (category == Category.CCTP) {
-            entryId = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain);
+            entryId     = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), cctpId);
+            integration = address(mainnetController.cctp());
+            extraData   = abi.encode(cctpId);
         } else {
             revert("Invalid category");
         }
@@ -2913,17 +3257,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return SLLIntegration({
             label:       label,
             category:    category,
-            integration: address(uint160(domain)),  // Unique ID
+            integration: integration,
             entryId:     entryId,
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   new bytes(0)
+            extraData:   extraData
         });
     }
 
     // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
-    function _createSLLIntegration(
+    function _createSLLMainnetIntegration(
         MainnetController        mainnetController,
         string            memory label,
         Category                 category,
@@ -3137,6 +3481,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 integrations[i].exitId2  != bytes32(0),
                 "Empty integration"
             );
+
+            console2.log("integration", integrations[i].label);
+            console2.log("entryId", vm.toString(integrations[i].entryId));
+            console2.log("entryId2", vm.toString(integrations[i].entryId2));
+            console2.log("exitId", vm.toString(integrations[i].exitId));
+            console2.log("exitId2", vm.toString(integrations[i].exitId2));
 
             if (integrations[i].entryId != bytes32(0)) {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
