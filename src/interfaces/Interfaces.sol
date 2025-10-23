@@ -8,10 +8,13 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
-interface IArbSysLike {
-
-    function getBlockNumber() external view returns (uint256);
-
+interface IPermissionManagerLike {
+    function admin() external view returns (address);
+    function setLenderAllowlist(
+        address            poolManager_,
+        address[] calldata lenders_,
+        bool[]    calldata booleans_
+    ) external;
 }
 
 interface IProxyLike {

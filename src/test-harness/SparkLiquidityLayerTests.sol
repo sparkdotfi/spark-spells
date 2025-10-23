@@ -56,7 +56,8 @@ import {
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
-    IWithdrawalManagerLike
+    IWithdrawalManagerLike,
+    IPermissionManagerLike
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
@@ -343,6 +344,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
     address internal constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
     address internal constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
+    address internal constant SYRUP_USDT         = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
     address internal constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
@@ -2261,11 +2263,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY));
 
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE));
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
@@ -2288,8 +2292,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertOldControllerEvents(address _oldController) internal {
-        uint256 startBlock = 22218000;
-
         MainnetController oldController = MainnetController(_oldController);
 
         VmSafe.EthGetLogs[] memory slippageLogs  = getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
@@ -2297,7 +2299,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         VmSafe.EthGetLogs[] memory layerZeroLogs = getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
 
         assertEq(slippageLogs.length,  5);
-        assertEq(cctpLogs.length,      4);
+        assertEq(cctpLogs.length,      5);
         assertEq(layerZeroLogs.length, 0);
 
         assertEq(address(uint160(uint256(slippageLogs[0].topics[1]))), Ethereum.CURVE_SUSDSUSDT);
@@ -2314,11 +2316,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(uint32(uint256(cctpLogs[1].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
         assertEq(uint32(uint256(cctpLogs[2].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
         assertEq(uint32(uint256(cctpLogs[3].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        assertEq(uint32(uint256(cctpLogs[4].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
 
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(Base.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(Arbitrum.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
         assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY));
     }
 
     function _testE2ESLLCrossChainForDomain(
@@ -2573,6 +2577,26 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         else if (integration.category == Category.MAPLE) {
             console2.log("Running SLL E2E test for", integration.label);
+
+            IPermissionManagerLike permissionManager
+                = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
+
+            // Maple onboarding process
+            ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
+
+            address[] memory lenders  = new address[](1);
+            bool[]    memory booleans = new bool[](1);
+
+            lenders[0]  = address(Ethereum.ALM_PROXY);
+            booleans[0] = true;
+
+            vm.startPrank(permissionManager.admin());
+            permissionManager.setLenderAllowlist(
+                syrup.manager(),
+                lenders,
+                booleans
+            );
+            vm.stopPrank();
 
             _testMapleIntegration(MapleE2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),

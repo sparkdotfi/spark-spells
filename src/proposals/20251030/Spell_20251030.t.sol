@@ -27,25 +27,15 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import {
     ISyrupLike,
     ISparkVaultV2Like,
-    IERC20Like
+    IERC20Like,
+    IPermissionManagerLike
 } from "src/interfaces/Interfaces.sol";
-
-interface IPermissionManagerLike {
-    function admin() external view returns (address);
-    function setLenderAllowlist(
-        address            poolManager_,
-        address[] calldata lenders_,
-        bool[]    calldata booleans_
-    ) external;
-}
 
 contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant ARBITRUM_NEW_ALM_CONTROLLER = 0x3a1d3A9B0eD182d7B17aa61393D46a4f4EE0CEA5;
     address internal constant OPTIMISM_NEW_ALM_CONTROLLER = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
     address internal constant UNICHAIN_NEW_ALM_CONTROLLER = 0x7CD6EC14785418aF694efe154E7ff7d9ba99D99b;
-
-    // address internal constant SYRUP_USDT = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
 
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
@@ -314,62 +304,23 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         assertEq(usdtVault.depositCap(), 250_000_000e6);
         assertEq(ethVault.depositCap(),  50_000e18);
 
-        // Boundary deposit test for Spark Savings V2 USDC //
+        _test_vault_depositBoundaryLimit({
+            vault:              usdcVault,
+            depositCap:         250_000_000e6,
+            expectedMaxDeposit: 202_684_044.159138e6
+        });
 
-        uint256 maxDepositUsdc = usdcVault.maxDeposit(address(this));
+        _test_vault_depositBoundaryLimit({
+            vault:              usdtVault,
+            depositCap:         250_000_000e6,
+            expectedMaxDeposit: 216_549_089.135327e6
+        });
 
-        // Fails on depositing more than max
-        vm.expectRevert("SparkVault/deposit-cap-exceeded");
-        usdcVault.deposit(maxDepositUsdc + 1, address(this));
-
-        // Can deposit less than or equal to maxDeposit
-
-        assertEq(usdcVault.balanceOf(address(this)), 0);
-
-        deal(Ethereum.USDC, address(this), maxDepositUsdc);
-        IERC20(Ethereum.USDC).approve(address(usdcVault), maxDepositUsdc);
-
-        uint256 shares = usdcVault.deposit(maxDepositUsdc, address(this));
-
-        assertEq(usdcVault.balanceOf(address(this)), shares);
-
-        // Boundary deposit test for Spark Savings V2 USDT //
-
-        uint256 maxDepositUsdt = usdtVault.maxDeposit(address(this));
-
-        // Fails on depositing more than max
-        vm.expectRevert("SparkVault/deposit-cap-exceeded");
-        usdtVault.deposit(maxDepositUsdt + 1, address(this));
-
-        // Can deposit less than or equal to maxDeposit
-
-        assertEq(usdtVault.balanceOf(address(this)), 0);
-
-        deal(Ethereum.USDT, address(this), maxDepositUsdt);
-        IERC20(Ethereum.USDT).safeIncreaseAllowance(address(usdtVault), maxDepositUsdt);
-
-        shares = usdtVault.deposit(maxDepositUsdt, address(this));
-
-        assertEq(usdtVault.balanceOf(address(this)), shares);
-
-        // Boundary deposit test for Spark Savings V2 ETH //
-
-        uint256 maxDepositEth = ethVault.maxDeposit(address(this));
-
-        // Fails on depositing more than max
-        vm.expectRevert("SparkVault/deposit-cap-exceeded");
-        ethVault.deposit(maxDepositEth + 1, address(this));
-
-        // Can deposit less than or equal to maxDeposit
-
-        assertEq(ethVault.balanceOf(address(this)), 0);
-
-        deal(Ethereum.WETH, address(this), maxDepositEth);
-        IERC20(Ethereum.WETH).approve(address(ethVault), maxDepositEth);
-
-        shares = ethVault.deposit(maxDepositEth, address(this));
-
-        assertEq(ethVault.balanceOf(address(this)), shares);
+        _test_vault_depositBoundaryLimit({
+            vault:              ethVault,
+            depositCap:         50_000e18,
+            expectedMaxDeposit: 49_943.551995659685315342e18
+        });
     }
 
     function test_AVALANCHE_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Avalanche()) {
@@ -381,24 +332,38 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
 
         assertEq(usdcVault.depositCap(), 150_000_000e6);
 
-        // Boundary deposit test for Spark Savings V2 USDC //
+        _test_vault_depositBoundaryLimit({
+            vault:              usdcVault,
+            depositCap:         150_000_000e6,
+            expectedMaxDeposit: 149_999_999e6
+        });
+    }
 
-        uint256 maxDepositUsdc = usdcVault.maxDeposit(address(this));
+    function _test_vault_depositBoundaryLimit(
+        ISparkVaultV2Like vault,
+        uint256           depositCap,
+        uint256           expectedMaxDeposit
+    ) internal {
+        address asset = vault.asset();
+
+        uint256 maxDeposit = depositCap - vault.totalAssets();
+
+        assertEq(maxDeposit, expectedMaxDeposit);
 
         // Fails on depositing more than max
         vm.expectRevert("SparkVault/deposit-cap-exceeded");
-        usdcVault.deposit(maxDepositUsdc + 1, address(this));
+        vault.deposit(maxDeposit + 1, address(this));
 
         // Can deposit less than or equal to maxDeposit
 
-        assertEq(usdcVault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(this)), 0);
 
-        deal(Avalanche.USDC, address(this), maxDepositUsdc);
-        IERC20(Avalanche.USDC).approve(address(usdcVault), maxDepositUsdc);
+        deal(asset, address(this), maxDeposit);
+        IERC20(asset).safeIncreaseAllowance(address(vault), maxDeposit);
 
-        uint256 shares = usdcVault.deposit(maxDepositUsdc, address(this));
+        uint256 shares = vault.deposit(maxDeposit, address(this));
 
-        assertEq(usdcVault.balanceOf(address(this)), shares);
+        assertEq(vault.balanceOf(address(this)), shares);
     }
 
 }
