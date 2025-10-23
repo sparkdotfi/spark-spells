@@ -64,11 +64,6 @@ import { SpellRunner } from "./SpellRunner.sol";
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
-    // TODO: Move
-    address internal constant BASE_MORPHO_TOKEN   = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
-    address internal constant BASE_SPARK_MULTISIG = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant SYRUP_USDT          = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
-    address internal constant AAVE_ATOKEN_USDC    = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
 
     enum Category {
         AAVE,
@@ -332,23 +327,26 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
     // TODO: Put in registry
-    address internal constant AAVE_CORE_AUSDT    = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
-    address internal constant AAVE_ETH_LIDO_USDS = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
-    address internal constant AAVE_ETH_USDC      = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
-    address internal constant AAVE_ETH_USDS      = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
-    address internal constant BUIDL_DEPOSIT      = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
-    address internal constant BUIDL_REDEEM       = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
-    address internal constant CURVE_PYUSDUSDC    = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
-    address internal constant CURVE_PYUSDUSDS    = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
-    address internal constant MORPHO_TOKEN       = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
-    address internal constant MORPHO_USDC_BC     = 0x56A76b428244a50513ec81e225a293d128fd581D;
-    address internal constant SPARK_MULTISIG     = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant SYRUP              = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
-    address internal constant SYRUP_USDT         = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
-    address internal constant USDE_ATOKEN        = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
-    address internal constant USDS_ATOKEN        = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
-    address internal constant USDS_SPK_FARM      = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
-    address internal constant USCC_DEPOSIT       = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
+    address internal constant AAVE_ATOKEN_USDC    = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant AAVE_CORE_AUSDT     = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
+    address internal constant AAVE_ETH_LIDO_USDS  = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
+    address internal constant AAVE_ETH_USDC       = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
+    address internal constant AAVE_ETH_USDS       = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
+    address internal constant BASE_MORPHO_TOKEN   = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
+    address internal constant BASE_SPARK_MULTISIG = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant BUIDL_DEPOSIT       = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
+    address internal constant BUIDL_REDEEM        = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
+    address internal constant CURVE_PYUSDUSDC     = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+    address internal constant CURVE_PYUSDUSDS     = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
+    address internal constant MORPHO_TOKEN        = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
+    address internal constant MORPHO_USDC_BC      = 0x56A76b428244a50513ec81e225a293d128fd581D;
+    address internal constant SPARK_MULTISIG      = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant SYRUP               = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
+    address internal constant SYRUP_USDT          = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+    address internal constant USCC_DEPOSIT        = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
+    address internal constant USDE_ATOKEN         = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
+    address internal constant USDS_ATOKEN         = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
+    address internal constant USDS_SPK_FARM       = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -398,24 +396,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        // skip(2 days);  // Ensure rate limits are recharged
+        skip(2 days);  // Ensure rate limits are recharged
 
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
 
-        // RecordedLogs.init();
+        RecordedLogs.init();
 
-        // _executeAllPayloadsAndBridges();
+        _executeAllPayloadsAndBridges();
 
-        // rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        // integrations  = _getPostExecutionIntegrations(integrations, address(mainnetController));
+        rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
+        integrations  = _getPostExecutionIntegrations(integrations, address(mainnetController));
 
-        // _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(integrations[i]);
+        }
     }
 
     function test_OPTIMISM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Optimism()) {
