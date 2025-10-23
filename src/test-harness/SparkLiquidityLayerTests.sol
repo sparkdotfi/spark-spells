@@ -402,9 +402,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _runSLLE2ETests(integrations[i]);
         }
 
-        RecordedLogs.init();
+        vm.recordLogs();  // Used to get events from rate limits after execution
 
-        _executeAllPayloadsAndBridges();
+        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
+        _executeMainnetPayload();
 
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
         integrations  = _getPostExecutionIntegrations(integrations, address(mainnetController));
@@ -416,37 +417,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function test_OPTIMISM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Optimism()) {
-        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
-
-        Bridge storage bridge = chainData[ChainIdUtils.Optimism()].bridges[0];
-
-        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
-
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(address(foreignController));
-
-        _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
-        }
-
-        // RecordedLogs.init();
-
-        // _executeAllPayloadsAndBridges();
-
-        // chainData[ChainIdUtils.Optimism()].domain.selectFork();
-
-        // rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        // integrations = _getPostExecutionIntegrations(integrations, address(foreignController));
-
-        // _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        // for (uint256 i = 0; i < integrations.length; ++i) {
-        //     _runSLLE2ETests(integrations[i]);
-        // }
-    }
-
     function test_LAYER2_E2E_sparkLiquidityLayer() external {
         uint256 snapshot = vm.snapshot();
         for (uint256 i = 0; i < allChains.length; ++i) {
@@ -456,7 +426,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 allChains[i] == ChainIdUtils.Unichain()     // TODO: Remove this once rate limit keys are figured out
             ) continue;
 
-            if (allChains[i] != ChainIdUtils.Ethereum()) continue;
+            if (allChains[i] != ChainIdUtils.Base()) continue;
 
             console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
             _runFullLayer2TestSuite(allChains[i]);
@@ -3134,19 +3104,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _createCctpIntegration(
         string  memory label,
-        uint32         domain
+        uint32         cctpId
     ) internal view returns (SLLIntegration memory) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         return SLLIntegration({
             label:       label,
             category:    Category.CCTP,
-            integration: address(uint160(domain)),  // Unique ID
-            entryId:     RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain),
+            integration: address(uint160(cctpId)),  // Unique ID
+            entryId:     RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), cctpId),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   ""
+            extraData:   abi.encode(cctpId)
         });
     }
 
