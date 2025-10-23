@@ -2768,10 +2768,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
 
-        console2.log("rateLimitKeys pre execution", rateLimitKeys.length);
-
         SLLIntegration[] memory integrations = _getPreExecutionIntegrations(controller);
-        console2.log("integrations pre execution", integrations.length);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -2785,18 +2782,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         chainData[chainId].domain.selectFork();
 
-        console2.log("_getRateLimitKeys");
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        console2.log("rateLimitKeys post execution", rateLimitKeys.length);
-        console2.log("_getPostExecutionIntegrations");
-        integrations = _getPostExecutionIntegrations(integrations, controller);
+        integrations  = _getPostExecutionIntegrations(integrations, controller);
 
-        console2.log("integrations post execution", integrations.length);
-
-        console2.log("checkRateLimitKeys");
         _checkRateLimitKeys(integrations, rateLimitKeys);
-
-        console2.log("runSLLE2ETests");
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(integrations[i]);
@@ -2834,17 +2823,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (isPostExecution) {
             VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
 
-            console2.log("\n\n NEW LOGS: ", newLogs.length);
-
             for (uint256 i = 0; i < newLogs.length; ++i) {
-                console2.log("newLogs[i].emitter  ", vm.toString(newLogs[i].emitter));
-                console2.log("newLogs[i].topics[0]", vm.toString(newLogs[i].topics[0]));
-                console2.log("newLogs[i].data     ", vm.toString(newLogs[i].data));
-
                 if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
-
-                console2.log("newLogs[i].topics[1]", vm.toString(newLogs[i].topics[1]));
-                console2.log("newLogs[i].data", vm.toString(newLogs[i].data));
 
                 ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
 
@@ -2859,8 +2839,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _getPreExecutionIntegrationsMainnet(address controller) internal returns (SLLIntegration[] memory integrations) {
         MainnetController mainnetController = MainnetController(controller);
-
-        console2.log("check1");
 
         integrations = new SLLIntegration[](40);
 
@@ -3569,14 +3547,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 integrations[i].exitId2  != bytes32(0),
                 "Empty integration"
             );
-
-            console2.log("integration", integrations[i].label);
-            // console2.log("entryId", vm.toString(integrations[i].entryId));
-            // console2.log("entryId2", vm.toString(integrations[i].entryId2));
-            // console2.log("exitId", vm.toString(integrations[i].exitId));
-            // console2.log("exitId2", vm.toString(integrations[i].exitId2));
-
-            console2.log("rateLimitKeys", rateLimitKeys.length);
 
             if (integrations[i].entryId != bytes32(0)) {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
