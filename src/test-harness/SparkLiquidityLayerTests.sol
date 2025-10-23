@@ -2886,83 +2886,82 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations = new SLLIntegration[](40);
 
-        console2.log("check1");
+        integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
+        integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   Ethereum.DAI_SPTOKEN);
+        integrations[2]  = _createAaveIntegration("AAVE-ETH_LIDO_USDS", AAVE_ETH_LIDO_USDS);
+        integrations[3]  = _createAaveIntegration("AAVE-ETH_USDC",      AAVE_ETH_USDC);
+        integrations[4]  = _createAaveIntegration("AAVE-ETH_USDS",      AAVE_ETH_USDS);
+        integrations[5]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", Ethereum.PYUSD_SPTOKEN);
+        integrations[6]  = _createAaveIntegration("AAVE-SPETH",         Ethereum.WETH_SPTOKEN);
+        integrations[7]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  Ethereum.USDC_SPTOKEN); // SparkLend
+        integrations[8]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
+        integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  Ethereum.USDS_SPTOKEN);
+        integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  Ethereum.USDT_SPTOKEN);
 
-        integrations[0]  = _createSLLMainnetIntegration(mainnetController, "AAVE-CORE_AUSDT",    Category.AAVE, AAVE_CORE_AUSDT);
-        integrations[1]  = _createSLLMainnetIntegration(mainnetController, "AAVE-DAI_SPTOKEN",   Category.AAVE, Ethereum.DAI_SPTOKEN);
-        integrations[2]  = _createSLLMainnetIntegration(mainnetController, "AAVE-ETH_LIDO_USDS", Category.AAVE, AAVE_ETH_LIDO_USDS);
-        integrations[3]  = _createSLLMainnetIntegration(mainnetController, "AAVE-ETH_USDC",      Category.AAVE, AAVE_ETH_USDC);
-        integrations[4]  = _createSLLMainnetIntegration(mainnetController, "AAVE-ETH_USDS",      Category.AAVE, AAVE_ETH_USDS);
-        integrations[5]  = _createSLLMainnetIntegration(mainnetController, "AAVE-PYUSD_SPTOKEN", Category.AAVE, Ethereum.PYUSD_SPTOKEN);
-        integrations[6]  = _createSLLMainnetIntegration(mainnetController, "AAVE-SPETH",         Category.AAVE, Ethereum.WETH_SPTOKEN);
-        integrations[7]  = _createSLLMainnetIntegration(mainnetController, "AAVE-USDC_SPTOKEN",  Category.AAVE, Ethereum.USDC_SPTOKEN); // SparkLend
-        integrations[8]  = _createSLLMainnetIntegration(mainnetController, "AAVE-USDE_ATOKEN",   Category.AAVE, USDE_ATOKEN);
-        integrations[9]  = _createSLLMainnetIntegration(mainnetController, "AAVE-USDS_SPTOKEN",  Category.AAVE, Ethereum.USDS_SPTOKEN);
-        integrations[10] = _createSLLMainnetIntegration(mainnetController, "AAVE-USDT_SPTOKEN",  Category.AAVE, Ethereum.USDT_SPTOKEN);
+        integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL", Ethereum.USDC);
 
-        integrations[11] = _createSLLMainnetIntegration(mainnetController, "SUPERSTATE_TRANSFER-USCC", Category.SUPERSTATE_USCC, Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);  // TODO: Use proper order
+        integrations[12] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+        integrations[13] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[14] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        integrations[15] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        integrations[16] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
 
-        integrations[12] = _createSLLMainnetIntegration(mainnetController, "CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC);
+        integrations[17] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
 
-        integrations[13] = _createSLLMainnetIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[14] = _createSLLMainnetIntegration(mainnetController, "CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[15] = _createSLLMainnetIntegration(mainnetController, "CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[16] = _createSLLMainnetIntegration(mainnetController, "CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[18] = _createCurveLpIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
+        integrations[19] = _createCurveLpIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
 
-        integrations[17] = _createSLLMainnetIntegration(mainnetController, "CCTP-AVALANCHE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);  // TODO: Use proper order
+        integrations[20] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDC", Ethereum.CURVE_PYUSDUSDC);
+        integrations[21] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
+        integrations[22] = _createCurveSwapIntegration("CURVE_SWAP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
+        integrations[23] = _createCurveSwapIntegration("CURVE_SWAP-USDCUSDT",  Ethereum.CURVE_USDCUSDT);
 
-        integrations[18] = _createSLLMainnetIntegration(mainnetController, "CORE-USDS", Category.CORE, Ethereum.USDS);
+        integrations[24] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",     MORPHO_USDC_BC);
+        integrations[25] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1", Ethereum.MORPHO_VAULT_DAI_1);
+        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",  Ethereum.MORPHO_VAULT_USDS);
+        integrations[27] = _createERC4626Integration("ERC4626-SUSDS",              Ethereum.SUSDS);
+        integrations[28] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
 
-        integrations[19] = _createSLLMainnetIntegration(mainnetController, "CURVE_LP-PYUSDUSDS", Category.CURVE_LP, Ethereum.CURVE_PYUSDUSDS);
-        integrations[20] = _createSLLMainnetIntegration(mainnetController, "CURVE_LP-SUSDSUSDT", Category.CURVE_LP, Ethereum.CURVE_SUSDSUSDT);
+        integrations[29] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 
-        integrations[21] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDC", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDC);
-        integrations[22] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-PYUSDUSDS", Category.CURVE_SWAP, Ethereum.CURVE_PYUSDUSDS);
-        integrations[23] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-SUSDSUSDT", Category.CURVE_SWAP, Ethereum.CURVE_SUSDSUSDT);
-        integrations[24] = _createSLLMainnetIntegration(mainnetController, "CURVE_SWAP-USDCUSDT",  Category.CURVE_SWAP, Ethereum.CURVE_USDCUSDT);
+        integrations[30] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
-        integrations[25] = _createSLLMainnetIntegration(mainnetController, "ERC4626-MORPHO_USDC_BC",     Category.ERC4626, MORPHO_USDC_BC);
-        integrations[26] = _createSLLMainnetIntegration(mainnetController, "ERC4626-MORPHO_VAULT_DAI_1", Category.ERC4626, Ethereum.MORPHO_VAULT_DAI_1);
-        integrations[27] = _createSLLMainnetIntegration(mainnetController, "ERC4626-MORPHO_VAULT_USDS",  Category.ERC4626, Ethereum.MORPHO_VAULT_USDS);
-        integrations[28] = _createSLLMainnetIntegration(mainnetController, "ERC4626-SUSDS",              Category.ERC4626, Ethereum.SUSDS);
-        integrations[29] = _createSLLMainnetIntegration(mainnetController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
+        integrations[31] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
 
-        integrations[30] = _createSLLMainnetIntegration(mainnetController, "ETHENA-SUSDE", Category.ETHENA, Ethereum.SUSDE);
+        integrations[32] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[31] = _createSLLMainnetIntegration(mainnetController, "FARM-USDS_SPK_FARM", Category.FARM, USDS_SPK_FARM);
+        integrations[33] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
+        integrations[34] = _createRewardsTransferIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
 
-        integrations[32] = _createSLLMainnetIntegration(mainnetController, "MAPLE-SYRUP_USDC", Category.MAPLE, Ethereum.SYRUP_USDC);
+        integrations[35] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-        integrations[33] = _createSLLMainnetIntegration(mainnetController, "PSM-USDS", Category.PSM, Ethereum.PSM);
+        integrations[38] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[34] = _createSLLMainnetIntegration(mainnetController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, MORPHO_TOKEN, address(0), SPARK_MULTISIG, address(0));
-        integrations[35] = _createSLLMainnetIntegration(mainnetController, "REWARDS_TRANSFER-SYRUP",        Category.REWARDS_TRANSFER, SYRUP,        address(0), SPARK_MULTISIG, address(0));
-
-        integrations[36] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPETH",  Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[37] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[38] = _createSLLMainnetIntegration(mainnetController, "SPARK_VAULT_V2-SPUSDT", Category.SPARK_VAULT_V2, Ethereum.SPARK_VAULT_V2_SPUSDT);
-
-        console2.log("check1");
-
-        integrations[39] = _createSLLMainnetIntegration(mainnetController, "SUPERSTATE-USTB", Category.SUPERSTATE, Ethereum.USDC, Ethereum.USTB, address(0), Ethereum.USTB);
-
-        console2.log("check1");
-
-        return integrations;
+        integrations[39] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
     }
 
-    function _getPreExecutionIntegrationsBasicPsm(address controller) internal returns (SLLIntegration[] memory integrations) {
+    function _getPreExecutionIntegrationsBasicPsm3(
+        address controller,
+        address psm,
+        address usdc,
+        address usds,
+        address susds
+    )
+        internal returns (SLLIntegration[] memory integrations)
+    {
         ForeignController foreignController = ForeignController(controller);
 
         integrations = new SLLIntegration[](5);
 
-        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Optimism.PSM3, Optimism.USDC);
-        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Optimism.PSM3, Optimism.USDS);
-        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Optimism.PSM3, Optimism.SUSDS);
+        integrations[0] = _createPsm3Integration("PSM3-USDC",  psm, usdc);
+        integrations[1] = _createPsm3Integration("PSM3-USDS",  psm, usds);
+        integrations[2] = _createPsm3Integration("PSM3-SUSDS", psm, susds);
 
-        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        integrations[3] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Optimism.USDC);
+        integrations[4] = _createCctpGeneralIntegration("CCTP_GENERAL", usdc);
 
         return integrations;
     }
@@ -2970,24 +2969,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsBase(address controller) internal returns (SLLIntegration[] memory integrations) {
         ForeignController foreignController = ForeignController(controller);
 
-        integrations = new SLLIntegration[](9);
+        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(controller, Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
 
-        // TODO: Alphabetical order
-        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Base.PSM3, Base.USDC);
-        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Base.PSM3, Base.USDS);
-        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Base.PSM3, Base.SUSDS);
+        integrations = new SLLIntegration[](basicIntegrations.length + 4);
 
-        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        for (uint256 i = 0; i < basicIntegrations.length; ++i) {
+            integrations[i] = basicIntegrations[i];
+        }
 
-        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Base.USDC);
+        integrations[5] = _createERC4626Integration("ERC4626-MORPHO_VAULT_SUSDC", Base.MORPHO_VAULT_SUSDC);
+        integrations[6] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Base.FLUID_SUSDS);
 
-        // TODO: Remove mainnet and foreign keywords
-        integrations[5] = _createSLLForeignIntegration(foreignController, "ERC4626-MORPHO_VAULT_SUSDC", Category.ERC4626, Base.MORPHO_VAULT_SUSDC);
-        integrations[6] = _createSLLForeignIntegration(foreignController, "ERC4626-FLUID_SUSDS",        Category.ERC4626, Base.FLUID_SUSDS);
+        integrations[7] = _createAaveIntegration("AAVE-ATOKEN_USDC", Base.ATOKEN_USDC);
 
-        integrations[7] = _createSLLForeignIntegration(foreignController, "AAVE-ATOKEN_USDC", Category.AAVE, Base.ATOKEN_USDC);
-
-        integrations[8] = _createSLLForeignIntegrationTransferAsset(foreignController, "REWARDS_TRANSFER-MORPHO_TOKEN", Category.REWARDS_TRANSFER, BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
+        integrations[8] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
 
         return integrations;
     }
@@ -2997,19 +2992,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations = new SLLIntegration[](7);
 
-        // TODO: Alphabetical order
-        integrations[0] = _createSLLForeignIntegration(foreignController, "PSM3-USDC",  Category.PSM3, Base.PSM3, Base.USDC);
-        integrations[1] = _createSLLForeignIntegration(foreignController, "PSM3-USDS",  Category.PSM3, Base.PSM3, Base.USDS);
-        integrations[2] = _createSLLForeignIntegration(foreignController, "PSM3-SUSDS", Category.PSM3, Base.PSM3, Base.SUSDS);
+        integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        integrations[3] = _createSLLForeignIntegration(foreignController, "CCTP-ETHEREUM", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        integrations[1] = _createCctpGeneralIntegration("CCTP_GENERAL", Base.USDC);
 
-        integrations[4] = _createSLLForeignIntegration(foreignController, "CCTP_GENERAL", Category.CCTP_GENERAL, Base.USDC);
+        integrations[2] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Avalanche.SPARK_VAULT_V2_SPUSDC);
 
-        // TODO: This is a workaround to get this to work until renaming is done
-        integrations[5] = _createSLLMainnetIntegration(MainnetController(address(foreignController)), "SPARK_VAULT_V2-SPUSDC", Category.SPARK_VAULT_V2, Avalanche.SPARK_VAULT_V2_SPUSDC);
-
-        integrations[6] = _createSLLForeignIntegration(foreignController, "AAVE-ATOKEN_USDC", Category.AAVE, AAVE_ATOKEN_USDC);
+        integrations[3] = _createAaveIntegration("AAVE-ATOKEN_USDC", AAVE_ATOKEN_USDC);
 
         return integrations;
     }
@@ -3017,24 +3006,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrations(address controller) internal returns (SLLIntegration[] memory integrations) {
         ChainId chainId = ChainIdUtils.fromUint(block.chainid);
 
-        if (chainId == ChainIdUtils.Ethereum()) {
-            return _getPreExecutionIntegrationsMainnet(controller);
+        if (chainId == ChainIdUtils.Avalanche()) {
+            return _getPreExecutionIntegrationsAvalanche(controller);
         }
 
-        if (
-            chainId == ChainIdUtils.Optimism() ||
-            chainId == ChainIdUtils.ArbitrumOne() ||
-            chainId == ChainIdUtils.Unichain()
-        ) {
-            return _getPreExecutionIntegrationsBasicPsm(controller);
+        if (chainId == ChainIdUtils.ArbitrumOne()) {
+            // return _getPreExecutionIntegrationsBasicPsm3(controller, ArbitrumOne.PSM3, ArbitrumOne.USDC, ArbitrumOne.USDS, ArbitrumOne.SUSDS);
         }
 
         if (chainId == ChainIdUtils.Base()) {
             return _getPreExecutionIntegrationsBase(controller);
         }
 
-        if (chainId == ChainIdUtils.Avalanche()) {
-            return _getPreExecutionIntegrationsAvalanche(controller);
+        if (chainId == ChainIdUtils.Ethereum()) {
+            return _getPreExecutionIntegrationsMainnet(controller);
+        }
+
+        if (chainId == ChainIdUtils.Optimism()) {
+            return _getPreExecutionIntegrationsBasicPsm3(controller, Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
+        }
+
+        if (chainId == ChainIdUtils.Unichain()) {
+            return _getPreExecutionIntegrationsBasicPsm3(controller, Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
         }
 
         else {
@@ -3042,144 +3035,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _createSLLForeignIntegration(
-        ForeignController foreignController,
-        string memory label,
-        Category category,
-        address integration
-    ) internal returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
-        bytes32 entryId2 = bytes32(0);
-        bytes32 exitId = bytes32(0);
-        bytes32 exitId2 = bytes32(0);
-
-        if (category == Category.AAVE) {
-            entryId = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_AAVE_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_AAVE_WITHDRAW(), integration);
-        } else if (category == Category.ERC4626) {
-            entryId = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_4626_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_4626_WITHDRAW(), integration);
-        } else if (category == Category.CCTP_GENERAL) {
-            entryId = foreignController.LIMIT_USDC_TO_CCTP();
+    function _getPostExecutionIntegrationsNoChange(SLLIntegration[] memory integrations) internal returns (SLLIntegration[] memory newIntegrations) {
+        newIntegrations = new SLLIntegration[](integrations.length);
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            newIntegrations[i] = integrations[i];
         }
-        else if (category == Category.SPARK_VAULT_V2) {
-            entryId = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_SPARK_VAULT_TAKE(), integration);
-            exitId  = RateLimitHelpers.makeAssetDestinationKey(foreignController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration);
-        }
-        else {
-            revert("Invalid category");
-        }
-
-        return SLLIntegration({
-            label:       label,
-            category:    category,
-            integration: integration,
-            entryId:     entryId,
-            entryId2:    entryId2,
-            exitId:      exitId,
-            exitId2:     exitId2,
-            extraData:   new bytes(0)
-        });
     }
 
-    function _createSLLForeignIntegration(
-        ForeignController foreignController,
-        string memory label,
-        Category category,
-        address integration,
-        address asset
-    ) internal returns (SLLIntegration memory) {
-        bytes32 entryId  = bytes32(0);
-        bytes32 entryId2 = bytes32(0);
-        bytes32 exitId   = bytes32(0);
-        bytes32 exitId2  = bytes32(0);
-
-        bytes memory extraData = new bytes(0);
-
-        if (category == Category.PSM3) {
-            entryId   = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset);
-            exitId    = RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_WITHDRAW(), asset);
-            extraData = abi.encode(asset);
-        } else {
-            revert("Invalid category");
-        }
-
-        return SLLIntegration({
-            label:       label,
-            category:    category,
-            integration: integration,
-            entryId:     entryId,
-            entryId2:    entryId2,
-            exitId:      exitId,
-            exitId2:     exitId2,
-            extraData:   extraData
-        });
-    }
-
-    // TODO: Consolidate this with mainnet
-    function _createSLLForeignIntegrationTransferAsset(
-        ForeignController foreignController,
-        string memory label,
-        Category category,
-        address assetIn,
-        address depositDestination
-    ) internal returns (SLLIntegration memory) {
-        bytes32 entryId = bytes32(0);
-        bytes memory extraData = new bytes(0);
-
-        if (category == Category.REWARDS_TRANSFER) {
-            entryId   = RateLimitHelpers.makeAssetDestinationKey(foreignController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
-            extraData = abi.encode(assetIn, depositDestination);
-        } else {
-            revert("Invalid category");
-        }
-
-        return SLLIntegration({
-            label:       label,
-            category:    category,
-            integration: assetIn,
-            entryId:     entryId,
-            entryId2:    bytes32(0),
-            exitId:      bytes32(0),
-            exitId2:     bytes32(0),
-            extraData:   extraData
-        });
-    }
-
-    function _createSLLForeignIntegration(
-        ForeignController foreignController,
-        string memory label,
-        Category category,
-        uint32 cctpId
-    ) internal returns (SLLIntegration memory) {
-        bytes32 entryId     = bytes32(0);
-        address integration = address(0);
-
-        bytes memory extraData = new bytes(0);
-
-        if (category == Category.CCTP) {
-            entryId     = RateLimitHelpers.makeDomainKey(foreignController.LIMIT_USDC_TO_DOMAIN(), cctpId);
-            integration = address(foreignController.cctp());
-            extraData   = abi.encode(cctpId);
-        } else {
-            revert("Invalid category");
-        }
-
-        return SLLIntegration({
-            label:       label,
-            category:    category,
-            integration: integration,
-            entryId:     entryId,
-            entryId2:    bytes32(0),
-            exitId:      bytes32(0),
-            exitId2:     bytes32(0),
-            extraData:   extraData
-        });
-    }
-
-    // TODO: Maybe make these virtual functions that can be overriden?
     function _getPostExecutionIntegrations(
-        SLLIntegration[]  memory integrations,
+        SLLIntegration[] memory integrations,
         address controller
     )
         internal returns (SLLIntegration[] memory newIntegrations)
@@ -3198,7 +3062,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             chainId == ChainIdUtils.Unichain() ||
             chainId == ChainIdUtils.Base()
         ) {
-            return _getPostExecutionIntegrationsForeign(integrations, controller);
+            return _getPostExecutionIntegrationsNoChange(integrations);
         }
 
         if (chainId == ChainIdUtils.Avalanche()) {
@@ -3222,169 +3086,344 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 1] = _createSLLMainnetIntegration(mainnetController, "MAPLE-SYRUP_USDT", Category.MAPLE, SYRUP_USDT);
-    }
-
-    function _getPostExecutionIntegrationsForeign(
-        SLLIntegration[] memory integrations,
-        address                  controller
-    ) internal returns (SLLIntegration[] memory newIntegrations) {
-        ForeignController foreignController = ForeignController(controller);
-
-        newIntegrations = new SLLIntegration[](integrations.length);
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
-        }
+        newIntegrations[newIntegrations.length - 1] = _createMapleIntegration("MAPLE-SYRUP_USDT", SYRUP_USDT);
     }
 
     /**********************************************************************************************/
     /*** Data processing helper functions                                                       ***/
     /**********************************************************************************************/
 
-    // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
-    function _createSLLMainnetIntegration(
-        MainnetController        mainnetController,
-        string            memory label,
-        Category                 category,
-        address                  integration
+    function _createAaveIntegration(
+        string  memory label,
+        address        integration
     ) internal view returns (SLLIntegration memory) {
-        bytes32 entryId  = bytes32(0);
-        bytes32 entryId2 = bytes32(0);
-        bytes32 exitId   = bytes32(0);
-        bytes32 exitId2  = bytes32(0);
-
-        if (category == Category.ERC4626) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration);
-        } else if (category == Category.ETHENA) {
-            entryId  = mainnetController.LIMIT_USDE_MINT();
-            entryId2 = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration);
-            exitId   = mainnetController.LIMIT_SUSDE_COOLDOWN();
-            exitId2  = mainnetController.LIMIT_USDE_BURN();
-        } else if (category == Category.FARM) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration);
-        } else if (category == Category.AAVE) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_WITHDRAW(), integration);
-        } else if (category == Category.MAPLE) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration);
-            exitId2 = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration);
-        } else if (category == Category.CORE) {
-            entryId = mainnetController.LIMIT_USDS_MINT();
-        } else if (category == Category.CENTRIFUGE) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_DEPOSIT(), integration);
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_REDEEM(),  integration);
-        } else if (category == Category.PSM) {
-            entryId = mainnetController.LIMIT_USDS_TO_USDC();
-        } else if (category == Category.CURVE_LP) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_DEPOSIT(),  integration);
-            exitId  = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_WITHDRAW(), integration);
-        } else if (category == Category.CURVE_SWAP) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_SWAP(), integration);
-        } else if (category == Category.CCTP_GENERAL) {
-            entryId = mainnetController.LIMIT_USDC_TO_CCTP();
-        } else if (category == Category.SPARK_VAULT_V2) {
-            entryId = RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_SPARK_VAULT_TAKE(), integration);
-            exitId  = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration);
-        } else {
-            revert("Invalid category");
-        }
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         return SLLIntegration({
             label:       label,
-            category:    category,
+            category:    Category.AAVE,
             integration: integration,
-            entryId:     entryId,
-            entryId2:    entryId2,
-            exitId:      exitId,
-            exitId2:     exitId2,
-            extraData:   new bytes(0)
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_DEPOSIT(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_WITHDRAW(), integration),
+            exitId2:     bytes32(0),
+            extraData:   ""
         });
     }
 
-    // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
-    function _createSLLMainnetIntegration(
-        MainnetController        mainnetController,
-        string            memory label,
-        Category                 category,
-        uint32                   cctpId
+    function _createBuidlIntegration(
+        string  memory label,
+        address        assetIn,
+        address        assetOut,
+        address        depositDestination,
+        address        withdrawDestination
     ) internal view returns (SLLIntegration memory) {
-        bytes32 entryId     = bytes32(0);
-        address integration = address(0);
-
-        bytes memory extraData = new bytes(0);
-
-        if (category == Category.CCTP) {
-            entryId     = RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), cctpId);
-            integration = address(mainnetController.cctp());
-            extraData   = abi.encode(cctpId);
-        } else {
-            revert("Invalid category");
-        }
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         return SLLIntegration({
             label:       label,
-            category:    category,
-            integration: integration,
-            entryId:     entryId,
+            category:    Category.BUIDL,
+            integration: assetOut,  // Default to assetOut for transferAsset type integrations because this is the LP token
+            entryId:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(assetIn, depositDestination, assetOut, withdrawDestination)
+        });
+    }
+
+    function _createCctpIntegration(
+        string  memory label,
+        uint32         domain
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.CCTP,
+            integration: address(uint160(domain)),  // Unique ID
+            entryId:     RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), domain),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   extraData
+            extraData:   ""
         });
     }
 
-    // TODO: MDL, revisit this if and when `_runSLLE2ETests` is refactored.
-    function _createSLLMainnetIntegration(
-        MainnetController        mainnetController,
-        string            memory label,
-        Category                 category,
-        address                  assetIn,
-        address                  assetOut,
-        address                  depositDestination,
-        address                  withdrawDestination
-    )
-        internal view returns (SLLIntegration memory)
-    {
-        bytes32 entryId  = bytes32(0);
-        bytes32 entryId2 = bytes32(0);
-        bytes32 exitId   = bytes32(0);
-        bytes32 exitId2  = bytes32(0);
-
-        bytes memory extraData = new bytes(0);
-
-        if (category == Category.BUIDL) {
-            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
-            exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
-            extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
-        } else if (category == Category.SUPERSTATE) {
-            entryId   = mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE();
-            exitId    = keccak256("LIMIT_SUPERSTATE_REDEEM");  // Have to use hash because this function was removed
-            exitId2   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
-            extraData = abi.encode(assetIn, assetOut, withdrawDestination);
-        } else if (category == Category.SUPERSTATE_USCC) {
-            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination);
-            exitId    = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination);
-            extraData = abi.encode(assetIn, depositDestination, assetOut, withdrawDestination);
-        } else if (category == Category.REWARDS_TRANSFER) {
-            entryId   = RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination);
-            extraData = abi.encode(assetIn, depositDestination);
-        } else {
-            revert("Invalid category");
-        }
+    function _createCctpGeneralIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         return SLLIntegration({
             label:       label,
-            category:    category,
+            category:    Category.CCTP_GENERAL,
+            integration: integration,
+            entryId:     mainnetController.LIMIT_USDC_TO_CCTP(),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createCentrifugeIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.CENTRIFUGE,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_DEPOSIT(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_REDEEM(), integration),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createCoreIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.CORE,
+            integration: integration,
+            entryId:     mainnetController.LIMIT_USDS_MINT(),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createCurveLpIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.CURVE_LP,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_DEPOSIT(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_WITHDRAW(), integration),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createCurveSwapIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.CURVE_SWAP,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_SWAP(), integration),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createERC4626Integration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.ERC4626,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createEthenaIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.ETHENA,
+            integration: integration,
+            entryId:     mainnetController.LIMIT_USDE_MINT(),
+            entryId2:    RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
+            exitId:      mainnetController.LIMIT_SUSDE_COOLDOWN(),
+            exitId2:     mainnetController.LIMIT_USDE_BURN(),
+            extraData:   ""
+        });
+    }
+
+    function _createFarmIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.FARM,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_DEPOSIT(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createMapleIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.MAPLE,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration),
+            exitId2:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
+            extraData:   ""
+        });
+    }
+
+    function _createPsmIntegration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.PSM,
+            integration: integration,
+            entryId:     mainnetController.LIMIT_USDS_TO_USDC(),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createPsm3Integration(
+        string  memory label,
+        address        integration,
+        address        asset
+    ) internal view returns (SLLIntegration memory) {
+        ForeignController foreignController = ForeignController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.PSM,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_WITHDRAW(), asset),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(asset)
+        });
+    }
+
+    function _createRewardsTransferIntegration(
+        string  memory label,
+        address        asset,
+        address        depositDestination
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.REWARDS_TRANSFER,
+            integration: asset,  // Default to assetOut for transferAsset type integrations because this is the LP token
+            entryId:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(asset, depositDestination)
+        });
+    }
+
+    function _createSparkVaultV2Integration(
+        string  memory label,
+        address        integration
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.SPARK_VAULT_V2,
+            integration: integration,
+            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_SPARK_VAULT_TAKE(), integration),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration),
+            exitId2:     bytes32(0),
+            extraData:   ""
+        });
+    }
+
+    function _createSuperstateIntegration(
+        string  memory label,
+        address        assetIn,
+        address        assetOut,
+        address        withdrawDestination
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.SUPERSTATE,
             integration: assetOut,  // Default to assetOut for transferAsset type integrations because this is the LP token
-            entryId:     entryId,
-            entryId2:    entryId2,
-            exitId:      exitId,
-            exitId2:     exitId2,
-            extraData:   extraData
+            entryId:     mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE(),
+            entryId2:    bytes32(0),
+            exitId:      keccak256("LIMIT_SUPERSTATE_REDEEM"),  // Have to use hash because this function was removed
+            exitId2:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
+            extraData:   abi.encode(assetIn, assetOut, withdrawDestination)
+        });
+    }
+
+    function _createSuperstateUsccIntegration(
+        string  memory label,
+        address        assetIn,
+        address        assetOut,
+        address        depositDestination,
+        address        withdrawDestination
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.SUPERSTATE_USCC,
+            integration: assetOut,  // Default to assetOut for transferAsset type integrations because this is the LP
+            entryId:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(assetIn, depositDestination, assetOut, withdrawDestination)
         });
     }
 
