@@ -24,7 +24,7 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-import { 
+import {
     ISyrupLike,
     ISparkVaultV2Like,
     IERC20Like,
