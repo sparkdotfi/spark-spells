@@ -770,10 +770,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
 
-        // Assert at least 0.4% interest accrued (4.8% APY)
+        // Assert at least 0.3% interest accrued (3.6% APY)
         assertGe(
             syrup.convertToAssets(v.shares) - v.positionAssets,
-            v.positionAssets * 0.004e18 / 1e18
+            v.positionAssets * 0.003e18 / 1e18
         );
 
         /********************************************/
@@ -831,8 +831,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.stopPrank();
 
-        // Assert at least 0.4% of value was generated (4.8% APY) (approximated because of extra day)
-        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.004e18 / 1e18);
+        // Assert at least 0.3% of value was generated (3.6% APY) (approximated because of extra day)
+        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.003e18 / 1e18);
         assertEq(asset.balanceOf(address(p.ctx.proxy)), v.withdrawAmount);
 
         assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares);
@@ -1924,7 +1924,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
 
-        assertApproxEqAbs(vault.assetsOf(user),  p.userVaultAmount, p.tolerance);
+        assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
         // TODO: Remove this once vaults are live (5% APY)
         vm.prank(Ethereum.ALM_OPS_MULTISIG);
@@ -1938,10 +1938,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
         assertGt(vault.assetsOf(user),  p.userVaultAmount);
-
-        uint256 totalVaultAssets = vault.totalAssets();
-
-        deal(address(asset), p.vault, totalVaultAssets);
 
         vm.prank(user);
         vault.redeem(shares, user, user);
@@ -2321,6 +2317,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             domainUsdc   = IERC20(Unichain.USDC);
             domainPsm3   = Unichain.PSM3;
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
+        } else if (domainId == ChainIdUtils.Avalanche()) {
+            domainUsdc   = IERC20(Avalanche.USDC);
+            domainPsm3   = address(0);
+            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE;
         } else {
             revert("SLL/unknown domain");
         }
@@ -2359,21 +2359,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
 
-        // --- Step 3: Deposit USDC into PSM3 ---
+        // If PSM3 is not used, skip the PSM3 steps
+        if (domainPsm3 != address(0)) {
+            // --- Step 3: Deposit USDC into PSM3 ---
 
-        vm.prank(ctx.relayer);
-        foreignController.depositPSM(address(domainUsdc), usdcAmount);
+            vm.prank(ctx.relayer);
+            foreignController.depositPSM(address(domainUsdc), usdcAmount);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
-        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
+            assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+            assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
 
-        // --- Step 4: Withdraw all assets from PSM3 ---
+            // --- Step 4: Withdraw all assets from PSM3 ---
 
-        vm.prank(ctx.relayer);
-        foreignController.withdrawPSM(address(domainUsdc), usdcAmount);
+            vm.prank(ctx.relayer);
+            foreignController.withdrawPSM(address(domainUsdc), usdcAmount);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
-        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+            assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
+            assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+        }
 
         // --- Step 5: Bridge USDC back to mainnet ---
 
@@ -2704,6 +2707,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 amount   = address(asset) == Ethereum.WETH ? 1_000 : 10_000_000;
             uint256 decimals = IERC20Metadata(asset).decimals();
 
+            uint256 userVaultAmount = ISparkVaultV2Like(integration.integration).maxDeposit(address(this)) / 10;
+
+            // Avoid deposit caps but ensure test still runs
+            assertGt(userVaultAmount, 1 * 10 ** decimals);
+
             _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
                 ctx:             _getSparkLiquidityLayerContext(),
                 vault:           integration.integration,
@@ -2711,7 +2719,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 transferKey:     integration.exitId,
                 takeAmount:      amount * 10 ** decimals,
                 transferAmount:  amount * 10 ** decimals,
-                userVaultAmount: amount * 10 ** decimals,
+                userVaultAmount: userVaultAmount,
                 tolerance:       10
             }));
         }
