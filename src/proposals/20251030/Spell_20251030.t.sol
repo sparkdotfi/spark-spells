@@ -42,7 +42,7 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-20T15:17:00Z";
+        _blockDate = "2025-10-24T11:27:00Z";
     }
 
     function setUp() public override {
@@ -68,6 +68,23 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
             oldController: Arbitrum.ALM_CONTROLLER,
             newController: ARBITRUM_NEW_ALM_CONTROLLER
         });
+    }
+
+    function test_ARBITRUM_aaveIntegration() public onChain(ChainIdUtils.ArbitrumOne()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController controller = MainnetController(ctx.controller);
+
+        address aToken = Arbitrum.ATOKEN_USDC;
+
+        uint256 expectedDepositAmount = 5_000_000e6;
+
+        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
+
+        _executeAllPayloadsAndBridges();
+
+        _testAaveIntegration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
     }
 
     function test_OPTIMISM_controllerUpgrade() public onChain(ChainIdUtils.Optimism()) {
