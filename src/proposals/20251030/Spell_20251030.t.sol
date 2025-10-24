@@ -27,9 +27,17 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import {
     ISyrupLike,
     ISparkVaultV2Like,
-    IERC20Like,
-    IPermissionManagerLike
+    IERC20Like
 } from "src/interfaces/Interfaces.sol";
+
+interface IPermissionManagerLike {
+    function admin() external view returns (address);
+    function setLenderAllowlist(
+        address            poolManager_,
+        address[] calldata lenders_,
+        bool[]    calldata booleans_
+    ) external;
+}
 
 contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
@@ -42,7 +50,7 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-22T07:32:00Z";
+        _blockDate = "2025-10-24T14:29:00Z";
     }
 
     function setUp() public override {
@@ -57,10 +65,28 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
         chainData[ChainIdUtils.Unichain()].prevController = Unichain.ALM_CONTROLLER;
         chainData[ChainIdUtils.Unichain()].newController  = UNICHAIN_NEW_ALM_CONTROLLER;
 
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
-        // chainData[ChainIdUtils.Optimism()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
-        // chainData[ChainIdUtils.Unichain()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xBdD71DF15237D52c8F73e6D916550F2525807d00;
+        chainData[ChainIdUtils.Optimism()].payload    = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x9C19c1e58a98A23E1363977C08085Fd5dAE92Af0;
+
+        // Maple onboarding process
+        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
+
+        address[] memory lenders  = new address[](1);
+        bool[]    memory booleans = new bool[](1);
+
+        lenders[0]  = address(Ethereum.ALM_PROXY);
+        booleans[0] = true;
+
+        vm.startPrank(permissionManager.admin());
+        permissionManager.setLenderAllowlist(
+            syrup.manager(),
+            lenders,
+            booleans
+        );
+        vm.stopPrank();
     }
 
     function test_ARBITRUM_controllerUpgrade() public onChain(ChainIdUtils.ArbitrumOne()) {
@@ -68,6 +94,23 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
             oldController: Arbitrum.ALM_CONTROLLER,
             newController: ARBITRUM_NEW_ALM_CONTROLLER
         });
+    }
+
+    function test_ARBITRUM_aaveIntegration() public onChain(ChainIdUtils.ArbitrumOne()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController controller = MainnetController(ctx.controller);
+
+        address aToken = Arbitrum.ATOKEN_USDC;
+
+        uint256 expectedDepositAmount = 5_000_000e6;
+
+        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
+
+        _executeAllPayloadsAndBridges();
+
+        _testAaveIntegration(E2ETestParams(ctx, aToken, expectedDepositAmount, depositKey, withdrawKey, 10));
     }
 
     function test_OPTIMISM_controllerUpgrade() public onChain(ChainIdUtils.Optimism()) {
@@ -111,23 +154,6 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
         _assertUnlimitedRateLimit(redeemKey);
         _assertUnlimitedRateLimit(withdrawKey);
 
-        // Maple onboarding process
-        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
-
-        address[] memory lenders  = new address[](1);
-        bool[]    memory booleans = new bool[](1);
-
-        lenders[0]  = address(Ethereum.ALM_PROXY);
-        booleans[0] = true;
-
-        vm.startPrank(permissionManager.admin());
-        permissionManager.setLenderAllowlist(
-            syrup.manager(),
-            lenders,
-            booleans
-        );
-        vm.stopPrank();
-
         _testMapleIntegration(MapleE2ETestParams({
             ctx:           ctx,
             vault:         SYRUP_USDT,
@@ -149,7 +175,17 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-22T07:32:00Z";
+        _blockDate = "2025-10-24T14:29:00Z";
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xBdD71DF15237D52c8F73e6D916550F2525807d00;
+        chainData[ChainIdUtils.Optimism()].payload    = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x9C19c1e58a98A23E1363977C08085Fd5dAE92Af0;
     }
 
     function test_ETHEREUM_sparkLend_usdcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
@@ -188,7 +224,7 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
         DataTypes.ReserveConfigurationMap memory config = IPool(Ethereum.POOL).getConfiguration(Ethereum.USDT);
 
         assertEq(config.getSupplyCap(), 1_904_511_069);
-        assertEq(config.getBorrowCap(), 821_423_249);
+        assertEq(config.getBorrowCap(), 827_632_450);
 
         _executeAllPayloadsAndBridges();
 
@@ -263,15 +299,15 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  407_568_011.143768143248809289e18);
-        assertEq(spUsdsBalanceBefore, 172_648_019.339848759936460960e18);
+        assertEq(spDaiBalanceBefore,  413_902_809.733400849226541079e18);
+        assertEq(spUsdsBalanceBefore, 172_782_839.027389056878711825e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 65_557.659034227304964786e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 33_086.258380656692096081e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 75_968.174319777610912710e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 37_339.589416785900172755e18);
     }
 
 }
@@ -282,11 +318,17 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-22T07:32:00Z";
+        _blockDate = "2025-10-24T14:29:00Z";
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xBdD71DF15237D52c8F73e6D916550F2525807d00;
+        chainData[ChainIdUtils.Optimism()].payload    = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x9C19c1e58a98A23E1363977C08085Fd5dAE92Af0;
     }
 
     function test_ETHEREUM_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Ethereum()) {
@@ -307,19 +349,19 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         _test_vault_depositBoundaryLimit({
             vault:              usdcVault,
             depositCap:         250_000_000e6,
-            expectedMaxDeposit: 202_684_044.159138e6
+            expectedMaxDeposit: 199_999_176.442098e6
         });
 
         _test_vault_depositBoundaryLimit({
             vault:              usdtVault,
             depositCap:         250_000_000e6,
-            expectedMaxDeposit: 216_549_089.135327e6
+            expectedMaxDeposit: 214_049_341.144703e6
         });
 
         _test_vault_depositBoundaryLimit({
             vault:              ethVault,
             depositCap:         50_000e18,
-            expectedMaxDeposit: 49_943.551995659685315342e18
+            expectedMaxDeposit: 42_837.606066019510563207e18
         });
     }
 
@@ -335,7 +377,7 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         _test_vault_depositBoundaryLimit({
             vault:              usdcVault,
             depositCap:         150_000_000e6,
-            expectedMaxDeposit: 149_999_999e6
+            expectedMaxDeposit: 149_999_997.9e6
         });
     }
 

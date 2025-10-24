@@ -35,6 +35,7 @@ jobs:
           BASE_RPC_URL: ${{secrets.BASE_RPC_URL}}
           GOERLI_RPC_URL: ${{secrets.GOERLI_RPC_URL}}
           UNICHAIN_RPC_URL: ${{secrets.UNICHAIN_RPC_URL}}
+          ETHERSCAN_API_KEY: ${{secrets.ETHERSCAN_API_KEY}}
         run: |
           forge test -vvv
         id: test

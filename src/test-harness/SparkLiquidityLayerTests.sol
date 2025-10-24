@@ -56,8 +56,7 @@ import {
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
-    IWithdrawalManagerLike,
-    IPermissionManagerLike
+    IWithdrawalManagerLike
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
@@ -359,35 +358,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /**********************************************************************************************/
 
     function test_E2E_sparkLiquidityLayerCrossChainSetup() external {
-        _testE2ESLLCrossChainForAllDomains(false);
+        _runE2ESLLCrossChainTestForAllDomains({ isPostExecution: false });
 
         _executeAllPayloadsAndBridges();
 
-        _testE2ESLLCrossChainForAllDomains(true);
-    }
-
-    function _testE2ESLLCrossChainForAllDomains(bool isPostExecution) internal {
-        SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
-
-        string memory prefix = isPostExecution ? "POST EXECUTION" : "PRE EXECUTION";
-
-        console2.log(prefix, "E2E cross chain tests starting");
-
-        for (uint256 i = 0; i < allChains.length; ++i) {
-            if (allChains[i] == ChainIdUtils.Ethereum() || allChains[i] == ChainIdUtils.Gnosis()) continue;
-
-            console2.log("Testing cross chain setup for", allChains[i].toDomainString());
-
-            ChainId domainChainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
-
-            SparkLiquidityLayerContext memory domainCtx = _getSparkLiquidityLayerContext(domainChainId);
-
-            _testE2ESLLCrossChainForDomain(
-                domainChainId,
-                MainnetController(isPostExecution ? ctxMainnet.controller : ctxMainnet.prevController),
-                ForeignController(isPostExecution ? domainCtx.controller  : domainCtx.prevController)
-            );
-        }
+        _runE2ESLLCrossChainTestForAllDomains({ isPostExecution: true });
     }
 
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Ethereum()) {
@@ -419,23 +394,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function test_ARBITRUM_E2E_sparkLiquidityLayer() external {
-        _runFullLayer2TestSuite(ChainIdUtils.ArbitrumOne());
+        _runSLLE2ETestsForDomain(ChainIdUtils.ArbitrumOne());
     }
 
     function test_AVALANCHE_E2E_sparkLiquidityLayer() external {
-        _runFullLayer2TestSuite(ChainIdUtils.Avalanche());
+        _runSLLE2ETestsForDomain(ChainIdUtils.Avalanche());
     }
 
     function test_BASE_E2E_sparkLiquidityLayer() external {
-        _runFullLayer2TestSuite(ChainIdUtils.Base());
+        _runSLLE2ETestsForDomain(ChainIdUtils.Base());
     }
 
     function test_OPTIMISM_E2E_sparkLiquidityLayer() external {
-        _runFullLayer2TestSuite(ChainIdUtils.Optimism());
+        _runSLLE2ETestsForDomain(ChainIdUtils.Optimism());
     }
 
     function test_UNICHAIN_E2E_sparkLiquidityLayer() external {
-        _runFullLayer2TestSuite(ChainIdUtils.Unichain());
+        _runSLLE2ETestsForDomain(ChainIdUtils.Unichain());
     }
 
     /**********************************************************************************************/
@@ -2209,6 +2184,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE), SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),     SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(address(0)));
+            assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    SLLHelpers.addrToBytes32(address(0)));
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0);
@@ -2358,7 +2334,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address domainAlmProxy = address(ctx.proxy);
 
         uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
-        uint256 domainUsdcPsmBalance   = domainUsdc.balanceOf(domainPsm3);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
@@ -2367,10 +2342,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
-        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
 
-        // If PSM3 is not used, skip the PSM3 steps
         if (domainPsm3 != address(0)) {
+            uint256 domainUsdcPsmBalance = domainUsdc.balanceOf(domainPsm3);
+
             // --- Step 3: Deposit USDC into PSM3 ---
 
             vm.prank(ctx.relayer);
@@ -2483,6 +2458,34 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
+    /**********************************************************************************************/
+    /*** Test runners                                                                           ***/
+    /**********************************************************************************************/
+
+    function _runE2ESLLCrossChainTestForAllDomains(bool isPostExecution) internal {
+        SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+
+        string memory prefix = isPostExecution ? "POST EXECUTION" : "PRE EXECUTION";
+
+        console2.log(prefix, "E2E cross chain tests starting");
+
+        for (uint256 i = 0; i < allChains.length; ++i) {
+            if (allChains[i] == ChainIdUtils.Ethereum() || allChains[i] == ChainIdUtils.Gnosis()) continue;
+
+            console2.log("Testing cross chain setup for", allChains[i].toDomainString());
+
+            ChainId domainChainId = ChainIdUtils.fromDomain(chainData[allChains[i]].domain);
+
+            SparkLiquidityLayerContext memory domainCtx = _getSparkLiquidityLayerContext(domainChainId);
+
+            _testE2ESLLCrossChainForDomain(
+                domainChainId,
+                MainnetController(isPostExecution ? ctxMainnet.controller : ctxMainnet.prevController),
+                ForeignController(isPostExecution ? domainCtx.controller  : domainCtx.prevController)
+            );
+        }
+    }
+
     // TODO: MDL, this function should be broken up into one function per test.
     function _runSLLE2ETests(
         SparkLiquidityLayerContext memory ctx,
@@ -2564,26 +2567,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         else if (integration.category == Category.MAPLE) {
             console2.log("Running SLL E2E test for", integration.label);
-
-            IPermissionManagerLike permissionManager
-                = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
-
-            // Maple onboarding process
-            ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
-
-            address[] memory lenders  = new address[](1);
-            bool[]    memory booleans = new bool[](1);
-
-            lenders[0]  = address(Ethereum.ALM_PROXY);
-            booleans[0] = true;
-
-            vm.startPrank(permissionManager.admin());
-            permissionManager.setLenderAllowlist(
-                syrup.manager(),
-                lenders,
-                booleans
-            );
-            vm.stopPrank();
 
             _testMapleIntegration(MapleE2ETestParams({
                 ctx:           ctx,
@@ -2720,8 +2703,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             address asset = ISparkVaultV2Like(integration.integration).asset();
 
-            uint256 amount   = address(asset) == Ethereum.WETH ? 1_000 : 10_000_000;
-            uint256 decimals = IERC20Metadata(asset).decimals();
+            uint256 amount          = address(asset) == Ethereum.WETH ? 1_000 : 10_000_000;
+            uint256 decimals        = IERC20Metadata(asset).decimals();
+            uint256 userVaultAmount = (address(asset) == Ethereum.WETH ? 1_000 : 1_000_000) * 10 ** decimals;
+
+            if (userVaultAmount > ISparkVaultV2Like(integration.integration).maxDeposit(address(this))) {
+                uint256 depositCap = ISparkVaultV2Like(integration.integration).depositCap();
+
+                // NOTE Setting Cap to 2 * userVaultAmount because totalAssets > depositCap due to rewards when calculating maxDeposit()
+                vm.prank(Ethereum.SPARK_PROXY);
+                ISparkVaultV2Like(integration.integration).setDepositCap(depositCap + 2 * userVaultAmount);
+            }
 
             uint256 userVaultAmount = ISparkVaultV2Like(integration.integration).maxDeposit(address(this)) / 10;
 
@@ -2779,7 +2771,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.revertTo(snapshot);
     }
 
-    function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
+    function _runSLLE2ETestsForDomain(ChainId chainId) internal onChain(chainId) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
 
         address controller = ctx.prevController;
@@ -2875,8 +2867,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL", Ethereum.USDC);
 
-        integrations[12] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
-        integrations[13] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[12] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[13] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
         integrations[14] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
         integrations[15] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
         integrations[16] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
