@@ -2715,11 +2715,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 ISparkVaultV2Like(integration.integration).setDepositCap(depositCap + 2 * userVaultAmount);
             }
 
-            uint256 userVaultAmount = ISparkVaultV2Like(integration.integration).maxDeposit(address(this)) / 10;
-
-            // Avoid deposit caps but ensure test still runs
-            assertGt(userVaultAmount, 1 * 10 ** decimals);
-
             _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
                 ctx:             ctx,
                 vault:           integration.integration,
@@ -2849,8 +2844,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet(address controller) internal view returns (SLLIntegration[] memory integrations) {
-        MainnetController mainnetController = MainnetController(controller);
-
         integrations = new SLLIntegration[](40);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
@@ -2918,8 +2911,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     )
         internal returns (SLLIntegration[] memory integrations)
     {
-        ForeignController foreignController = ForeignController(controller);
-
         integrations = new SLLIntegration[](5);
 
         integrations[0] = _createPsm3Integration("PSM3-USDC",  psm, usdc);
@@ -2934,8 +2925,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsArbitrumOne(address controller) internal returns (SLLIntegration[] memory integrations) {
-        ForeignController foreignController = ForeignController(controller);
-
         SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(controller, Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
 
         integrations = new SLLIntegration[](basicIntegrations.length + 2);
@@ -2952,8 +2941,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsBase(address controller) internal returns (SLLIntegration[] memory integrations) {
-        ForeignController foreignController = ForeignController(controller);
-
         SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(controller, Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
 
         integrations = new SLLIntegration[](basicIntegrations.length + 4);
@@ -2973,8 +2960,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsAvalanche(address controller) internal returns (SLLIntegration[] memory integrations) {
-        ForeignController foreignController = ForeignController(controller);
-
         integrations = new SLLIntegration[](4);
 
         integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
@@ -3060,8 +3045,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SLLIntegration[]  memory integrations,
         address                  controller
     ) internal returns (SLLIntegration[] memory newIntegrations) {
-        MainnetController mainnetController = MainnetController(controller);
-
         newIntegrations = new SLLIntegration[](integrations.length + 1);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
