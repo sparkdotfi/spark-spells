@@ -348,6 +348,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant USDS_ATOKEN         = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM       = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
+    address internal constant FLUID_SUSDS_ARBITRUM = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
+
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
     uint256 internal constant START_BLOCK = 21029247;
@@ -389,50 +391,51 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Ethereum()) {
-        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
+
+        address controller = ctx.prevController;
 
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
-        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(address(mainnetController));
+        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(controller);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
-        skip(2 days);  // Ensure rate limits are recharged
-
         for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
+            _runSLLE2ETests(ctx, integrations[i]);
         }
 
         vm.recordLogs();  // Used to get events from rate limits after execution
 
-        // TODO: Change back to _executeAllPayloadsAndBridges() after dealing with multichain events
         _executeMainnetPayload();
 
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        integrations  = _getPostExecutionIntegrations(integrations, address(mainnetController));
+        integrations  = _getPostExecutionIntegrations(integrations, controller);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
+            _runSLLE2ETests(ctx, integrations[i]);
         }
     }
 
-    function test_LAYER2_E2E_sparkLiquidityLayer() external {
-        uint256 snapshot = vm.snapshot();
-        for (uint256 i = 0; i < allChains.length; ++i) {
-            if (
-                allChains[i] == ChainIdUtils.Gnosis() ||
-                allChains[i] == ChainIdUtils.ArbitrumOne() ||  // TODO: Remove this once block number is figured out
-                allChains[i] == ChainIdUtils.Unichain()     // TODO: Remove this once rate limit keys are figured out
-            ) continue;
+    function test_ARBITRUM_E2E_sparkLiquidityLayer() external {
+        _runFullLayer2TestSuite(ChainIdUtils.ArbitrumOne());
+    }
 
-            if (allChains[i] != ChainIdUtils.Avalanche()) continue;
+    function test_AVALANCHE_E2E_sparkLiquidityLayer() external {
+        _runFullLayer2TestSuite(ChainIdUtils.Avalanche());
+    }
 
-            console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
-            _runFullLayer2TestSuite(allChains[i]);
+    function test_BASE_E2E_sparkLiquidityLayer() external {
+        _runFullLayer2TestSuite(ChainIdUtils.Base());
+    }
 
-            vm.revertToState(snapshot);
-        }
+    function test_OPTIMISM_E2E_sparkLiquidityLayer() external {
+        _runFullLayer2TestSuite(ChainIdUtils.Optimism());
+    }
+
+    function test_UNICHAIN_E2E_sparkLiquidityLayer() external {
+        _runFullLayer2TestSuite(ChainIdUtils.Unichain());
     }
 
     /**********************************************************************************************/
@@ -583,10 +586,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
 
-        // Assert value accrual
+        uint256 acceptableDust = 2;
+
         // TODO: Figure out how to make this more robust, this is from Fluid because of very small amounts
-        assertGt(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets - 2);
-        assertGt(vault.balanceOf(address(p.ctx.proxy)),                        startingShares - 2);
+        if (startingAssets > acceptableDust && startingShares > acceptableDust) {
+            // Assert value accrual
+            assertGt(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets - acceptableDust);
+            assertGt(vault.balanceOf(address(p.ctx.proxy)),                        startingShares - acceptableDust);
+        } else {
+            assertGe(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets);
+            assertGe(vault.balanceOf(address(p.ctx.proxy)),                        startingShares);
+        }
     }
 
     function _testAaveOnboarding(
@@ -2474,7 +2484,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     // TODO: MDL, this function should be broken up into one function per test.
-    function _runSLLE2ETests(SLLIntegration memory integration) internal {
+    function _runSLLE2ETests(
+        SparkLiquidityLayerContext memory ctx,
+        SLLIntegration memory integration
+    )
+        internal
+    {
         uint256 snapshot = vm.snapshot();
 
         // TODO: Alphabetical order
@@ -2482,10 +2497,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             address asset         = IAToken(integration.integration).UNDERLYING_ASSET_ADDRESS();
-            uint256 depositAmount = (asset == Ethereum.WETH ? 1_000 : 50_000_000) * 10 ** IERC20Like(asset).decimals();
+            uint256 depositAmount = (asset == Ethereum.WETH ? 1_000 : 5_000_000) * 10 ** IERC20Like(asset).decimals();
 
             _testAaveIntegration(E2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
+                ctx:           ctx,
                 vault:         integration.integration,
                 depositAmount: depositAmount,
                 depositKey:    integration.entryId,
@@ -2500,7 +2515,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 decimals = IERC20Metadata(IERC4626(integration.integration).asset()).decimals();
 
             _testERC4626Integration(E2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
+                ctx:           ctx,
                 vault:         integration.integration,
                 depositAmount: 1 * 10 ** decimals,  // Lower to avoid supply cap issues (TODO: Fix)
                 depositKey:    integration.entryId,
@@ -2514,7 +2529,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             // Must be set to infinite
             assertEq(
-                IRateLimits(_getSparkLiquidityLayerContext().rateLimits).getCurrentRateLimit(integration.entryId),
+                IRateLimits(ctx.rateLimits).getCurrentRateLimit(integration.entryId),
                 type(uint256).max
             );
         }
@@ -2523,7 +2538,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             _testCurveLPIntegration(CurveLPE2ETestParams({
-                ctx:            _getSparkLiquidityLayerContext(),
+                ctx:            ctx,
                 pool:           integration.integration,
                 asset0:         ICurvePoolLike(integration.integration).coins(0),
                 asset1:         ICurvePoolLike(integration.integration).coins(1),
@@ -2538,7 +2553,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             _testCurveSwapIntegration(CurveSwapE2ETestParams({
-                ctx:            _getSparkLiquidityLayerContext(),
+                ctx:            ctx,
                 pool:           integration.integration,
                 asset0:         ICurvePoolLike(integration.integration).coins(0),
                 asset1:         ICurvePoolLike(integration.integration).coins(1),
@@ -2571,7 +2586,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vm.stopPrank();
 
             _testMapleIntegration(MapleE2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
+                ctx:           ctx,
                 vault:         integration.integration,
                 depositAmount: 1_000_000e6,
                 depositKey:    integration.entryId,
@@ -2585,7 +2600,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             _testPSMIntegration(PSMSwapE2ETestParams({
-                ctx:        _getSparkLiquidityLayerContext(),
+                ctx:        ctx,
                 psm:        integration.integration,
                 swapAmount: 100_000_000e6,
                 swapKey:    integration.entryId
@@ -2596,7 +2611,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             _testFarmIntegration(FarmE2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
+                ctx:           ctx,
                 farm:          integration.integration,
                 depositAmount: 100_000_000e6,
                 depositKey:    integration.entryId,
@@ -2608,7 +2623,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             _testEthenaIntegration(EthenaE2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
+                ctx:           ctx,
                 depositAmount: 1_000_000e6,
                 mintKey:       integration.entryId,
                 depositKey:    integration.entryId2,
@@ -2622,7 +2637,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             console2.log("Running SLL E2E test for", integration.label);
 
             _testCoreIntegration(CoreE2ETestParams({
-                ctx:        _getSparkLiquidityLayerContext(),
+                ctx:        ctx,
                 mintAmount: 100_000_000e6,
                 burnAmount: 50_000_000e6,
                 mintKey:    integration.entryId
@@ -2644,7 +2659,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ) = abi.decode(integration.extraData, (address, address, address, address));
 
             _testBUIDLIntegration(BUIDLE2ETestParams({
-                ctx:                 _getSparkLiquidityLayerContext(),
+                ctx:                 ctx,
                 depositAsset:        depositAsset,
                 depositDestination:  depositDestination,
                 depositAmount:       100_000_000e6,
@@ -2665,7 +2680,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ) = abi.decode(integration.extraData, (address, address));
 
             _testTransferAssetIntegration(TransferAssetE2ETestParams({
-                ctx:            _getSparkLiquidityLayerContext(),
+                ctx:            ctx,
                 asset:          asset,
                 destination:    destination,
                 transferKey:    integration.entryId,
@@ -2688,7 +2703,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ) = abi.decode(integration.extraData, (address, address, address, address));
 
             _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
-                ctx:                 _getSparkLiquidityLayerContext(),
+                ctx:                 ctx,
                 depositAsset:        depositAsset,
                 depositDestination:  depositDestination,
                 depositAmount:       1_000_000e6,
@@ -2714,7 +2729,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertGt(userVaultAmount, 1 * 10 ** decimals);
 
             _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
-                ctx:             _getSparkLiquidityLayerContext(),
+                ctx:             ctx,
                 vault:           integration.integration,
                 takeKey:         integration.entryId,
                 transferKey:     integration.exitId,
@@ -2733,7 +2748,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 decimals = IERC20Metadata(asset).decimals();
 
             _testPSM3Integration(PSM3E2ETestParams({
-                ctx:           _getSparkLiquidityLayerContext(),
+                ctx:           ctx,
                 psm3:          integration.integration,
                 asset:         asset,
                 depositAmount: 10_000_000 * 10 ** decimals,
@@ -2749,7 +2764,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ( uint32 cctpId ) = abi.decode(integration.extraData, (uint32));
 
             _testCCTPIntegration(CCTPE2ETestParams({
-                ctx:            _getSparkLiquidityLayerContext(),
+                ctx:            ctx,
                 cctp:           integration.integration,
                 transferAmount: 50_000_000e6,
                 transferKey:    integration.entryId,
@@ -2765,16 +2780,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _runFullLayer2TestSuite(ChainId chainId) internal onChain(chainId) {
-        address controller = _getSparkLiquidityLayerContext().controller;
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
 
-        bytes32[] memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
+        address controller = ctx.prevController;
 
-        SLLIntegration[] memory integrations = _getPreExecutionIntegrations(controller);
+        bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
+        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(controller);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
+            _runSLLE2ETests(ctx, integrations[i]);
         }
 
         RecordedLogs.init();
@@ -2788,8 +2804,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
+        ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
+
         for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(integrations[i]);
+            _runSLLE2ETests(ctx,integrations[i]);
         }
     }
 
@@ -2838,7 +2856,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _getPreExecutionIntegrationsMainnet(address controller) internal returns (SLLIntegration[] memory integrations) {
+    function _getPreExecutionIntegrationsMainnet(address controller) internal view returns (SLLIntegration[] memory integrations) {
         MainnetController mainnetController = MainnetController(controller);
 
         integrations = new SLLIntegration[](40);
@@ -2923,6 +2941,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
+    function _getPreExecutionIntegrationsArbitrumOne(address controller) internal returns (SLLIntegration[] memory integrations) {
+        ForeignController foreignController = ForeignController(controller);
+
+        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(controller, Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
+
+        integrations = new SLLIntegration[](basicIntegrations.length + 2);
+
+        for (uint256 i = 0; i < basicIntegrations.length; ++i) {
+            integrations[i] = basicIntegrations[i];
+        }
+
+        integrations[5] = _createERC4626Integration("ERC4626-FLUID_SUSDS", FLUID_SUSDS_ARBITRUM);
+
+        integrations[6] = _createAaveIntegration("AAVE-ATOKEN_USDC", Arbitrum.ATOKEN_USDC);
+
+        return integrations;
+    }
+
     function _getPreExecutionIntegrationsBase(address controller) internal returns (SLLIntegration[] memory integrations) {
         ForeignController foreignController = ForeignController(controller);
 
@@ -2947,7 +2983,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsAvalanche(address controller) internal returns (SLLIntegration[] memory integrations) {
         ForeignController foreignController = ForeignController(controller);
 
-        integrations = new SLLIntegration[](7);
+        integrations = new SLLIntegration[](4);
 
         integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
@@ -2968,7 +3004,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         if (chainId == ChainIdUtils.ArbitrumOne()) {
-            // return _getPreExecutionIntegrationsBasicPsm3(controller, ArbitrumOne.PSM3, ArbitrumOne.USDC, ArbitrumOne.USDS, ArbitrumOne.SUSDS);
+            return _getPreExecutionIntegrationsArbitrumOne(controller);
         }
 
         if (chainId == ChainIdUtils.Base()) {
@@ -3014,16 +3050,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         if (
-            chainId == ChainIdUtils.Optimism() ||
             chainId == ChainIdUtils.ArbitrumOne() ||
-            chainId == ChainIdUtils.Unichain() ||
-            chainId == ChainIdUtils.Base()
+            chainId == ChainIdUtils.Avalanche() ||
+            chainId == ChainIdUtils.Base() ||
+            chainId == ChainIdUtils.Optimism() ||
+            chainId == ChainIdUtils.Unichain()
         ) {
             return _getPostExecutionIntegrationsNoChange(integrations);
-        }
-
-        if (chainId == ChainIdUtils.Avalanche()) {
-            // TODO
         }
 
         else {
@@ -3460,6 +3493,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
     }
 
+    function _getSparkLiquidityLayerContext(bool isPostExecution) internal view returns (SparkLiquidityLayerContext memory ctx) {
+        ctx = _getSparkLiquidityLayerContext(ChainIdUtils.fromUint(block.chainid));
+
+        // Use the existing controller for all tests if spell hasn't executed yet
+        if (isPostExecution) return ctx;
+
+        ctx.controller = ctx.prevController;
+    }
+
     // TODO: MDL, seems like unnecessary overload bloat.
     function _assertRateLimit(
        bytes32 key,
@@ -3611,7 +3653,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _remove(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
         bool found;
         (newArray, found) = _removeAndReturnFound(array, value);
-        assertTrue(found, "Value not found");
+        assertTrue(found, "Value not found in array");
     }
 
     function _removeIfContaining(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
