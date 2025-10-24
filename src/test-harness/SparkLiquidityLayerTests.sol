@@ -368,10 +368,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
 
-        address controller = ctx.prevController;
-
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
-        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(controller);
+        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations();
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -384,7 +382,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _executeMainnetPayload();
 
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        integrations  = _getPostExecutionIntegrations(integrations, controller);
+        integrations  = _getPostExecutionIntegrations(integrations);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -1744,8 +1742,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         IERC20               asset = IERC20(p.depositAsset);
         ISuperstateTokenLike token = ISuperstateTokenLike(p.vault);
 
-        uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
-        uint256 withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+        uint256 depositLimit = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
 
         /********************************/
         /*** Step 1: Check rate limit ***/
@@ -2769,10 +2766,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _runSLLE2ETestsForDomain(ChainId chainId) internal onChain(chainId) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
 
-        address controller = ctx.prevController;
-
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
-        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations(controller);
+        SLLIntegration[] memory integrations  = _getPreExecutionIntegrations();
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -2787,7 +2782,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         chainData[chainId].domain.selectFork();
 
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
-        integrations  = _getPostExecutionIntegrations(integrations, controller);
+        integrations  = _getPostExecutionIntegrations(integrations);
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
@@ -2843,7 +2838,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _getPreExecutionIntegrationsMainnet(address controller) internal view returns (SLLIntegration[] memory integrations) {
+    function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
         integrations = new SLLIntegration[](40);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
@@ -2903,13 +2898,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
-        address controller,
         address psm,
         address usdc,
         address usds,
         address susds
     )
-        internal returns (SLLIntegration[] memory integrations)
+        internal view returns (SLLIntegration[] memory integrations)
     {
         integrations = new SLLIntegration[](5);
 
@@ -2924,8 +2918,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
-    function _getPreExecutionIntegrationsArbitrumOne(address controller) internal returns (SLLIntegration[] memory integrations) {
-        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(controller, Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
+    function _getPreExecutionIntegrationsArbitrumOne() internal view returns (SLLIntegration[] memory integrations) {
+        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
 
         integrations = new SLLIntegration[](basicIntegrations.length + 2);
 
@@ -2940,8 +2934,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
-    function _getPreExecutionIntegrationsBase(address controller) internal returns (SLLIntegration[] memory integrations) {
-        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(controller, Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
+    function _getPreExecutionIntegrationsBase() internal view returns (SLLIntegration[] memory integrations) {
+        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
 
         integrations = new SLLIntegration[](basicIntegrations.length + 4);
 
@@ -2959,7 +2953,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
-    function _getPreExecutionIntegrationsAvalanche(address controller) internal returns (SLLIntegration[] memory integrations) {
+    function _getPreExecutionIntegrationsAvalanche() internal view returns (SLLIntegration[] memory integrations) {
         integrations = new SLLIntegration[](4);
 
         integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
@@ -2973,31 +2967,31 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
-    function _getPreExecutionIntegrations(address controller) internal returns (SLLIntegration[] memory integrations) {
+    function _getPreExecutionIntegrations() internal view returns (SLLIntegration[] memory integrations) {
         ChainId chainId = ChainIdUtils.fromUint(block.chainid);
 
         if (chainId == ChainIdUtils.Avalanche()) {
-            return _getPreExecutionIntegrationsAvalanche(controller);
+            return _getPreExecutionIntegrationsAvalanche();
         }
 
         if (chainId == ChainIdUtils.ArbitrumOne()) {
-            return _getPreExecutionIntegrationsArbitrumOne(controller);
+            return _getPreExecutionIntegrationsArbitrumOne();
         }
 
         if (chainId == ChainIdUtils.Base()) {
-            return _getPreExecutionIntegrationsBase(controller);
+            return _getPreExecutionIntegrationsBase();
         }
 
         if (chainId == ChainIdUtils.Ethereum()) {
-            return _getPreExecutionIntegrationsMainnet(controller);
+            return _getPreExecutionIntegrationsMainnet();
         }
 
         if (chainId == ChainIdUtils.Optimism()) {
-            return _getPreExecutionIntegrationsBasicPsm3(controller, Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
+            return _getPreExecutionIntegrationsBasicPsm3(Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
         }
 
         if (chainId == ChainIdUtils.Unichain()) {
-            return _getPreExecutionIntegrationsBasicPsm3(controller, Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
+            return _getPreExecutionIntegrationsBasicPsm3(Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
         }
 
         else {
@@ -3005,7 +2999,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _getPostExecutionIntegrationsNoChange(SLLIntegration[] memory integrations) internal returns (SLLIntegration[] memory newIntegrations) {
+    function _getPostExecutionIntegrationsNoChange(SLLIntegration[] memory integrations)
+        internal pure returns (SLLIntegration[] memory newIntegrations)
+    {
         newIntegrations = new SLLIntegration[](integrations.length);
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
@@ -3013,17 +3009,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPostExecutionIntegrations(
-        SLLIntegration[] memory integrations,
-        address controller
+        SLLIntegration[] memory integrations
     )
-        internal returns (SLLIntegration[] memory newIntegrations)
+        internal view returns (SLLIntegration[] memory newIntegrations)
     {
         ChainId chainId = ChainIdUtils.fromUint(block.chainid);
 
         newIntegrations = new SLLIntegration[](integrations.length);
 
         if (chainId == ChainIdUtils.Ethereum()) {
-            return _getPostExecutionIntegrationsMainnet(integrations, controller);
+            return _getPostExecutionIntegrationsMainnet(integrations);
         }
 
         if (
@@ -3042,9 +3037,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPostExecutionIntegrationsMainnet(
-        SLLIntegration[]  memory integrations,
-        address                  controller
-    ) internal returns (SLLIntegration[] memory newIntegrations) {
+        SLLIntegration[]  memory integrations
+    ) internal view returns (SLLIntegration[] memory newIntegrations) {
         newIntegrations = new SLLIntegration[](integrations.length + 1);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
