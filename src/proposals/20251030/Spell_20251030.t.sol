@@ -27,9 +27,17 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import {
     ISyrupLike,
     ISparkVaultV2Like,
-    IERC20Like,
-    IPermissionManagerLike
+    IERC20Like
 } from "src/interfaces/Interfaces.sol";
+
+interface IPermissionManagerLike {
+    function admin() external view returns (address);
+    function setLenderAllowlist(
+        address            poolManager_,
+        address[] calldata lenders_,
+        bool[]    calldata booleans_
+    ) external;
+}
 
 contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
@@ -57,10 +65,22 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
         chainData[ChainIdUtils.Unichain()].prevController = Unichain.ALM_CONTROLLER;
         chainData[ChainIdUtils.Unichain()].newController  = UNICHAIN_NEW_ALM_CONTROLLER;
 
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
-        // chainData[ChainIdUtils.Optimism()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
-        // chainData[ChainIdUtils.Unichain()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
+        // Maple onboarding process
+        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
+
+        address[] memory lenders  = new address[](1);
+        bool[]    memory booleans = new bool[](1);
+
+        lenders[0]  = address(Ethereum.ALM_PROXY);
+        booleans[0] = true;
+
+        vm.startPrank(permissionManager.admin());
+        permissionManager.setLenderAllowlist(
+            syrup.manager(),
+            lenders,
+            booleans
+        );
+        vm.stopPrank();
     }
 
     function test_ARBITRUM_controllerUpgrade() public onChain(ChainIdUtils.ArbitrumOne()) {
@@ -127,23 +147,6 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
         _assertUnlimitedRateLimit(redeemKey);
         _assertUnlimitedRateLimit(withdrawKey);
-
-        // Maple onboarding process
-        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
-
-        address[] memory lenders  = new address[](1);
-        bool[]    memory booleans = new bool[](1);
-
-        lenders[0]  = address(Ethereum.ALM_PROXY);
-        booleans[0] = true;
-
-        vm.startPrank(permissionManager.admin());
-        permissionManager.setLenderAllowlist(
-            syrup.manager(),
-            lenders,
-            booleans
-        );
-        vm.stopPrank();
 
         _testMapleIntegration(MapleE2ETestParams({
             ctx:           ctx,
@@ -304,6 +307,11 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
 
     function setUp() public override {
         super.setUp();
+
+        // chainData[ChainIdUtils.ArbitrumOne()].payload = 0x0546eFeBb465c33A49D3E592b218e0B00fA51BF1;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
+        // chainData[ChainIdUtils.Optimism()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
+        // chainData[ChainIdUtils.Unichain()].payload  = 0x4924e46935F6706d08413d44dF5C31a9d40F6a64;
     }
 
     function test_ETHEREUM_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Ethereum()) {

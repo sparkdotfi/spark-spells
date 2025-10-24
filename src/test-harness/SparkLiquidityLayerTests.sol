@@ -53,8 +53,7 @@ import {
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
-    IWithdrawalManagerLike,
-    IPermissionManagerLike
+    IWithdrawalManagerLike
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
@@ -1954,10 +1953,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.balanceOf(user), shares);
         assertGt(vault.assetsOf(user),  p.userVaultAmount);
 
-        uint256 totalVaultAssets = vault.totalAssets();
-
-        deal(address(asset), p.vault, totalVaultAssets);
-
         vm.prank(user);
         vault.redeem(shares, user, user);
 
@@ -2212,7 +2207,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
 
-        if (domainId != ChainIdUtils.Avalanche()) {
+        if (domainPsm3 != address(0)) {
             uint256 domainUsdcPsmBalance = domainUsdc.balanceOf(domainPsm3);
 
             // --- Step 3: Deposit USDC into PSM3 ---
@@ -2402,26 +2397,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         else if (integration.category == Category.MAPLE) {
             console2.log("Running SLL E2E test for", integration.label);
-
-            IPermissionManagerLike permissionManager
-                = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
-
-            // Maple onboarding process
-            ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
-
-            address[] memory lenders  = new address[](1);
-            bool[]    memory booleans = new bool[](1);
-
-            lenders[0]  = address(Ethereum.ALM_PROXY);
-            booleans[0] = true;
-
-            vm.startPrank(permissionManager.admin());
-            permissionManager.setLenderAllowlist(
-                syrup.manager(),
-                lenders,
-                booleans
-            );
-            vm.stopPrank();
 
             _testMapleIntegration(MapleE2ETestParams({
                 ctx:           _getSparkLiquidityLayerContext(),
@@ -2666,8 +2641,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[11] = _createSLLIntegration(mainnetController, "CCTP_GENERAL", Category.CCTP_GENERAL, Ethereum.USDC);
 
-        integrations[12] = _createSLLIntegration(mainnetController, "CCTP-AVALANCHE",    Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
-        integrations[13] = _createSLLIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[12] = _createSLLIntegration(mainnetController, "CCTP-ARBITRUM_ONE", Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[13] = _createSLLIntegration(mainnetController, "CCTP-AVALANCHE",    Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
         integrations[14] = _createSLLIntegration(mainnetController, "CCTP-BASE",         Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
         integrations[15] = _createSLLIntegration(mainnetController, "CCTP-OPTIMISM",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
         integrations[16] = _createSLLIntegration(mainnetController, "CCTP-UNICHAIN",     Category.CCTP, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
