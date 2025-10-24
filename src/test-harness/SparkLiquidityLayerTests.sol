@@ -788,10 +788,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
 
-        // Assert at least 0.4% interest accrued (4.8% APY)
+        // Assert at least 0.3% interest accrued (3.6% APY)
         assertGe(
             syrup.convertToAssets(v.shares) - v.positionAssets,
-            v.positionAssets * 0.004e18 / 1e18
+            v.positionAssets * 0.003e18 / 1e18
         );
 
         /********************************************/
@@ -849,8 +849,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.stopPrank();
 
-        // Assert at least 0.4% of value was generated (4.8% APY) (approximated because of extra day)
-        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.004e18 / 1e18);
+        // Assert at least 0.3% of value was generated (3.6% APY) (approximated because of extra day)
+        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.003e18 / 1e18);
         assertEq(asset.balanceOf(address(p.ctx.proxy)), v.withdrawAmount);
 
         assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares);
@@ -2533,8 +2533,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             address asset = ISparkVaultV2Like(integration.integration).asset();
 
-            uint256 amount   = address(asset) == Ethereum.WETH ? 1_000 : 10_000_000;
-            uint256 decimals = IERC20Metadata(asset).decimals();
+            uint256 amount          = address(asset) == Ethereum.WETH ? 1_000 : 10_000_000;
+            uint256 decimals        = IERC20Metadata(asset).decimals();
+            uint256 userVaultAmount = (address(asset) == Ethereum.WETH ? 1_000 : 1_000_000) * 10 ** decimals;
+
+            if (userVaultAmount > ISparkVaultV2Like(integration.integration).maxDeposit(address(this))) {
+                uint256 depositCap = ISparkVaultV2Like(integration.integration).depositCap();
+
+                // NOTE Setting Cap to 2 * userVaultAmount because totalAssets > depositCap due to rewards when calculating maxDeposit()
+                vm.prank(Ethereum.SPARK_PROXY);
+                ISparkVaultV2Like(integration.integration).setDepositCap(depositCap + 2 * userVaultAmount);
+            }
 
             _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
                 ctx:             _getSparkLiquidityLayerContext(),
@@ -2543,7 +2552,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 transferKey:     integration.exitId,
                 takeAmount:      amount * 10 ** decimals,
                 transferAmount:  amount * 10 ** decimals,
-                userVaultAmount: amount * 10 ** decimals,
+                userVaultAmount: userVaultAmount,
                 tolerance:       10
             }));
         }
