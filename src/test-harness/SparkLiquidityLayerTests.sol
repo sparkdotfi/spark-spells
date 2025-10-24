@@ -2477,6 +2477,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _runSLLE2ETests(SLLIntegration memory integration) internal {
         uint256 snapshot = vm.snapshot();
 
+        // TODO: Alphabetical order
         if (integration.category == Category.AAVE) {
             console2.log("Running SLL E2E test for", integration.label);
 
@@ -3295,7 +3296,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         return SLLIntegration({
             label:       label,
-            category:    Category.PSM,
+            category:    Category.PSM3,
             integration: integration,
             entryId:     RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset),
             entryId2:    bytes32(0),
