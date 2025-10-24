@@ -426,7 +426,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 allChains[i] == ChainIdUtils.Unichain()     // TODO: Remove this once rate limit keys are figured out
             ) continue;
 
-            if (allChains[i] != ChainIdUtils.Base()) continue;
+            if (allChains[i] != ChainIdUtils.Avalanche()) continue;
 
             console2.log("\n Running full E2E test suite for", allChains[i].toDomainString());
             _runFullLayer2TestSuite(allChains[i]);
