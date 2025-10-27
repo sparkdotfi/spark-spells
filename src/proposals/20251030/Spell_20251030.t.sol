@@ -414,9 +414,9 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
         uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION);
         uint256 aaveUsdsBalanceBefore       = IERC20(Ethereum.USDS).balanceOf(AAVE_PAYMENT_ADDRESS);
-        uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
 
         assertEq(sparkUsdsBalanceBefore,      33_972_359.445801365846236778e18);
         assertEq(foundationUsdsBalanceBefore, 0);

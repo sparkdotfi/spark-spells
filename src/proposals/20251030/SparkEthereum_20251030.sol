@@ -28,7 +28,6 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
            - Increase Vault Deposit Caps
            Spark Liquidity Layer:
            - Onboard syrupUSDT
-           - Onboard with B2C2
            Spark Treasury:
            - Aave Q32025 Revenue Share Payment
            - November Transfer to Spark Foundation
