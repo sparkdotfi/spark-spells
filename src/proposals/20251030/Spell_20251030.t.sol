@@ -45,6 +45,8 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
     address internal constant OPTIMISM_NEW_ALM_CONTROLLER = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
     address internal constant UNICHAIN_NEW_ALM_CONTROLLER = 0x7CD6EC14785418aF694efe154E7ff7d9ba99D99b;
 
+    address internal constant PYUSD = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
@@ -162,6 +164,60 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
             redeemKey:     redeemKey,
             withdrawKey:   withdrawKey,
             tolerance:     10
+        }));
+    }
+
+    function test_ETHEREUM_sll_onboardB2C2() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usdcKey =  RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            address(0xdeadbeef)  // TODO change
+        );
+
+        bytes32 usdtKey =  RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDT,
+            address(0xdeadbeef)  // TODO change
+        );
+
+        bytes32 pyusdKey =  RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            PYUSD,
+            address(0xdeadbeef)  // TODO change
+        );
+
+        _assertRateLimit(usdcKey,  0, 0);
+        _assertRateLimit(usdtKey,  0, 0);
+        _assertRateLimit(pyusdKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usdcKey,  1_000_000e6, 20_000_000e6 / uint256(1 days));
+        _assertRateLimit(usdtKey,  1_000_000e6, 20_000_000e6 / uint256(1 days));
+        _assertRateLimit(pyusdKey, 1_000_000e6, 20_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          Ethereum.USDC,
+            destination:    address(0xdeadbeef),  // TODO change
+            transferKey:    usdcKey,
+            transferAmount: 100_000e6
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          Ethereum.USDT,
+            destination:    address(0xdeadbeef),  // TODO change
+            transferKey:    usdtKey,
+            transferAmount: 100_000e6
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          PYUSD,
+            destination:    address(0xdeadbeef),  // TODO change
+            transferKey:    pyusdKey,
+            transferAmount: 100_000e6
         }));
     }
 

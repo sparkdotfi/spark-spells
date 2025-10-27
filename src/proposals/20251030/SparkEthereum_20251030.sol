@@ -133,6 +133,43 @@ contract SparkEthereum_20251030 is SparkPayloadEthereum {
 
         // November Transfer to Spark Foundation
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION, FOUNDATION_TRANSFER_AMOUNT);
+
+        // Onboard B2C2
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                address(0xdeadbeef)  // TODO change
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDT,
+                address(0xdeadbeef)  // TODO change
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                PYUSD,
+                address(0xdeadbeef)  // TODO change
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
     }
 
 }
