@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
@@ -26,6 +28,9 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
            - Increase Vault Deposit Caps
            Spark Liquidity Layer:
            - Onboard syrupUSDT
+           Spark Treasury:
+           - Aave Q32025 Revenue Share Payment
+           - November Transfer to Spark Foundation
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/october-30-2025-proposed-changes-to-spark-for-upcoming-spell/27309
  * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xeea0e2648f55df4e57f8717831a5949f2a35852e32aa0f98a7e16e7ed56268a8
@@ -36,8 +41,12 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
  */
 contract SparkEthereum_20251030 is SparkPayloadEthereum {
 
-    address internal constant PYUSD      = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
-    address internal constant SYRUP_USDT = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+    address internal constant AAVE_PAYMENT_ADDRESS = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
+    address internal constant PYUSD                = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+    address internal constant SYRUP_USDT           = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+
+    uint256 internal constant AAVE_PAYMENT_AMOUNT        = 150_042e18;
+    uint256 internal constant FOUNDATION_TRANSFER_AMOUNT = 1_100_000e18;
 
     constructor() {
         PAYLOAD_ARBITRUM  = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
@@ -105,7 +114,7 @@ contract SparkEthereum_20251030 is SparkPayloadEthereum {
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).setDepositCap(250_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).setDepositCap(250_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).setDepositCap(50_000e18);
-    
+
         // Onboard syrupUSDT
         _configureERC4626Vault({
             vault:        SYRUP_USDT,
@@ -118,6 +127,12 @@ contract SparkEthereum_20251030 is SparkPayloadEthereum {
                 SYRUP_USDT
             )
         );
+
+        // Aave Q32025 Revenue Share Payment
+        IERC20(Ethereum.USDS).transfer(AAVE_PAYMENT_ADDRESS, AAVE_PAYMENT_AMOUNT);
+
+        // November Transfer to Spark Foundation
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION, FOUNDATION_TRANSFER_AMOUNT);
     }
 
 }

@@ -2219,8 +2219,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    MainnetController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE));
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);  // NOTE: New slippage not in oldController, part of the payload to onboard a new pool.
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
@@ -2228,8 +2228,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
         } else {
             VmSafe.EthGetLogs[] memory cctpLogs = getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
+            VmSafe.EthGetLogs[] memory lzLogs   = getEvents(block.chainid, oldController, ForeignController.LayerZeroRecipientSet.selector);
 
             assertEq(cctpLogs.length, 1);
+            assertEq(lzLogs.length,   0);
 
             assertEq(uint32(uint256(cctpLogs[0].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 

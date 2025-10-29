@@ -50,7 +50,7 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-24T14:29:00Z";
+        _blockDate = "2025-10-27T15:09:00Z";
     }
 
     function setUp() public override {
@@ -67,7 +67,7 @@ contract SparkEthereum_20251030_SLLTests is SparkLiquidityLayerTests {
 
         chainData[ChainIdUtils.ArbitrumOne()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
         chainData[ChainIdUtils.Avalanche()].payload   = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        chainData[ChainIdUtils.Ethereum()].payload    = 0xBdD71DF15237D52c8F73e6D916550F2525807d00;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
         chainData[ChainIdUtils.Optimism()].payload    = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
         chainData[ChainIdUtils.Unichain()].payload    = 0x9C19c1e58a98A23E1363977C08085Fd5dAE92Af0;
 
@@ -175,7 +175,7 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-24T14:29:00Z";
+        _blockDate = "2025-10-27T15:09:00Z";
     }
 
     function setUp() public override {
@@ -183,7 +183,7 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
 
         chainData[ChainIdUtils.ArbitrumOne()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
         chainData[ChainIdUtils.Avalanche()].payload   = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        chainData[ChainIdUtils.Ethereum()].payload    = 0xBdD71DF15237D52c8F73e6D916550F2525807d00;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
         chainData[ChainIdUtils.Optimism()].payload    = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
         chainData[ChainIdUtils.Unichain()].payload    = 0x9C19c1e58a98A23E1363977C08085Fd5dAE92Af0;
     }
@@ -299,15 +299,15 @@ contract SparkEthereum_20251030_SparklendTests is SparklendTests {
         uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  413_902_809.733400849226541079e18);
-        assertEq(spUsdsBalanceBefore, 172_782_839.027389056878711825e18);
+        assertEq(spDaiBalanceBefore,  413_852_826.907635248963156256e18);
+        assertEq(spUsdsBalanceBefore, 171_338_343.119011364190523468e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 75_968.174319777610912710e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 37_339.589416785900172755e18);
+        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 89_733.707492554224916353e18);
+        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_003.135094118145514323e18);
     }
 
 }
@@ -316,9 +316,14 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
 
     using SafeERC20 for IERC20;
 
+    address internal constant AAVE_PAYMENT_ADDRESS = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
+
+    uint256 internal constant AAVE_PAYMENT_AMOUNT        = 150_042e18;
+    uint256 internal constant FOUNDATION_TRANSFER_AMOUNT = 1_100_000e18;
+
     constructor() {
         _spellId   = 20251030;
-        _blockDate = "2025-10-24T14:29:00Z";
+        _blockDate = "2025-10-27T15:09:00Z";
     }
 
     function setUp() public override {
@@ -326,7 +331,7 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
 
         chainData[ChainIdUtils.ArbitrumOne()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
         chainData[ChainIdUtils.Avalanche()].payload   = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        chainData[ChainIdUtils.Ethereum()].payload    = 0xBdD71DF15237D52c8F73e6D916550F2525807d00;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
         chainData[ChainIdUtils.Optimism()].payload    = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
         chainData[ChainIdUtils.Unichain()].payload    = 0x9C19c1e58a98A23E1363977C08085Fd5dAE92Af0;
     }
@@ -349,19 +354,19 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         _test_vault_depositBoundaryLimit({
             vault:              usdcVault,
             depositCap:         250_000_000e6,
-            expectedMaxDeposit: 199_999_176.442098e6
+            expectedMaxDeposit: 199_998_462.878431e6
         });
 
         _test_vault_depositBoundaryLimit({
             vault:              usdtVault,
             depositCap:         250_000_000e6,
-            expectedMaxDeposit: 214_049_341.144703e6
+            expectedMaxDeposit: 209_395_224.371615e6
         });
 
         _test_vault_depositBoundaryLimit({
             vault:              ethVault,
             depositCap:         50_000e18,
-            expectedMaxDeposit: 42_837.606066019510563207e18
+            expectedMaxDeposit: 42_350.575200494181695895e18
         });
     }
 
@@ -406,6 +411,22 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         uint256 shares = vault.deposit(maxDeposit, address(this));
 
         assertEq(vault.balanceOf(address(this)), shares);
+    }
+
+    function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+        uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION);
+        uint256 aaveUsdsBalanceBefore       = IERC20(Ethereum.USDS).balanceOf(AAVE_PAYMENT_ADDRESS);
+
+        assertEq(sparkUsdsBalanceBefore,      33_972_359.445801365846236778e18);
+        assertEq(foundationUsdsBalanceBefore, 0);
+        assertEq(aaveUsdsBalanceBefore,       0.040831024737258411e18);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),      sparkUsdsBalanceBefore - AAVE_PAYMENT_AMOUNT - FOUNDATION_TRANSFER_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION), foundationUsdsBalanceBefore + FOUNDATION_TRANSFER_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(AAVE_PAYMENT_ADDRESS),      aaveUsdsBalanceBefore + AAVE_PAYMENT_AMOUNT);
     }
 
 }
