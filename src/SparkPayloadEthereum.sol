@@ -99,7 +99,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
             });
         }
         if (PAYLOAD_AVALANCHE != address(0)) {
-            bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0);
+            bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(500_000, 0);
 
             LZForwarder.sendMessage({
                 _dstEid:        LZForwarder.ENDPOINT_ID_AVALANCHE,
