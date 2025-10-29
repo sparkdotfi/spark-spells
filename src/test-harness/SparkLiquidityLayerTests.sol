@@ -1936,6 +1936,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         IPSM3Like psm   = IPSM3Like(p.psm3);
         IERC20    asset = IERC20(p.asset);
 
+        skip(1 days);
+
         deal(address(asset), address(p.ctx.proxy), p.depositAmount);
 
         uint256 depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
