@@ -2756,6 +2756,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.revertTo(snapshot);
     }
 
+    // TODO: Rename to _runSLLE2ETestsFor and take log init and execution function calls as parameters, execute mainnet as well
     function _runSLLE2ETestsForDomain(ChainId chainId) internal onChain(chainId) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: false });
 
@@ -2960,6 +2961,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return integrations;
     }
 
+    // TODO: Use domain specific helper function naming here
     function _getPreExecutionIntegrations() internal view returns (SLLIntegration[] memory integrations) {
         ChainId chainId = ChainIdUtils.fromUint(block.chainid);
 
@@ -2987,15 +2989,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             return _getPreExecutionIntegrationsBasicPsm3(Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
         }
 
-        else {
-            revert("Invalid chainId");
-        }
+        revert("Invalid chainId");
     }
 
     function _getPostExecutionIntegrationsNoChange(SLLIntegration[] memory integrations)
         internal pure returns (SLLIntegration[] memory newIntegrations)
     {
         newIntegrations = new SLLIntegration[](integrations.length);
+
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
@@ -3014,6 +3015,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             return _getPostExecutionIntegrationsMainnet(integrations);
         }
 
+        // TODO: Use a function selector getter here to dynamically call the correct helper function based on chainId.
         if (
             chainId == ChainIdUtils.ArbitrumOne() ||
             chainId == ChainIdUtils.Avalanche() ||
@@ -3024,9 +3026,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             return _getPostExecutionIntegrationsNoChange(integrations);
         }
 
-        else {
-            revert("Invalid chainId");
-        }
+        revert("Invalid chainId");
     }
 
     function _getPostExecutionIntegrationsMainnet(
