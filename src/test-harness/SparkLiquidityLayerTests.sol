@@ -10,8 +10,6 @@ import { IMetaMorpho, MarketParams, Id } from "metamorpho/interfaces/IMetaMorpho
 
 import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -326,28 +324,27 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
 
     // TODO: Put in registry
-    address internal constant AAVE_ATOKEN_USDC    = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
-    address internal constant AAVE_CORE_AUSDT     = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
-    address internal constant AAVE_ETH_LIDO_USDS  = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
-    address internal constant AAVE_ETH_USDC       = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
-    address internal constant AAVE_ETH_USDS       = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
-    address internal constant BASE_MORPHO_TOKEN   = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
-    address internal constant BASE_SPARK_MULTISIG = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant BUIDL_DEPOSIT       = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
-    address internal constant BUIDL_REDEEM        = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
-    address internal constant CURVE_PYUSDUSDC     = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
-    address internal constant CURVE_PYUSDUSDS     = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
-    address internal constant MORPHO_TOKEN        = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
-    address internal constant MORPHO_USDC_BC      = 0x56A76b428244a50513ec81e225a293d128fd581D;
-    address internal constant SPARK_MULTISIG      = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant SYRUP               = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
-    address internal constant SYRUP_USDT          = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
-    address internal constant USCC_DEPOSIT        = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
-    address internal constant USDE_ATOKEN         = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
-    address internal constant USDS_ATOKEN         = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
-    address internal constant USDS_SPK_FARM       = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
-
+    address internal constant AAVE_ATOKEN_USDC     = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
+    address internal constant AAVE_CORE_AUSDT      = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
+    address internal constant AAVE_ETH_LIDO_USDS   = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
+    address internal constant AAVE_ETH_USDC        = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
+    address internal constant AAVE_ETH_USDS        = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
+    address internal constant BASE_MORPHO_TOKEN    = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
+    address internal constant BASE_SPARK_MULTISIG  = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant BUIDL_DEPOSIT        = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
+    address internal constant BUIDL_REDEEM         = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
+    address internal constant CURVE_PYUSDUSDC      = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+    address internal constant CURVE_PYUSDUSDS      = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
     address internal constant FLUID_SUSDS_ARBITRUM = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
+    address internal constant MORPHO_TOKEN         = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
+    address internal constant MORPHO_USDC_BC       = 0x56A76b428244a50513ec81e225a293d128fd581D;
+    address internal constant SPARK_MULTISIG       = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
+    address internal constant SYRUP                = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
+    address internal constant SYRUP_USDT           = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+    address internal constant USCC_DEPOSIT         = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
+    address internal constant USDE_ATOKEN          = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
+    address internal constant USDS_ATOKEN          = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
+    address internal constant USDS_SPK_FARM        = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
     address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
 
@@ -1950,7 +1947,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 1: Check rate limit ***/
         /********************************/
 
-        if (depositLimit != type(uint256).max) {
+        if (!unlimitedDeposit) {
             vm.prank(p.ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
             ForeignController(p.ctx.controller).depositPSM(address(asset), depositLimit + 1);
@@ -2081,11 +2078,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usdc.balanceOf(address(p.ctx.proxy)), 0);
         assertEq(usdc.totalSupply(),               totalSupply - p.transferAmount);
 
-        if (transferLimit != type(uint256).max) {
-            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - p.transferAmount);
-        } else {
-            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), type(uint256).max);
-        }
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - p.transferAmount);
 
         /**************************************************/
         /*** Step 3: Warp to check rate limit recharge ***/
@@ -2131,7 +2124,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         string memory response = string(vm.ffi(inputs));
 
         // Get Result Array Length
-        uint i;
+        uint256 i;
         for(; i < 1000; i++) {
             try vm.parseJsonAddress(response, string(abi.encodePacked(".result[", vm.toString(i), "].address"))) {
             } catch {
@@ -2140,7 +2133,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }
         }
 
-        for(uint j; j < i; ++j) {
+        for(uint256 j; j < i; ++j) {
             // Set unused fields to 0 to save computation
             logs[j] = VmSafe.EthGetLogs({
                 emitter:          vm.parseJsonAddress(response,      string(abi.encodePacked(".result[", vm.toString(j), "].address"))),
@@ -2490,7 +2483,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     // TODO: MDL, this function should be broken up into one function per test.
     function _runSLLE2ETests(
         SparkLiquidityLayerContext memory ctx,
-        SLLIntegration memory integration
+        SLLIntegration             memory integration
     )
         internal
     {
@@ -2733,13 +2726,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             address asset = abi.decode(integration.extraData, (address));
 
-            uint256 decimals = IERC20Metadata(asset).decimals();
-
             _testPSM3Integration(PSM3E2ETestParams({
                 ctx:           ctx,
                 psm3:          integration.integration,
                 asset:         asset,
-                depositAmount: 10_000_000 * 10 ** decimals,
+                depositAmount: 10_000_000 * 10 ** IERC20Metadata(asset).decimals(),
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
                 tolerance:     10
@@ -2749,14 +2740,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         else if (integration.category == Category.CCTP) {
             console2.log("Running SLL E2E test for", integration.label);
 
-            ( uint32 cctpId ) = abi.decode(integration.extraData, (uint32));
-
             _testCCTPIntegration(CCTPE2ETestParams({
                 ctx:            ctx,
                 cctp:           integration.integration,
                 transferAmount: 50_000_000e6,
                 transferKey:    integration.entryId,
-                cctpId:         cctpId
+                cctpId:         abi.decode(integration.extraData, (uint32))
             }));
         }
 
