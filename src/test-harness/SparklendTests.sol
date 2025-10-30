@@ -55,9 +55,9 @@ import {
     ITargetKinkIRMLike
 } from "../interfaces/Interfaces.sol";
 
-import { ChainIdUtils, ChainId } from "../libraries/ChainId.sol";
-import { DealUtils }             from "../libraries/DealUtils.sol";
-import { ProxyHelpers }          from "../libraries/ProxyHelpers.sol";
+import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
+import { DealUtils }    from "../libraries/DealUtils.sol";
+import { ProxyHelpers } from "../libraries/ProxyHelpers.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
 
@@ -335,10 +335,10 @@ abstract contract SparklendTests is SpellRunner {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    function _runSpellExecutionDiff(ChainId chainId) internal onChain(chainId) {
+    function _runSpellExecutionDiff(uint256 chainId) internal onChain(chainId) {
         IPool pool = _getSparkLendContext().pool;
 
-        string memory prefix   = string(abi.encodePacked(vm.toString(_spellId), "-", chainId.toDomainString()));
+        string memory prefix   = string(abi.encodePacked(vm.toString(_spellId), "-", ChainIdUtils.toDomainString(chainId)));
         string memory prePath  = string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-pre"));
         string memory postPath = string(abi.encodePacked(prefix, "-", vm.toString(address(pool)), "-post"));
 
@@ -348,7 +348,7 @@ abstract contract SparklendTests is SpellRunner {
         _generateDiffReports(prePath, postPath);
     }
 
-    function _runE2ETests(ChainId chainId) internal onChain(chainId) {
+    function _runE2ETests(uint256 chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         _e2eTest(ctx.pool);
@@ -361,7 +361,7 @@ abstract contract SparklendTests is SpellRunner {
         _e2eTest(ctx.pool);
     }
 
-    function _testMatchingTokenImplementations(ChainId chainId) internal onChain(chainId) {
+    function _testMatchingTokenImplementations(uint256 chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         // This test is to avoid a footgun where the token implementations are upgraded (possibly in an emergency) and
@@ -388,13 +388,13 @@ abstract contract SparklendTests is SpellRunner {
         }
     }
 
-    function _runOraclesTests(ChainId chainId) internal onChain(chainId) {
+    function _runOraclesTests(uint256 chainId) internal onChain(chainId) {
         _validateOracles();
         _executeAllPayloadsAndBridges();
         _validateOracles();
     }
 
-    function _testAllReservesAreSeeded(ChainId chainId) internal onChain(chainId) {
+    function _testAllReservesAreSeeded(uint256 chainId) internal onChain(chainId) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
         _executeAllPayloadsAndBridges();
@@ -1868,12 +1868,12 @@ abstract contract SparklendTests is SpellRunner {
         return InitializableAdminUpgradeabilityProxy(payable(proxy)).implementation();
     }
 
-    function _getSparkLendContext(ChainId chain) internal view returns (SparkLendContext memory ctx) {
+    function _getSparkLendContext(uint256 chainId) internal view returns (SparkLendContext memory ctx) {
         IPoolAddressesProvider poolAddressesProvider;
 
-        if (chain == ChainIdUtils.Ethereum()) {
+        if (chainId == ChainIdUtils.Ethereum()) {
             poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
-        } else if (chain == ChainIdUtils.Gnosis()) {
+        } else if (chainId == ChainIdUtils.Gnosis()) {
             poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
         } else {
             revert("SparkLend/executing on unknown chain");
@@ -1889,7 +1889,7 @@ abstract contract SparklendTests is SpellRunner {
     }
 
     function _getSparkLendContext() internal view returns (SparkLendContext memory) {
-        return _getSparkLendContext(ChainIdUtils.fromUint(block.chainid));
+        return _getSparkLendContext(block.chainid);
     }
 
     function _findReserveConfig(
