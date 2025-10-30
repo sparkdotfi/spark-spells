@@ -2076,7 +2076,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         MainnetController(p.ctx.controller).transferUSDCToCCTP(p.transferAmount, p.cctpId);
 
         assertEq(usdc.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(usdc.totalSupply(),               totalSupply - p.transferAmount);
+        assertEq(usdc.totalSupply(),                   totalSupply - p.transferAmount);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - p.transferAmount);
 
@@ -2127,17 +2127,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         inputs[6] = "--header";
         inputs[7] = "accept: application/json";
 
-        string memory response = string(vm.ffi(inputs));
-        string memory message  = vm.parseJsonString(response, string(abi.encodePacked(".message")));
+        string memory response;
 
-        // If the response is not successful, sleep and try again
-        if (keccak256(abi.encodePacked(message)) == keccak256(abi.encodePacked("NOTOK"))) {
-            vm.sleep(1000);  // Prevent rate limiting from Etherscan (5 calls/second)
-            return _getEvents(chainId, target, topic0, retryCount++);
+        while (true) {
+            response = string(vm.ffi(inputs));
+
+            if (_isEqual(vm.parseJsonString(response, string(abi.encodePacked(".message"))), "NOTOK")) {
+                vm.sleep(1000);  // Prevent rate limiting from Etherscan (5 calls/second)
+                continue;
+            }
+
+            break;
         }
 
         // Get Result Array Length
-        uint256 i;
+        uint256 i = 0;
         for(; i < 1000; i++) {
             try vm.parseJsonAddress(response, string(abi.encodePacked(".result[", vm.toString(i), "].address"))) {
             } catch {
