@@ -402,7 +402,7 @@ contract SparkEthereum_20251030_SpellTests is SpellTests {
         vault.deposit(maxDeposit + 1, address(this));
 
         // Can deposit less than or equal to maxDeposit
-        
+
         assertEq(vault.balanceOf(address(this)), 0);
 
         deal(asset, address(this), maxDeposit);

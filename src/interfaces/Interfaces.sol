@@ -251,7 +251,7 @@ interface IPoolManagerLike {
 
 }
 
-interface IPsmLike {
+interface IPSMLike {
 
     function pocket() external view returns (address);
 
@@ -379,6 +379,16 @@ interface ICentrifugeTokenLike is IERC7540 {
     function trancheId() external view returns (bytes16);
 
     function poolId() external view returns (uint64);
+
+}
+
+interface IPSM3Like {
+
+    function convertToAssets(address asset, uint256 shares) external view returns (uint256);
+
+    function convertToAssetValue(uint256 shares) external view returns (uint256);
+
+    function shares(address account) external view returns (uint256);
 
 }
 

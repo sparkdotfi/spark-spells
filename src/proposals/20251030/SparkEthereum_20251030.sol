@@ -114,7 +114,7 @@ contract SparkEthereum_20251030 is SparkPayloadEthereum {
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).setDepositCap(250_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).setDepositCap(250_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).setDepositCap(50_000e18);
-    
+
         // Onboard syrupUSDT
         _configureERC4626Vault({
             vault:        SYRUP_USDT,
