@@ -1055,6 +1055,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertTrue(v.depositLimit  != type(uint256).max);
         assertTrue(v.withdrawLimit != type(uint256).max);
 
+        if(v.depositLimit > 0) {
+            assertGt(
+                p.ctx.rateLimits.getCurrentRateLimit(
+                    RateLimitHelpers.makeAssetKey(
+                        MainnetController(p.ctx.controller).LIMIT_CURVE_SWAP(),
+                        p.pool
+                    )
+                ),
+                0
+            );
+        }
+
         v.maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
 
         v.depositAmounts = new uint256[](2);
