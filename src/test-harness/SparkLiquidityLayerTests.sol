@@ -2123,6 +2123,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         string memory response = string(vm.ffi(inputs));
 
+        // If the response is not successful, sleep and try again
+        if (vm.parseJsonUint(response, string(abi.encodePacked(".status"))) != 1) {
+            vm.sleep(1000);  // Prevent rate limiting from Etherscan (5 calls/second)
+            return getEvents(chainId, target, topic0);
+        }
+
         // Get Result Array Length
         uint256 i;
         for(; i < 1000; i++) {
