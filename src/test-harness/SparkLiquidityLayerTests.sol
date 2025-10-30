@@ -2091,8 +2091,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     }
 
-    function getEvents(uint256 chainId, address target, bytes32 topic0) internal returns (VmSafe.EthGetLogs[] memory logs) {
+    function _getEvents(uint256 chainId, address target, bytes32 topic0) internal returns (VmSafe.EthGetLogs[] memory logs) {
+        return _getEvents(chainId, target, topic0, 0);
+    }
+
+    function _getEvents(uint256 chainId, address target, bytes32 topic0, uint256 retryCount) internal returns (VmSafe.EthGetLogs[] memory logs) {
         string memory apiKey = vm.envString("ETHERSCAN_API_KEY");
+
+        require(retryCount < 4, "Etherscan API returned non-success status");
 
         string[] memory inputs = new string[](8);
         inputs[0] = "curl";
@@ -2122,11 +2128,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         inputs[7] = "accept: application/json";
 
         string memory response = string(vm.ffi(inputs));
+        string memory message  = vm.parseJsonString(response, string(abi.encodePacked(".message")));
 
         // If the response is not successful, sleep and try again
-        if (vm.parseJsonUint(response, string(abi.encodePacked(".status"))) != 1) {
+        if (keccak256(abi.encodePacked(message)) == keccak256(abi.encodePacked("NOTOK"))) {
             vm.sleep(1000);  // Prevent rate limiting from Etherscan (5 calls/second)
-            return getEvents(chainId, target, topic0);
+            return _getEvents(chainId, target, topic0, retryCount++);
         }
 
         // Get Result Array Length
@@ -2228,8 +2235,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
         } else {
-            VmSafe.EthGetLogs[] memory cctpLogs = getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
-            VmSafe.EthGetLogs[] memory lzLogs   = getEvents(block.chainid, oldController, ForeignController.LayerZeroRecipientSet.selector);
+            VmSafe.EthGetLogs[] memory cctpLogs = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
+            VmSafe.EthGetLogs[] memory lzLogs   = _getEvents(block.chainid, oldController, ForeignController.LayerZeroRecipientSet.selector);
 
             assertEq(cctpLogs.length, 1);
             assertEq(lzLogs.length,   0);
@@ -2244,9 +2251,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _assertOldControllerEvents(address _oldController) internal {
         MainnetController oldController = MainnetController(_oldController);
 
-        VmSafe.EthGetLogs[] memory slippageLogs  = getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
-        VmSafe.EthGetLogs[] memory cctpLogs      = getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
-        VmSafe.EthGetLogs[] memory layerZeroLogs = getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory slippageLogs  = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
+        VmSafe.EthGetLogs[] memory cctpLogs      = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory layerZeroLogs = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
 
         assertEq(slippageLogs.length,  5);
         assertEq(cctpLogs.length,      5);
@@ -2803,7 +2810,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         address rateLimits = address(_getSparkLiquidityLayerContext().rateLimits);
 
-        VmSafe.EthGetLogs[] memory allLogs = getEvents(block.chainid, rateLimits, topics[0]);
+        VmSafe.EthGetLogs[] memory allLogs = _getEvents(block.chainid, rateLimits, topics[0]);
 
         rateLimitKeys = new bytes32[](0);
 
@@ -2853,7 +2860,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  Ethereum.USDS_SPTOKEN);
         integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  Ethereum.USDT_SPTOKEN);
 
-        integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL", Ethereum.USDC);
+        integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
         integrations[12] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
         integrations[13] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
@@ -2913,7 +2920,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[3] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        integrations[4] = _createCctpGeneralIntegration("CCTP_GENERAL", usdc);
+        integrations[4] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
         return integrations;
     }
@@ -2958,7 +2965,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        integrations[1] = _createCctpGeneralIntegration("CCTP_GENERAL", Base.USDC);
+        integrations[1] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
         integrations[2] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Avalanche.SPARK_VAULT_V2_SPUSDC);
 
@@ -3108,16 +3115,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createCctpGeneralIntegration(
-        string  memory label,
-        address        integration
-    ) internal view returns (SLLIntegration memory) {
+    function _createCctpGeneralIntegration(string  memory label) internal view returns (SLLIntegration memory) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         return SLLIntegration({
             label:       label,
             category:    Category.CCTP_GENERAL,
-            integration: integration,
+            integration: address(0),
             entryId:     mainnetController.LIMIT_USDC_TO_CCTP(),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
