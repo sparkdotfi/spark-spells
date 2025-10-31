@@ -8,7 +8,7 @@
 
 ## Addresses
 
-| variable name           | address    | network   | source of truth                 |
+| Variable name           | Address    | Network   | Source of truth                 |
 | ---                     | ---        | ---       | ---                             |
 | `PT_SUSDE_MAR26`        | `0x123...` | `mainnet` | specified in forum post         |
 | `PT_SUSDE_MAR26_ORACLE` | `0x456...` | `mainnet` | provided in TG chat with Pendle |
