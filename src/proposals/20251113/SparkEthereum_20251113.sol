@@ -60,8 +60,8 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
             increaseCooldown: 12 hours
         });
 
-        LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SDAI,  1, 1, 104_50);
-        LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SUSDS, 1, 1, 104_50);
+        LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SDAI,  0, 80_00, 105_00);
+        LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SUSDS, 0, 80_00, 105_00);
 
         // Claim Reserves for USDS and DAI Markets
         address[] memory aTokens = new address[](2);
