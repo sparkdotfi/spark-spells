@@ -19,10 +19,6 @@ import {
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { IPool }                from "sparklend-v1-core/interfaces/IPool.sol";
-import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
-import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
-
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
@@ -93,8 +89,6 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
 }
 
 contract SparkEthereum_20251113_SparklendTests is SparklendTests {
-
-    using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
 
     address internal constant PYUSD = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
 
@@ -216,6 +210,57 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
         assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 89_733.707492554224916353e18);
         assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_003.135094118145514323e18);
+    }
+
+    function test_ETHEREUM_sparkLend_depreciateSUSDSandSDAI() public onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot('', ctx.pool);
+
+        ReserveConfig memory susdsConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
+        ReserveConfig memory sdaiConfigBefore  = _findReserveConfigBySymbol(allConfigsBefore, 'sDAI');
+
+        _executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot('', ctx.pool);
+
+        // SUSDS
+
+        assertEq(susdsConfigBefore.ltv,                  79_00);
+        assertEq(susdsConfigBefore.liquidationThreshold, 80_00);
+        assertEq(susdsConfigBefore.liquidationBonus,     105_00);
+
+        ReserveConfig memory susdsConfigAfter = susdsConfigBefore;
+
+        susdsConfigAfter.ltv = 0;
+
+        _validateReserveConfig(susdsConfigAfter, allConfigsAfter);
+
+        _assertSupplyCapConfig({
+            asset:            Ethereum.SUSDS,
+            max:              1,
+            gap:              1,
+            increaseCooldown: 12 hours
+        });
+
+        // SDAI
+
+        assertEq(sdaiConfigBefore.ltv,                  79_00);
+        assertEq(sdaiConfigBefore.liquidationThreshold, 80_00);
+        assertEq(sdaiConfigBefore.liquidationBonus,     105_00);
+
+        ReserveConfig memory sdaiConfigAfter = sdaiConfigBefore;
+
+        sdaiConfigAfter.ltv = 0;
+
+        _validateReserveConfig(sdaiConfigAfter, allConfigsAfter);
+
+        _assertSupplyCapConfig({
+            asset:            Ethereum.SDAI,
+            max:              1,
+            gap:              1,
+            increaseCooldown: 12 hours
+        });
     }
 
 }

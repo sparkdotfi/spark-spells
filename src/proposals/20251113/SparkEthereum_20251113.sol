@@ -45,7 +45,7 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
         // Transfer Share of Ethena Net Profit to Grove
         IERC20(Ethereum.USDS).transfer(GROVE_SUBDAO_PROXY, GROVE_PAYMENT_AMOUNT);
 
-        // Deprecate sUSDS and sDAI Collateral
+        // Deprecate sDAI and sUSDS Collateral
         ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
             asset:            Ethereum.SDAI,
             max:              1,
@@ -53,7 +53,7 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
             increaseCooldown: 12 hours
         });
 
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).setBorrowCapConfig({
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
             asset:            Ethereum.SUSDS,
             max:              1,
             gap:              1,
