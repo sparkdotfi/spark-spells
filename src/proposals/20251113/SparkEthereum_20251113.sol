@@ -46,19 +46,11 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
         IERC20(Ethereum.USDS).transfer(GROVE_SUBDAO_PROXY, GROVE_PAYMENT_AMOUNT);
 
         // Deprecate sDAI and sUSDS Collateral
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
-            asset:            Ethereum.SDAI,
-            max:              1,
-            gap:              1,
-            increaseCooldown: 12 hours
-        });
+        LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.SDAI,  0);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.SUSDS, 0);
 
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).setSupplyCapConfig({
-            asset:            Ethereum.SUSDS,
-            max:              1,
-            gap:              1,
-            increaseCooldown: 12 hours
-        });
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.SDAI);
+        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.SUSDS);
 
         LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SDAI,  0, 80_00, 105_00);
         LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SUSDS, 0, 80_00, 105_00);

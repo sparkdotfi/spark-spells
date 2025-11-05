@@ -220,47 +220,158 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         ReserveConfig memory susdsConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'sUSDS');
         ReserveConfig memory sdaiConfigBefore  = _findReserveConfigBySymbol(allConfigsBefore, 'sDAI');
 
+        assertEq(susdsConfigBefore.ltv,                  79_00);
+        assertEq(susdsConfigBefore.liquidationThreshold, 80_00);
+        assertEq(susdsConfigBefore.liquidationBonus,     105_00);
+
+        assertEq(sdaiConfigBefore.ltv,                  79_00);
+        assertEq(sdaiConfigBefore.liquidationThreshold, 80_00);
+        assertEq(sdaiConfigBefore.liquidationBonus,     105_00);
+
         _executeAllPayloadsAndBridges();
 
         ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot('', ctx.pool);
 
         // SUSDS
 
-        assertEq(susdsConfigBefore.ltv,                  79_00);
-        assertEq(susdsConfigBefore.liquidationThreshold, 80_00);
-        assertEq(susdsConfigBefore.liquidationBonus,     105_00);
-
         ReserveConfig memory susdsConfigAfter = susdsConfigBefore;
 
-        susdsConfigAfter.ltv = 0;
+        susdsConfigAfter.ltv       = 0;
+        susdsConfigAfter.supplyCap = 0;
 
         _validateReserveConfig(susdsConfigAfter, allConfigsAfter);
 
         _assertSupplyCapConfig({
             asset:            Ethereum.SUSDS,
-            max:              1,
-            gap:              1,
-            increaseCooldown: 12 hours
+            max:              0,
+            gap:              0,
+            increaseCooldown: 0
         });
+
+        _test_cannotSupplyNewCollateral(Ethereum.SUSDS);
 
         // SDAI
 
-        assertEq(sdaiConfigBefore.ltv,                  79_00);
-        assertEq(sdaiConfigBefore.liquidationThreshold, 80_00);
-        assertEq(sdaiConfigBefore.liquidationBonus,     105_00);
-
         ReserveConfig memory sdaiConfigAfter = sdaiConfigBefore;
 
-        sdaiConfigAfter.ltv = 0;
+        sdaiConfigAfter.ltv       = 0;
+        sdaiConfigAfter.supplyCap = 0;
 
         _validateReserveConfig(sdaiConfigAfter, allConfigsAfter);
 
         _assertSupplyCapConfig({
             asset:            Ethereum.SDAI,
-            max:              1,
-            gap:              1,
-            increaseCooldown: 12 hours
+            max:              0,
+            gap:              0,
+            increaseCooldown: 0
         });
+
+        _test_cannotSupplyNewCollateral(Ethereum.SDAI);
+    }
+
+    function test_ETHEREUM_sparkLend_healthySusdsPositionNotLiquidatable() public onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Setup test user with a healthy sUSDS position
+        address testUser = makeAddr("testUser");
+
+        // Give the user some USDS to use as collateral
+        uint256 collateralAmount = 100_000e18;
+        deal(Ethereum.SUSDS, testUser, collateralAmount);
+
+        vm.startPrank(testUser);
+        IERC20(Ethereum.SUSDS).approve(address(ctx.pool), type(uint256).max);
+
+        // Supply sUSDS as collateral
+        ctx.pool.supply(Ethereum.SUSDS, collateralAmount, testUser, 0);
+
+        // Borrow DAI against sUSDS collateral (at 50% of collateral value to be very safe)
+        uint256 borrowAmount = 40_000e18;  // Well under the 79% LTV
+        ctx.pool.borrow(Ethereum.DAI, borrowAmount, 2, 0, testUser);
+        vm.stopPrank();
+
+        // Execute payload which sets LTV to 0
+        _executeAllPayloadsAndBridges();
+
+        // Verify user still has a healthy position (can't be liquidated)
+        (,,,,, uint256 healthFactor) = ctx.pool.getUserAccountData(testUser);
+        
+        // Health factor should still be healthy (>1e18)
+        assertGt(healthFactor, 1e18);
+
+        // Try to liquidate the position - should revert with error code 45 (HEALTH_FACTOR_NOT_BELOW_THRESHOLD)
+        vm.expectRevert(bytes("45"));
+        ctx.pool.liquidationCall(
+            Ethereum.SUSDS,  // collateral
+            Ethereum.DAI,    // debt
+            testUser,        // user
+            borrowAmount,    // debt to cover
+            false            // receive aToken
+        );
+    }
+
+    function test_ETHEREUM_sparkLend_healthySdaiPositionNotLiquidatable() public onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Setup test user with a healthy sUSDS position
+        address testUser = makeAddr("testUser");
+
+        // Give the user some USDS to use as collateral
+        uint256 collateralAmount = 100_000e18;
+        deal(Ethereum.SDAI, testUser, collateralAmount);
+
+        vm.startPrank(testUser);
+        IERC20(Ethereum.SDAI).approve(address(ctx.pool), type(uint256).max);
+
+        // Supply sUSDS as collateral
+        ctx.pool.supply(Ethereum.SDAI, collateralAmount, testUser, 0);
+
+        // Borrow DAI against sUSDS collateral (at 50% of collateral value to be very safe)
+        uint256 borrowAmount = 40_000e18;  // Well under the 79% LTV
+        ctx.pool.borrow(Ethereum.DAI, borrowAmount, 2, 0, testUser);
+        vm.stopPrank();
+
+        // Execute payload which sets LTV to 0
+        _executeAllPayloadsAndBridges();
+
+        // Verify user still has a healthy position (can't be liquidated)
+        (,,,,, uint256 healthFactor) = ctx.pool.getUserAccountData(testUser);
+        
+        // Health factor should still be healthy (>1e18)
+        assertGt(healthFactor, 1e18);
+
+        // Try to liquidate the position - should revert with error code 45 (HEALTH_FACTOR_NOT_BELOW_THRESHOLD)
+        vm.expectRevert(bytes("45"));
+        ctx.pool.liquidationCall(
+            Ethereum.SDAI,   // collateral
+            Ethereum.DAI,    // debt
+            testUser,        // user
+            borrowAmount,    // debt to cover
+            false            // receive aToken
+        );
+    }
+
+    function _test_cannotSupplyNewCollateral(address asset) public onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Setup test user
+        address testUser = makeAddr("testUser");
+
+        // Give the user some asset
+        uint256 supplyAmount = 1e18;
+        deal(asset, testUser, supplyAmount);
+
+        vm.startPrank(testUser);
+        IERC20(asset).approve(address(ctx.pool), type(uint256).max);
+
+        // Attempt to supply asset should fail due to supply cap
+        vm.expectRevert(bytes("51")); // Cap exceeded error
+        ctx.pool.supply(asset, supplyAmount, testUser, 0);
+
+        vm.stopPrank();
+        
+        // Verify no supply occurred
+        assertEq(IERC20(asset).balanceOf(testUser), supplyAmount);
     }
 
 }
