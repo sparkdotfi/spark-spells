@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 
@@ -31,7 +32,6 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 contract SparkEthereum_20251113 is SparkPayloadEthereum {
 
     address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
-    address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
     address internal constant PYUSD_IRM          = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
 
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 625_069e18;
@@ -49,30 +49,30 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
         LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.SDAI,  1);
         LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.SUSDS, 1);
 
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.SDAI);
-        ICapAutomator(Ethereum.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.SUSDS);
+        ICapAutomator(SparkLend.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.SDAI);
+        ICapAutomator(SparkLend.CAP_AUTOMATOR).removeSupplyCapConfig(Ethereum.SUSDS);
 
         LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SDAI,  0, 80_00, 105_00);
         LISTING_ENGINE.POOL_CONFIGURATOR().configureReserveAsCollateral(Ethereum.SUSDS, 0, 80_00, 105_00);
 
         // Claim Reserves for USDS and DAI Markets
         address[] memory aTokens = new address[](2);
-        aTokens[0] = Ethereum.DAI_SPTOKEN;
-        aTokens[1] = Ethereum.USDS_SPTOKEN;
+        aTokens[0] = SparkLend.DAI_SPTOKEN;
+        aTokens[1] = SparkLend.USDS_SPTOKEN;
 
         _transferFromSparkLendTreasury(aTokens);
 
         // Update PYUSD Interest Rate Model
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(PYUSD, PYUSD_IRM);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.PYUSD, PYUSD_IRM);
 
         // Increase Rate Limits for SparkLend USDC and USDT
         _configureAaveToken(
-            Ethereum.USDC_SPTOKEN,
+            SparkLend.USDC_SPTOKEN,
             100_000_000e6,
             200_000_000e6 / uint256(1 days)
         );
         _configureAaveToken(
-            Ethereum.USDT_SPTOKEN,
+            SparkLend.USDT_SPTOKEN,
             100_000_000e6,
             200_000_000e6 / uint256(1 days)
         );

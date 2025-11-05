@@ -41,6 +41,11 @@ interface ITreasuryControllerLike {
 
 }
 
+interface IStarGuardLike {
+    function plot(address addr_, bytes32 tag_) external;
+    function exec() external returns (address addr);
+}
+
 interface ISparkVaultV2Like {
 
     function asset() external view returns (address);

@@ -18,6 +18,7 @@ import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
@@ -2862,16 +2863,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations = new SLLIntegration[](40);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
-        integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   Ethereum.DAI_SPTOKEN);
+        integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[2]  = _createAaveIntegration("AAVE-ETH_LIDO_USDS", AAVE_ETH_LIDO_USDS);
         integrations[3]  = _createAaveIntegration("AAVE-ETH_USDC",      AAVE_ETH_USDC);
         integrations[4]  = _createAaveIntegration("AAVE-ETH_USDS",      AAVE_ETH_USDS);
-        integrations[5]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", Ethereum.PYUSD_SPTOKEN);
-        integrations[6]  = _createAaveIntegration("AAVE-SPETH",         Ethereum.WETH_SPTOKEN);
-        integrations[7]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  Ethereum.USDC_SPTOKEN); // SparkLend
+        integrations[5]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
+        integrations[6]  = _createAaveIntegration("AAVE-SPETH",         SparkLend.WETH_SPTOKEN);
+        integrations[7]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  SparkLend.USDC_SPTOKEN); // SparkLend
         integrations[8]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
-        integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  Ethereum.USDS_SPTOKEN);
-        integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  Ethereum.USDT_SPTOKEN);
+        integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
+        integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
 
         integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL");
 

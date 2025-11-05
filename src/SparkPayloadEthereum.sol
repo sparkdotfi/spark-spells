@@ -17,6 +17,7 @@ import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
@@ -42,7 +43,7 @@ import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
  * @dev    Base smart contract for Ethereum.
  * @author Phoenix Labs
  */
-abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGINE) {
+abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENGINE) {
 
     using OptionsBuilder for bytes;
 
@@ -111,6 +112,15 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
                 _payInLzToken:  false
             });
         }
+    }
+
+    /**
+     * @notice Checks if the star payload is executable in the current block
+     * @dev Required, useful for implementing "earliest launch date" or "office hours" strategy
+     * @return result The result of the check (true = executable, false = not)
+     */
+    function isExecutable() external view returns (bool result) {
+        result = true;  // TODO Change this
     }
 
     function getPoolContext() public pure override returns (IEngine.PoolContext memory) {
@@ -222,14 +232,14 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(Ethereum.CONFIG_ENGI
             assets[i] = IAToken(aTokens[i]).UNDERLYING_ASSET_ADDRESS();
         }
 
-        IPool(Ethereum.POOL).mintToTreasury(assets);
+        IPool(SparkLend.POOL).mintToTreasury(assets);
 
         for (uint256 i; i < aTokens.length; i++) {
-            address treasury = aTokens[i] == Ethereum.DAI_SPTOKEN
-                ? Ethereum.DAI_TREASURY
-                : Ethereum.TREASURY;
+            address treasury = aTokens[i] == SparkLend.DAI_SPTOKEN
+                ? SparkLend.DAI_TREASURY
+                : SparkLend.TREASURY;
 
-            ITreasuryControllerLike(Ethereum.TREASURY_CONTROLLER).transfer({
+            ITreasuryControllerLike(SparkLend.TREASURY_CONTROLLER).transfer({
                 collector: treasury,
                 token:     aTokens[i],
                 recipient: Ethereum.ALM_PROXY,

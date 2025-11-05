@@ -8,6 +8,7 @@ import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
@@ -53,8 +54,8 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
 
         MainnetController controller = MainnetController(ctx.controller);
 
-        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  Ethereum.USDC_SPTOKEN);
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), Ethereum.USDC_SPTOKEN);
+        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  SparkLend.USDC_SPTOKEN);
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), SparkLend.USDC_SPTOKEN);
 
         _assertRateLimit(depositKey,  100_000_000e6,     50_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
@@ -64,7 +65,7 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  100_000_000e6,     200_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testAaveIntegration(E2ETestParams(ctx, Ethereum.USDC_SPTOKEN, 10_000_000e6, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDC_SPTOKEN, 10_000_000e6, depositKey, withdrawKey, 10));
     }
 
     function test_ETHEREUM_sll_sparkLendUsdtRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
@@ -72,8 +73,8 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
 
         MainnetController controller = MainnetController(ctx.controller);
 
-        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  Ethereum.USDT_SPTOKEN);
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), Ethereum.USDT_SPTOKEN);
+        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  SparkLend.USDT_SPTOKEN);
+        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), SparkLend.USDT_SPTOKEN);
 
         _assertRateLimit(depositKey,  100_000_000e6,     100_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
@@ -83,14 +84,14 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  100_000_000e6,     200_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testAaveIntegration(E2ETestParams(ctx, Ethereum.USDT_SPTOKEN, 10_000_000e6, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDT_SPTOKEN, 10_000_000e6, depositKey, withdrawKey, 10));
     }
 
 }
 
-contract SparkEthereum_20251113_SparklendTests is SparklendTests {
+import { console } from "forge-std/console.sol";
 
-    address internal constant PYUSD = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
     address internal constant PYUSD_IRM_OLD = 0xD3d3BcD8cC1D3d0676Da13F7Fc095497329EC683;
     address internal constant PYUSD_IRM_NEW = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
@@ -198,18 +199,20 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 spDaiBalanceBefore  = IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 spUsdsBalanceBefore = IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+        uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  413_852_826.907635248963156256e18);
-        assertEq(spUsdsBalanceBefore, 171_338_343.119011364190523468e18);
+        assertEq(spDaiBalanceBefore,  412_668_505.386398818232221198e18);
+        assertEq(spUsdsBalanceBefore, 380_702_415.599903984243896154e18);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.DAI_TREASURY), 0);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.TREASURY),    0);
-        assertEq(IERC20(Ethereum.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spDaiBalanceBefore + 89_733.707492554224916353e18);
-        assertEq(IERC20(Ethereum.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),   spUsdsBalanceBefore + 43_003.135094118145514323e18);
+        
+
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 89_733.707492554224916353e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 43_003.135094118145514323e18);
     }
 
     function test_ETHEREUM_sparkLend_depreciateSUSDSandSDAI() public onChain(ChainIdUtils.Ethereum()) {

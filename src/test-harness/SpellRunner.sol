@@ -28,6 +28,8 @@ import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs
 import { Address }      from "../libraries/Address.sol";
 import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
 
+import { IStarGuardLike } from "../interfaces/Interfaces.sol";
+
 import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
 
 abstract contract SpellRunner is Test {
@@ -254,15 +256,26 @@ abstract contract SpellRunner is Test {
 
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
 
+        uint256 bytecodeSize = payloadAddress.code.length;
+
+        bytes32 bytecodeHash;
+
+        assembly {
+            let ptr := mload(0x40)
+
+            extcodecopy(payloadAddress, ptr, 0, bytecodeSize)
+            bytecodeHash := keccak256(ptr, bytecodeSize)
+        }
+
         vm.prank(Ethereum.PAUSE_PROXY);
+        IStarGuardLike(Ethereum.SPARK_STAR_GUARD).plot({
+            addr_ : payloadAddress,
+            tag_  : bytecodeHash
+        });
 
-        ( bool success, ) = address(executor).call(abi.encodeWithSignature(
-            "exec(address,bytes)",
-            payloadAddress,
-            abi.encodeWithSignature("execute()")
-        ));
+        address payload = IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
 
-        require(success, "FAILED TO EXECUTE PAYLOAD");
+        require(payloadAddress == payload, "FAILED TO EXECUTE PAYLOAD");
     }
 
     /// @dev bridge contracts themselves are stored on mainnet
