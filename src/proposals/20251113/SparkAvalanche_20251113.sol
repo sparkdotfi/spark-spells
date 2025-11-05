@@ -7,7 +7,7 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 
 /**
  * @title  November 13, 2025 Spark Avalanche Proposal
- * @notice Spark Savings - Increase spUSDC Vault Deposit Cap
+ * @notice Spark Savings - Increase spUSDC Deposit Cap
  * Forum:  https://forum.sky.money/t/november-13-2025-proposed-changes-to-spark-for-upcoming-spell/27354
  * Vote:   
  */

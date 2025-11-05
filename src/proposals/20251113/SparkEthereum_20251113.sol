@@ -17,22 +17,22 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
  * @title  November 13, 2025 Spark Ethereum Proposal
  * @notice Spark Treasury:
            - Transfer Share of Ethena Net Profit to Grove
-           Spark Savings:
-           - Increase Deposit Caps for spUSDC, spUSDT, and spETH
            SparkLend:
            - Deprecate sUSDS and sDAI Collateral
            - Update PYUSD Interest Rate Model
+           Spark Savings:
+           - Increase Deposit Caps for spUSDC, spUSDT, and spETH
            Spark Liquidity Layer:
            - Increase Rate Limits for SparkLend USDC and USDT
- * @author Phoenix Labs
+* @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/november-13-2025-proposed-changes-to-spark-for-upcoming-spell/27354
  * Vote:   
  */
 contract SparkEthereum_20251113 is SparkPayloadEthereum {
 
-    address internal constant GROVE_SUBDAO_PROXY  = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
-    address internal constant PYUSD               = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
-    address internal constant PYUSD_IRM           = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
+    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
+    address internal constant PYUSD              = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+    address internal constant PYUSD_IRM          = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
 
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 625_069e18;
 

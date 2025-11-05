@@ -269,7 +269,7 @@ contract SparkEthereum_20251113_SpellTests is SpellTests {
 
     using SafeERC20 for IERC20;
 
-    address internal constant GROVE_SUBDAO_PROXY  = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
+    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
 
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 625_069e18;
 
