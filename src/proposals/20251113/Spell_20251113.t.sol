@@ -237,7 +237,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         ReserveConfig memory susdsConfigAfter = susdsConfigBefore;
 
         susdsConfigAfter.ltv       = 0;
-        susdsConfigAfter.supplyCap = 0;
+        susdsConfigAfter.supplyCap = 1;
 
         _validateReserveConfig(susdsConfigAfter, allConfigsAfter);
 
@@ -255,7 +255,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         ReserveConfig memory sdaiConfigAfter = sdaiConfigBefore;
 
         sdaiConfigAfter.ltv       = 0;
-        sdaiConfigAfter.supplyCap = 0;
+        sdaiConfigAfter.supplyCap = 1;
 
         _validateReserveConfig(sdaiConfigAfter, allConfigsAfter);
 
