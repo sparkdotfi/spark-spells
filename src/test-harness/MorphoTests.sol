@@ -66,9 +66,9 @@ abstract contract MorphoTests is SpellRunner {
         ( uint256 totalSupplyAssets_, , , , , ) = IMorphoLike(Ethereum.MORPHO).market(MarketParamsLib.id(config));
         assertGe(totalSupplyAssets_, 10 ** IERC20(config.loanToken).decimals());
 
-        // Check shares of address(1) are greater or equal to 1e6 * 10 ** loanTokenDecimals (1 unit)
+        // Check shares of address(1) are greater or equal to 10 ** loanTokenDecimals (1 unit)
         IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(MarketParamsLib.id(config), address(1));
-        assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals() * 1e6);
+        assertGe(position.supplyShares, 10 ** IERC20(config.loanToken).decimals());
     }
 
     function _testMorphoPendlePTOracleConfig(

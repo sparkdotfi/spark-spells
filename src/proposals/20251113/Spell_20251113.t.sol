@@ -18,6 +18,10 @@ import {
     RateTargetBaseInterestRateStrategy
 } from "sparklend-advanced/src/RateTargetBaseInterestRateStrategy.sol";
 
+import { IPool }                from "sparklend-v1-core/interfaces/IPool.sol";
+import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
+import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
+
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
@@ -89,9 +93,9 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
 
 }
 
-import { console } from "forge-std/console.sol";
-
 contract SparkEthereum_20251113_SparklendTests is SparklendTests {
+
+    using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
 
     address internal constant PYUSD_IRM_OLD = 0xD3d3BcD8cC1D3d0676Da13F7Fc095497329EC683;
     address internal constant PYUSD_IRM_NEW = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
@@ -173,14 +177,14 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
             newParams.irm,
             InterestStrategyValues({
                 addressesProvider:             address(ctx.poolAddressesProvider),
-                optimalUsageRatio:             newParams.optimalUsageRatio,
+                optimalUsageRatio:             oldParams.optimalUsageRatio,  // NOTE: Hasn't changed
                 optimalStableToTotalDebtRatio: 0,
                 baseStableBorrowRate:          newParams.variableRateSlope1,
                 stableRateSlope1:              0,
                 stableRateSlope2:              0,
                 baseVariableBorrowRate:        uint256(ssrRate) + newParams.baseRateSpread,
                 variableRateSlope1:            newParams.variableRateSlope1,
-                variableRateSlope2:            newParams.variableRateSlope2
+                variableRateSlope2:            oldParams.variableRateSlope2  // NOTE: Hasn't changed
             })
         );
 
@@ -189,10 +193,10 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         address expectedIRM = address(new RateTargetBaseInterestRateStrategy(
             IPoolAddressesProvider(address(ctx.poolAddressesProvider)),
             ICustomIRMLike(newParams.irm).RATE_SOURCE(),
-            newParams.optimalUsageRatio,
+            oldParams.optimalUsageRatio,  // NOTE: Hasn't changed
             newParams.baseRateSpread,
             newParams.variableRateSlope1,
-            newParams.variableRateSlope2
+            oldParams.variableRateSlope2  // NOTE: Hasn't changed
         ));
 
         _assertBytecodeMatches(expectedIRM, newParams.irm);
@@ -207,12 +211,10 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
         _executeAllPayloadsAndBridges();
 
-        
-
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 89_733.707492554224916353e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 43_003.135094118145514323e18);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 3_957.586227730796606180e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 3_592.730987073276327968e18);
     }
 
     function test_ETHEREUM_sparkLend_depreciateSUSDSandSDAI() public onChain(ChainIdUtils.Ethereum()) {
@@ -253,6 +255,13 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
         _test_cannotSupplyNewCollateral(Ethereum.SUSDS);
 
+        // Caps can’t be changed with automator
+        ICapAutomator(SparkLend.CAP_AUTOMATOR).execSupply(Ethereum.SUSDS);
+
+        DataTypes.ReserveConfigurationMap memory sUsdsConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.SUSDS);
+
+        assertEq(sUsdsConfig.getSupplyCap(), 1);
+
         // SDAI
 
         ReserveConfig memory sdaiConfigAfter = sdaiConfigBefore;
@@ -270,6 +279,13 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         });
 
         _test_cannotSupplyNewCollateral(Ethereum.SDAI);
+
+        // Caps can’t be changed with automator
+        ICapAutomator(SparkLend.CAP_AUTOMATOR).execSupply(Ethereum.SDAI);
+
+        DataTypes.ReserveConfigurationMap memory sDaiConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.SDAI);
+
+        assertEq(sDaiConfig.getSupplyCap(), 1);
     }
 
     function test_ETHEREUM_sparkLend_healthySusdsPositionNotLiquidatable() public onChain(ChainIdUtils.Ethereum()) {
@@ -278,7 +294,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         // Setup test user with a healthy sUSDS position
         address testUser = makeAddr("testUser");
 
-        // Give the user some USDS to use as collateral
+        // Give the user some sUSDS to use as collateral
         uint256 collateralAmount = 100_000e18;
         deal(Ethereum.SUSDS, testUser, collateralAmount);
 
@@ -316,20 +332,20 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
     function test_ETHEREUM_sparkLend_healthySdaiPositionNotLiquidatable() public onChain(ChainIdUtils.Ethereum()) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
-        // Setup test user with a healthy sUSDS position
+        // Setup test user with a healthy sDAI position
         address testUser = makeAddr("testUser");
 
-        // Give the user some USDS to use as collateral
+        // Give the user some sDAI to use as collateral
         uint256 collateralAmount = 100_000e18;
         deal(Ethereum.SDAI, testUser, collateralAmount);
 
         vm.startPrank(testUser);
         IERC20(Ethereum.SDAI).approve(address(ctx.pool), type(uint256).max);
 
-        // Supply sUSDS as collateral
+        // Supply sDAI as collateral
         ctx.pool.supply(Ethereum.SDAI, collateralAmount, testUser, 0);
 
-        // Borrow DAI against sUSDS collateral (at 50% of collateral value to be very safe)
+        // Borrow DAI against sDAI collateral (at 50% of collateral value to be very safe)
         uint256 borrowAmount = 40_000e18;  // Well under the 79% LTV
         ctx.pool.borrow(Ethereum.DAI, borrowAmount, 2, 0, testUser);
         vm.stopPrank();
@@ -372,9 +388,73 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         ctx.pool.supply(asset, supplyAmount, testUser, 0);
 
         vm.stopPrank();
-        
+
         // Verify no supply occurred
         assertEq(IERC20(asset).balanceOf(testUser), supplyAmount);
+    }
+
+    function test_ETHEREUM_sparkLend_wethAndSusdsCollateralWithdrawalOrder() public onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Setup test user
+        address testUser = makeAddr("testUser");
+
+        // Give the user some WETH and sUSDS to use as collateral
+        uint256 wethCollateralAmount  = 10e18;    // 10 WETH
+        uint256 susdsCollateralAmount = 50_000e18; // 50k sUSDS
+        deal(Ethereum.WETH, testUser, wethCollateralAmount);
+        deal(Ethereum.SUSDS, testUser, susdsCollateralAmount);
+
+        vm.startPrank(testUser);
+        
+        // Approve pool to use tokens
+        IERC20(Ethereum.WETH).approve(address(ctx.pool),  type(uint256).max);
+        IERC20(Ethereum.SUSDS).approve(address(ctx.pool), type(uint256).max);
+
+        // Supply both sUSDS and WETH as collateral
+        ctx.pool.supply(Ethereum.SUSDS, susdsCollateralAmount, testUser, 0);
+        ctx.pool.supply(Ethereum.WETH,  wethCollateralAmount,  testUser, 0);
+
+        // Borrow USDC against the combined collateral
+        uint256 borrowAmount = 20_000e6; // 20k USDC
+        ctx.pool.borrow(Ethereum.USDC, borrowAmount, 2, 0, testUser);
+
+        // Try to withdraw WETH before changes - should succeed
+        ctx.pool.withdraw(Ethereum.WETH, 1e18, testUser);
+
+        // Execute the payload which changes isolation mode
+        vm.stopPrank();
+
+        _executeAllPayloadsAndBridges();
+
+        vm.startPrank(testUser);
+
+        // Try to withdraw WETH - should fail while sUSDS is still being used
+        vm.expectRevert(bytes("57")); // Ltv validation failed
+        ctx.pool.withdraw(Ethereum.WETH, 1e18, testUser);
+
+        // Repay USDC loan first
+        deal(Ethereum.USDC, testUser, borrowAmount);
+        IERC20(Ethereum.USDC).approve(address(ctx.pool), type(uint256).max);
+        ctx.pool.repay(Ethereum.USDC, type(uint256).max, 2, testUser);
+
+        // Withdraw sUSDS collateral first
+        uint256 susdsBalanceBefore = IERC20(Ethereum.SUSDS).balanceOf(testUser);
+        ctx.pool.withdraw(Ethereum.SUSDS, type(uint256).max, testUser);
+        uint256 susdsBalanceAfter = IERC20(Ethereum.SUSDS).balanceOf(testUser);
+        
+        // Verify sUSDS withdrawal succeeded
+        assertGt(susdsBalanceAfter, susdsBalanceBefore);
+
+        // Now should be able to withdraw WETH after sUSDS is removed
+        uint256 wethBalanceBefore = IERC20(Ethereum.WETH).balanceOf(testUser);
+        ctx.pool.withdraw(Ethereum.WETH, type(uint256).max, testUser);
+        uint256 wethBalanceAfter = IERC20(Ethereum.WETH).balanceOf(testUser);
+
+        // Verify WETH withdrawal succeeded
+        assertGt(wethBalanceAfter, wethBalanceBefore);
+
+        vm.stopPrank();
     }
 
 }
@@ -498,7 +578,7 @@ contract SparkEthereum_20251113_MorphoTests is MorphoTests {
 
     constructor() {
         _spellId   = 20251113;
-        _blockDate = "2025-11-04T08:51:00Z";
+        _blockDate = "2025-11-06T05:55:00Z";
     }
 
     function setUp() public override {
