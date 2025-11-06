@@ -2059,6 +2059,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testCCTPIntegration(CCTPE2ETestParams memory p) internal {
         // NOTE: MainnetController and ForeignController share the same CCTP interfaces
         ///      so this works for both.
+        
+        skip(10 days);  // Recharge ratelimits
+
         IERC20 usdc = IERC20(MainnetController(p.ctx.controller).usdc());
 
         deal(address(usdc), address(p.ctx.proxy), p.transferAmount);
@@ -2860,7 +2863,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](40);
+        integrations = new SLLIntegration[](41);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
