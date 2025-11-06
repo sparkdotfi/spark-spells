@@ -32,6 +32,7 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import { MorphoTests }              from "src/test-harness/MorphoTests.sol";
 
 import {
+    ISyrupLike,
     ISparkVaultV2Like,
     ITargetKinkIRMLike,
     ITargetBaseIRMLike,
@@ -39,7 +40,19 @@ import {
     IRateSourceLike
 } from "src/interfaces/Interfaces.sol";
 
+interface IPermissionManagerLike {
+    function admin() external view returns (address);
+    function setLenderAllowlist(
+        address            poolManager_,
+        address[] calldata lenders_,
+        bool[]    calldata booleans_
+    ) external;
+}
+
 contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
+
+    IPermissionManagerLike internal constant permissionManager
+        = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
     constructor() {
         _spellId   = 20251113;
@@ -51,6 +64,23 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
 
         // chainData[ChainIdUtils.Avalanche()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
         // chainData[ChainIdUtils.Base()].payload      = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
+
+        // Maple onboarding process
+        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
+
+        address[] memory lenders  = new address[](1);
+        bool[]    memory booleans = new bool[](1);
+
+        lenders[0]  = address(Ethereum.ALM_PROXY);
+        booleans[0] = true;
+
+        vm.startPrank(permissionManager.admin());
+        permissionManager.setLenderAllowlist(
+            syrup.manager(),
+            lenders,
+            booleans
+        );
+        vm.stopPrank();
     }
 
     function test_ETHEREUM_sll_sparkLendUsdcRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
