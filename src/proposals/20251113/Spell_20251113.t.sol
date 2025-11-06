@@ -599,7 +599,7 @@ contract SparkEthereum_20251113_MorphoTests is MorphoTests {
                 lltv:            0.86e18
             }),
             currentCap: 0,
-            newCap:     1_000_000_000e18
+            newCap:     1_000_000_000e6
         });
     }
 

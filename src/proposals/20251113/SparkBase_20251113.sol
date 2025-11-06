@@ -31,7 +31,7 @@ contract SparkBase_20251113 is SparkPayloadBase {
                 irm:             Base.MORPHO_DEFAULT_IRM,
                 lltv:            0.86e18
             }),
-            1_000_000_000e18
+            1_000_000_000e6
         );
     }
 
