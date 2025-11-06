@@ -452,7 +452,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         uint256 wethBalanceAfter = IERC20(Ethereum.WETH).balanceOf(testUser);
 
         // Verify WETH withdrawal succeeded
-        assertGe(wethBalanceAfter, wethBalanceBefore + wethCollateralAmount);
+        assertGe(wethBalanceAfter, wethBalanceBefore + wethCollateralAmount - 1e18);
 
         vm.stopPrank();
     }

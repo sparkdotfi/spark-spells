@@ -8,6 +8,8 @@ import { Base } from "spark-address-registry/Base.sol";
 
 import { SparkPayloadBase, SLLHelpers } from "../../SparkPayloadBase.sol";
 
+import { MorphoHelpers } from "../../helpers/MorphoHelpers.sol";
+
 /**
  * @title  November 13, 2025 Spark Base Proposal
  * @notice Spark Blue Chip USDC Morpho Vault:
@@ -23,7 +25,8 @@ contract SparkBase_20251113 is SparkPayloadBase {
 
     function execute() external {
         // Onboard ETH
-        IMetaMorpho(Base.MORPHO_VAULT_SUSDC).submitCap(
+        MorphoHelpers.submitMorphoCap(
+            Base.MORPHO_VAULT_SUSDC,
             MarketParams({
                 loanToken:       Base.USDC,
                 collateralToken: ETH,
@@ -31,7 +34,7 @@ contract SparkBase_20251113 is SparkPayloadBase {
                 irm:             Base.MORPHO_DEFAULT_IRM,
                 lltv:            0.86e18
             }),
-            1_000_000_000e6
+            1_000_000_000
         );
     }
 
