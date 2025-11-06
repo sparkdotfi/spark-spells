@@ -444,7 +444,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         uint256 susdsBalanceAfter = IERC20(Ethereum.SUSDS).balanceOf(testUser);
         
         // Verify sUSDS withdrawal succeeded
-        assertGt(susdsBalanceAfter, susdsBalanceBefore);
+        assertGe(susdsBalanceAfter, susdsBalanceBefore + susdsCollateralAmount);
 
         // Now should be able to withdraw WETH after sUSDS is removed
         uint256 wethBalanceBefore = IERC20(Ethereum.WETH).balanceOf(testUser);
@@ -452,7 +452,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         uint256 wethBalanceAfter = IERC20(Ethereum.WETH).balanceOf(testUser);
 
         // Verify WETH withdrawal succeeded
-        assertGt(wethBalanceAfter, wethBalanceBefore);
+        assertGe(wethBalanceAfter, wethBalanceBefore + wethCollateralAmount);
 
         vm.stopPrank();
     }

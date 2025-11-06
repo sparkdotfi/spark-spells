@@ -21,6 +21,7 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
            SparkLend:
            - Deprecate sUSDS and sDAI Collateral
            - Update PYUSD Interest Rate Model
+           - Claim USDS and DAI Reserves
            Spark Savings:
            - Increase Deposit Caps for spUSDC, spUSDT, and spETH
            Spark Liquidity Layer:

@@ -2141,7 +2141,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         string memory response;
 
-        while (true) {
+        for (uint i; i < 10; i++) {
             response = string(vm.ffi(inputs));
 
             if (_isEqual(vm.parseJsonString(response, string(abi.encodePacked(".message"))), "NOTOK")) {
@@ -2903,19 +2903,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[30] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
         integrations[31] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
+        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDT", SYRUP_USDT);
 
-        integrations[32] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[33] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[33] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
-        integrations[34] = _createRewardsTransferIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
+        integrations[34] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
+        integrations[35] = _createRewardsTransferIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
 
-        integrations[35] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[38] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-        integrations[38] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
+        integrations[39] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[39] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        integrations[40] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3055,13 +3056,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[]  memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 1);
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
-        }
-
-        newIntegrations[newIntegrations.length - 1] = _createMapleIntegration("MAPLE-SYRUP_USDT", SYRUP_USDT);
+        newIntegrations = _getPostExecutionIntegrationsNoChange(integrations);
     }
 
     /**********************************************************************************************/
