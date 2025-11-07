@@ -81,6 +81,43 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).setDepositCap(500_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).setDepositCap(500_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).setDepositCap(100_000e18);
+
+        // Onboard B2C2
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                address(0xdeadbeef)  // TODO change
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDT,
+                address(0xdeadbeef)  // TODO change
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAssetDestinationKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.PYUSD,
+                address(0xdeadbeef)  // TODO change
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
     }
 
 }

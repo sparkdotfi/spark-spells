@@ -121,6 +121,60 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
         _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDT_SPTOKEN, 10_000_000e6, depositKey, withdrawKey, 10));
     }
 
+    function test_ETHEREUM_sll_onboardB2C2() public onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usdcKey =  RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            address(0xdeadbeef)  // TODO change
+        );
+
+        bytes32 usdtKey =  RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDT,
+            address(0xdeadbeef)  // TODO change
+        );
+
+        bytes32 pyusdKey =  RateLimitHelpers.makeAssetDestinationKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.PYUSD,
+            address(0xdeadbeef)  // TODO change
+        );
+
+        _assertRateLimit(usdcKey,  0, 0);
+        _assertRateLimit(usdtKey,  0, 0);
+        _assertRateLimit(pyusdKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usdcKey,  1_000_000e6, 20_000_000e6 / uint256(1 days));
+        _assertRateLimit(usdtKey,  1_000_000e6, 20_000_000e6 / uint256(1 days));
+        _assertRateLimit(pyusdKey, 1_000_000e6, 20_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          Ethereum.USDC,
+            destination:    address(0xdeadbeef),  // TODO change
+            transferKey:    usdcKey,
+            transferAmount: 100_000e6
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          Ethereum.USDT,
+            destination:    address(0xdeadbeef),  // TODO change
+            transferKey:    usdtKey,
+            transferAmount: 100_000e6
+        }));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx:            _getSparkLiquidityLayerContext(),
+            asset:          Ethereum.PYUSD,
+            destination:    address(0xdeadbeef),  // TODO change
+            transferKey:    pyusdKey,
+            transferAmount: 100_000e6
+        }));
+    }
+
 }
 
 contract SparkEthereum_20251113_SparklendTests is SparklendTests {
