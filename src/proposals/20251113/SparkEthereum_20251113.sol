@@ -32,8 +32,7 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
  */
 contract SparkEthereum_20251113 is SparkPayloadEthereum {
 
-    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
-    address internal constant PYUSD_IRM          = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
+    address internal constant PYUSD_IRM = 0xDF7dedCfd522B1ee8da2c8526f642745800c8035;
 
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 625_069e18;
 
@@ -44,7 +43,7 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         // Transfer Share of Ethena Net Profit to Grove
-        IERC20(Ethereum.USDS).transfer(GROVE_SUBDAO_PROXY, GROVE_PAYMENT_AMOUNT);
+        IERC20(Ethereum.USDS).transfer(Ethereum.GROVE_SUBDAO_PROXY, GROVE_PAYMENT_AMOUNT);
 
         // Deprecate sDAI and sUSDS Collateral
         LISTING_ENGINE.POOL_CONFIGURATOR().setSupplyCap(Ethereum.SDAI,  1);

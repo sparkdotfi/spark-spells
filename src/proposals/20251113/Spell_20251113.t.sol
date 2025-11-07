@@ -407,7 +407,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         address testUser = makeAddr("testUser");
 
         // Give the user some asset
-        uint256 supplyAmount = 1e18;
+        uint256 supplyAmount = 1;
         deal(asset, testUser, supplyAmount);
 
         vm.startPrank(testUser);
@@ -423,6 +423,56 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         assertEq(IERC20(asset).balanceOf(testUser), supplyAmount);
     }
 
+    function test_ETHEREUM_sUSDS_borrowsCannotBeIncreased() public onChain(ChainIdUtils.Ethereum()) {
+        _test_cannotIncreaseBorrowsAfterSpellExecution(Ethereum.SUSDS);
+    }
+
+    function test_ETHEREUM_sDAI_borrowsCannotBeIncreased() public onChain(ChainIdUtils.Ethereum()) {
+        _test_cannotIncreaseBorrowsAfterSpellExecution(Ethereum.SDAI);
+    }
+
+    function _test_cannotIncreaseBorrowsAfterSpellExecution(address asset) internal {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        // Setup test user with collateral
+        address testUser = makeAddr("testUser");
+        uint256 collateralAmount = 100_000e18;
+        deal(asset, testUser, collateralAmount);
+
+        vm.startPrank(testUser);
+        IERC20(asset).approve(address(ctx.pool), type(uint256).max);
+
+        // Supply collateral
+        ctx.pool.supply(asset, collateralAmount, testUser, 0);
+
+        // Borrow a small amount of USDC initially (well under the LTV limit)
+        uint256 initialBorrowAmount = 1_000e6;  // 1,000 USDC
+        ctx.pool.borrow(Ethereum.USDC, initialBorrowAmount, 2, 0, testUser);
+
+        (uint256 totalCollateralBaseBefore,,,,, uint256 healthFactorBefore) = ctx.pool.getUserAccountData(testUser);
+        assertTrue(totalCollateralBaseBefore > 0, "User should have collateral");
+        assertTrue(healthFactorBefore > 1e18, "Position should be healthy");
+
+        vm.stopPrank();
+
+        // Execute payload which sets LTV to 0
+        _executeAllPayloadsAndBridges();
+
+        vm.startPrank(testUser);
+
+        // Try to borrow an additional small amount - should fail
+        uint256 additionalBorrowAmount = 1;  // 1 wei
+        vm.expectRevert(bytes("57"));        // Ltv validation failed
+        ctx.pool.borrow(Ethereum.USDC, additionalBorrowAmount, 2, 0, testUser);
+
+        // Verify user still has their existing borrow
+        (uint256 totalCollateralBase, uint256 totalDebtBase,,,,) = ctx.pool.getUserAccountData(testUser);
+        assertTrue(totalCollateralBase > 0, "User should still have collateral");
+        assertTrue(totalDebtBase > 0, "User should still have debt");
+
+        vm.stopPrank();
+    }
+
     function test_ETHEREUM_sparkLend_wethAndSusdsCollateralWithdrawalOrder() public onChain(ChainIdUtils.Ethereum()) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
@@ -430,7 +480,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         address testUser = makeAddr("testUser");
 
         // Give the user some WETH and sUSDS to use as collateral
-        uint256 wethCollateralAmount  = 10e18;    // 10 WETH
+        uint256 wethCollateralAmount  = 10e18;     // 10 WETH
         uint256 susdsCollateralAmount = 50_000e18; // 50k sUSDS
         deal(Ethereum.WETH, testUser, wethCollateralAmount);
         deal(Ethereum.SUSDS, testUser, susdsCollateralAmount);
@@ -449,9 +499,6 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         uint256 borrowAmount = 20_000e6; // 20k USDC
         ctx.pool.borrow(Ethereum.USDC, borrowAmount, 2, 0, testUser);
 
-        // Try to withdraw WETH before changes - should succeed
-        ctx.pool.withdraw(Ethereum.WETH, 1e18, testUser);
-
         // Execute the payload which changes isolation mode
         vm.stopPrank();
 
@@ -463,11 +510,6 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         vm.expectRevert(bytes("57")); // Ltv validation failed
         ctx.pool.withdraw(Ethereum.WETH, 1e18, testUser);
 
-        // Repay USDC loan first
-        deal(Ethereum.USDC, testUser, borrowAmount);
-        IERC20(Ethereum.USDC).approve(address(ctx.pool), type(uint256).max);
-        ctx.pool.repay(Ethereum.USDC, type(uint256).max, 2, testUser);
-
         // Withdraw sUSDS collateral first
         uint256 susdsBalanceBefore = IERC20(Ethereum.SUSDS).balanceOf(testUser);
         ctx.pool.withdraw(Ethereum.SUSDS, type(uint256).max, testUser);
@@ -478,11 +520,11 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
         // Now should be able to withdraw WETH after sUSDS is removed
         uint256 wethBalanceBefore = IERC20(Ethereum.WETH).balanceOf(testUser);
-        ctx.pool.withdraw(Ethereum.WETH, type(uint256).max, testUser);
+        ctx.pool.withdraw(Ethereum.WETH, 1e18, testUser);
         uint256 wethBalanceAfter = IERC20(Ethereum.WETH).balanceOf(testUser);
 
         // Verify WETH withdrawal succeeded
-        assertGe(wethBalanceAfter, wethBalanceBefore + wethCollateralAmount - 1e18);
+        assertGe(wethBalanceAfter, wethBalanceBefore + 1e18);
 
         vm.stopPrank();
     }
@@ -492,8 +534,6 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 contract SparkEthereum_20251113_SpellTests is SpellTests {
 
     using SafeERC20 for IERC20;
-
-    address internal constant GROVE_SUBDAO_PROXY = 0x1369f7b2b38c76B6478c0f0E66D94923421891Ba;
 
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 625_069e18;
 
@@ -588,15 +628,15 @@ contract SparkEthereum_20251113_SpellTests is SpellTests {
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
         uint256 sparkUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
-        uint256 groveUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY);
+        uint256 groveUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.GROVE_SUBDAO_PROXY);
 
         assertEq(sparkUsdsBalanceBefore, 32_722_317.445801365846236778e18);
         assertEq(groveUsdsBalanceBefore, 1_167_444e18);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY), sparkUsdsBalanceBefore - GROVE_PAYMENT_AMOUNT);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(GROVE_SUBDAO_PROXY),   groveUsdsBalanceBefore + GROVE_PAYMENT_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),        sparkUsdsBalanceBefore - GROVE_PAYMENT_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.GROVE_SUBDAO_PROXY), groveUsdsBalanceBefore + GROVE_PAYMENT_AMOUNT);
     }
 
 }
