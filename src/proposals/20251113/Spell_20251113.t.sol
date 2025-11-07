@@ -451,7 +451,7 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
         (uint256 totalCollateralBaseBefore,,,,, uint256 healthFactorBefore) = ctx.pool.getUserAccountData(testUser);
         assertTrue(totalCollateralBaseBefore > 0, "User should have collateral");
-        assertTrue(healthFactorBefore > 1e18, "Position should be healthy");
+        assertTrue(healthFactorBefore > 1e18,     "Position should be healthy");
 
         vm.stopPrank();
 
@@ -467,8 +467,8 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
         // Verify user still has their existing borrow
         (uint256 totalCollateralBase, uint256 totalDebtBase,,,,) = ctx.pool.getUserAccountData(testUser);
-        assertTrue(totalCollateralBase > 0, "User should still have collateral");
-        assertTrue(totalDebtBase > 0, "User should still have debt");
+        assertGt(totalCollateralBase, 0, "User should still have collateral");
+        assertGt(totalDebtBase,       0, "User should still have debt");
 
         vm.stopPrank();
     }
@@ -498,6 +498,9 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         // Borrow USDC against the combined collateral
         uint256 borrowAmount = 20_000e6; // 20k USDC
         ctx.pool.borrow(Ethereum.USDC, borrowAmount, 2, 0, testUser);
+
+        // Try to withdraw WETH before changes - should succeed
+        ctx.pool.withdraw(Ethereum.WETH, 1e18, testUser);
 
         // Execute the payload which changes isolation mode
         vm.stopPrank();

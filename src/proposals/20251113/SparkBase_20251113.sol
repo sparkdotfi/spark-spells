@@ -16,7 +16,7 @@ import { MorphoHelpers } from "../../helpers/MorphoHelpers.sol";
            - Onboard ETH
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/november-13-2025-proposed-changes-to-spark-for-upcoming-spell/27354
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xd7397d29254989ce4c5785f3c67a94de21018abc4e9a76b1e7fc359aec36e60a
  */
 contract SparkBase_20251113 is SparkPayloadBase {
 

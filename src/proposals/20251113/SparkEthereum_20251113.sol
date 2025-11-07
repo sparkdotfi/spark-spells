@@ -28,7 +28,9 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
            - Increase Rate Limits for SparkLend USDC and USDT
 * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/november-13-2025-proposed-changes-to-spark-for-upcoming-spell/27354
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x785d3b23e63e3e6b6fb7927ca0bc529b2dc7b58d429102465e4ba8a36bc23fda
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0xe697ded18a50e09618c6f34fb89cbb8358d84a4c40602928ae4b44a644b83dcf
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x4c705ab40a35c3c903adb87466bf563b00abc78b1d161034278d2acd74fb7621
  */
 contract SparkEthereum_20251113 is SparkPayloadEthereum {
 
