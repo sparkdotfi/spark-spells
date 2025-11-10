@@ -26,7 +26,7 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
            - Increase Deposit Caps for spUSDC, spUSDT, and spETH
            Spark Liquidity Layer:
            - Increase Rate Limits for SparkLend USDC and USDT
-* @author Phoenix Labs
+ * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/november-13-2025-proposed-changes-to-spark-for-upcoming-spell/27354
  * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x785d3b23e63e3e6b6fb7927ca0bc529b2dc7b58d429102465e4ba8a36bc23fda
            https://snapshot.box/#/s:sparkfi.eth/proposal/0xe697ded18a50e09618c6f34fb89cbb8358d84a4c40602928ae4b44a644b83dcf
@@ -39,8 +39,8 @@ contract SparkEthereum_20251113 is SparkPayloadEthereum {
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 625_069e18;
 
     constructor() {
-        // PAYLOAD_AVALANCHE = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        // PAYLOAD_BASE      = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
+        PAYLOAD_AVALANCHE = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        PAYLOAD_BASE      = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
     }
 
     function _postExecute() internal override {

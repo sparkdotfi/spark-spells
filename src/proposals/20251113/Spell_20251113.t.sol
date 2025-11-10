@@ -56,14 +56,15 @@ contract SparkEthereum_20251113_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20251113;
-        _blockDate = "2025-11-04T08:51:00Z";
+        _blockDate = "2025-11-10T05:34:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        // chainData[ChainIdUtils.Base()].payload      = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
+        chainData[ChainIdUtils.Avalanche()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Base()].payload      = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
 
         // Maple onboarding process
         ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
@@ -132,14 +133,15 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20251113;
-        _blockDate = "2025-11-04T08:51:00Z";
+        _blockDate = "2025-11-10T05:34:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        // chainData[ChainIdUtils.Base()].payload      = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
+        chainData[ChainIdUtils.Avalanche()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Base()].payload      = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
     }
 
     function test_ETHEREUM_sparkLend_pyusdIrmUpdate() public onChain(ChainIdUtils.Ethereum()) {
@@ -236,15 +238,15 @@ contract SparkEthereum_20251113_SparklendTests is SparklendTests {
         uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  412_668_505.386398818232221198e18);
-        assertEq(spUsdsBalanceBefore, 380_702_415.599903984243896154e18);
+        assertEq(spDaiBalanceBefore,  404_767_352.917487232617219697e18);
+        assertEq(spUsdsBalanceBefore, 365_795_131.164154891845971905e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 3_957.586227730796606180e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 3_592.730987073276327968e18);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 28_873.151030294932169329e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 23_242.502676172287418449e18);
     }
 
     function test_ETHEREUM_sparkLend_depreciateSUSDSandSDAI() public onChain(ChainIdUtils.Ethereum()) {
@@ -542,14 +544,15 @@ contract SparkEthereum_20251113_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20251113;
-        _blockDate = "2025-11-04T08:51:00Z";
+        _blockDate = "2025-11-10T05:34:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        // chainData[ChainIdUtils.Base()].payload      = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
+        chainData[ChainIdUtils.Avalanche()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Base()].payload      = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
     }
 
     function test_ETHEREUM_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Ethereum()) {
@@ -570,19 +573,19 @@ contract SparkEthereum_20251113_SpellTests is SpellTests {
         _test_vault_depositBoundaryLimit({
             vault:              usdcVault,
             depositCap:         500_000_000e6,
-            expectedMaxDeposit: 425_482_672.814637e6
+            expectedMaxDeposit: 416_135_998.065359e6
         });
 
         _test_vault_depositBoundaryLimit({
             vault:              usdtVault,
             depositCap:         500_000_000e6,
-            expectedMaxDeposit: 441_712_918.49959e6
+            expectedMaxDeposit: 449_414_609.843377e6
         });
 
         _test_vault_depositBoundaryLimit({
             vault:              ethVault,
             depositCap:         100_000e18,
-            expectedMaxDeposit: 84_629.835138740220858047e18
+            expectedMaxDeposit: 89_699.926630313941789731e18
         });
     }
 
@@ -651,14 +654,15 @@ contract SparkEthereum_20251113_MorphoTests is MorphoTests {
 
     constructor() {
         _spellId   = 20251113;
-        _blockDate = "2025-11-06T05:55:00Z";
+        _blockDate = "2025-11-10T05:34:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xCF9326e24EBfFBEF22ce1050007A43A3c0B6DB55;
-        // chainData[ChainIdUtils.Base()].payload      = 0x71059EaAb41D6fda3e916bC9D76cB44E96818654;
+        chainData[ChainIdUtils.Avalanche()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Base()].payload      = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
     }
 
     function test_BASE_sparkUSDCVault_onboardEth() external onChain(ChainIdUtils.Base()) {
