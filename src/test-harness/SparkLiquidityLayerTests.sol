@@ -369,7 +369,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
         SLLIntegration[] memory integrations  = _getPreExecutionIntegrations();
 
-        _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(ctx, integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(ctx, integrations[i]);
@@ -382,7 +382,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
         integrations  = _getPostExecutionIntegrations(integrations);
 
-        _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(ctx, integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(ctx, integrations[i]);
@@ -2793,7 +2793,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32[]        memory rateLimitKeys = _getRateLimitKeys({ isPostExecution: false });
         SLLIntegration[] memory integrations  = _getPreExecutionIntegrations();
 
-        _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(ctx, integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(ctx, integrations[i]);
@@ -2808,7 +2808,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
         integrations  = _getPostExecutionIntegrations(integrations);
 
-        _checkRateLimitKeys(integrations, rateLimitKeys);
+        _checkRateLimitKeys(ctx, integrations, rateLimitKeys);
 
         ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
 
@@ -3561,7 +3561,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return impl != address(0);
     }
 
-    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
+    function _checkRateLimitKeys(SparkLiquidityLayerContext memory ctx, SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal {
         for (uint256 i = 0; i < integrations.length; ++i) {
             require(
                 integrations[i].entryId  != bytes32(0) ||
@@ -3572,23 +3572,42 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             );
 
             if (integrations[i].entryId != bytes32(0)) {
+                _checkRateLimitValue(ctx, integrations[i].entryId);
+
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
             }
 
             if (integrations[i].entryId2 != bytes32(0)) {
+                _checkRateLimitValue(ctx, integrations[i].entryId2);
+                
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
             }
 
             if (integrations[i].exitId != bytes32(0)) {
+                _checkRateLimitValue(ctx, integrations[i].exitId);
+
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId);
             }
 
             if (integrations[i].exitId2 != bytes32(0)) {
+                _checkRateLimitValue(ctx, integrations[i].exitId2);
+
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId2);
             }
         }
 
         assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
+    }
+
+    function _checkRateLimitValue(SparkLiquidityLayerContext memory ctx, bytes32 id) internal {
+        IRateLimits.RateLimitData memory value = ctx.rateLimits.getRateLimitData(id);
+
+        if(
+            (value.maxAmount != 0 && value.maxAmount != type(uint256).max && (value.maxAmount / 1e18) > 1e10) ||
+            (value.slope != 0     && value.slope != type(uint256).max     && (value.slope / 1e18) > 1e10)
+        ) {
+            revert("Invalid RateLimit Value");
+        }
     }
 
     function _appendIfNotContaining(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
