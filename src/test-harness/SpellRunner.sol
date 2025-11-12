@@ -28,6 +28,8 @@ import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs
 import { Address }      from "../libraries/Address.sol";
 import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
 
+import { IStarGuardLike } from "../interfaces/Interfaces.sol";
+
 import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
 
 abstract contract SpellRunner is Test {
@@ -105,7 +107,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(30830000);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(31691144);
         chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[4]);
     }
 
@@ -254,15 +256,26 @@ abstract contract SpellRunner is Test {
 
         require(Address.isContract(payloadAddress), "PAYLOAD IS NOT A CONTRACT");
 
+        uint256 bytecodeSize = payloadAddress.code.length;
+
+        bytes32 bytecodeHash;
+
+        assembly {
+            let ptr := mload(0x40)
+
+            extcodecopy(payloadAddress, ptr, 0, bytecodeSize)
+            bytecodeHash := keccak256(ptr, bytecodeSize)
+        }
+
         vm.prank(Ethereum.PAUSE_PROXY);
+        IStarGuardLike(Ethereum.SPARK_STAR_GUARD).plot({
+            addr_ : payloadAddress,
+            tag_  : bytecodeHash
+        });
 
-        ( bool success, ) = address(executor).call(abi.encodeWithSignature(
-            "exec(address,bytes)",
-            payloadAddress,
-            abi.encodeWithSignature("execute()")
-        ));
+        address payload = IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
 
-        require(success, "FAILED TO EXECUTE PAYLOAD");
+        require(payloadAddress == payload, "FAILED TO EXECUTE PAYLOAD");
     }
 
     /// @dev bridge contracts themselves are stored on mainnet

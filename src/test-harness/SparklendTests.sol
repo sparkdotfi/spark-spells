@@ -7,8 +7,9 @@ import { StdChains, console } from "forge-std/Test.sol";
 import { IERC20 }    from "erc20-helpers/interfaces/IERC20.sol";
 import { SafeERC20 } from "erc20-helpers/SafeERC20.sol";
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { Gnosis }   from "spark-address-registry/Gnosis.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Gnosis }    from "spark-address-registry/Gnosis.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import {
     IPoolAddressesProvider,
@@ -404,7 +405,7 @@ abstract contract SparklendTests is SpellRunner {
         for (uint256 i = 0; i < reserves.length; ++i) {
             address aToken = ctx.pool.getReserveData(reserves[i]).aTokenAddress;
 
-            if (aToken == Ethereum.GNO_SPTOKEN) continue;
+            if (aToken == SparkLend.GNO_SPTOKEN) continue;
 
             require(IERC20(aToken).totalSupply() >= 1e4, "RESERVE_NOT_SEEDED");
         }
@@ -501,7 +502,7 @@ abstract contract SparklendTests is SpellRunner {
     }
 
     function _runFreezerMomTests() internal {
-        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
+        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(SparkLend.FREEZER_MOM);
 
         // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
@@ -544,7 +545,7 @@ abstract contract SparklendTests is SpellRunner {
     }
 
     function _runFreezerMomTestsMultisig() internal {
-        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(Ethereum.FREEZER_MOM);
+        ISparkLendFreezerMom freezerMom = ISparkLendFreezerMom(SparkLend.FREEZER_MOM);
 
         // Sanity checks - cannot call Freezer Mom unless you have the hat or wards access
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
@@ -559,7 +560,7 @@ abstract contract SparklendTests is SpellRunner {
         vm.expectRevert("SparkLendFreezerMom/not-authorized");
         freezerMom.pauseAllMarkets(true);
 
-        vm.startPrank(Ethereum.FREEZER_MULTISIG);
+        vm.startPrank(Ethereum.SPARKLEND_FREEZER_MULTISIG);
 
         _assertFrozen(Ethereum.DAI,  false);
         _assertFrozen(Ethereum.WETH, false);
@@ -597,7 +598,7 @@ abstract contract SparklendTests is SpellRunner {
         uint256 supplyCapBefore = reserveDataBefore.configuration.getSupplyCap();
         uint256 borrowCapBefore = reserveDataBefore.configuration.getBorrowCap();
 
-        ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+        ICapAutomator capAutomator = ICapAutomator(SparkLend.CAP_AUTOMATOR);
 
         ( , , , , uint48 supplyCapLastIncreaseTime ) = capAutomator.supplyCapConfigs(asset);
         ( , , , , uint48 borrowCapLastIncreaseTime ) = capAutomator.borrowCapConfigs(asset);
@@ -1664,7 +1665,7 @@ abstract contract SparklendTests is SpellRunner {
             );
 
             if (block.chainid == 1) {
-                ICapAutomator capAutomator = ICapAutomator(Ethereum.CAP_AUTOMATOR);
+                ICapAutomator capAutomator = ICapAutomator(SparkLend.CAP_AUTOMATOR);
 
                 (
                     uint48 maxBorrowCap,
@@ -1787,7 +1788,7 @@ abstract contract SparklendTests is SpellRunner {
             uint48 increaseCooldown_,
             , // lastUpdateBlock
               // lastIncreaseTime
-        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).borrowCapConfigs(asset);
+        ) = ICapAutomator(SparkLend.CAP_AUTOMATOR).borrowCapConfigs(asset);
 
         assertEq(max_,              max);
         assertEq(gap_,              gap);
@@ -1809,8 +1810,8 @@ abstract contract SparklendTests is SpellRunner {
         for (uint256 i = 0; i < reserves.length; ++i) {
             DataTypes.ReserveData memory reserveData = ctx.pool.getReserveData(reserves[i]);
 
-            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            Ethereum.INCENTIVES);
-            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), Ethereum.INCENTIVES);
+            assertEq(address(IncentivizedERC20(reserveData.aTokenAddress).getIncentivesController()),            SparkLend.INCENTIVES);
+            assertEq(address(IncentivizedERC20(reserveData.variableDebtTokenAddress).getIncentivesController()), SparkLend.INCENTIVES);
         }
     }
 
@@ -1821,7 +1822,7 @@ abstract contract SparklendTests is SpellRunner {
             uint48 increaseCooldown_,
             , // lastUpdateBlock
               // lastIncreaseTime
-        ) = ICapAutomator(Ethereum.CAP_AUTOMATOR).supplyCapConfigs(asset);
+        ) = ICapAutomator(SparkLend.CAP_AUTOMATOR).supplyCapConfigs(asset);
 
         assertEq(max_,              max);
         assertEq(gap_,              gap);
@@ -1872,7 +1873,7 @@ abstract contract SparklendTests is SpellRunner {
         IPoolAddressesProvider poolAddressesProvider;
 
         if (chainId == ChainIdUtils.Ethereum()) {
-            poolAddressesProvider = IPoolAddressesProvider(Ethereum.POOL_ADDRESSES_PROVIDER);
+            poolAddressesProvider = IPoolAddressesProvider(SparkLend.POOL_ADDRESSES_PROVIDER);
         } else if (chainId == ChainIdUtils.Gnosis()) {
             poolAddressesProvider = IPoolAddressesProvider(Gnosis.POOL_ADDRESSES_PROVIDER);
         } else {

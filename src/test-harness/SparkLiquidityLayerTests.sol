@@ -18,6 +18,7 @@ import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
@@ -2058,6 +2059,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testCCTPIntegration(CCTPE2ETestParams memory p) internal {
         // NOTE: MainnetController and ForeignController share the same CCTP interfaces
         ///      so this works for both.
+        
+        skip(10 days);  // Recharge ratelimits
+
         IERC20 usdc = IERC20(MainnetController(p.ctx.controller).usdc());
 
         deal(address(usdc), address(p.ctx.proxy), p.transferAmount);
@@ -2140,7 +2144,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         string memory response;
 
-        while (true) {
+        for (uint256 i; i < 10; i++) {
             response = string(vm.ffi(inputs));
 
             if (_isEqual(vm.parseJsonString(response, string(abi.encodePacked(".message"))), "NOTOK")) {
@@ -2859,19 +2863,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](40);
+        integrations = new SLLIntegration[](41);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
-        integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   Ethereum.DAI_SPTOKEN);
+        integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[2]  = _createAaveIntegration("AAVE-ETH_LIDO_USDS", AAVE_ETH_LIDO_USDS);
         integrations[3]  = _createAaveIntegration("AAVE-ETH_USDC",      AAVE_ETH_USDC);
         integrations[4]  = _createAaveIntegration("AAVE-ETH_USDS",      AAVE_ETH_USDS);
-        integrations[5]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", Ethereum.PYUSD_SPTOKEN);
-        integrations[6]  = _createAaveIntegration("AAVE-SPETH",         Ethereum.WETH_SPTOKEN);
-        integrations[7]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  Ethereum.USDC_SPTOKEN); // SparkLend
+        integrations[5]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
+        integrations[6]  = _createAaveIntegration("AAVE-SPETH",         SparkLend.WETH_SPTOKEN);
+        integrations[7]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  SparkLend.USDC_SPTOKEN); // SparkLend
         integrations[8]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
-        integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  Ethereum.USDS_SPTOKEN);
-        integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  Ethereum.USDT_SPTOKEN);
+        integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
+        integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
 
         integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
@@ -2902,19 +2906,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[30] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
         integrations[31] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
+        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDT", SYRUP_USDT);
 
-        integrations[32] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[33] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[33] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
-        integrations[34] = _createRewardsTransferIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
+        integrations[34] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
+        integrations[35] = _createRewardsTransferIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
 
-        integrations[35] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[38] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-        integrations[38] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
+        integrations[39] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[39] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        integrations[40] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3054,13 +3059,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[]  memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 1);
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
-        }
-
-        newIntegrations[newIntegrations.length - 1] = _createMapleIntegration("MAPLE-SYRUP_USDT", SYRUP_USDT);
+        newIntegrations = _getPostExecutionIntegrationsNoChange(integrations);
     }
 
     /**********************************************************************************************/
