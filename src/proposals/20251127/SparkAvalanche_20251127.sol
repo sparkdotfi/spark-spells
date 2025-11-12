@@ -6,12 +6,12 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 import { SparkPayloadAvalanche, Avalanche } from "../../SparkPayloadAvalanche.sol";
 
 /**
- * @title  November 13, 2025 Spark Avalanche Proposal
+ * @title  November 27, 2025 Spark Avalanche Proposal
  * @notice Spark Liquidity Layer - Update Controller to v1.8
  * Forum:  
  * Vote:   
  */
-contract SparkAvalanche_20251113 is SparkPayloadAvalanche {
+contract SparkAvalanche_20251127 is SparkPayloadAvalanche {
 
     address internal constant NEW_ALM_CONTROLLER = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
     address internal constant AAVE_ATOKEN_USDC   = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
