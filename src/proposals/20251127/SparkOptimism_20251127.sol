@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.25;
+
+import { SparkPayloadOptimism, Optimism } from "../../SparkPayloadOptimism.sol";
+
+/**
+ * @title  October 30, 2025 Spark Optimism Proposal
+ * @notice Spark Liquidity Layer - Update Controller to v1.8
+ * @author Phoenix Labs
+ * Forum:  
+ * Vote:   
+ */
+contract SparkOptimism_20251030 is SparkPayloadOptimism {
+
+    address internal constant NEW_CONTROLLER = 0x689502bc817E6374286af8f171Ed4715721406f7;
+
+    function execute() external {
+        _upgradeController(Optimism.ALM_CONTROLLER, NEW_CONTROLLER);
+    }
+
+}

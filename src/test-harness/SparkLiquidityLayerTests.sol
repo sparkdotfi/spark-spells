@@ -442,12 +442,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Note: ERC4626 signature is the same for mainnet and foreign
         deal(address(asset), address(ctx.proxy), expectedDepositAmount);
 
-        bytes32 depositKey = RateLimitHelpers.makeAssetKey(
+        bytes32 depositKey = RateLimitHelpers.makeAddressKey(
             MainnetController(ctx.controller).LIMIT_4626_DEPOSIT(),
             vault
         );
 
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(
             MainnetController(ctx.controller).LIMIT_4626_WITHDRAW(),
             vault
         );
@@ -585,8 +585,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Note: Aave signature is the same for mainnet and foreign
         deal(underlying, address(ctx.proxy), expectedDepositAmount);
 
-        bytes32 depositKey  = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
-        bytes32 withdrawKey = RateLimitHelpers.makeAssetKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
 
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
@@ -855,9 +855,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vars.depositAmounts[1] * vars.rates[1]
         ) * maxSlippage / 1e18 / vars.pool.get_virtual_price();
 
-        vars.swapKey     = RateLimitHelpers.makeAssetKey(vars.controller.LIMIT_CURVE_SWAP(),     pool);
-        vars.depositKey  = RateLimitHelpers.makeAssetKey(vars.controller.LIMIT_CURVE_DEPOSIT(),  pool);
-        vars.withdrawKey = RateLimitHelpers.makeAssetKey(vars.controller.LIMIT_CURVE_WITHDRAW(), pool);
+        vars.swapKey     = RateLimitHelpers.makeAddressKey(vars.controller.LIMIT_CURVE_SWAP(),     pool);
+        vars.depositKey  = RateLimitHelpers.makeAddressKey(vars.controller.LIMIT_CURVE_DEPOSIT(),  pool);
+        vars.withdrawKey = RateLimitHelpers.makeAddressKey(vars.controller.LIMIT_CURVE_WITHDRAW(), pool);
 
         _assertRateLimit(vars.swapKey,     0, 0);
         _assertRateLimit(vars.depositKey,  0, 0);
@@ -1020,7 +1020,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         if (v.depositLimit > 0) {
             IRateLimits.RateLimitData memory data = p.ctx.rateLimits.getRateLimitData(
-                RateLimitHelpers.makeAssetKey(
+                RateLimitHelpers.makeAddressKey(
                     MainnetController(p.ctx.controller).LIMIT_CURVE_SWAP(),
                     p.pool
                 )
@@ -2062,7 +2062,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         
         skip(10 days);  // Recharge ratelimits
 
-        IERC20 usdc = IERC20(MainnetController(p.ctx.controller).usdc());
+        IERC20 usdc = IERC20(address(MainnetController(p.ctx.controller).usdc()));
 
         deal(address(usdc), address(p.ctx.proxy), p.transferAmount);
 
@@ -2246,7 +2246,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);  // NOTE: New slippage not in oldController, part of the payload to onboard a new pool.
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
@@ -2272,7 +2272,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         VmSafe.EthGetLogs[] memory cctpLogs      = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
         VmSafe.EthGetLogs[] memory layerZeroLogs = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
 
-        assertEq(slippageLogs.length,  5);
+        assertEq(slippageLogs.length,  6);
         assertEq(cctpLogs.length,      5);
         assertEq(layerZeroLogs.length, 0);
 
@@ -2281,10 +2281,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(address(uint160(uint256(slippageLogs[2].topics[1]))), Ethereum.CURVE_PYUSDUSDC);
         assertEq(address(uint160(uint256(slippageLogs[3].topics[1]))), Ethereum.CURVE_SUSDSUSDT);  // Duplicated
         assertEq(address(uint160(uint256(slippageLogs[4].topics[1]))), Ethereum.CURVE_PYUSDUSDC);  // Duplicated
+        assertEq(address(uint160(uint256(slippageLogs[4].topics[1]))), Ethereum.CURVE_PYUSDUSDS);  
 
         assertEq(oldController.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
         assertEq(oldController.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
         assertEq(oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
+        assertEq(oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
 
         assertEq(uint32(uint256(cctpLogs[0].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
         assertEq(uint32(uint256(cctpLogs[1].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
@@ -3076,9 +3078,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.AAVE,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_DEPOSIT(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_AAVE_DEPOSIT(), integration),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_AAVE_WITHDRAW(), integration),
+            exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_AAVE_WITHDRAW(), integration),
             exitId2:     bytes32(0),
             extraData:   ""
         });
@@ -3097,9 +3099,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.BUIDL,
             integration: assetOut,  // Default to assetOut for transferAsset type integrations because this is the LP token
-            entryId:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination),
+            entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn,  depositDestination),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
+            exitId:      RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
             exitId2:     bytes32(0),
             extraData:   abi.encode(assetIn, depositDestination, assetOut, withdrawDestination)
         });
@@ -3115,7 +3117,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.CCTP,
             integration: address(uint160(cctpId)),  // Unique ID
-            entryId:     RateLimitHelpers.makeDomainKey(mainnetController.LIMIT_USDC_TO_DOMAIN(), cctpId),
+            entryId:     RateLimitHelpers.makeUint32Key(mainnetController.LIMIT_USDC_TO_DOMAIN(), cctpId),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
@@ -3133,24 +3135,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             entryId:     mainnetController.LIMIT_USDC_TO_CCTP(),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
-            exitId2:     bytes32(0),
-            extraData:   ""
-        });
-    }
-
-    function _createCentrifugeIntegration(
-        string  memory label,
-        address        integration
-    ) internal view returns (SLLIntegration memory) {
-        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
-
-        return SLLIntegration({
-            label:       label,
-            category:    Category.CENTRIFUGE,
-            integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_DEPOSIT(), integration),
-            entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_7540_REDEEM(), integration),
             exitId2:     bytes32(0),
             extraData:   ""
         });
@@ -3184,9 +3168,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.CURVE_LP,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_DEPOSIT(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_CURVE_DEPOSIT(), integration),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_WITHDRAW(), integration),
+            exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_CURVE_WITHDRAW(), integration),
             exitId2:     bytes32(0),
             extraData:   ""
         });
@@ -3202,7 +3186,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.CURVE_SWAP,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_CURVE_SWAP(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_CURVE_SWAP(), integration),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
@@ -3220,9 +3204,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.ERC4626,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
+            exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
             exitId2:     bytes32(0),
             extraData:   ""
         });
@@ -3239,7 +3223,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             category:    Category.ETHENA,
             integration: integration,
             entryId:     mainnetController.LIMIT_USDE_MINT(),
-            entryId2:    RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
+            entryId2:    RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
             exitId:      mainnetController.LIMIT_SUSDE_COOLDOWN(),
             exitId2:     mainnetController.LIMIT_USDE_BURN(),
             extraData:   ""
@@ -3256,9 +3240,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.FARM,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_DEPOSIT(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_FARM_DEPOSIT(), integration),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration),
+            exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_FARM_WITHDRAW(), integration),
             exitId2:     bytes32(0),
             extraData:   ""
         });
@@ -3274,10 +3258,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.MAPLE,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_DEPOSIT(), integration),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration),
-            exitId2:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
+            exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration),
+            exitId2:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
             extraData:   ""
         });
     }
@@ -3311,9 +3295,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.PSM3,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset),
+            entryId:     RateLimitHelpers.makeAddressKey(foreignController.LIMIT_PSM_DEPOSIT(),  asset),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetKey(foreignController.LIMIT_PSM_WITHDRAW(), asset),
+            exitId:      RateLimitHelpers.makeAddressKey(foreignController.LIMIT_PSM_WITHDRAW(), asset),
             exitId2:     bytes32(0),
             extraData:   abi.encode(asset)
         });
@@ -3330,7 +3314,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.REWARDS_TRANSFER,
             integration: asset,  // Default to assetOut for transferAsset type integrations because this is the LP token
-            entryId:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
+            entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
@@ -3348,9 +3332,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.SPARK_VAULT_V2,
             integration: integration,
-            entryId:     RateLimitHelpers.makeAssetKey(mainnetController.LIMIT_SPARK_VAULT_TAKE(), integration),
+            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_SPARK_VAULT_TAKE(), integration),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration),
+            exitId:      RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), ISparkVaultV2Like(integration).asset(), integration),
             exitId2:     bytes32(0),
             extraData:   ""
         });
@@ -3371,7 +3355,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             entryId:     mainnetController.LIMIT_SUPERSTATE_SUBSCRIBE(),
             entryId2:    bytes32(0),
             exitId:      keccak256("LIMIT_SUPERSTATE_REDEEM"),  // Have to use hash because this function was removed
-            exitId2:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
+            exitId2:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
             extraData:   abi.encode(assetIn, assetOut, withdrawDestination)
         });
     }
@@ -3389,9 +3373,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.SUPERSTATE_USCC,
             integration: assetOut,  // Default to assetOut for transferAsset type integrations because this is the LP
-            entryId:     RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination),
+            entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetIn, depositDestination),
             entryId2:    bytes32(0),
-            exitId:      RateLimitHelpers.makeAssetDestinationKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
+            exitId:      RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), assetOut, withdrawDestination),
             exitId2:     bytes32(0),
             extraData:   abi.encode(assetIn, depositDestination, assetOut, withdrawDestination)
         });

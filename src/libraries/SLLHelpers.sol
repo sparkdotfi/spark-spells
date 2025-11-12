@@ -69,7 +69,7 @@ library SLLHelpers {
     ) internal {
         // PSM USDC
         setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_PSM_DEPOSIT,
                 usdc
             ),
@@ -80,7 +80,7 @@ library SLLHelpers {
         );
 
         setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_PSM_WITHDRAW,
                 usdc
             ),
@@ -92,14 +92,14 @@ library SLLHelpers {
 
         // PSM USDS
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_PSM_DEPOSIT,
                 usds
             )
         );
 
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_PSM_WITHDRAW,
                 usds
             )
@@ -107,14 +107,14 @@ library SLLHelpers {
 
         // PSM sUSDS
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_PSM_DEPOSIT,
                 susds
             )
         );
 
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_PSM_WITHDRAW,
                 susds
             )
@@ -126,7 +126,7 @@ library SLLHelpers {
         );
 
         setRateLimitData(
-            RateLimitHelpers.makeDomainKey(
+            RateLimitHelpers.makeUint32Key(
                 LIMIT_USDC_TO_DOMAIN,
                 0  // Ethereum domain id (https://developers.circle.com/stablecoins/evm-smart-contracts)
             ),
@@ -151,7 +151,7 @@ library SLLHelpers {
         IERC20 underlying = IERC20(IAToken(token).UNDERLYING_ASSET_ADDRESS());
 
         setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_AAVE_DEPOSIT,
                 token
             ),
@@ -162,7 +162,7 @@ library SLLHelpers {
         );
 
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_AAVE_WITHDRAW,
                 token
             )
@@ -183,7 +183,7 @@ library SLLHelpers {
         IERC20 asset = IERC20(IERC4626(vault).asset());
 
         setRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_4626_DEPOSIT,
                 vault
             ),
@@ -194,7 +194,7 @@ library SLLHelpers {
         );
 
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 LIMIT_4626_WITHDRAW,
                 vault
             )
@@ -220,7 +220,7 @@ library SLLHelpers {
 
         if (swapMax != 0) {
             setRateLimitData(
-                RateLimitHelpers.makeAssetKey(
+                RateLimitHelpers.makeAddressKey(
                     LIMIT_CURVE_SWAP,
                     pool
                 ),
@@ -233,7 +233,7 @@ library SLLHelpers {
 
         if (depositMax != 0) {
             setRateLimitData(
-                RateLimitHelpers.makeAssetKey(
+                RateLimitHelpers.makeAddressKey(
                     LIMIT_CURVE_DEPOSIT,
                     pool
                 ),
@@ -246,7 +246,7 @@ library SLLHelpers {
 
         if (withdrawMax != 0) {
             setRateLimitData(
-                RateLimitHelpers.makeAssetKey(
+                RateLimitHelpers.makeAddressKey(
                     LIMIT_CURVE_WITHDRAW,
                     pool
                 ),
@@ -352,7 +352,7 @@ library SLLHelpers {
         uint256 slope
     ) internal {
         setRateLimitData(
-            RateLimitHelpers.makeDomainKey(LIMIT_USDC_TO_DOMAIN, destinationDomain),
+            RateLimitHelpers.makeUint32Key(LIMIT_USDC_TO_DOMAIN, destinationDomain),
             rateLimits,
             maxUsdcAmount,
             slope,
@@ -451,12 +451,15 @@ library SLLHelpers {
 
         ForeignControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new ForeignControllerInit.LayerZeroRecipient[](0);
 
+        ForeignControllerInit.MaxSlippageParams[] memory maxSlippageParams = new ForeignControllerInit.MaxSlippageParams[](0);
+
         ForeignControllerInit.upgradeController({
             controllerInst:      controllerInst,
             configAddresses:     configAddresses,
             checkAddresses:      checkAddresses,
             mintRecipients:      mintRecipients,
             layerZeroRecipients: layerZeroRecipients,
+            maxSlippageParams:   maxSlippageParams,
             checkPsm:            checkPsm
         });
     }
