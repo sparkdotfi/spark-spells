@@ -15,13 +15,13 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 
 /**
- * @title  November 13, 2025 Spark Ethereum Proposal
+ * @title  November 27, 2025 Spark Ethereum Proposal
  * @notice 
  * @author Phoenix Labs
  * Forum:  
  * Vote:   
  */
-contract SparkEthereum_20251113 is SparkPayloadEthereum {
+contract SparkEthereum_20251127 is SparkPayloadEthereum {
 
     address internal constant NEW_ALM_CONTROLLER = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
 

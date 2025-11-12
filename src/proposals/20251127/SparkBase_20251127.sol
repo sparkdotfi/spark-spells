@@ -9,13 +9,13 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 import { SparkPayloadBase, SLLHelpers } from "../../SparkPayloadBase.sol";
 
 /**
- * @title  November 13, 2025 Spark Base Proposal
+ * @title  November 27, 2025 Spark Base Proposal
  * @notice Spark Liquidity Layer - Update Controller to v1.8
  * @author Phoenix Labs
  * Forum:  
  * Vote:   
  */
-contract SparkBase_20251113 is SparkPayloadBase {
+contract SparkBase_20251127 is SparkPayloadBase {
 
     address internal constant NEW_ALM_CONTROLLER = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
 

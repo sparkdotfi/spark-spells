@@ -6,13 +6,13 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 import { Arbitrum, SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
 /**
- * @title  November 30, 2025 Spark Arbitrum Proposal
+ * @title  November 27, 2025 Spark Arbitrum Proposal
  * @notice Spark Liquidity Layer - Update Controller to v1.8
  * @author Phoenix Labs
  * Forum:  
  * Vote:   
  */
-contract SparkArbitrumOne_20251030 is SparkPayloadArbitrumOne {
+contract SparkArbitrumOne_20251127 is SparkPayloadArbitrumOne {
 
     address internal constant NEW_ALM_CONTROLLER = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
 
