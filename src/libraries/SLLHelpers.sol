@@ -12,11 +12,12 @@ import { IMetaMorpho } from "metamorpho/interfaces/IMetaMorpho.sol";
 import { MarketParams, Id } from "morpho-blue/src/interfaces/IMorpho.sol";
 import { MarketParamsLib }  from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
-import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { Optimism } from "spark-address-registry/Optimism.sol";
-import { Unichain } from "spark-address-registry/Unichain.sol";
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
+import { Base }      from "spark-address-registry/Base.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { ControllerInstance }    from "spark-alm-controller/deploy/ControllerInstance.sol";
 import { MainnetControllerInit } from "spark-alm-controller/deploy/MainnetControllerInit.sol";
@@ -201,6 +202,24 @@ library SLLHelpers {
         );
     }
 
+    function setMaxExchangeRate(
+        address almController,
+        address vault, 
+        uint256 normalizedShares, 
+        uint256 normalizedAssets
+    ) 
+        internal 
+    {
+        uint256 sharePrecision = 10 ** IERC20(vault).decimals();
+        uint256 assetPrecision = 10 ** IERC20(IERC4626(vault).asset()).decimals();
+
+        MainnetController(almController).setMaxExchangeRate({
+            token             : vault,
+            shares            : normalizedShares * sharePrecision,
+            maxExpectedAssets : normalizedAssets * assetPrecision
+        });
+    }
+
     /**
      * @notice Onboard a Curve pool
      */
@@ -365,7 +384,7 @@ library SLLHelpers {
     }
 
     function upgradeMainnetController(address oldController, address newController) internal {
-        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](4);
+        MainnetControllerInit.MintRecipient[] memory mintRecipients = new MainnetControllerInit.MintRecipient[](5);
 
         mintRecipients[0] = MainnetControllerInit.MintRecipient({
             domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_BASE,
@@ -387,9 +406,14 @@ library SLLHelpers {
             mintRecipient : addrToBytes32(Unichain.ALM_PROXY)
         });
 
+        mintRecipients[4] = MainnetControllerInit.MintRecipient({
+            domain        : CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE,
+            mintRecipient : addrToBytes32(Avalanche.ALM_PROXY)
+        });
+
         MainnetControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new MainnetControllerInit.LayerZeroRecipient[](0);
 
-        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](3);
+        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](4);
 
         maxSlippageParams[0] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_SUSDSUSDT,
@@ -404,6 +428,11 @@ library SLLHelpers {
         maxSlippageParams[2] = MainnetControllerInit.MaxSlippageParams({
             pool        : Ethereum.CURVE_USDCUSDT,
             maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_USDCUSDT)
+        });
+
+        maxSlippageParams[3] = MainnetControllerInit.MaxSlippageParams({
+            pool        : Ethereum.CURVE_PYUSDUSDS,
+            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_PYUSDUSDS)
         });
 
         address[] memory relayers = new address[](2);

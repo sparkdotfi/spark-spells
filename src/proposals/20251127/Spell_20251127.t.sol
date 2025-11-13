@@ -5,10 +5,13 @@ import { MarketParams } from 'metamorpho/interfaces/IMetaMorpho.sol';
 
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
@@ -54,11 +57,17 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
-    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
+    address internal constant ARBITRUM_NEW_ALM_CONTROLLER  = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
+    address internal constant AVALANCHE_NEW_ALM_CONTROLLER = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
+    address internal constant BASE_NEW_ALM_CONTROLLER      = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER  = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
+    address internal constant OPTIMISM_NEW_ALM_CONTROLLER  = 0x689502bc817E6374286af8f171Ed4715721406f7;
+    address internal constant UNICHAIN_NEW_ALM_CONTROLLER  = 0xF16DE710899C7bdd6D46873265392CCA68e5D5bA;
+
 
     constructor() {
         _spellId   = 20251127;
-        _blockDate = "2025-11-10T05:34:00Z";
+        _blockDate = "2025-11-12T15:03:00Z";
     }
 
     function setUp() public override {
@@ -93,6 +102,41 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
         _testControllerUpgrade({
             oldController: Ethereum.ALM_CONTROLLER,
             newController: ETHEREUM_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
+        _testControllerUpgrade({
+            oldController: Base.ALM_CONTROLLER,
+            newController: BASE_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_ARBITRUM_controllerUpgrade() public onChain(ChainIdUtils.ArbitrumOne()) {
+        _testControllerUpgrade({
+            oldController: Arbitrum.ALM_CONTROLLER,
+            newController: ARBITRUM_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_AVALANCHE_controllerUpgrade() public onChain(ChainIdUtils.Avalanche()) {
+        _testControllerUpgrade({
+            oldController: Avalanche.ALM_CONTROLLER,
+            newController: AVALANCHE_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_OPTIMISM_controllerUpgrade() public onChain(ChainIdUtils.Optimism()) {
+        _testControllerUpgrade({
+            oldController: Optimism.ALM_CONTROLLER,
+            newController: OPTIMISM_NEW_ALM_CONTROLLER
+        });
+    }
+
+    function test_UNICHAIN_controllerUpgrade() public onChain(ChainIdUtils.Unichain()) {
+        _testControllerUpgrade({
+            oldController: Unichain.ALM_CONTROLLER,
+            newController: UNICHAIN_NEW_ALM_CONTROLLER
         });
     }
 

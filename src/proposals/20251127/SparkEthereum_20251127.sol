@@ -23,6 +23,8 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
  */
 contract SparkEthereum_20251127 is SparkPayloadEthereum {
 
+    using SLLHelpers for address;
+
     address internal constant NEW_ALM_CONTROLLER = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
 
     constructor() {
@@ -36,11 +38,11 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
     function _postExecute() internal override {
         _upgradeController(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
-        MainnetController(NEW_ALM_CONTROLLER).setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDC_BC, 1e36, 1e36);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxExchangeRate(Ethereum.MORPHO_VAULT_DAI_1,   1e36, 1e36);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDS,    1e36, 1e36);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxExchangeRate(Ethereum.SUSDS,                1e36, 1e36);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxExchangeRate(Ethereum.FLUID_SUSDS,          1e36, 1e36);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDC_BC, 1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_DAI_1,   1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDS,    1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDS,                1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.FLUID_SUSDS,          1, 10);
 
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDT,  0.99e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.DAI_SPTOKEN,      0.99e18);

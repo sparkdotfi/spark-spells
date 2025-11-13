@@ -2212,8 +2212,41 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0);
+
+            // New maxSlippages
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0);
+            assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0);
+            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0);
+            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),     0);
+            assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),     0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0);
+            assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),     0);
+            assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),     0);
+
+            // New maxExchangeRates
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    0);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
+
+            if (block.chainid == ChainIdUtils.ArbitrumOne()) {
+                assertEq(controller.maxSlippages(Arbitrum.ATOKEN_USDC), 0);
+
+                assertEq(controller.maxExchangeRates(Arbitrum.FLUID_SUSDS), 0);
+            } else if (block.chainid == ChainIdUtils.Avalanche()) {
+                assertEq(controller.maxSlippages(0x625E7708f30cA75bfd92586e17077590C60eb4cD), 0);
+            } else if (block.chainid == ChainIdUtils.Base()) {
+                assertEq(controller.maxSlippages(Base.ATOKEN_USDC), 0);
+
+                assertEq(controller.maxExchangeRates(Base.MORPHO_VAULT_SUSDC), 0);
+                assertEq(controller.maxExchangeRates(Base.FLUID_SUSDS),        0);
+            }
         }
 
         _executeAllPayloadsAndBridges();
@@ -2248,15 +2281,51 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
 
-            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
-        } else {
-            VmSafe.EthGetLogs[] memory cctpLogs = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
-            VmSafe.EthGetLogs[] memory lzLogs   = _getEvents(block.chainid, oldController, ForeignController.LayerZeroRecipientSet.selector);
+            // New maxSlippages
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0.99e18);
+            assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0.99e18);
+            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0.99e18);
+            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),     0.99e18);
+            assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),     0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0.99e18);
+            assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),     0.99e18);
+            assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),     0.99e18);
 
-            assertEq(cctpLogs.length, 1);
-            assertEq(lzLogs.length,   0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),   MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDS));
+
+            // New maxExchangeRates
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);
+        } else {
+            VmSafe.EthGetLogs[] memory slippageLogs = _getEvents(block.chainid, oldController, ForeignController.MaxSlippageSet.selector);
+            VmSafe.EthGetLogs[] memory cctpLogs     = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
+            VmSafe.EthGetLogs[] memory lzLogs       = _getEvents(block.chainid, oldController, ForeignController.LayerZeroRecipientSet.selector);
+
+            if (block.chainid == ChainIdUtils.ArbitrumOne()) {
+                assertEq(controller.maxSlippages(Arbitrum.ATOKEN_USDC), 0.99e18);
+
+                assertEq(controller.maxExchangeRates(Arbitrum.FLUID_SUSDS), 1e37);
+            } else if (block.chainid == ChainIdUtils.Avalanche()) {
+                assertEq(controller.maxSlippages(0x625E7708f30cA75bfd92586e17077590C60eb4cD), 0.99e18);
+            } else if (block.chainid == ChainIdUtils.Base()) {
+                assertEq(controller.maxSlippages(Base.ATOKEN_USDC), 0.99e18);
+
+                assertEq(controller.maxExchangeRates(Base.MORPHO_VAULT_SUSDC), 1e25);
+                assertEq(controller.maxExchangeRates(Base.FLUID_SUSDS),        1e37);
+            }
+
+            assertEq(slippageLogs.length, 0);
+            assertEq(cctpLogs.length,     1);
+            assertEq(lzLogs.length,       0);
 
             assertEq(uint32(uint256(cctpLogs[0].topics[1])), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
@@ -2272,16 +2341,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         VmSafe.EthGetLogs[] memory cctpLogs      = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
         VmSafe.EthGetLogs[] memory layerZeroLogs = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
 
-        assertEq(slippageLogs.length,  6);
+        assertEq(slippageLogs.length,  4);
         assertEq(cctpLogs.length,      5);
         assertEq(layerZeroLogs.length, 0);
 
         assertEq(address(uint160(uint256(slippageLogs[0].topics[1]))), Ethereum.CURVE_SUSDSUSDT);
-        assertEq(address(uint160(uint256(slippageLogs[1].topics[1]))), Ethereum.CURVE_USDCUSDT);
-        assertEq(address(uint160(uint256(slippageLogs[2].topics[1]))), Ethereum.CURVE_PYUSDUSDC);
-        assertEq(address(uint160(uint256(slippageLogs[3].topics[1]))), Ethereum.CURVE_SUSDSUSDT);  // Duplicated
-        assertEq(address(uint160(uint256(slippageLogs[4].topics[1]))), Ethereum.CURVE_PYUSDUSDC);  // Duplicated
-        assertEq(address(uint160(uint256(slippageLogs[4].topics[1]))), Ethereum.CURVE_PYUSDUSDS);  
+        assertEq(address(uint160(uint256(slippageLogs[1].topics[1]))), Ethereum.CURVE_PYUSDUSDC);
+        assertEq(address(uint160(uint256(slippageLogs[2].topics[1]))), Ethereum.CURVE_USDCUSDT);
+        assertEq(address(uint160(uint256(slippageLogs[3].topics[1]))), Ethereum.CURVE_PYUSDUSDS);
 
         assertEq(oldController.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
         assertEq(oldController.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
