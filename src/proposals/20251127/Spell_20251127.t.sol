@@ -55,6 +55,24 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
         // chainData[ChainIdUtils.Optimism()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
         // chainData[ChainIdUtils.Unichain()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
 
+        chainData[ChainIdUtils.ArbitrumOne()].prevController = Arbitrum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.ArbitrumOne()].newController  = ARBITRUM_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Avalanche()].prevController = Avalanche.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Avalanche()].newController  = AVALANCHE_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Base()].prevController = Base.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Base()].newController  = BASE_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Optimism()].prevController = Optimism.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Optimism()].newController  = OPTIMISM_NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Unichain()].prevController = Unichain.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Unichain()].newController  = UNICHAIN_NEW_ALM_CONTROLLER;
+
         // Maple onboarding process
         ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
 
