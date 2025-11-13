@@ -382,6 +382,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         rateLimitKeys = _getRateLimitKeys({ isPostExecution: true });
         integrations  = _getPostExecutionIntegrations(integrations);
 
+        ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
+
         _checkRateLimitKeys(integrations, rateLimitKeys);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
@@ -472,11 +474,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _handleMorphoFees(E2ETestParams memory p) internal {
         // If the feeRecipient is set, the vault will accrue fees into the ALMProxy during e2e test
         // deposit, causing unexpected behavior. This is a workaround to avoid this.
+        // Using 100 instead of 1 to avoid share validation issue.
         try IMetaMorpho(p.vault).feeRecipient() {
             address asset = IERC4626(p.vault).asset();
-            deal(asset, address(p.ctx.proxy), 1);
+            deal(asset, address(p.ctx.proxy), 100);
             vm.prank(p.ctx.relayer);
-            MainnetController(p.ctx.controller).depositERC4626(p.vault, 1);
+            MainnetController(p.ctx.controller).depositERC4626(p.vault, 100);
         } catch {
             // Do nothing
         }
@@ -2234,6 +2237,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    0);
             assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
             assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          0);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                0);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           0);
+            assertEq(controller.maxExchangeRates(SYRUP_USDT),                    0);
+
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
@@ -2307,6 +2314,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
             assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           1e37);
+            assertEq(controller.maxExchangeRates(SYRUP_USDT),                    1e37);
         } else {
             VmSafe.EthGetLogs[] memory slippageLogs = _getEvents(block.chainid, oldController, ForeignController.MaxSlippageSet.selector);
             VmSafe.EthGetLogs[] memory cctpLogs     = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);

@@ -26,6 +26,7 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
     using SLLHelpers for address;
 
     address internal constant NEW_ALM_CONTROLLER = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
+    address internal constant SYRUP_USDT         = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
 
     constructor() {
         // PAYLOAD_ARBITRUM  = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
@@ -43,6 +44,9 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDS,    1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDS,                1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.FLUID_SUSDS,          1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDE,                1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDC,           1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(SYRUP_USDT,                    1, 10);
 
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDT,  0.99e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.DAI_SPTOKEN,      0.99e18);
