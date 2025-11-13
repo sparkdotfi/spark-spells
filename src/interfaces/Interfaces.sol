@@ -274,6 +274,8 @@ interface IWithdrawalManagerLike {
 
     function processRedemptions(uint256 maxSharesToProcess) external;
 
+    function totalShares() external returns (uint256);
+
 }
 
 interface ISyrupLike is IERC4626 {

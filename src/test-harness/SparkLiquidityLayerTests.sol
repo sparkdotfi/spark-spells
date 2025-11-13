@@ -786,9 +786,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         v.withdrawAmount = syrup.convertToAssets(v.shares);
 
-        vm.startPrank(poolManager.poolDelegate());
+        // Need to process withdrawals for all shares, including existing users in the WM.
+        uint256 totalShares         = IWithdrawalManagerLike(withdrawalManager).totalShares();
+        uint256 remainingWithdrawal = syrup.convertToAssets(totalShares);
 
-        uint256 remainingWithdrawal = v.withdrawAmount;
+        vm.startPrank(poolManager.poolDelegate());
 
         // Iterate from the last strategy to the first because the first strategies are loan managers
         // which don't support withdrawFromStrategy
@@ -808,7 +810,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             if (remainingWithdrawal == 0) break;
         }
 
-        IWithdrawalManagerLike(withdrawalManager).processRedemptions(v.shares);
+        IWithdrawalManagerLike(withdrawalManager).processRedemptions(totalShares);
 
         vm.stopPrank();
 
