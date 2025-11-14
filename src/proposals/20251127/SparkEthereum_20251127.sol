@@ -7,26 +7,34 @@ import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-
-import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 
-import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
-
 /**
  * @title  November 27, 2025 Spark Ethereum Proposal
- * @notice 
+ * @notice Spark Treasury:
+           - Foundation Grant for December 2025
+           - Transfer Funds to Foundation for Arkis Investment
+           Spark Liquidity Layer:
+           - Onboard to B2C2
+           - Upgrade Controller to v1.8
+           SparkLend:
+           - Claim Reserves for USDS and DAI Markets
  * @author Phoenix Labs
- * Forum:  
+ * Forum:  https://forum.sky.money/t/november-27-2025-proposed-changes-to-spark-for-upcoming-spell/27418
  * Vote:   
  */
 contract SparkEthereum_20251127 is SparkPayloadEthereum {
 
     using SLLHelpers for address;
 
+    address internal constant B2C2               = 0xa29E963992597B21bcDCaa969d571984869C4FF5;
     address internal constant NEW_ALM_CONTROLLER = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
     address internal constant SYRUP_USDT         = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
+
+    uint256 internal constant AMOUNT_TO_ARKIS      = 4_000_000e18;
+    uint256 internal constant AMOUNT_TO_FOUNDATION = 1_100_000e18;
 
     constructor() {
         // PAYLOAD_ARBITRUM  = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
@@ -37,6 +45,47 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
     }
 
     function _postExecute() internal override {
+        // Foundation Grant for December 2025 + Transfer Funds to Foundation for Arkis Investment
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION, AMOUNT_TO_ARKIS + AMOUNT_TO_FOUNDATION);
+
+        // Onboard to B2C2
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAddressAddressKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                B2C2
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAddressAddressKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDT,
+                B2C2
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAddressAddressKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.PYUSD,
+                B2C2
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000e6,
+            20_000_000e6 / uint256(1 days),
+            6
+        );
+
+        // Upgrade Controller to v1.8
         _upgradeController(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDC_BC, 1, 10);
@@ -60,6 +109,13 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.USDT_SPTOKEN,     0.99e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.PYUSD_SPTOKEN,    0.99e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.WETH_SPTOKEN,     0.99e18);
+
+        // Claim Reserves for USDS and DAI Markets
+        address[] memory aTokens = new address[](2);
+        aTokens[0] = SparkLend.DAI_SPTOKEN;
+        aTokens[1] = SparkLend.USDS_SPTOKEN;
+
+        _transferFromSparkLendTreasury(aTokens);
     }
 
 }

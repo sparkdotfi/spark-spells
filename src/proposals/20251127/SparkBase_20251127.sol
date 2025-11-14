@@ -12,7 +12,7 @@ import { SparkPayloadBase, SLLHelpers } from "../../SparkPayloadBase.sol";
  * @title  November 27, 2025 Spark Base Proposal
  * @notice Spark Liquidity Layer - Update Controller to v1.8
  * @author Phoenix Labs
- * Forum:  
+ * Forum:  https://forum.sky.money/t/november-27-2025-proposed-changes-to-spark-for-upcoming-spell/27418
  * Vote:   
  */
 contract SparkBase_20251127 is SparkPayloadBase {
