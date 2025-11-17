@@ -82,7 +82,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SUPERSTATE,
         PSM3,
         SUPERSTATE_USCC,
-        TREASURY
+        TREASURY,
+        B2C2
     }
 
     struct BUIDLE2ETestParams {
@@ -334,6 +335,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant BASE_SPARK_MULTISIG  = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
     address internal constant BUIDL_DEPOSIT        = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
     address internal constant BUIDL_REDEEM         = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
+    address internal constant B2C2                 = 0xa29E963992597B21bcDCaa969d571984869C4FF5;
     address internal constant CURVE_PYUSDUSDC      = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
     address internal constant CURVE_PYUSDUSDS      = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
     address internal constant FLUID_SUSDS_ARBITRUM = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
@@ -2776,6 +2778,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }));
         }
 
+         else if (integration.category == Category.B2C2) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            (
+                address asset,
+                address destination
+            ) = abi.decode(integration.extraData, (address, address));
+
+            _testTransferAssetIntegration(TransferAssetE2ETestParams({
+                ctx:            ctx,
+                asset:          asset,
+                destination:    destination,
+                transferKey:    integration.entryId,
+                transferAmount: 100_000 * 10 ** IERC20Metadata(asset).decimals()
+            }));
+        }
+
         else if (integration.category == Category.SUPERSTATE) {
             console2.log("Skipping SLL E2E test for", integration.label, "[DEPRECATED] due to protocol upgrade");
         }
@@ -3138,9 +3157,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPostExecutionIntegrationsMainnet(
-        SLLIntegration[]  memory integrations
+        SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = _getPostExecutionIntegrationsNoChange(integrations);
+        newIntegrations = new SLLIntegration[](integrations.length + 3);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            newIntegrations[i] = integrations[i];
+        }
+
+        newIntegrations[newIntegrations.length - 3] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
+        newIntegrations[newIntegrations.length - 2] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDC,  B2C2);
+        newIntegrations[newIntegrations.length - 1] = _createB2C2TransferIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
     /**********************************************************************************************/
@@ -3393,6 +3420,25 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label:       label,
             category:    Category.REWARDS_TRANSFER,
             integration: asset,  // Default to assetOut for transferAsset type integrations because this is the LP token
+            entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(asset, depositDestination)
+        });
+    }
+
+    function _createB2C2TransferIntegration(
+        string  memory label,
+        address        asset,
+        address        depositDestination
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.B2C2,
+            integration: asset,
             entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),

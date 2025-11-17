@@ -38,8 +38,6 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
-    address internal constant B2C2 = 0xa29E963992597B21bcDCaa969d571984869C4FF5;
-
     address internal constant ARBITRUM_NEW_ALM_CONTROLLER  = 0xC40611AC4Fff8572Dc5F02A238176edCF15Ea7ba;
     address internal constant AVALANCHE_NEW_ALM_CONTROLLER = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
     address internal constant BASE_NEW_ALM_CONTROLLER      = 0x86036CE5d2f792367C0AA43164e688d13c5A60A8;
@@ -241,22 +239,22 @@ contract SparkEthereum_20251127_SpellTests is SpellTests {
         uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  413_852_826.907635248963156256e18);
-        assertEq(spUsdsBalanceBefore, 171_338_343.119011364190523468e18);
+        assertEq(spDaiBalanceBefore,  400_266_875.239255468540263867e18);
+        assertEq(spUsdsBalanceBefore, 490_245_308.384770712325288736e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 89_733.707492554224916353e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 43_003.135094118145514323e18);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 38_917.102263032215056332e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 34_318.634327998530525485e18);
     }
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
         uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
         uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION);
 
-        assertEq(sparkUsdsBalanceBefore,      33_972_359.445801365846236778e18);
+        assertEq(sparkUsdsBalanceBefore,      32_722_317.445801365846236778e18);
         assertEq(foundationUsdsBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
