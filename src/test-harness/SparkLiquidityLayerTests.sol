@@ -3166,7 +3166,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         newIntegrations[newIntegrations.length - 3] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
-        newIntegrations[newIntegrations.length - 2] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDC,  B2C2);
+        newIntegrations[newIntegrations.length - 2] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
         newIntegrations[newIntegrations.length - 1] = _createB2C2TransferIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
