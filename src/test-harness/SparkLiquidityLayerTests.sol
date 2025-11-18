@@ -343,7 +343,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant MORPHO_USDC_BC       = 0x56A76b428244a50513ec81e225a293d128fd581D;
     address internal constant SPARK_MULTISIG       = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
     address internal constant SYRUP                = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
-    address internal constant SYRUP_USDT           = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
     address internal constant USCC_DEPOSIT         = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
     address internal constant USDE_ATOKEN          = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant USDS_ATOKEN          = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
@@ -2221,27 +2220,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0);
 
             // New maxSlippages
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0);
-            assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0);
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0);
+
+            assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0);
             assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0);
             assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),     0);
             assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),     0);
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0);
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),     0);
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),     0);
 
             // New maxExchangeRates
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 0);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   0);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    0);
-            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
             assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    0);
             assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                0);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           0);
-            assertEq(controller.maxExchangeRates(SYRUP_USDT),                    0);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           0);
 
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
@@ -2251,7 +2251,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
                 assertEq(controller.maxExchangeRates(Arbitrum.FLUID_SUSDS), 0);
             } else if (block.chainid == ChainIdUtils.Avalanche()) {
-                assertEq(controller.maxSlippages(0x625E7708f30cA75bfd92586e17077590C60eb4cD), 0);
+                assertEq(controller.maxSlippages(Avalanche.ATOKEN_CORE_USDC), 0);
             } else if (block.chainid == ChainIdUtils.Base()) {
                 assertEq(controller.maxSlippages(Base.ATOKEN_USDC), 0);
 
@@ -2293,15 +2293,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
 
             // New maxSlippages
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0.99e18);
-            assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0.99e18);
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0.99e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0.99e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0.99e18);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0.99e18);
+
+            assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0.99e18);
             assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0.99e18);
             assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),     0.99e18);
             assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),     0.99e18);
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0.99e18);
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),     0.99e18);
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),     0.99e18);
 
@@ -2311,14 +2312,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDS));
 
             // New maxExchangeRates
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 1e18 * 1e18 * 10
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);  // 1e25 is 1e6 * 1e18 * 10
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           1e37);
-            assertEq(controller.maxExchangeRates(SYRUP_USDT),                    1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           1e37);
         } else {
             VmSafe.EthGetLogs[] memory slippageLogs = _getEvents(block.chainid, oldController, ForeignController.MaxSlippageSet.selector);
             VmSafe.EthGetLogs[] memory cctpLogs     = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
@@ -2329,7 +2330,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
                 assertEq(controller.maxExchangeRates(Arbitrum.FLUID_SUSDS), 1e37);
             } else if (block.chainid == ChainIdUtils.Avalanche()) {
-                assertEq(controller.maxSlippages(0x625E7708f30cA75bfd92586e17077590C60eb4cD), 0.99e18);
+                assertEq(controller.maxSlippages(Avalanche.ATOKEN_CORE_USDC), 0.99e18);
             } else if (block.chainid == ChainIdUtils.Base()) {
                 assertEq(controller.maxSlippages(Base.ATOKEN_USDC), 0.99e18);
 
@@ -2426,7 +2427,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 usdcAmount = 10_000_000e6;
 
-        vm.startPrank(Ethereum.ALM_RELAYER);
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetController.mintUSDS(usdcAmount * 1e12);
         mainnetController.swapUSDSToUSDC(usdcAmount);
         mainnetController.transferUSDCToCCTP(usdcAmount, domainCctpId);
@@ -2491,7 +2492,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // --- Step 6: Swap USDC to USDS and burn ---
 
-        vm.startPrank(Ethereum.ALM_RELAYER);
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetController.swapUSDCToUSDS(usdcAmount);
         mainnetController.burnUSDS(usdcAmount * 1e12);
         vm.stopPrank();
@@ -2536,15 +2537,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         require(vault != address(0), "Vault not found");
 
-        assertEq(IMetaMorpho(vault).asset(),                           asset);
-        assertEq(IMetaMorpho(vault).name(),                            name);
-        assertEq(IMetaMorpho(vault).symbol(),                          symbol);
-        assertEq(IMetaMorpho(vault).timelock(),                        1 days);
-        assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER), true);
-        assertEq(IMetaMorpho(vault).supplyQueueLength(),               1);
-        assertEq(IMetaMorpho(vault).owner(),                           Ethereum.SPARK_PROXY);
-        assertEq(IMetaMorpho(vault).feeRecipient(),                    Ethereum.ALM_PROXY);
-        assertEq(IMetaMorpho(vault).fee(),                             vaultFee);
+        assertEq(IMetaMorpho(vault).asset(),                                    asset);
+        assertEq(IMetaMorpho(vault).name(),                                     name);
+        assertEq(IMetaMorpho(vault).symbol(),                                   symbol);
+        assertEq(IMetaMorpho(vault).timelock(),                                 1 days);
+        assertEq(IMetaMorpho(vault).isAllocator(Ethereum.ALM_RELAYER_MULTISIG), true);
+        assertEq(IMetaMorpho(vault).supplyQueueLength(),                        1);
+        assertEq(IMetaMorpho(vault).owner(),                                    Ethereum.SPARK_PROXY);
+        assertEq(IMetaMorpho(vault).feeRecipient(),                             Ethereum.ALM_PROXY);
+        assertEq(IMetaMorpho(vault).fee(),                                      vaultFee);
 
         for (uint256 i = 0; i < markets.length; ++i) {
             MorphoHelpers.assertMorphoCap(vault, markets[i], caps[i]);
@@ -3006,7 +3007,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[30] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
         integrations[31] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
-        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDT", SYRUP_USDT);
+        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
 
         integrations[33] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
@@ -3517,8 +3518,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Ethereum.ALM_PROXY),
                 IRateLimits(Ethereum.ALM_RATE_LIMITS),
-                Ethereum.ALM_RELAYER,
-                Ethereum.ALM_FREEZER
+                Ethereum.ALM_RELAYER_MULTISIG,
+                Ethereum.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Base()) {
             ctx = SparkLiquidityLayerContext(

@@ -31,7 +31,6 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
 
     address internal constant B2C2               = 0xa29E963992597B21bcDCaa969d571984869C4FF5;
     address internal constant NEW_ALM_CONTROLLER = 0xE52d643B27601D4d2BAB2052f30cf936ed413cec;
-    address internal constant SYRUP_USDT         = 0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D;
 
     uint256 internal constant AMOUNT_TO_ARKIS      = 4_000_000e18;
     uint256 internal constant AMOUNT_TO_FOUNDATION = 1_100_000e18;
@@ -46,7 +45,7 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         // Foundation Grant for December 2025 + Transfer Funds to Foundation for Arkis Investment
-        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION, AMOUNT_TO_ARKIS + AMOUNT_TO_FOUNDATION);
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, AMOUNT_TO_ARKIS + AMOUNT_TO_FOUNDATION);
 
         // Onboard to B2C2
         SLLHelpers.setRateLimitData(
@@ -95,7 +94,7 @@ contract SparkEthereum_20251127 is SparkPayloadEthereum {
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.FLUID_SUSDS,          1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDE,                1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDC,           1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(SYRUP_USDT,                    1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDT,           1, 10);
 
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDC,  0.99e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDE,  0.99e18);

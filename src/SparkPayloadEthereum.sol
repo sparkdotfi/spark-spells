@@ -288,7 +288,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         // Set ALM Relayer as allocator.
         vault.setIsAllocator(
-            Ethereum.ALM_RELAYER,
+            Ethereum.ALM_RELAYER_MULTISIG,
             true
         );
 

@@ -436,8 +436,8 @@ library SLLHelpers {
         });
 
         address[] memory relayers = new address[](2);
-        relayers[0] = Ethereum.ALM_RELAYER;
-        relayers[1] = Ethereum.ALM_RELAYER2;
+        relayers[0] = Ethereum.ALM_RELAYER_MULTISIG;
+        relayers[1] = Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG;
 
         MainnetControllerInit.upgradeController({
             controllerInst: ControllerInstance({
@@ -446,7 +446,7 @@ library SLLHelpers {
                 rateLimits : Ethereum.ALM_RATE_LIMITS
             }),
             configAddresses: MainnetControllerInit.ConfigAddressParams({
-                freezer       : Ethereum.ALM_FREEZER,
+                freezer       : Ethereum.ALM_FREEZER_MULTISIG,
                 relayers      : relayers,
                 oldController : oldController
             }),

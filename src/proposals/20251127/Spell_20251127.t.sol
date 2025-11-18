@@ -79,7 +79,7 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
         chainData[ChainIdUtils.Unichain()].newController  = UNICHAIN_NEW_ALM_CONTROLLER;
 
         // Maple onboarding process
-        ISyrupLike syrup = ISyrupLike(SYRUP_USDT);
+        ISyrupLike syrup = ISyrupLike(Ethereum.SYRUP_USDT);
 
         address[] memory lenders  = new address[](1);
         bool[]    memory booleans = new bool[](1);
@@ -139,19 +139,19 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_ETHEREUM_sll_onboardB2C2() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 usdcKey =  RateLimitHelpers.makeAddressAddressKey(
+        bytes32 usdcKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Ethereum.USDC,
             B2C2
         );
 
-        bytes32 usdtKey =  RateLimitHelpers.makeAddressAddressKey(
+        bytes32 usdtKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Ethereum.USDT,
             B2C2
         );
 
-        bytes32 pyusdKey =  RateLimitHelpers.makeAddressAddressKey(
+        bytes32 pyusdKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Ethereum.PYUSD,
             B2C2
@@ -172,7 +172,7 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
             asset:          Ethereum.USDC,
             destination:    B2C2,
             transferKey:    usdcKey,
-            transferAmount: 100_000e6
+            transferAmount: 1_000_000e6
         }));
 
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
@@ -180,7 +180,7 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
             asset:          Ethereum.USDT,
             destination:    B2C2,
             transferKey:    usdtKey,
-            transferAmount: 100_000e6
+            transferAmount: 1_000_000e6
         }));
 
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
@@ -188,7 +188,7 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
             asset:          Ethereum.PYUSD,
             destination:    B2C2,
             transferKey:    pyusdKey,
-            transferAmount: 100_000e6
+            transferAmount: 1_000_000e6
         }));
     }
 
@@ -252,15 +252,15 @@ contract SparkEthereum_20251127_SpellTests is SpellTests {
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
         uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
-        uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION);
+        uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
 
         assertEq(sparkUsdsBalanceBefore,      32_722_317.445801365846236778e18);
         assertEq(foundationUsdsBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),      sparkUsdsBalanceBefore - AMOUNT_TO_ARKIS - AMOUNT_TO_FOUNDATION);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION), foundationUsdsBalanceBefore + AMOUNT_TO_ARKIS + AMOUNT_TO_FOUNDATION);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),               sparkUsdsBalanceBefore - AMOUNT_TO_ARKIS - AMOUNT_TO_FOUNDATION);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG), foundationUsdsBalanceBefore + AMOUNT_TO_ARKIS + AMOUNT_TO_FOUNDATION);
     }
 
 }
