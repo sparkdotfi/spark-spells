@@ -77,13 +77,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         FARM,
         MAPLE,
         PSM,
-        REWARDS_TRANSFER,
         SPARK_VAULT_V2,
         SUPERSTATE,
         PSM3,
         SUPERSTATE_USCC,
         TREASURY,
-        B2C2
+        TRANSFER_ASSET
     }
 
     struct BUIDLE2ETestParams {
@@ -2762,24 +2761,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }));
         }
 
-        else if (integration.category == Category.REWARDS_TRANSFER) {
-            console2.log("Running SLL E2E test for", integration.label);
-
-            (
-                address asset,
-                address destination
-            ) = abi.decode(integration.extraData, (address, address));
-
-            _testTransferAssetIntegration(TransferAssetE2ETestParams({
-                ctx:            ctx,
-                asset:          asset,
-                destination:    destination,
-                transferKey:    integration.entryId,
-                transferAmount: 100_000 * 10 ** IERC20Metadata(asset).decimals()
-            }));
-        }
-
-         else if (integration.category == Category.B2C2) {
+        else if (integration.category == Category.TRANSFER_ASSET) {
             console2.log("Running SLL E2E test for", integration.label);
 
             (
@@ -3011,8 +2993,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[33] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[34] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
-        integrations[35] = _createRewardsTransferIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
+        integrations[34] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
+        integrations[35] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
 
         integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
         integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
@@ -3074,7 +3056,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[7] = _createAaveIntegration("AAVE-ATOKEN_USDC", Base.ATOKEN_USDC);
 
-        integrations[8] = _createRewardsTransferIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
+        integrations[8] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
 
         return integrations;
     }
@@ -3166,9 +3148,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 3] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
-        newIntegrations[newIntegrations.length - 2] = _createB2C2TransferIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
-        newIntegrations[newIntegrations.length - 1] = _createB2C2TransferIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+        newIntegrations[newIntegrations.length - 3] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
+        newIntegrations[newIntegrations.length - 2] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
+        newIntegrations[newIntegrations.length - 1] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
     /**********************************************************************************************/
@@ -3410,7 +3392,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createRewardsTransferIntegration(
+    function _createTransferAssetIntegration(
         string  memory label,
         address        asset,
         address        depositDestination
@@ -3419,26 +3401,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         return SLLIntegration({
             label:       label,
-            category:    Category.REWARDS_TRANSFER,
-            integration: asset,  // Default to assetOut for transferAsset type integrations because this is the LP token
-            entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
-            entryId2:    bytes32(0),
-            exitId:      bytes32(0),
-            exitId2:     bytes32(0),
-            extraData:   abi.encode(asset, depositDestination)
-        });
-    }
-
-    function _createB2C2TransferIntegration(
-        string  memory label,
-        address        asset,
-        address        depositDestination
-    ) internal view returns (SLLIntegration memory) {
-        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
-
-        return SLLIntegration({
-            label:       label,
-            category:    Category.B2C2,
+            category:    Category.TRANSFER_ASSET,
             integration: asset,
             entryId:     RateLimitHelpers.makeAddressAddressKey(mainnetController.LIMIT_ASSET_TRANSFER(), asset, depositDestination),
             entryId2:    bytes32(0),
