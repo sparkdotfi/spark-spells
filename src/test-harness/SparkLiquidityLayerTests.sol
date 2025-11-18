@@ -2144,7 +2144,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         string memory response;
 
-        for (uint i; i < 10; i++) {
+        for (uint256 i; i < 10; i++) {
             response = string(vm.ffi(inputs));
 
             if (_isEqual(vm.parseJsonString(response, string(abi.encodePacked(".message"))), "NOTOK")) {
