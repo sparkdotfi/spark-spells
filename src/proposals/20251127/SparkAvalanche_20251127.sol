@@ -18,7 +18,7 @@ contract SparkAvalanche_20251127 is SparkPayloadAvalanche {
     function execute() external {
         _upgradeController(Avalanche.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
-        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Avalanche.ATOKEN_CORE_USDC, 0.99e18);
+        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Avalanche.ATOKEN_CORE_USDC, 0.99999e18);
     }
 
 }

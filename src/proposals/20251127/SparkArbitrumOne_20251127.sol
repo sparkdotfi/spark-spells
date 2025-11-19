@@ -23,7 +23,7 @@ contract SparkArbitrumOne_20251127 is SparkPayloadArbitrumOne {
 
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Arbitrum.FLUID_SUSDS, 1, 10);
 
-        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Arbitrum.ATOKEN_USDC, 0.99e18);
+        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Arbitrum.ATOKEN_USDC, 0.99999e18);
     }
 
 }

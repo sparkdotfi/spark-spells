@@ -27,7 +27,7 @@ contract SparkBase_20251127 is SparkPayloadBase {
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Base.MORPHO_VAULT_SUSDC, 1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Base.FLUID_SUSDS,        1, 10);
 
-        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Base.ATOKEN_USDC, 0.99e18);
+        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Base.ATOKEN_USDC, 0.99999e18);
     }
 
 }
