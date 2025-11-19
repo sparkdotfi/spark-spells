@@ -322,8 +322,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     using DomainHelpers for Domain;
 
-    address internal constant ALM_RELAYER_BACKUP = 0x8Cc0Cb0cfB6B7e548cfd395B833c05C346534795;
-
     // TODO: Put in registry
     address internal constant AAVE_ATOKEN_USDC     = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AAVE_CORE_AUSDT      = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
@@ -2202,9 +2200,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.hasRole(controllerRole, oldController), true);
         assertEq(ctx.rateLimits.hasRole(controllerRole, newController), false);
 
-        assertEq(controller.hasRole(relayerRole, ctx.relayer),        false);
-        assertEq(controller.hasRole(relayerRole, ALM_RELAYER_BACKUP), false);
-        assertEq(controller.hasRole(freezerRole, ctx.freezer),        false);
+        assertEq(controller.hasRole(relayerRole, ctx.relayer),                            false);
+        assertEq(controller.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), false);
+        assertEq(controller.hasRole(freezerRole, ctx.freezer),                            false);
 
         if (block.chainid == ChainIdUtils.Ethereum()) {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_BASE),         SLLHelpers.addrToBytes32(address(0)));
@@ -2221,9 +2219,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // New maxSlippages
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0);
-            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0);
+            assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0);
 
             assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0);
             assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0);
@@ -2267,9 +2265,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.hasRole(controllerRole, oldController), false);
         assertEq(ctx.rateLimits.hasRole(controllerRole, newController), true);
 
-        assertEq(controller.hasRole(relayerRole, ctx.relayer),        true);
-        assertEq(controller.hasRole(relayerRole, ALM_RELAYER_BACKUP), true);
-        assertEq(controller.hasRole(freezerRole, ctx.freezer),        true);
+        assertEq(controller.hasRole(relayerRole, ctx.relayer),                            true);
+        assertEq(controller.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), true);
+        assertEq(controller.hasRole(freezerRole, ctx.freezer),                            true);
 
         if (block.chainid == ChainIdUtils.Ethereum()) {
             _assertOldControllerEvents(oldController);

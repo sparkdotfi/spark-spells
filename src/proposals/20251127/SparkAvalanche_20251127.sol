@@ -14,12 +14,11 @@ import { SparkPayloadAvalanche, Avalanche } from "../../SparkPayloadAvalanche.so
 contract SparkAvalanche_20251127 is SparkPayloadAvalanche {
 
     address internal constant NEW_ALM_CONTROLLER = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
-    address internal constant AAVE_ATOKEN_USDC   = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
 
     function execute() external {
         _upgradeController(Avalanche.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
-        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(AAVE_ATOKEN_USDC, 0.99e18);
+        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Avalanche.ATOKEN_CORE_USDC, 0.99e18);
     }
 
 }

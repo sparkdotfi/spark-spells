@@ -24,10 +24,10 @@ contract SparkBase_20251127 is SparkPayloadBase {
     function execute() external {
         _upgradeController(Base.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
-        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Base.ATOKEN_USDC, 0.99e18);
-
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Base.MORPHO_VAULT_SUSDC, 1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Base.FLUID_SUSDS,        1, 10);
+
+        ForeignController(NEW_ALM_CONTROLLER).setMaxSlippage(Base.ATOKEN_USDC, 0.99e18);
     }
 
 }
