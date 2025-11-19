@@ -2289,6 +2289,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
 
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDS));
+
             // New maxSlippages
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0.99999e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0.99999e18);
@@ -2302,11 +2307,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),  0.99999e18);
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),  0.99999e18);
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),  0.99999e18);
-
-            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_SUSDSUSDT));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDC));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),   MainnetController(oldController).maxSlippages(Ethereum.CURVE_USDCUSDT));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),  MainnetController(oldController).maxSlippages(Ethereum.CURVE_PYUSDUSDS));
 
             // New maxExchangeRates
             assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 1e18 * 1e18 * 10
