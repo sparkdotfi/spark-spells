@@ -2201,7 +2201,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.hasRole(controllerRole, newController), false);
 
         assertEq(controller.hasRole(relayerRole, ctx.relayer),                            false);
-        assertEq(controller.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), false);  // address same on all chains
+        assertEq(controller.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), false);  // Address same on all chains
         assertEq(controller.hasRole(freezerRole, ctx.freezer),                            false);
 
         if (block.chainid == ChainIdUtils.Ethereum()) {
@@ -2266,7 +2266,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.hasRole(controllerRole, newController), true);
 
         assertEq(controller.hasRole(relayerRole, ctx.relayer),                            true);
-        assertEq(controller.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), true);  // address same on all chains
+        assertEq(controller.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), true);  // Address same on all chains
         assertEq(controller.hasRole(freezerRole, ctx.freezer),                            true);
 
         if (block.chainid == ChainIdUtils.Ethereum()) {
