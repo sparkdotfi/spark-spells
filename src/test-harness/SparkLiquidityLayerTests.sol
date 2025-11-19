@@ -2309,9 +2309,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),  0.99999e18);
 
             // New maxExchangeRates
-            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 1e18 * 1e18 * 10
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 10e18 * 1e36 / 1e18
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);  // 1e25 is 1e6 * 1e18 * 10
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);  // 1e25 is 10e6 * 1e36 / 1e18
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
