@@ -47,18 +47,18 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20251127;
-        _blockDate = "2025-11-12T15:03:00Z";
+        _blockDate = "2025-11-21T14:01:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-        // chainData[ChainIdUtils.Avalanche()].payload   = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-        // chainData[ChainIdUtils.Base()].payload        = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
-        // chainData[ChainIdUtils.Optimism()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
-        // chainData[ChainIdUtils.Unichain()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
+        chainData[ChainIdUtils.Base()].payload        = 0x3968a022D955Bbb7927cc011A48601B65a33F346;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0x2C9E477313EC440fe4Ab6C98529da2793e6890F2;
+        chainData[ChainIdUtils.Optimism()].payload    = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x41EdbF09cd2f272175c7fACB857B767859543D15;
 
         chainData[ChainIdUtils.ArbitrumOne()].prevController = Arbitrum.ALM_CONTROLLER;
         chainData[ChainIdUtils.ArbitrumOne()].newController  = ARBITRUM_NEW_ALM_CONTROLLER;
@@ -200,18 +200,18 @@ contract SparkEthereum_20251127_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20251127;
-        _blockDate = "2025-11-12T15:03:00Z";
+        _blockDate = "2025-11-21T14:01:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-        // chainData[ChainIdUtils.Avalanche()].payload   = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-        // chainData[ChainIdUtils.Base()].payload        = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
-        // chainData[ChainIdUtils.Optimism()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
-        // chainData[ChainIdUtils.Unichain()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
+        chainData[ChainIdUtils.Base()].payload        = 0x3968a022D955Bbb7927cc011A48601B65a33F346;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0x2C9E477313EC440fe4Ab6C98529da2793e6890F2;
+        chainData[ChainIdUtils.Optimism()].payload    = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x41EdbF09cd2f272175c7fACB857B767859543D15;
     }
 
 }
@@ -223,40 +223,40 @@ contract SparkEthereum_20251127_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20251127;
-        _blockDate = "2025-11-12T15:03:00Z";
+        _blockDate = "2025-11-21T14:01:00Z";
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-        // chainData[ChainIdUtils.Avalanche()].payload   = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
-        // chainData[ChainIdUtils.Base()].payload        = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
-        // chainData[ChainIdUtils.Optimism()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
-        // chainData[ChainIdUtils.Unichain()].payload    = 0x63Fa202a7020e8eE0837196783f0fB768CBFE2f1;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0xC0bcbb2554D4694fe7b34bB68b9DdfbB55D896BC;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
+        chainData[ChainIdUtils.Base()].payload        = 0x3968a022D955Bbb7927cc011A48601B65a33F346;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0x2C9E477313EC440fe4Ab6C98529da2793e6890F2;
+        chainData[ChainIdUtils.Optimism()].payload    = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x41EdbF09cd2f272175c7fACB857B767859543D15;
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
         uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  400_266_875.239255468540263867e18);
-        assertEq(spUsdsBalanceBefore, 490_245_308.384770712325288736e18);
+        assertEq(spDaiBalanceBefore,  355_997_143.466638232280558708e18);
+        assertEq(spUsdsBalanceBefore, 549_084_070.848804689610030281e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 38_917.102263032215056332e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 34_318.634327998530525485e18);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 17_949.997576019611612844e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 22_771.1195233143918119e18);
     }
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
         uint256 sparkUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
         uint256 foundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
 
-        assertEq(sparkUsdsBalanceBefore,      32_722_317.445801365846236778e18);
+        assertEq(sparkUsdsBalanceBefore,      32_097_248.445801365846236778e18);
         assertEq(foundationUsdsBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
