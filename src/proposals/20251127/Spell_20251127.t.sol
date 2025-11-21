@@ -101,6 +101,8 @@ contract SparkEthereum_20251127_SLLTests is SparkLiquidityLayerTests {
             oldController: Ethereum.ALM_CONTROLLER,
             newController: ETHEREUM_NEW_ALM_CONTROLLER
         });
+
+        assertEq(address(MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).ethenaMinter()), Ethereum.ETHENA_MINTER);
     }
 
     function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
