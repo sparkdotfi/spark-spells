@@ -68,50 +68,6 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         vm.stopPrank();
     }
 
-    function test_ETHEREUM_controllerUpgrade() public onChain(ChainIdUtils.Ethereum()) {
-        _testControllerUpgrade({
-            oldController: Ethereum.ALM_CONTROLLER,
-            newController: ETHEREUM_NEW_ALM_CONTROLLER
-        });
-
-        assertEq(address(MainnetController(ETHEREUM_NEW_ALM_CONTROLLER).ethenaMinter()), Ethereum.ETHENA_MINTER);
-    }
-
-    function test_BASE_controllerUpgrade() public onChain(ChainIdUtils.Base()) {
-        _testControllerUpgrade({
-            oldController: Base.ALM_CONTROLLER,
-            newController: BASE_NEW_ALM_CONTROLLER
-        });
-    }
-
-    function test_ARBITRUM_controllerUpgrade() public onChain(ChainIdUtils.ArbitrumOne()) {
-        _testControllerUpgrade({
-            oldController: Arbitrum.ALM_CONTROLLER,
-            newController: ARBITRUM_NEW_ALM_CONTROLLER
-        });
-    }
-
-    function test_AVALANCHE_controllerUpgrade() public onChain(ChainIdUtils.Avalanche()) {
-        _testControllerUpgrade({
-            oldController: Avalanche.ALM_CONTROLLER,
-            newController: AVALANCHE_NEW_ALM_CONTROLLER
-        });
-    }
-
-    function test_OPTIMISM_controllerUpgrade() public onChain(ChainIdUtils.Optimism()) {
-        _testControllerUpgrade({
-            oldController: Optimism.ALM_CONTROLLER,
-            newController: OPTIMISM_NEW_ALM_CONTROLLER
-        });
-    }
-
-    function test_UNICHAIN_controllerUpgrade() public onChain(ChainIdUtils.Unichain()) {
-        _testControllerUpgrade({
-            oldController: Unichain.ALM_CONTROLLER,
-            newController: UNICHAIN_NEW_ALM_CONTROLLER
-        });
-    }
-
     function test_ETHEREUM_sll_onboardB2C2() public onChain(ChainIdUtils.Ethereum()) {
         bytes32 usdcKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),

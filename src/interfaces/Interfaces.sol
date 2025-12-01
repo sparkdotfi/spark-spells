@@ -90,6 +90,8 @@ interface ISparkVaultV2Like {
 
     function setVsr(uint256 newVsr) external;
 
+    function setVsrBounds(uint256 minVsr_, uint256 maxVsr_) external;
+
     function symbol() external view returns (string memory);
 
     function TAKER_ROLE() external view returns (bytes32);

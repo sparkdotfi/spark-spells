@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20, IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
-import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
+import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
+
+import { ISparkVaultV2Like, IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
+
+interface IALMProxyFreezableLike {
+    function FREEZER() external returns (bytes32);
+}
 
 /**
  * @title  December 11, 2025 Spark Ethereum Proposal
@@ -19,8 +26,6 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  * Vote:   
  */
 contract SparkEthereum_20251211 is SparkPayloadEthereum {
-
-    using SLLHelpers for address;
 
     address internal constant ALM_PROXY_FREEZABLE    = 0x9Ad87668d49ab69EEa0AF091de970EF52b0D5178;
     address internal constant SPARK_VAULT_V2_SPPYUSD = 0x80128DbB9f07b93DDE62A6daeadb69ED14a7D354;
@@ -40,20 +45,24 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         // Foundation Grant for January 2025
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, AMOUNT_TO_FOUNDATION);
 
-        // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE
+        // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
         IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER_ROLE(),
-            Ethereum.ALM_RELAYER_1
+            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER(),
+            Ethereum.ALM_RELAYER_MULTISIG
         );
         IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER_ROLE(),
-            Ethereum.ALM_RELAYER_2
+            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER(),
+            Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG
+        );
+        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
+            IALMProxyFreezableLike(ALM_PROXY_FREEZABLE).FREEZER(),
+            Ethereum.ALM_FREEZER_MULTISIG
         );
 
         // Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC, spUSDT, spETH
-        ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
-        ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDT).grantRole(ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
-        ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPETH).grantRole(ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
+        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
+        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
+        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
 
         // Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(ALM_PROXY_FREEZABLE, true);
@@ -78,7 +87,7 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         uint256 maxVsr,
         uint256 depositAmount
     ) internal {
-        ISparkVaultV2     vault      = ISparkVaultV2(vault_);
+        ISparkVaultV2Like     vault  = ISparkVaultV2Like(vault_);
         IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
 
@@ -99,14 +108,14 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         vault.deposit(depositAmount, address(1));
 
         rateLimits.setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetKey(
+            RateLimitHelpers.makeAddressKey(
                 controller.LIMIT_SPARK_VAULT_TAKE(),
                 address(vault)
             )
         );
 
         rateLimits.setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAssetDestinationKey(
+            RateLimitHelpers.makeAddressAddressKey(
                 controller.LIMIT_ASSET_TRANSFER(),
                 vault.asset(),
                 address(vault)
