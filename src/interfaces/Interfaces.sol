@@ -66,6 +66,8 @@ interface ISparkVaultV2Like {
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
 
+    function grantRole(bytes32 role, address account) external; 
+
     function hasRole(bytes32 role, address account) external view returns (bool);
 
     function minVsr() external view returns (uint256);
@@ -157,6 +159,10 @@ interface IMorphoOracleFactoryLike {
     // NOTE: This applies to all oracles deployed by the factory
     function isMorphoChainlinkOracleV2(address) external view returns (bool);
 
+}
+
+interface IMorphoVaultLike {
+    function setIsAllocator(address newAllocator, bool newIsAllocator) external;
 }
 
 interface IPendleLinearDiscountOracleLike {
