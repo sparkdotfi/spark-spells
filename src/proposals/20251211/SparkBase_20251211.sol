@@ -15,7 +15,7 @@ import { IMorphoVaultLike, IALMProxyFreezableLike } from "../../interfaces/Inter
  * @notice Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/december-11-2025-proposed-changes-to-spark-for-upcoming-spell/27481
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x9b21777dfa9f7628060443a046b76a5419740f692557ef45c92f6fac1ff31801
  */
 contract SparkBase_20251211 is SparkPayloadBase {
 

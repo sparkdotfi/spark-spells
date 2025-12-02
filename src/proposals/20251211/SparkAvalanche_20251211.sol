@@ -13,7 +13,7 @@ import { ISparkVaultV2Like, IALMProxyFreezableLike } from "../../interfaces/Inte
  * @title  December 11, 2025 Spark Avalanche Proposal
  * @notice Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC
  * Forum:  https://forum.sky.money/t/december-11-2025-proposed-changes-to-spark-for-upcoming-spell/27481
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x007a555d46f2c215b7d69163e763f03c3b91f31cd43dd08de88a1531631a4766
  */
 contract SparkAvalanche_20251211 is SparkPayloadAvalanche {
 

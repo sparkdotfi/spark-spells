@@ -29,7 +29,10 @@ import { ISparkVaultV2Like, IMorphoVaultLike, IALMProxyFreezableLike } from "../
            Spark USDS Morpho Vault - Update Allocator Role to ALM Proxy Freezable
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/december-11-2025-proposed-changes-to-spark-for-upcoming-spell/27481
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x2cb808bb15c7f85e6759467c715bf6bd96b1933109b7540f87dfbbcba0e57914
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x121b44858123a32f49d8c203ba419862f633c642ac2739030763433a8e756d61
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x9b21777dfa9f7628060443a046b76a5419740f692557ef45c92f6fac1ff31801
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x007a555d46f2c215b7d69163e763f03c3b91f31cd43dd08de88a1531631a4766
  */
 contract SparkEthereum_20251211 is SparkPayloadEthereum {
 
