@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import { SafeERC20, IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -12,11 +13,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
-import { ISparkVaultV2Like, IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
-
-interface IALMProxyFreezableLike {
-    function FREEZER() external returns (bytes32);
-}
+import { ISparkVaultV2Like, IMorphoVaultLike, IALMProxyFreezableLike } from "../../interfaces/Interfaces.sol";
 
 /**
  * @title  December 11, 2025 Spark Ethereum Proposal
@@ -60,6 +57,10 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         );
 
         // Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC, spUSDT, spETH
+        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).revokeRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).revokeRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).revokeRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG);
+
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
@@ -78,6 +79,13 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
             maxVsr        : TEN_PCT_APY,
             depositAmount : 1e6
         });
+
+        // Claim Reserves for USDS and DAI Markets
+        address[] memory aTokens = new address[](2);
+        aTokens[0] = SparkLend.DAI_SPTOKEN;
+        aTokens[1] = SparkLend.USDS_SPTOKEN;
+
+        _transferFromSparkLendTreasury(aTokens);
     }
 
     function _configureVaultsV2(

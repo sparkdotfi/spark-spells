@@ -8,6 +8,10 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
+interface IALMProxyFreezableLike {
+    function FREEZER() external returns (bytes32);
+}
+
 interface IProxyLike {
 
     function implementation() external view returns (address);
@@ -81,6 +85,8 @@ interface ISparkVaultV2Like {
     function nowChi() external view returns (uint256);
 
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
+
+    function revokeRole(bytes32 role, address account) external;
 
     function rho() external view returns (uint64);
 

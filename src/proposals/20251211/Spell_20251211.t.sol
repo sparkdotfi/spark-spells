@@ -40,7 +40,7 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20251211;
-        _blockDate = "2025-12-11T12:12:00Z";
+        _blockDate = "2025-12-02T12:12:00Z";
     }
 
     function setUp() public override {
@@ -68,67 +68,13 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         vm.stopPrank();
     }
 
-    function test_ETHEREUM_sll_onboardB2C2() public onChain(ChainIdUtils.Ethereum()) {
-        bytes32 usdcKey = RateLimitHelpers.makeAddressAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            Ethereum.USDC,
-            B2C2
-        );
-
-        bytes32 usdtKey = RateLimitHelpers.makeAddressAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            Ethereum.USDT,
-            B2C2
-        );
-
-        bytes32 pyusdKey = RateLimitHelpers.makeAddressAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            Ethereum.PYUSD,
-            B2C2
-        );
-
-        _assertRateLimit(usdcKey,  0, 0);
-        _assertRateLimit(usdtKey,  0, 0);
-        _assertRateLimit(pyusdKey, 0, 0);
-
-        _executeAllPayloadsAndBridges();
-
-        _assertRateLimit(usdcKey,  1_000_000e6, 20_000_000e6 / uint256(1 days));
-        _assertRateLimit(usdtKey,  1_000_000e6, 20_000_000e6 / uint256(1 days));
-        _assertRateLimit(pyusdKey, 1_000_000e6, 20_000_000e6 / uint256(1 days));
-
-        _testTransferAssetIntegration(TransferAssetE2ETestParams({
-            ctx:            _getSparkLiquidityLayerContext(),
-            asset:          Ethereum.USDC,
-            destination:    B2C2,
-            transferKey:    usdcKey,
-            transferAmount: 1_000_000e6
-        }));
-
-        _testTransferAssetIntegration(TransferAssetE2ETestParams({
-            ctx:            _getSparkLiquidityLayerContext(),
-            asset:          Ethereum.USDT,
-            destination:    B2C2,
-            transferKey:    usdtKey,
-            transferAmount: 1_000_000e6
-        }));
-
-        _testTransferAssetIntegration(TransferAssetE2ETestParams({
-            ctx:            _getSparkLiquidityLayerContext(),
-            asset:          Ethereum.PYUSD,
-            destination:    B2C2,
-            transferKey:    pyusdKey,
-            transferAmount: 1_000_000e6
-        }));
-    }
-
 }
 
 contract SparkEthereum_20251211_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20251211;
-        _blockDate = "2025-12-11T12:12:00Z";
+        _blockDate = "2025-12-02T12:12:00Z";
     }
 
     function setUp() public override {
@@ -143,12 +89,12 @@ contract SparkEthereum_20251211_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20251211_SpellTests is SpellTests {
 
-    uint256 internal constant AMOUNT_TO_ARKIS      = 4_000_000e18;
-    uint256 internal constant AMOUNT_TO_FOUNDATION = 1_100_000e18;
+    uint256 internal constant AMOUNT_TO_ASSET_FOUNDATION = 150_000e18;
+    uint256 internal constant AMOUNT_TO_FOUNDATION       = 1_100_000e18;
 
     constructor() {
         _spellId   = 20251211;
-        _blockDate = "2025-12-11T12:12:00Z";
+        _blockDate = "2025-12-02T12:12:00Z";
     }
 
     function setUp() public override {
@@ -183,8 +129,8 @@ contract SparkEthereum_20251211_SpellTests is SpellTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),               sparkUsdsBalanceBefore - AMOUNT_TO_ARKIS - AMOUNT_TO_FOUNDATION);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG), foundationUsdsBalanceBefore + AMOUNT_TO_ARKIS + AMOUNT_TO_FOUNDATION);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),               sparkUsdsBalanceBefore - AMOUNT_TO_ASSET_FOUNDATION - AMOUNT_TO_FOUNDATION);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG), foundationUsdsBalanceBefore + AMOUNT_TO_ASSET_FOUNDATION + AMOUNT_TO_FOUNDATION);
     }
 
 }

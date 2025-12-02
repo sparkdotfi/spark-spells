@@ -4,9 +4,11 @@ pragma solidity ^0.8.25;
 
 import { Base } from "spark-address-registry/Base.sol";
 
+import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+
 import { SparkPayloadBase } from "../../SparkPayloadBase.sol";
 
-import { IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
+import { IMorphoVaultLike, IALMProxyFreezableLike } from "../../interfaces/Interfaces.sol";
 
 /**
  * @title  December 11, 2025 Spark Base Proposal

@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
+
+import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
 import { SparkPayloadAvalanche, Avalanche } from "../../SparkPayloadAvalanche.sol";
 
-import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
+import { ISparkVaultV2Like, IALMProxyFreezableLike } from "../../interfaces/Interfaces.sol";
 
 /**
  * @title  December 11, 2025 Spark Avalanche Proposal
@@ -33,7 +35,8 @@ contract SparkAvalanche_20251211 is SparkPayloadAvalanche {
         );
 
         // Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC
-        ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
+        ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).revokeRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
     }
 
 }
