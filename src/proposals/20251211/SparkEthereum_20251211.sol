@@ -71,27 +71,25 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         });
 
         // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
-        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER(),
-            Ethereum.ALM_RELAYER_MULTISIG
-        );
-        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER(),
-            Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG
-        );
-        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxyFreezableLike(ALM_PROXY_FREEZABLE).FREEZER(),
-            Ethereum.ALM_FREEZER_MULTISIG
-        );
+        IALMProxy proxy = IALMProxy(ALM_PROXY_FREEZABLE);
+
+        proxy.grantRole(proxy.CONTROLLER(),                               Ethereum.ALM_RELAYER_MULTISIG);
+        proxy.grantRole(proxy.CONTROLLER(),                               Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG);
+        proxy.grantRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Ethereum.ALM_FREEZER_MULTISIG);
 
         // Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC, spUSDT, spETH
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).revokeRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).revokeRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).revokeRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG);
+        ISparkVaultV2Like spUSDCvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
+        ISparkVaultV2Like spUSDTvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
+        ISparkVaultV2Like spETHvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
 
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ALM_PROXY_FREEZABLE);
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).grantRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
+        spUSDCvault.revokeRole(spUSDCvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        spUSDCvault.grantRole(spUSDCvault.SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
+
+        spUSDTvault.revokeRole(spUSDTvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        spUSDTvault.grantRole(spUSDTvault.SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
+
+        spETHvault.revokeRole(spETHvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        spETHvault.grantRole(spETHvault.SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
 
         // Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(ALM_PROXY_FREEZABLE, true);

@@ -39,10 +39,6 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
-    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
-    //   1.000000003022265980097387650
-    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
-
     address internal constant AVALANCHE_ALM_PROXY_FREEZABLE = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
     address internal constant BASE_ALM_PROXY_FREEZABLE      = 0xCBA0C0a2a0B6Bb11233ec4EA85C5bFfea33e724d;
     address internal constant ETHEREUM_ALM_PROXY_FREEZABLE  = 0x9Ad87668d49ab69EEa0AF091de970EF52b0D5178;
@@ -92,265 +88,82 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         });
     }
 
-    function _testVaultConfiguration(
-        address asset,
-        string  memory name,
-        string  memory symbol,
-        uint64  rho,
-        address vault_,
-        uint256 minVsr,
-        uint256 maxVsr,
-        uint256 depositCap,
-        uint256 amount
-    ) internal {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
-
-        bytes32 takeKey = RateLimitHelpers.makeAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
-            vault_
-        );
-        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            vault.asset(),
-            vault_
-        );
-
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
-        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), false);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        false);
-
-        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
-        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        0);
-        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         0);
-
-        assertEq(vault.asset(),      asset);
-        assertEq(vault.name(),       name);
-        assertEq(vault.decimals(),   IERC20(vault.asset()).decimals());
-        assertEq(vault.symbol(),     symbol);
-        assertEq(vault.rho(),        rho);
-        assertEq(vault.chi(),        uint192(1e27));
-        assertEq(vault.vsr(),        1e27);
-        assertEq(vault.minVsr(),     1e27);
-        assertEq(vault.maxVsr(),     1e27);
-        assertEq(vault.depositCap(), 0);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),         true);
-        assertEq(vault.hasRole(vault.SETTER_ROLE(),        ETHEREUM_ALM_PROXY_FREEZABLE), true);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),           true);
-
-        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
-        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        1);
-        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         1);
-
-        assertEq(vault.minVsr(),     minVsr);
-        assertEq(vault.maxVsr(),     maxVsr);
-        assertEq(vault.depositCap(), depositCap);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
-
-        _testSetterIntegration(vault, minVsr, maxVsr);
-
-        uint256 initialChi = vault.nowChi();
-
-        vm.prank(ETHEREUM_ALM_PROXY_FREEZABLE);
-        vault.setVsr(TEN_PCT_APY);
-
-        skip(1 days);
-
-        assertGt(vault.nowChi(), initialChi);
-
-        _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
-            ctx:             ctx,
-            vault:           vault_,
-            takeKey:         takeKey,
-            transferKey:     transferKey,
-            takeAmount:      amount,
-            transferAmount:  amount,
-            userVaultAmount: amount,
-            tolerance:       10
-        }));
-    }
-
-    function _testSetterIntegration(ISparkVaultV2Like vault, uint256 minVsr, uint256 maxVsr) internal {
-        vm.startPrank(ETHEREUM_ALM_PROXY_FREEZABLE);
-
-        vm.expectRevert("SparkVault/vsr-too-low");
-        vault.setVsr(minVsr - 1);
-
-        vault.setVsr(minVsr);
-
-        vm.expectRevert("SparkVault/vsr-too-high");
-        vault.setVsr(maxVsr + 1);
-
-        vault.setVsr(maxVsr);
-
-        vm.stopPrank();
-    }
-
     function test_ETHEREUM_roleChanges() external onChain(ChainIdUtils.Ethereum()) {
-        assertFalse(
-            IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Ethereum.ALM_RELAYER_MULTISIG
-            )
-        );
-        assertFalse(
-            IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG
-            )
-        );
-        assertFalse(
-            IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxyFreezableLike(ETHEREUM_ALM_PROXY_FREEZABLE).FREEZER(),
-                Ethereum.ALM_FREEZER_MULTISIG
-            )
-        );
+        IALMProxy         proxy       = IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE);
+        ISparkVaultV2Like spUSDCvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
+        ISparkVaultV2Like spUSDTvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
+        ISparkVaultV2Like spETHvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
 
-        assertTrue(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
-        assertTrue(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
-        assertTrue(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Ethereum.ALM_RELAYER_MULTISIG));
+        assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG));
+        assertFalse(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Ethereum.ALM_FREEZER_MULTISIG));
 
-        assertFalse(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
-        assertFalse(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
-        assertFalse(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).SETTER_ROLE(),   ETHEREUM_ALM_PROXY_FREEZABLE));
+        assertTrue(spUSDCvault.hasRole(spUSDCvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertTrue(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertTrue(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG));
+
+        assertFalse(spUSDCvault.hasRole(spUSDCvault.SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
+        assertFalse(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
+        assertFalse(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   ETHEREUM_ALM_PROXY_FREEZABLE));
 
         assertFalse(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).isAllocator(ETHEREUM_ALM_PROXY_FREEZABLE));
         assertFalse(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).isAllocator(ETHEREUM_ALM_PROXY_FREEZABLE));
 
         _executeAllPayloadsAndBridges();
 
-        assertTrue(
-            IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Ethereum.ALM_RELAYER_MULTISIG
-            )
-        );
-        assertTrue(
-            IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG
-            )
-        );
-        assertTrue(
-            IALMProxy(ETHEREUM_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxyFreezableLike(ETHEREUM_ALM_PROXY_FREEZABLE).FREEZER(),
-                Ethereum.ALM_FREEZER_MULTISIG
-            )
-        );
+        assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Ethereum.ALM_RELAYER_MULTISIG));
+        assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG));
+        assertTrue(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Ethereum.ALM_FREEZER_MULTISIG));
 
-        assertFalse(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
-        assertFalse(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
-        assertFalse(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(spUSDCvault.hasRole(spUSDCvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG));
 
-        assertTrue(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
-        assertTrue(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT).SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
-        assertTrue(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).hasRole(ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).SETTER_ROLE(),   ETHEREUM_ALM_PROXY_FREEZABLE));
+        assertTrue(spUSDCvault.hasRole(spUSDCvault.SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
+        assertTrue(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), ETHEREUM_ALM_PROXY_FREEZABLE));
+        assertTrue(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   ETHEREUM_ALM_PROXY_FREEZABLE));
     
         assertTrue(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).isAllocator(ETHEREUM_ALM_PROXY_FREEZABLE));
         assertTrue(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).isAllocator(ETHEREUM_ALM_PROXY_FREEZABLE));
     }
 
     function test_AVALANCHE_roleUpdates() external onChain(ChainIdUtils.Avalanche()) {
-        assertFalse(
-            IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Avalanche.ALM_RELAYER
-            )
-        );
-        assertFalse(
-            IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Avalanche.ALM_RELAYER2
-            )
-        );
-        assertFalse(
-            IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxyFreezableLike(AVALANCHE_ALM_PROXY_FREEZABLE).FREEZER(),
-                Avalanche.ALM_FREEZER
-            )
-        );
+        IALMProxy         proxy = IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE);
+        ISparkVaultV2Like vault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
-        assertTrue(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER));
+        assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER2));
+        assertFalse(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Avalanche.ALM_FREEZER));
 
-        assertFalse(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), AVALANCHE_ALM_PROXY_FREEZABLE));
+        assertTrue(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+
+        assertFalse(vault.hasRole(vault.SETTER_ROLE(), AVALANCHE_ALM_PROXY_FREEZABLE));
 
         _executeAllPayloadsAndBridges();
 
-        assertTrue(
-            IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Avalanche.ALM_RELAYER
-            )
-        );
-        assertTrue(
-            IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Avalanche.ALM_RELAYER2
-            )
-        );
-        assertTrue(
-            IALMProxy(AVALANCHE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxyFreezableLike(AVALANCHE_ALM_PROXY_FREEZABLE).FREEZER(),
-                Avalanche.ALM_FREEZER
-            )
-        );
+        assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER));
+        assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER2));
+        assertTrue(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Avalanche.ALM_FREEZER));
 
-        assertFalse(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
 
-        assertTrue(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).hasRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), AVALANCHE_ALM_PROXY_FREEZABLE));
+        assertTrue(vault.hasRole(vault.SETTER_ROLE(), AVALANCHE_ALM_PROXY_FREEZABLE));
     }
 
     function test_BASE_roleUpdates() external onChain(ChainIdUtils.Base()) {
-        assertFalse(
-            IALMProxy(BASE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(BASE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Base.ALM_RELAYER
-            )
-        );
-        assertFalse(
-            IALMProxy(BASE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(BASE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Base.ALM_RELAYER2
-            )
-        );
-        assertFalse(
-            IALMProxy(BASE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxyFreezableLike(BASE_ALM_PROXY_FREEZABLE).FREEZER(),
-                Base.ALM_FREEZER
-            )
-        );
+        IALMProxy proxy = IALMProxy(BASE_ALM_PROXY_FREEZABLE);
+
+        assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER));
+        assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2));
+        assertFalse(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER));
 
         assertFalse(IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).isAllocator(BASE_ALM_PROXY_FREEZABLE));
 
         _executeAllPayloadsAndBridges();
 
-        assertTrue(
-            IALMProxy(BASE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(BASE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Base.ALM_RELAYER
-            )
-        );
-        assertTrue(
-            IALMProxy(BASE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxy(BASE_ALM_PROXY_FREEZABLE).CONTROLLER(),
-                Base.ALM_RELAYER2
-            )
-        );
-        assertTrue(
-            IALMProxy(BASE_ALM_PROXY_FREEZABLE).hasRole(
-                IALMProxyFreezableLike(BASE_ALM_PROXY_FREEZABLE).FREEZER(),
-                Base.ALM_FREEZER
-            )
-        );
+        assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER));
+        assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2));
+        assertTrue(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER));
 
         assertTrue(IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).isAllocator(BASE_ALM_PROXY_FREEZABLE));
     }

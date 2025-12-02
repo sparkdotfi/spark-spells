@@ -23,18 +23,11 @@ contract SparkBase_20251211 is SparkPayloadBase {
 
     function execute() external {
         // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
-        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER(),
-            Base.ALM_RELAYER
-        );
-        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxy(ALM_PROXY_FREEZABLE).CONTROLLER(),
-            Base.ALM_RELAYER2
-        );
-        IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
-            IALMProxyFreezableLike(ALM_PROXY_FREEZABLE).FREEZER(),
-            Base.ALM_FREEZER
-        );
+        IALMProxy         proxy = IALMProxy(ALM_PROXY_FREEZABLE);
+
+        proxy.grantRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER);
+        proxy.grantRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2);
+        proxy.grantRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER);
 
         // Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
         IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setIsAllocator(ALM_PROXY_FREEZABLE, true);

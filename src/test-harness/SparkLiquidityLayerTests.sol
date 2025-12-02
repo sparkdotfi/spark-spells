@@ -2563,6 +2563,109 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
     }
 
+    function _testVaultConfiguration(
+        address asset,
+        string  memory name,
+        string  memory symbol,
+        uint64  rho,
+        address vault_,
+        uint256 minVsr,
+        uint256 maxVsr,
+        uint256 depositCap,
+        uint256 amount
+    ) internal {
+        // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+        //   1.000000003022265980097387650
+        uint256 TEN_PCT_APY = 1.000000003022265980097387650e27;
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
+
+        bytes32 takeKey = RateLimitHelpers.makeAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
+            vault_
+        );
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            vault.asset(),
+            vault_
+        );
+
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), false);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        false);
+
+        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        0);
+        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         0);
+
+        assertEq(vault.asset(),      asset);
+        assertEq(vault.name(),       name);
+        assertEq(vault.decimals(),   IERC20(vault.asset()).decimals());
+        assertEq(vault.symbol(),     symbol);
+        assertEq(vault.rho(),        rho);
+        assertEq(vault.chi(),        uint192(1e27));
+        assertEq(vault.vsr(),        1e27);
+        assertEq(vault.minVsr(),     1e27);
+        assertEq(vault.maxVsr(),     1e27);
+        assertEq(vault.depositCap(), 0);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),         true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        ETHEREUM_ALM_PROXY_FREEZABLE), true);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),           true);
+
+        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        1);
+        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         1);
+
+        assertEq(vault.minVsr(),     minVsr);
+        assertEq(vault.maxVsr(),     maxVsr);
+        assertEq(vault.depositCap(), depositCap);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+
+        vm.startPrank(ETHEREUM_ALM_PROXY_FREEZABLE);
+
+        vm.expectRevert("SparkVault/vsr-too-low");
+        vault.setVsr(minVsr - 1);
+
+        vault.setVsr(minVsr);
+
+        vm.expectRevert("SparkVault/vsr-too-high");
+        vault.setVsr(maxVsr + 1);
+
+        vault.setVsr(maxVsr);
+
+        vm.stopPrank();
+
+        uint256 initialChi = vault.nowChi();
+
+        vm.prank(ETHEREUM_ALM_PROXY_FREEZABLE);
+        vault.setVsr(TEN_PCT_APY);
+
+        skip(1 days);
+
+        assertGt(vault.nowChi(), initialChi);
+
+        _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
+            ctx:             ctx,
+            vault:           vault_,
+            takeKey:         takeKey,
+            transferKey:     transferKey,
+            takeAmount:      amount,
+            transferAmount:  amount,
+            userVaultAmount: amount,
+            tolerance:       10
+        }));
+    }
+
     /**********************************************************************************************/
     /*** Test runners                                                                           ***/
     /**********************************************************************************************/
