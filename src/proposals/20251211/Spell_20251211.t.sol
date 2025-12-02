@@ -78,7 +78,7 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         vm.stopPrank();
     }
 
-    function test_ETHEREUM_sparkVaultsV2_configureSPETH() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkVaultsV2_configureSPPYUSD() external onChain(ChainIdUtils.Ethereum()) {
         _testVaultConfiguration({
             asset:      Ethereum.PYUSD,
             name:       "Spark Savings PYUSD",
