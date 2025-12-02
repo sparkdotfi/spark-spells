@@ -17,7 +17,16 @@ import { ISparkVaultV2Like, IMorphoVaultLike, IALMProxyFreezableLike } from "../
 
 /**
  * @title  December 11, 2025 Spark Ethereum Proposal
- * @notice 
+ * @notice Spark Treasury - Spark Foundation Grant
+           SparkLend - Withdraw Reserves
+           Spark Liquidity Layer:
+           - Onboarding with Anchorage
+           - Onboard Spark Prime / Arkis
+           Spark Savings:
+           - Launch Spark Savings spPYUSD
+           - Update Setter Role to ALM Proxy Freezable for spUSDC, spUSDT, spETH
+           Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
+           Spark USDS Morpho Vault - Update Allocator Role to ALM Proxy Freezable
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/december-11-2025-proposed-changes-to-spark-for-upcoming-spell/27481
  * Vote:   
@@ -41,6 +50,22 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
     function _postExecute() internal override {
         // Foundation Grant for January 2025
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, AMOUNT_TO_FOUNDATION);
+
+        // Claim Reserves for USDS and DAI Markets
+        address[] memory aTokens = new address[](2);
+        aTokens[0] = SparkLend.DAI_SPTOKEN;
+        aTokens[1] = SparkLend.USDS_SPTOKEN;
+
+        _transferFromSparkLendTreasury(aTokens);
+
+        // Spark Savings - Launch Spark Savings spPYUSD
+        _configureVaultsV2({
+            vault_        : SPARK_VAULT_V2_SPPYUSD,
+            supplyCap     : 250_000_000e6,
+            minVsr        : 1e27,
+            maxVsr        : TEN_PCT_APY,
+            depositAmount : 1e6
+        });
 
         // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
         IALMProxy(ALM_PROXY_FREEZABLE).grantRole(
@@ -70,22 +95,6 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
 
         // Spark USDS Morpho Vault - Update Allocator Role to ALM Proxy Freezable
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(ALM_PROXY_FREEZABLE, true);
-
-        // Spark Savings - Launch Spark Savings spPYUSD
-        _configureVaultsV2({
-            vault_        : SPARK_VAULT_V2_SPPYUSD,
-            supplyCap     : 250_000_000e6,
-            minVsr        : 1e27,
-            maxVsr        : TEN_PCT_APY,
-            depositAmount : 1e6
-        });
-
-        // Claim Reserves for USDS and DAI Markets
-        address[] memory aTokens = new address[](2);
-        aTokens[0] = SparkLend.DAI_SPTOKEN;
-        aTokens[1] = SparkLend.USDS_SPTOKEN;
-
-        _transferFromSparkLendTreasury(aTokens);
     }
 
     function _configureVaultsV2(

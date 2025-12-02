@@ -170,6 +170,8 @@ interface IMorphoOracleFactoryLike {
 }
 
 interface IMorphoVaultLike {
+    function isAllocator(address) external returns (bool);
+
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
 }
 

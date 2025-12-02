@@ -35,7 +35,7 @@ contract SparkAvalanche_20251211 is SparkPayloadAvalanche {
         );
 
         // Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC
-        ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).revokeRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
+        ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).revokeRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);  // Same address
         ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).grantRole(ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC).SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
     }
 
