@@ -358,7 +358,47 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertEq(market.totalAssets(), 0);
 
         assertEq(usdc.balanceOf(address(ctx.proxy)), expectedAssets - 1);
-        assertEq(usdc.balanceOf(address(ctx.proxy)), 1_000_364.416753e6);
+        assertEq(usdc.balanceOf(address(ctx.proxy)), 1_000_364.416753e6);  // TODO: Inspect this, seems wrong
+    }
+
+    function test_ETHEREUM_arkisE2ETest_fullYear() external onChain(ChainIdUtils.Ethereum()) {
+        IArkisVaultLike  vault  = IArkisVaultLike(ARKIS);
+        IArkisMarketLike market = IArkisMarketLike(ARKIS_MARKET);
+        IERC20           usdc   = IERC20(Ethereum.USDC);
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        deal(address(usdc), address(ctx.proxy), 1_000_000e6);
+
+        _executeAllPayloadsAndBridges();
+
+        // Step 1: Deposit 1m USDC into the vault from SLL
+
+        vm.prank(ctx.relayer);
+        uint256 shares = MainnetController(ctx.controller).depositERC4626(address(vault), 1_000_000e6);
+
+        assertEq(vault.convertToAssets(shares), 1_000_000e6);
+        assertEq(vault.totalAssets(),           1_000_000e6);
+
+        // Step 2: Allocate 1m USDC to market as the curator
+
+        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        vault.allocateAssets(ARKIS_MARKET, 1_000_000e6);
+
+        // Step 3: Borrow 1m USDC from the market and assert value accrues at 6.65% annually
+
+        vm.prank(DISPATCHER);
+        market.borrow(BORROWER1, 1_000_000e6);
+
+        assertEq(vault.convertToAssets(shares), 1_000_000e6);
+        assertEq(vault.totalAssets(),           1_000_000e6);
+        assertEq(market.totalAssets(),          1_000_000e6);
+
+        skip(365 days);
+
+        assertEq(vault.convertToAssets(shares), 1_066_500e6 - 1);  // Rounding
+        assertEq(vault.totalAssets(),           1_066_500e6);
+        assertEq(market.totalAssets(),          1_066_500e6);
     }
 
     function test_ETHEREUM_onboardingAnchorage() external onChain(ChainIdUtils.Ethereum()) {
