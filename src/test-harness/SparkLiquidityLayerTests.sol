@@ -323,6 +323,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     using DomainHelpers for Domain;
 
     // TODO: Put in registry
+    address internal constant ARKIS                = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant ANCHORAGE            = 0x49506C3Aa028693458d6eE816b2EC28522946872;
     address internal constant AAVE_ATOKEN_USDC     = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AAVE_CORE_AUSDT      = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
     address internal constant AAVE_ETH_LIDO_USDS   = 0x09AA30b182488f769a9824F15E6Ce58591Da4781;
@@ -345,9 +347,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant USDS_ATOKEN          = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM        = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
-    address internal constant NEW_ALM_CONTROLLER_ETHEREUM = 0x577Fa18a498e1775939b668B0224A5e5a1e56fc3;
-
     uint256 internal constant START_BLOCK = 21029247;
+
+    // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
+    //   1.000000003022265980097387650
+    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
@@ -1920,10 +1924,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
-        // TODO: Remove this once vaults are live (5% APY)
-        vm.prank(Ethereum.ALM_OPS_MULTISIG);
-        vault.setVsr(1.000000001547125957863212448e27);
-
         skip(1 days);
 
         assertEq(asset.balanceOf(user),           0);
@@ -1931,13 +1931,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
-        assertGt(vault.assetsOf(user),  p.userVaultAmount);
+        assertGe(vault.assetsOf(user),  p.userVaultAmount);
 
         vm.prank(user);
         vault.redeem(shares, user, user);
 
-        assertGt(asset.balanceOf(user),           p.userVaultAmount);
-        assertLt(asset.balanceOf(address(vault)), assetBalanceVault);
+        assertGe(asset.balanceOf(user),           p.userVaultAmount);
+        assertLe(asset.balanceOf(address(vault)), assetBalanceVault);
 
         assertEq(vault.totalSupply(),   vaultTotalSupply);
         assertEq(vault.balanceOf(user), 0);
@@ -2574,10 +2574,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 depositCap,
         uint256 amount
     ) internal {
-        // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
-        //   1.000000003022265980097387650
-        uint256 TEN_PCT_APY = 1.000000003022265980097387650e27;
-
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
@@ -2602,7 +2598,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vault.asset(),      asset);
         assertEq(vault.name(),       name);
-        assertEq(vault.decimals(),   IERC20(vault.asset()).decimals());
+        assertEq(vault.decimals(),   IERC20Metadata(vault.asset()).decimals());
         assertEq(vault.symbol(),     symbol);
         assertEq(vault.rho(),        rho);
         assertEq(vault.chi(),        uint192(1e27));
@@ -2617,7 +2613,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _executeAllPayloadsAndBridges();
 
         assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),         true);
-        assertEq(vault.hasRole(vault.SETTER_ROLE(),        ETHEREUM_ALM_PROXY_FREEZABLE), true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_PROXY_FREEZABLE), true);
         assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),           true);
 
         assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
@@ -2631,7 +2627,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
 
-        vm.startPrank(ETHEREUM_ALM_PROXY_FREEZABLE);
+        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
 
         vm.expectRevert("SparkVault/vsr-too-low");
         vault.setVsr(minVsr - 1);
@@ -2647,7 +2643,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 initialChi = vault.nowChi();
 
-        vm.prank(ETHEREUM_ALM_PROXY_FREEZABLE);
+        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
         vault.setVsr(TEN_PCT_APY);
 
         skip(1 days);
@@ -2997,7 +2993,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(ctx,integrations[i]);
+            _runSLLE2ETests(ctx, integrations[i]);
         }
     }
 
@@ -3047,7 +3043,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](41);
+        integrations = new SLLIntegration[](44);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
@@ -3104,6 +3100,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[39] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
         integrations[40] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+
+        integrations[41] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
+        integrations[42] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
+        integrations[43] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3249,9 +3249,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 3] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
-        newIntegrations[newIntegrations.length - 2] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
-        newIntegrations[newIntegrations.length - 1] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+        newIntegrations[newIntegrations.length - 3] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC", Ethereum.USDC, ANCHORAGE);
+        newIntegrations[newIntegrations.length - 2] = _createERC4626Integration("ERC4626-ARKIS-USDC", ARKIS);
+        newIntegrations[newIntegrations.length - 1] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
     }
 
     /**********************************************************************************************/

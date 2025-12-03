@@ -17,11 +17,9 @@ import { ISparkVaultV2Like, IALMProxyFreezableLike } from "../../interfaces/Inte
  */
 contract SparkAvalanche_20251211 is SparkPayloadAvalanche {
 
-    address internal constant ALM_PROXY_FREEZABLE = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
-
     function execute() external {
-        // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
-        IALMProxy         proxy = IALMProxy(ALM_PROXY_FREEZABLE);
+        // Grant CONTROLLER Role for Relayer 1 and 2 on Avalanche.ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
+        IALMProxy         proxy = IALMProxy(Avalanche.ALM_PROXY_FREEZABLE);
         ISparkVaultV2Like vault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
         proxy.grantRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER);
@@ -30,7 +28,7 @@ contract SparkAvalanche_20251211 is SparkPayloadAvalanche {
 
         // Spark Savings - Update Setter Role to ALM Proxy Freezable for spUSDC
         vault.revokeRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG);
-        vault.grantRole(vault.SETTER_ROLE(),  ALM_PROXY_FREEZABLE);
+        vault.grantRole(vault.SETTER_ROLE(),  Avalanche.ALM_PROXY_FREEZABLE);
     }
 
 }

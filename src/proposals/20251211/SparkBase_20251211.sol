@@ -19,18 +19,16 @@ import { IMorphoVaultLike, IALMProxyFreezableLike } from "../../interfaces/Inter
  */
 contract SparkBase_20251211 is SparkPayloadBase {
 
-    address internal constant ALM_PROXY_FREEZABLE = 0xCBA0C0a2a0B6Bb11233ec4EA85C5bFfea33e724d;
-
     function execute() external {
-        // Grant CONTROLLER Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
-        IALMProxy         proxy = IALMProxy(ALM_PROXY_FREEZABLE);
+        // Grant CONTROLLER Role for Relayer 1 and 2 on Base.ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
+        IALMProxy         proxy = IALMProxy(Base.ALM_PROXY_FREEZABLE);
 
         proxy.grantRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER);
         proxy.grantRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2);
         proxy.grantRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER);
 
         // Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
-        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setIsAllocator(ALM_PROXY_FREEZABLE, true);
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setIsAllocator(Base.ALM_PROXY_FREEZABLE, true);
     }
 
 }
