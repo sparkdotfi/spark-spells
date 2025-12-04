@@ -564,9 +564,9 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
     function test_AVALANCHE_ALMProxyFreezableConfiguration() external onChain(ChainIdUtils.Avalanche()) {
         IALMProxyFreezableLike proxy = IALMProxyFreezableLike(Avalanche.ALM_PROXY_FREEZABLE);
 
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER),   false);
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER2),  false);
-        assertEq(proxy.hasRole(proxy.FREEZER(),            Avalanche.ALM_FREEZER),   false);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER),    false);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER2),   false);
+        assertEq(proxy.hasRole(proxy.FREEZER(),            Avalanche.ALM_FREEZER),    false);
         assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Avalanche.SPARK_EXECUTOR), true);
 
         VmSafe.EthGetLogs[] memory roleLogs = _getEvents(block.chainid, address(proxy), RoleGranted.selector);
@@ -581,10 +581,10 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER),          true);
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER2),         true);
-        assertEq(proxy.hasRole(proxy.FREEZER(),            Avalanche.ALM_FREEZER),          true);
-        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Avalanche.SPARK_EXECUTOR),       true);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER),    true);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Avalanche.ALM_RELAYER2),   true);
+        assertEq(proxy.hasRole(proxy.FREEZER(),            Avalanche.ALM_FREEZER),    true);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Avalanche.SPARK_EXECUTOR), true);
 
         VmSafe.Log[] memory recordedLogs = vm.getRecordedLogs();  // This gets the logs of all payloads
         VmSafe.Log[] memory newLogs      = new VmSafe.Log[](7);
@@ -621,9 +621,9 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
     function test_BASE_ALMProxyFreezableConfiguration() external onChain(ChainIdUtils.Base()) {
         IALMProxyFreezableLike proxy = IALMProxyFreezableLike(Base.ALM_PROXY_FREEZABLE);
 
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER),   false);
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER2),  false);
-        assertEq(proxy.hasRole(proxy.FREEZER(),            Base.ALM_FREEZER),   false);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER),    false);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER2),   false);
+        assertEq(proxy.hasRole(proxy.FREEZER(),            Base.ALM_FREEZER),    false);
         assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Base.SPARK_EXECUTOR), true);
 
         VmSafe.EthGetLogs[] memory roleLogs = _getEvents(block.chainid, address(proxy), RoleGranted.selector);
@@ -638,10 +638,10 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER),          true);
-        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER2),         true);
-        assertEq(proxy.hasRole(proxy.FREEZER(),            Base.ALM_FREEZER),          true);
-        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Base.SPARK_EXECUTOR),       true);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER),    true);
+        assertEq(proxy.hasRole(proxy.CONTROLLER(),         Base.ALM_RELAYER2),   true);
+        assertEq(proxy.hasRole(proxy.FREEZER(),            Base.ALM_FREEZER),    true);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Base.SPARK_EXECUTOR), true);
 
         VmSafe.Log[] memory recordedLogs = vm.getRecordedLogs();  // This gets the logs of all payloads
         VmSafe.Log[] memory newLogs      = new VmSafe.Log[](7);
