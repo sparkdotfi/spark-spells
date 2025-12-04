@@ -4,13 +4,15 @@ pragma solidity ^0.8.0;
 
 import { IAToken } from "aave-v3-origin/src/core/contracts/interfaces/IAToken.sol";
 
-import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 
 import { IMetaMorpho } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { MarketParams, Id } from "morpho-blue/src/interfaces/IMorpho.sol";
 import { MarketParamsLib }  from "morpho-blue/src/libraries/MarketParamsLib.sol";
+
+import { SafeERC20, IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
@@ -28,6 +30,7 @@ import { RateLimitHelpers }      from "spark-alm-controller/src/RateLimitHelpers
 
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
+import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 /**
  * @notice Helper functions for Spark Liquidity Layer
  */
@@ -159,7 +162,7 @@ library SLLHelpers {
             rateLimits,
             depositMax,
             depositSlope,
-            underlying.decimals()
+            IERC20Metadata(address(underlying)).decimals()
         );
 
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
@@ -191,7 +194,7 @@ library SLLHelpers {
             rateLimits,
             depositMax,
             depositSlope,
-            asset.decimals()
+            IERC20Metadata(address(asset)).decimals()
         );
 
         IRateLimits(rateLimits).setUnlimitedRateLimitData(
@@ -200,6 +203,8 @@ library SLLHelpers {
                 vault
             )
         );
+
+        MainnetController(Ethereum.ALM_CONTROLLER).setMaxExchangeRate(vault, 1, 10);
     }
 
     function setMaxExchangeRate(
@@ -210,8 +215,8 @@ library SLLHelpers {
     ) 
         internal 
     {
-        uint256 sharePrecision = 10 ** IERC20(vault).decimals();
-        uint256 assetPrecision = 10 ** IERC20(IERC4626(vault).asset()).decimals();
+        uint256 sharePrecision = 10 ** IERC20Metadata(vault).decimals();
+        uint256 assetPrecision = 10 ** IERC20Metadata(IERC4626(vault).asset()).decimals();
 
         MainnetController(almController).setMaxExchangeRate({
             token             : vault,
@@ -515,6 +520,49 @@ library SLLHelpers {
         }
 
         IRateLimits(rateLimits).setRateLimitData(key, maxAmount, slope);
+    }
+
+    function configureVaultsV2(
+        address vault_,
+        uint256 supplyCap,
+        uint256 minVsr,
+        uint256 maxVsr,
+        uint256 depositAmount
+    ) internal {
+        ISparkVaultV2Like     vault  = ISparkVaultV2Like(vault_);
+        IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        // Grant SETTER_ROLE to ALM Proxy Freezable
+        vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
+
+        // Grant TAKER_ROLE to Alm Proxy
+        vault.grantRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY);
+
+        // Set VSR bounds
+        vault.setVsrBounds(minVsr, maxVsr);
+
+        // Set the supply cap
+        vault.setDepositCap(supplyCap);
+
+        // Deposit into the vault
+        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), vault_, depositAmount);
+        vault.deposit(depositAmount, address(1));
+
+        rateLimits.setUnlimitedRateLimitData(
+            RateLimitHelpers.makeAddressKey(
+                controller.LIMIT_SPARK_VAULT_TAKE(),
+                address(vault)
+            )
+        );
+
+        rateLimits.setUnlimitedRateLimitData(
+            RateLimitHelpers.makeAddressAddressKey(
+                controller.LIMIT_ASSET_TRANSFER(),
+                vault.asset(),
+                address(vault)
+            )
+        );
     }
 
 }

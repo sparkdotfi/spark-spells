@@ -28,6 +28,7 @@ contract SparkBase_20251211 is SparkPayloadBase {
         proxy.grantRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER);
 
         // Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setIsAllocator(Base.ALM_RELAYER,         false);
         IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setIsAllocator(Base.ALM_PROXY_FREEZABLE, true);
     }
 
