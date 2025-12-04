@@ -134,6 +134,9 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertFalse(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE));
         assertFalse(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   Ethereum.ALM_PROXY_FREEZABLE));
 
+        assertTrue(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).isAllocator(Ethereum.ALM_RELAYER_MULTISIG));
+        assertTrue(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).isAllocator(Ethereum.ALM_RELAYER_MULTISIG));
+
         assertFalse(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
         assertFalse(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
 
@@ -154,6 +157,9 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertTrue(spUSDCvault.hasRole(spUSDCvault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE));
         assertTrue(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE));
         assertTrue(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   Ethereum.ALM_PROXY_FREEZABLE));
+
+        assertFalse(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).isAllocator(Ethereum.ALM_RELAYER_MULTISIG));
+        assertFalse(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).isAllocator(Ethereum.ALM_RELAYER_MULTISIG));
     
         assertTrue(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
         assertTrue(IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
@@ -191,6 +197,8 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2));
         assertFalse(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER));
 
+        assertTrue(IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).isAllocator(Base.ALM_RELAYER));
+
         assertFalse(IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).isAllocator(Base.ALM_PROXY_FREEZABLE));
 
         _executeAllPayloadsAndBridges();
@@ -198,6 +206,8 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER));
         assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2));
         assertTrue(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Base.ALM_FREEZER));
+
+        assertFalse(IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).isAllocator(Base.ALM_RELAYER));
 
         assertTrue(IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).isAllocator(Base.ALM_PROXY_FREEZABLE));
     }
