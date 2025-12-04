@@ -8,8 +8,11 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
-interface IALMProxyFreezableLike {
+import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+
+interface IALMProxyFreezableLike is IALMProxy {
     function FREEZER() external returns (bytes32);
+    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
 }
 
 interface IProxyLike {
