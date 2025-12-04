@@ -143,6 +143,10 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG));
         assertTrue(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Ethereum.ALM_FREEZER_MULTISIG));
 
+        assertEq(spUSDCvault.getRoleMemberCount(spUSDCvault.SETTER_ROLE()), 1);
+        assertEq(spUSDTvault.getRoleMemberCount(spUSDTvault.SETTER_ROLE()), 1);
+        assertEq(spETHvault.getRoleMemberCount(spETHvault.SETTER_ROLE()), 1);
+
         assertFalse(spUSDCvault.hasRole(spUSDCvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
         assertFalse(spUSDTvault.hasRole(spUSDTvault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
         assertFalse(spETHvault.hasRole(spETHvault.SETTER_ROLE(),   Ethereum.ALM_OPS_MULTISIG));
@@ -163,7 +167,7 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertFalse(proxy.hasRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER2));
         assertFalse(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Avalanche.ALM_FREEZER));
 
-        assertTrue(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertTrue(vault.hasRole(vault.SETTER_ROLE(), Avalanche.ALM_OPS_MULTISIG));
 
         assertFalse(vault.hasRole(vault.SETTER_ROLE(), Avalanche.ALM_PROXY_FREEZABLE));
 
@@ -173,9 +177,11 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
         assertTrue(proxy.hasRole(proxy.CONTROLLER(),                               Avalanche.ALM_RELAYER2));
         assertTrue(proxy.hasRole(IALMProxyFreezableLike(address(proxy)).FREEZER(), Avalanche.ALM_FREEZER));
 
-        assertFalse(vault.hasRole(vault.SETTER_ROLE(), Ethereum.ALM_OPS_MULTISIG));
+        assertFalse(vault.hasRole(vault.SETTER_ROLE(), Avalanche.ALM_OPS_MULTISIG));
 
         assertTrue(vault.hasRole(vault.SETTER_ROLE(), Avalanche.ALM_PROXY_FREEZABLE));
+
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()), 1);
     }
 
     function test_BASE_roleUpdates() external onChain(ChainIdUtils.Base()) {

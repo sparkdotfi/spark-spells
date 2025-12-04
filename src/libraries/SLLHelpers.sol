@@ -200,6 +200,8 @@ library SLLHelpers {
                 vault
             )
         );
+
+        MainnetController(Ethereum.ALM_CONTROLLER).setMaxExchangeRate(vault, 1, 10);
     }
 
     function setMaxExchangeRate(

@@ -82,7 +82,6 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
             5_000_000e6,
             5_000_000e6 / uint256(1 days)
         );
-        Ethereum.ALM_CONTROLLER.setMaxExchangeRate(ARKIS, 1, 10);
 
         // Spark Savings - Launch Spark Savings spPYUSD
         _configureVaultsV2({
@@ -115,10 +114,12 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         spETHvault.grantRole(spETHvault.SETTER_ROLE(),  Ethereum.ALM_PROXY_FREEZABLE);
 
         // Spark USDC Morpho Vault - Update Allocator Role to ALM Proxy Freezable
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, true);
+        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(Ethereum.ALM_RELAYER_MULTISIG, false);
+        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE,  true);
 
         // Spark USDS Morpho Vault - Update Allocator Role to ALM Proxy Freezable
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, true);
+        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_RELAYER_MULTISIG, false);
+        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE,  true);
     }
 
     function _configureVaultsV2(
