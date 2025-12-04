@@ -533,7 +533,7 @@ library SLLHelpers {
         IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
 
-        // Grant SETTER_ROLE to Spark Operations Safe
+        // Grant SETTER_ROLE to ALM Proxy Freezable
         vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
 
         // Grant TAKER_ROLE to Alm Proxy
