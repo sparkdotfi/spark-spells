@@ -259,8 +259,6 @@ contract SparkEthereum_20251211_SLLTests is SparkLiquidityLayerTests {
 
 }
 
-import { console } from "forge-std/console.sol";
-
 contract SparkEthereum_20251211_SparklendTests is SparklendTests {
 
     constructor() {
