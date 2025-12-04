@@ -84,7 +84,7 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         );
 
         // Spark Savings - Launch Spark Savings spPYUSD
-        _configureVaultsV2({
+        SLLHelpers.configureVaultsV2({
             vault_        : Ethereum.SPARK_VAULT_V2_SPPYUSD,
             supplyCap     : 250_000_000e6,
             minVsr        : 1e27,
@@ -120,49 +120,6 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         // Spark USDS Morpho Vault - Update Allocator Role to ALM Proxy Freezable
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_RELAYER_MULTISIG, false);
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE,  true);
-    }
-
-    function _configureVaultsV2(
-        address vault_,
-        uint256 supplyCap,
-        uint256 minVsr,
-        uint256 maxVsr,
-        uint256 depositAmount
-    ) internal {
-        ISparkVaultV2Like     vault  = ISparkVaultV2Like(vault_);
-        IRateLimits       rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
-        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
-
-        // Grant SETTER_ROLE to Spark Operations Safe
-        vault.grantRole(vault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
-
-        // Grant TAKER_ROLE to Alm Proxy
-        vault.grantRole(vault.TAKER_ROLE(), Ethereum.ALM_PROXY);
-
-        // Set VSR bounds
-        vault.setVsrBounds(minVsr, maxVsr);
-
-        // Set the supply cap
-        vault.setDepositCap(supplyCap);
-
-        // Deposit into the vault
-        SafeERC20.safeIncreaseAllowance(IERC20(vault.asset()), vault_, depositAmount);
-        vault.deposit(depositAmount, address(1));
-
-        rateLimits.setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAddressKey(
-                controller.LIMIT_SPARK_VAULT_TAKE(),
-                address(vault)
-            )
-        );
-
-        rateLimits.setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                controller.LIMIT_ASSET_TRANSFER(),
-                vault.asset(),
-                address(vault)
-            )
-        );
     }
 
 }
