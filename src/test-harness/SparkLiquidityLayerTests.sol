@@ -2606,6 +2606,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.minVsr(),     1e27);
         assertEq(vault.maxVsr(),     1e27);
         assertEq(vault.depositCap(), 0);
+        assertGt(vault.rho(),        block.timestamp);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
