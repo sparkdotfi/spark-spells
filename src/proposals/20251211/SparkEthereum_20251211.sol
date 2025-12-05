@@ -91,8 +91,8 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
             minVsr        : 1e27,
             maxVsr        : TEN_PCT_APY,
             depositAmount : 1e6,
-            ratelimits    : Ethereum.ALM_RATE_LIMITS,
-            controller    : Ethereum.ALM_CONTROLLER,
+            ratelimits_   : Ethereum.ALM_RATE_LIMITS,
+            controller_   : Ethereum.ALM_CONTROLLER,
             setter        : Ethereum.ALM_PROXY_FREEZABLE,
             taker         : Ethereum.ALM_PROXY
         });

@@ -532,14 +532,14 @@ library SLLHelpers {
         uint256 minVsr,
         uint256 maxVsr,
         uint256 depositAmount,
-        address ratelimits,
-        address controller,
+        address ratelimits_,
+        address controller_,
         address setter,
         address taker
     ) internal {
         ISparkVaultV2Like vault      = ISparkVaultV2Like(vault_);
-        IRateLimits       rateLimits = IRateLimits(ratelimits);
-        MainnetController controller = MainnetController(controller);
+        IRateLimits       rateLimits = IRateLimits(ratelimits_);
+        MainnetController controller = MainnetController(controller_);
 
         // Grant SETTER_ROLE to ALM Proxy Freezable
         vault.grantRole(vault.SETTER_ROLE(), setter);
