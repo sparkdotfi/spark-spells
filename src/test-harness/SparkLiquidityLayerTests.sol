@@ -1924,6 +1924,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
+        // TODO: Update this once the spell is live
+        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        try vault.setVsr(1.000000001547125957863212448e27) {
+        } catch {
+            vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
+            try vault.setVsr(1.000000001547125957863212448e27) {
+            } catch {
+                vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
+                vault.setVsr(1.000000001547125957863212448e27);
+            }
+        }
+
         skip(1 days);
 
         assertEq(asset.balanceOf(user),           0);
@@ -1931,13 +1943,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
-        assertGe(vault.assetsOf(user),  p.userVaultAmount);
+        assertGt(vault.assetsOf(user),  p.userVaultAmount);
 
         vm.prank(user);
         vault.redeem(shares, user, user);
 
-        assertGe(asset.balanceOf(user),           p.userVaultAmount);
-        assertLe(asset.balanceOf(address(vault)), assetBalanceVault);
+        assertGt(asset.balanceOf(user),           p.userVaultAmount);
+        assertLt(asset.balanceOf(address(vault)), assetBalanceVault);
 
         assertEq(vault.totalSupply(),   vaultTotalSupply);
         assertEq(vault.balanceOf(user), 0);
@@ -2606,7 +2618,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.minVsr(),     1e27);
         assertEq(vault.maxVsr(),     1e27);
         assertEq(vault.depositCap(), 0);
-        assertGt(vault.rho(),        block.timestamp);
+        assertLt(vault.rho(),        block.timestamp);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
