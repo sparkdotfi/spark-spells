@@ -686,6 +686,8 @@ contract SparkEthereum_20251211_SpellTests is SpellTests {
     uint256 internal constant AMOUNT_TO_ASSET_FOUNDATION = 150_000e18;
     uint256 internal constant AMOUNT_TO_FOUNDATION       = 1_100_000e18;
 
+    address internal constant SPARK_ASSET_FOUNDATION = 0xEabCb8C0346Ac072437362f1692706BA5768A911;
+
     constructor() {
         _spellId   = 20251211;
         _blockDate = "2025-12-02T12:12:00Z";
@@ -715,16 +717,19 @@ contract SparkEthereum_20251211_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_usdsTransfers() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 sparkUsdsBalanceBefore           = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
-        uint256 foundationUsdsBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
+        uint256 sparkUsdsBalanceBefore                = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+        uint256 foundationUsdsBalanceBefore           = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
+        uint256 sparkAssetFoundationUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(SPARK_ASSET_FOUNDATION);
 
-        assertEq(sparkUsdsBalanceBefore,      31_639_488.445801365846236778e18);
-        assertEq(foundationUsdsBalanceBefore, 5_100_000e18);
+        assertEq(sparkUsdsBalanceBefore,                31_639_488.445801365846236778e18);
+        assertEq(foundationUsdsBalanceBefore,           5_100_000e18);
+        assertEq(sparkAssetFoundationUsdsBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),               sparkUsdsBalanceBefore - AMOUNT_TO_FOUNDATION);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),               sparkUsdsBalanceBefore - AMOUNT_TO_FOUNDATION - AMOUNT_TO_ASSET_FOUNDATION);
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG), foundationUsdsBalanceBefore + AMOUNT_TO_FOUNDATION);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(SPARK_ASSET_FOUNDATION),             sparkAssetFoundationUsdsBalanceBefore + AMOUNT_TO_ASSET_FOUNDATION);
     }
 
 }

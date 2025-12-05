@@ -38,10 +38,12 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
 
     using SLLHelpers for address;
 
-    address internal constant ARKIS     = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant ANCHORAGE = 0x49506C3Aa028693458d6eE816b2EC28522946872;
+    address internal constant ARKIS                  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant ANCHORAGE              = 0x49506C3Aa028693458d6eE816b2EC28522946872;
+    address internal constant SPARK_ASSET_FOUNDATION = 0xEabCb8C0346Ac072437362f1692706BA5768A911;
 
-    uint256 internal constant AMOUNT_TO_FOUNDATION = 1_100_000e18;
+    uint256 internal constant AMOUNT_TO_FOUNDATION             = 1_100_000e18;
+    uint256 internal constant AMOUNT_TO_SPARK_ASSET_FOUNDATION = 150_000e18;
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
     //   1.000000003022265980097387650
@@ -55,6 +57,7 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
     function _postExecute() internal override {
         // Foundation Grant for January 2026
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, AMOUNT_TO_FOUNDATION);
+        IERC20(Ethereum.USDS).transfer(SPARK_ASSET_FOUNDATION,             AMOUNT_TO_SPARK_ASSET_FOUNDATION);
 
         // Claim Reserves for USDS and DAI Markets
         address[] memory aTokens = new address[](2);
