@@ -21,7 +21,7 @@ contract SparkBase_20251211 is SparkPayloadBase {
 
     function execute() external {
         // Grant CONTROLLER Role for Relayer 1 and 2 on Base.ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
-        IALMProxy         proxy = IALMProxy(Base.ALM_PROXY_FREEZABLE);
+        IALMProxy proxy = IALMProxy(Base.ALM_PROXY_FREEZABLE);
 
         proxy.grantRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER);
         proxy.grantRole(proxy.CONTROLLER(),                               Base.ALM_RELAYER2);

@@ -12,7 +12,6 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
 import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 

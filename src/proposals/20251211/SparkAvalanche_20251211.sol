@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-
 import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
 import { SparkPayloadAvalanche, Avalanche } from "../../SparkPayloadAvalanche.sol";
