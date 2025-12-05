@@ -50,8 +50,8 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
     uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
     constructor() {
-        // PAYLOAD_AVALANCHE = 0x282dAfE8B97e2Db5053761a4601ab2E1CB976318;
-        // PAYLOAD_BASE      = 0x3968a022D955Bbb7927cc011A48601B65a33F346;
+        PAYLOAD_AVALANCHE = 0x3A60e678eA258A30c7cab2B70439a37fd6495Fe1;
+        PAYLOAD_BASE      = 0x2C07e5E977B6db3A2a776028158359fcE212F04A;
     }
 
     function _postExecute() internal override {
