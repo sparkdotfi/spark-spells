@@ -93,8 +93,8 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
             depositAmount : 1e6,
             ratelimits    : Ethereum.ALM_RATE_LIMITS,
             controller    : Ethereum.ALM_CONTROLLER,
-            setterRole    : Ethereum.ALM_PROXY_FREEZABLE,
-            takerRole     : Ethereum.ALM_PROXY
+            setter        : Ethereum.ALM_PROXY_FREEZABLE,
+            taker         : Ethereum.ALM_PROXY
         });
 
         // Grant CONTROLLER Role for Relayer 1 and 2 on Ethereum.ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG

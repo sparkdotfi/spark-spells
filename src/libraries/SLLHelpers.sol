@@ -204,7 +204,11 @@ library SLLHelpers {
             )
         );
 
-        MainnetController(Ethereum.ALM_CONTROLLER).setMaxExchangeRate(vault, 1 * 10 ** IERC20Metadata(vault).decimals() , 10 * 10 ** IERC20Metadata(address(asset)).decimals());
+        MainnetController(Ethereum.ALM_CONTROLLER).setMaxExchangeRate(
+            vault,
+            1 * 10 ** IERC20Metadata(vault).decimals(),
+            10 * 10 ** IERC20Metadata(address(asset)).decimals()
+        );
     }
 
     function setMaxExchangeRate(
@@ -530,18 +534,18 @@ library SLLHelpers {
         uint256 depositAmount,
         address ratelimits,
         address controller,
-        address setterRole,
-        address takerRole
+        address setter,
+        address taker
     ) internal {
-        ISparkVaultV2Like     vault  = ISparkVaultV2Like(vault_);
+        ISparkVaultV2Like vault      = ISparkVaultV2Like(vault_);
         IRateLimits       rateLimits = IRateLimits(ratelimits);
         MainnetController controller = MainnetController(controller);
 
         // Grant SETTER_ROLE to ALM Proxy Freezable
-        vault.grantRole(vault.SETTER_ROLE(), setterRole);
+        vault.grantRole(vault.SETTER_ROLE(), setter);
 
         // Grant TAKER_ROLE to Alm Proxy
-        vault.grantRole(vault.TAKER_ROLE(), takerRole);
+        vault.grantRole(vault.TAKER_ROLE(), taker);
 
         // Set VSR bounds
         vault.setVsrBounds(minVsr, maxVsr);
