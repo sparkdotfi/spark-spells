@@ -2588,9 +2588,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vault_
         );
 
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),      true);
-        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_OPS_MULTISIG), false);
-        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),        false);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),         true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        Ethereum.ALM_PROXY_FREEZABLE), false);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Ethereum.ALM_PROXY),           false);
 
         assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        0);
