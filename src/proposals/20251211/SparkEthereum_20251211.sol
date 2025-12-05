@@ -17,6 +17,7 @@ import { ISparkVaultV2Like, IMorphoVaultLike, IALMProxyFreezableLike } from "../
 
 /**
  * @title  December 11, 2025 Spark Ethereum Proposal
+ * @author Phoenix Labs
  * @notice Spark Treasury - Spark Foundation Grant
            SparkLend - Withdraw Reserves
            Spark Liquidity Layer:
