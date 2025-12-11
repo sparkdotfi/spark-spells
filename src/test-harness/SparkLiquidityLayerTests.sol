@@ -2074,7 +2074,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testCCTPIntegration(CCTPE2ETestParams memory p) internal {
         // NOTE: MainnetController and ForeignController share the same CCTP interfaces
         ///      so this works for both.
-        
+
         skip(10 days);  // Recharge ratelimits
 
         IERC20 usdc = IERC20(address(MainnetController(p.ctx.controller).usdc()));
@@ -2126,7 +2126,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getEvents(uint256 chainId, address target, bytes32 topic0, uint256 retryCount) internal returns (VmSafe.EthGetLogs[] memory logs) {
-        string memory apiKey = vm.envString("ETHERSCAN_API_KEY");
+        string memory apiKey = vm.envString("ETHERSCAN_API_KEY_SPELLS");
 
         require(retryCount < 4, "Etherscan API returned non-success status");
 
