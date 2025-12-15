@@ -2177,7 +2177,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getEvents(uint256 chainId, address target, bytes32 topic0, uint256 retryCount) internal returns (VmSafe.EthGetLogs[] memory logs) {
-        string memory apiKey = vm.envString("ETHERSCAN_API_KEY_SPELLS");
+        string memory apiKey = vm.envString("ETHERSCAN_API_KEY");
 
         require(retryCount < 4, "Etherscan API returned non-success status");
 
@@ -3813,7 +3813,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
             }
 
-            if (integrations[i].entryId2 != bytes32(0)) {                
+            if (integrations[i].entryId2 != bytes32(0)) {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
             }
 
