@@ -8,6 +8,13 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
+import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+
+interface IALMProxyFreezableLike is IALMProxy {
+    function FREEZER() external returns (bytes32);
+    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
+}
+
 interface IProxyLike {
 
     function implementation() external view returns (address);
@@ -66,6 +73,8 @@ interface ISparkVaultV2Like {
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
 
+    function grantRole(bytes32 role, address account) external; 
+
     function hasRole(bytes32 role, address account) external view returns (bool);
 
     function minVsr() external view returns (uint256);
@@ -80,6 +89,8 @@ interface ISparkVaultV2Like {
 
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
+    function revokeRole(bytes32 role, address account) external;
+
     function rho() external view returns (uint64);
 
     function setDepositCap(uint256 newCap) external;
@@ -87,6 +98,8 @@ interface ISparkVaultV2Like {
     function SETTER_ROLE() external view returns (bytes32);
 
     function setVsr(uint256 newVsr) external;
+
+    function setVsrBounds(uint256 minVsr_, uint256 maxVsr_) external;
 
     function symbol() external view returns (string memory);
 
@@ -157,6 +170,12 @@ interface IMorphoOracleFactoryLike {
     // NOTE: This applies to all oracles deployed by the factory
     function isMorphoChainlinkOracleV2(address) external view returns (bool);
 
+}
+
+interface IMorphoVaultLike {
+    function isAllocator(address) external returns (bool);
+
+    function setIsAllocator(address newAllocator, bool newIsAllocator) external;
 }
 
 interface IPendleLinearDiscountOracleLike {
