@@ -507,6 +507,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 1: Check rate limit ***/
         /********************************/
 
+        uint256 decimals = IERC20Metadata(address(asset)).decimals();
+
+        _checkRateLimitValue(p.ctx, p.depositKey,  decimals);
+        _checkRateLimitValue(p.ctx, p.withdrawKey, decimals);
+
         if (!unlimitedDeposit) {
             vm.prank(p.ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -640,6 +645,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 1: Check rate limit ***/
         /********************************/
 
+        _checkRateLimitValue(p.ctx, p.depositKey,  IERC20Metadata(address(asset)).decimals());
+        _checkRateLimitValue(p.ctx, p.withdrawKey, IERC20Metadata(address(asset)).decimals());
+
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
         MainnetController(p.ctx.controller).depositAave(p.vault, depositLimit + 1);
@@ -713,6 +721,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
+
+        uint256 decimals = IERC20Metadata(address(asset)).decimals();
+
+        _checkRateLimitValue(p.ctx, p.depositKey,  decimals);
+        _checkRateLimitValue(p.ctx, p.redeemKey,   decimals);
+        _checkRateLimitValue(p.ctx, p.withdrawKey, decimals);
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -879,6 +893,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vars.controller.maxSlippages(pool), maxSlippage);
 
         if (depositLimit.maxAmount != 0) {
+            // Check rate limit
+            _checkRateLimitValue(vars.ctx, vars.depositKey, 18);
+
             // Deposit is enabled
             assertGt(vars.depositAmounts[0], 0);
             assertGt(vars.depositAmounts[1], 0);
@@ -1025,6 +1042,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertTrue(v.depositLimit  != type(uint256).max);
         assertTrue(v.withdrawLimit != type(uint256).max);
 
+        _checkRateLimitValue(p.ctx, p.depositKey,  18);
+        _checkRateLimitValue(p.ctx, p.withdrawKey, 18);
+
         if (v.depositLimit > 0) {
             IRateLimits.RateLimitData memory data = p.ctx.rateLimits.getRateLimitData(
                 RateLimitHelpers.makeAddressKey(
@@ -1111,6 +1131,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _testCurveSwapIntegration(CurveSwapE2ETestParams memory p) internal {
         skip(10 days);  // Recharge rate limits
+
+        // Check RateLimit
+        _checkRateLimitValue(p.ctx, p.swapKey, 18);
 
         uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
 
@@ -1202,6 +1225,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
+
+        _checkRateLimitValue(p.ctx, p.swapKey, 6);
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -1301,6 +1326,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 1: Check rate limit ***/
         /********************************/
 
+        uint256 decimals = IERC20Metadata(address(stakingToken)).decimals();
+
+        _checkRateLimitValue(p.ctx, p.depositKey,  decimals);
+        _checkRateLimitValue(p.ctx, p.withdrawKey, decimals);
+
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
         MainnetController(p.ctx.controller).depositToFarm(p.farm, depositLimit + 1);
@@ -1397,8 +1427,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         MainnetController(p.ctx.controller).unstakeSUSDe();
 
         /*************************************/
-        /*** Step 1: Check mint rate limit ***/
+        /*** Step 1: Check rate limits     ***/
         /*************************************/
+
+        _checkRateLimitValue(p.ctx, p.mintKey,     6);
+        _checkRateLimitValue(p.ctx, p.depositKey,  18);
+        _checkRateLimitValue(p.ctx, p.cooldownKey, 18);
+        _checkRateLimitValue(p.ctx, p.burnKey,     18);
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -1604,8 +1639,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 mintLimit = p.ctx.rateLimits.getCurrentRateLimit(p.mintKey);
 
         /*************************************/
-        /*** Step 1: Check burn rate limit ***/
+        /*** Step 1: Check mint rate limit ***/
         /*************************************/
+
+        _checkRateLimitValue(p.ctx, p.mintKey, 18);
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -1670,6 +1707,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
+
+        _checkRateLimitValue(p.ctx, p.transferKey, IERC20Metadata(address(asset)).decimals());
 
         if (!unlimitedTransfer) {
             vm.prank(p.ctx.relayer);
@@ -1763,6 +1802,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
+
+        _checkRateLimitValue(p.ctx, p.depositKey, IERC20Metadata(address(asset)).decimals());
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -1865,6 +1906,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _testSparkVaultV2Integration(SparkVaultV2E2ETestParams memory p) internal {
         ISparkVaultV2Like vault = ISparkVaultV2Like(p.vault);
+
+        uint256 decimals = IERC20Metadata(vault.asset()).decimals();
+
+        _checkRateLimitValue(p.ctx, p.takeKey,     decimals);
+        _checkRateLimitValue(p.ctx, p.transferKey, decimals);
 
         // Step 1: Check seeding
 
@@ -1973,6 +2019,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
+
+        _checkRateLimitValue(p.ctx, p.depositKey,  IERC20Metadata(address(asset)).decimals());
+        _checkRateLimitValue(p.ctx, p.withdrawKey, IERC20Metadata(address(asset)).decimals());
 
         if (!unlimitedDeposit) {
             vm.prank(p.ctx.relayer);
@@ -2086,6 +2135,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************/
         /*** Step 1: Check rate limit ***/
         /********************************/
+
+        _checkRateLimitValue(p.ctx, p.transferKey, 6);
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
@@ -3748,7 +3799,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return impl != address(0);
     }
 
-    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal pure {
+    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal {
         for (uint256 i = 0; i < integrations.length; ++i) {
             require(
                 integrations[i].entryId  != bytes32(0) ||
@@ -3762,7 +3813,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
             }
 
-            if (integrations[i].entryId2 != bytes32(0)) {
+            if (integrations[i].entryId2 != bytes32(0)) {                
                 rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
             }
 
@@ -3776,6 +3827,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
+    }
+
+    function _checkRateLimitValue(SparkLiquidityLayerContext memory ctx, bytes32 id, uint256 decimals) internal view {
+        IRateLimits.RateLimitData memory value = ctx.rateLimits.getRateLimitData(id);
+
+        if (value.maxAmount == type(uint256).max) return;
+        if (value.slope == 0 || value.slope == type(uint256).max) return;
+
+        if (value.maxAmount      / 10 ** decimals > 1e10) revert("MaxAmount over 10 billion");
+        if (value.slope * 1 days / 10 ** decimals > 1e10) revert("Slope over 10 billion per day");
+
+        if (value.maxAmount      / 10 ** decimals == 0) revert("MaxAmount below one unit");
+        if (value.slope * 1 days / 10 ** decimals == 0) revert("Slope below one unit per day");
     }
 
     function _appendIfNotContaining(bytes32[] memory array, bytes32 value) internal pure returns (bytes32[] memory newArray) {
