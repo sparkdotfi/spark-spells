@@ -60,7 +60,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "2025-12-05T20:22:00Z";
+        _blockDate = "2026-01-06T11:27:00Z";
     }
 
     function setUp() public override {
@@ -94,7 +94,7 @@ contract SparkEthereum_20260115_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "2025-12-05T20:22:00Z";
+        _blockDate = "2026-01-06T11:27:00Z";
     }
 
     function setUp() public override {
@@ -113,7 +113,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20251211;
-        _blockDate = "2025-12-05T20:22:00Z";
+        _blockDate = "2026-01-06T11:27:00Z";
     }
 
     function setUp() public override {
@@ -164,6 +164,22 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         });
     }
 
+    function test_AVALANCHE_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Avalanche()) {
+        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
+
+        assertEq(usdcVault.depositCap(), 250_000_000e6);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(usdcVault.depositCap(), 500_000_000e6);
+
+        _test_vault_depositBoundaryLimit({
+            vault:              usdcVault,
+            depositCap:         500_000_000e6,
+            expectedMaxDeposit: 416_135_998.065359e6
+        });
+    }
+
     function _test_vault_depositBoundaryLimit(
         ISparkVaultV2Like vault,
         uint256           depositCap,
@@ -199,7 +215,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(kso.numOracles(),                      2);
+        assertEq(kso.numOracles(),                      3);
         assertEq(kso.oracleThresholds(LBTC_BTC_ORACLE), 0.95e8);
         
         // Sanity check the latest answers
