@@ -3,6 +3,8 @@ pragma solidity ^0.8.25;
 
 import { SparkPayloadAvalanche, Avalanche } from "../../SparkPayloadAvalanche.sol";
 
+import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
+
 /**
  * @title  January 15, 2026 Spark Avalanche Proposal
  * @notice Spark Savings - Increase spUSDC Deposit Cap

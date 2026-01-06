@@ -22,9 +22,9 @@ contract SparkBase_20251211 is SparkPayloadBase {
 
     function execute() external {
         // Spark USDC Morpho Vault - Update Vault Roles
-        IMorphoVaultLike(Base.MORPHO_VAULT_USDC_BC).setCurator(SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
-        IMorphoVaultLike(Base.MORPHO_VAULT_USDC_BC).submitGuardian(SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
-        IMorphoVaultLike(Base.MORPHO_VAULT_USDC_BC).submitTimelock(10 days);
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setCurator(SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).submitGuardian(SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).submitTimelock(10 days);
     }
 
 }

@@ -1,48 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
-import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 
-import { IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
+import { IMorphoVaultLike, ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
 
 /**
  * @title  January 15, 2026 Spark Ethereum Proposal
  * @author Phoenix Labs
- * @notice Spark Liquidity Layer:
-           - Onboard with Binance for Trading Functionality
-           - Onboard with Paxos
-           - Onboard with Native Markets
+ * @notice SparkLend - Add LBTC to Oracle Kill Switch
            Spark USDS Morpho Vault - Update Vault Roles
            Spark Blue Chip USDC Morpho Vault - Update Vault Roles
            Spark Savings:
            - Increase spUSDC Deposit Cap
            - Increase spETH Deposit Cap
+           Spark Liquidity Layer:
+           - Mint sUSDS to Arbitrum PSM3
+           - Mint sUSDS to OP Mainnet PSM3
  * @author Phoenix Labs
- * Forum:  
+ * Forum:  https://forum.sky.money/t/january-15-2026-proposed-changes-to-spark-for-upcoming-spell/27585
  * Vote:   
  */
 contract SparkEthereum_20251211 is SparkPayloadEthereum {
-
-    address internal constant PAXOS_PYUSD_DEPOSIT         = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant PAXOS_USDC_DEPOSIT          = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant NATIVE_MARKETS_USDC_DEPOSIT = 0x38464507E02c983F20428a6E8566693fE9e422a9;
 
     address internal constant SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG     = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG    = 0x38464507E02c983F20428a6E8566693fE9e422a9;
 
-    address internal constant BINANCE_EXCHANGE   = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant BINANCE_OTC_BUFFER = 0xaC348dbb93776e64462dF68AD9edE022e52C233b;
+    address internal constant LBTC_BTC_ORACLE = 0x5c29868C58b6e15e2b962943278969Ab6a7D3212;
 
     constructor() {
     }
@@ -55,63 +46,8 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
 
         _transferFromSparkLendTreasury(aTokens);
 
-        // Onboard with Binance
-        IOtcBuffer(BINANCE_OTC_BUFFER).approve(Ethereum.USDC, type(uint256).max);
-        IOtcBuffer(BINANCE_OTC_BUFFER).approve(Ethereum.USDT, type(uint256).max);
-
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_OTC_SWAP(),
-                BINANCE_EXCHANGE
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            5_000_000e6 / uint256(1 days),
-            6
-        );
-
-        MainnetController(Ethereum.MainnetController).setOTCBuffer(BINANCE_EXCHANGE,  BINANCE_OTC_BUFFER);
-        MainnetController(Ethereum.MainnetController).setMaxSlippage(BINANCE,         0.9998e18);
-        MainnetController(Ethereum.MainnetController).setOTCRechargeRate(BINANCE,     5_000_000e6 / uint256(1 days));
-        MainnetController(Ethereum.MainnetController).setOTCWhitelistedAsset(BINANCE, Ethereum.USDC, true);
-        MainnetController(Ethereum.MainnetController).setOTCWhitelistedAsset(BINANCE, Ethereum.USDT, true);
-
-        // Onboard with Paxos
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.PYUSD,
-                PAXOS_PYUSD_DEPOSIT
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            50_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                PAXOS_USDC_DEPOSIT
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            50_000_000e6 / uint256(1 days),
-            6
-        );
-
-        // Onboard with Native Markets
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                NATIVE_MARKETS_USDC_DEPOSIT
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            1_000_000e6,
-            10_000_000e6 / uint256(1 days),
-            6
-        );
+        // SparkLend - Add LBTC to Oracle Kill Switch
+        IKillSwitchOracle(SparkLend.KILL_SWITCH_ORACLE).setOracle(LBTC_BTC_ORACLE, 0.95e8);
 
         // Spark USDS Morpho Vault - Update Vault Roles
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setCurator(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
@@ -126,6 +62,23 @@ contract SparkEthereum_20251211 is SparkPayloadEthereum {
         // Increase Vault Deposit Caps
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).setDepositCap(1_000_000_000e6);
         ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).setDepositCap(250_000e18);
+
+        // // Mint USDS and sUSDS
+        // AllocatorVault(Ethereum.ALLOCATOR_VAULT).draw(USDS_MINT_AMOUNT);
+        // AllocatorBuffer(Ethereum.ALLOCATOR_BUFFER).approve(Ethereum.USDS, address(this), USDS_MINT_AMOUNT);
+        // IERC20(Ethereum.USDS).transferFrom(Ethereum.ALLOCATOR_BUFFER, address(this), USDS_MINT_AMOUNT);
+        // IERC20(Ethereum.USDS).approve(Ethereum.SUSDS, SUSDS_DEPOSIT_AMOUNT);
+        // uint256 susdsShares = IERC4626(Ethereum.SUSDS).deposit(SUSDS_DEPOSIT_AMOUNT, address(this));
+
+        // // Bridge to Arbitrum
+        // uint256 susdsSharesOptimism = IERC4626(Ethereum.SUSDS).convertToShares(ARBITRUM_SUSDS_AMOUNT);
+        // IERC20(Ethereum.SUSDS).approve(Ethereum.OPTIMISM_TOKEN_BRIDGE, susdsSharesOptimism);
+        // IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Optimism.SUSDS, Arbitrum.PSM3, susdsSharesOptimism, 1_000_000, "");
+
+        // // Bridge to Optimism
+        // uint256 susdsSharesOptimism = IERC4626(Ethereum.SUSDS).convertToShares(OPTIMISM_SUSDS_AMOUNT);
+        // IERC20(Ethereum.SUSDS).approve(Ethereum.OPTIMISM_TOKEN_BRIDGE, susdsSharesOptimism);
+        // IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Optimism.SUSDS, Optimism.PSM3, susdsSharesOptimism, 1_000_000, "");
     }
 
 }
