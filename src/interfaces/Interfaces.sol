@@ -175,7 +175,13 @@ interface IMorphoOracleFactoryLike {
 interface IMorphoVaultLike {
     function isAllocator(address) external returns (bool);
 
+    function setCurator(address newCurator) external;
+
+    function submitGuardian(address newGuardian) external;
+
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
+
+    function submitTimelock(uint256 newTimelock) external;
 }
 
 interface IPendleLinearDiscountOracleLike {
