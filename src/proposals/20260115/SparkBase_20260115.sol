@@ -13,7 +13,7 @@ import { IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
  * @notice Spark USDC Morpho Vault - Update Vault Roles
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/january-15-2026-proposed-changes-to-spark-for-upcoming-spell/27585
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x85f242a3d35252380a21ae3e5c80b023122e74af95698a301b541c7b610ffee8
  */
 contract SparkBase_20260115 is SparkPayloadBase {
 

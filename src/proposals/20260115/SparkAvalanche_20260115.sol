@@ -9,7 +9,7 @@ import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
  * @title  January 15, 2026 Spark Avalanche Proposal
  * @notice Spark Savings - Increase spUSDC Deposit Cap
  * Forum:  https://forum.sky.money/t/january-15-2026-proposed-changes-to-spark-for-upcoming-spell/27585
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x994d54ecdadc8f4a69de921207afe3731f3066f086e63ff6a1fd0d4bbfb51b53
  */
 contract SparkAvalanche_20260115 is SparkPayloadAvalanche {
 

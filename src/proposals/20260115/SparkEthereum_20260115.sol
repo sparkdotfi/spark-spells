@@ -64,7 +64,9 @@ interface IArbitrumTokenBridge {
            - Onboard Curve weETH/WETH-ng for Swaps
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/january-15-2026-proposed-changes-to-spark-for-upcoming-spell/27585
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xdd79e0fc0308fd0e4393b88cccb8e9b23237c9c398e0458c8c5c43198669e4bb
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x994d54ecdadc8f4a69de921207afe3731f3066f086e63ff6a1fd0d4bbfb51b53
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x7eb3a86a4da21475e760e2b2ed0d82fd72bbd4d33c99a0fbedf3d978e472f362
  */
 contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
@@ -81,6 +83,8 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
     address internal constant CURVE_WETHWETHNG = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
 
     constructor() {
+        // AVALANCHE = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
+        // BASE      = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
     }
 
     function _postExecute() internal override {
