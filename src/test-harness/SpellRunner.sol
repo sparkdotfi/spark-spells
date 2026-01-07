@@ -102,9 +102,9 @@ abstract contract SpellRunner is Test {
         }));
 
         // TODO: MDL, magic values should be top-level constants.
-        chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(24176271);
+        chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(24183225);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(40459513);
-        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(418526274);
+        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(418869428);
         chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(146054835);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(34217800);

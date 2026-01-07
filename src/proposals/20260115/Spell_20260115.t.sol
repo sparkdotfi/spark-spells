@@ -444,15 +444,15 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     function test_ETHEREUM_ARBITRUM_OPTIMISM_sUsdsDistributions() public {
         vm.selectFork(chainData[ChainIdUtils.Optimism()].domain.forkId);
 
-        uint256 startingOptimismSUsdsShares = IERC4626(Optimism.SUSDS).balanceOf(Base.ALM_PROXY);
+        uint256 startingOptimismSUsdsShares = IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY);
 
         vm.selectFork(chainData[ChainIdUtils.ArbitrumOne()].domain.forkId);
 
-        uint256 arbSUsdsShares = IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY);
+        uint256 startingArbSUsdsShares = IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY);
 
         _executeAllPayloadsAndBridges();
-        
-        assertEq(IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY) - arbSUsdsShares, 250_000_000e18);
+
+        assertEq(IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY) - startingArbSUsdsShares, 250_000_000e18);
 
         vm.selectFork(chainData[ChainIdUtils.Optimism()].domain.forkId);
 
