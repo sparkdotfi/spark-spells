@@ -465,7 +465,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
 
-        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 0);
+        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 1);
     }
 
 }

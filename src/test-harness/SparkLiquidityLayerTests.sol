@@ -853,8 +853,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal {
         require(_isDeployedByFactory(pool), "Pool is not deployed by factory");
 
-        // TODO fix this
-        // assertGe(IERC20(pool).balanceOf(address(1)), 1e18);
+        assertGe(IERC20(pool).balanceOf(address(1)), 0.00001e18);
 
         // Avoid stack too deep
         CurveOnboardingVars memory vars;

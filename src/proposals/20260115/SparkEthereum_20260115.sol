@@ -82,6 +82,17 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
     address internal constant CURVE_WETHWETHNG = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
 
+    IMorphoVaultLike internal constant morphoUsds = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS);
+    IMorphoVaultLike internal constant morphoUsdc = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC);
+
+    IERC20 internal constant usdc = IERC20(Ethereum.USDC);
+    IERC20 internal constant usds = IERC20(Ethereum.USDS);
+
+    IERC4626 internal constant susds = IERC4626(Ethereum.SUSDS);
+
+    ISparkVaultV2Like internal constant spEth  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
+    ISparkVaultV2Like internal constant spUsdc = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
+
     constructor() {
         // AVALANCHE = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
         // BASE      = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
@@ -99,35 +110,35 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
         IKillSwitchOracle(SparkLend.KILL_SWITCH_ORACLE).setOracle(LBTC_BTC_ORACLE, 0.95e8);
 
         // Spark USDS Morpho Vault - Update Vault Roles
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setCurator(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).submitGuardian(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).submitTimelock(10 days);
+        morphoUsds.setCurator(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        morphoUsds.submitGuardian(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        morphoUsds.submitTimelock(10 days);
 
         // Spark Blue Chip USDC Morpho Vault - Update Vault Roles
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setCurator(SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).submitGuardian(SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
-        IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).submitTimelock(10 days);
+        morphoUsdc.setCurator(SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        morphoUsdc.submitGuardian(SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        morphoUsdc.submitTimelock(10 days);
 
         // Increase Vault Deposit Caps
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC).setDepositCap(1_000_000_000e6);
-        ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH).setDepositCap(250_000e18);
+        spUsdc.setDepositCap(1_000_000_000e6);
+        spEth.setDepositCap(250_000e18);
 
         // Mint USDS and sUSDS
         uint256 totalAmount = ARBITRUM_USDS_AMOUNT + OPTIMISM_USDS_AMOUNT;
         AllocatorVault(Ethereum.ALLOCATOR_VAULT).draw(totalAmount);
         AllocatorBuffer(Ethereum.ALLOCATOR_BUFFER).approve(Ethereum.USDS, address(this), totalAmount);
-        IERC20(Ethereum.USDS).transferFrom(Ethereum.ALLOCATOR_BUFFER, address(this), totalAmount);
-        IERC20(Ethereum.USDS).approve(Ethereum.SUSDS, totalAmount);
-        uint256 susdsShares = IERC4626(Ethereum.SUSDS).deposit(totalAmount, address(this));
+        usds.transferFrom(Ethereum.ALLOCATOR_BUFFER, address(this), totalAmount);
+        usds.approve(Ethereum.SUSDS, totalAmount);
+        uint256 susdsShares = susds.deposit(totalAmount, address(this));
 
         // Bridge to Arbitrum
-        uint256 susdsSharesArbitrum = IERC4626(Ethereum.SUSDS).convertToShares(ARBITRUM_USDS_AMOUNT);
-        IERC20(Ethereum.SUSDS).approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, susdsSharesArbitrum);
+        uint256 susdsSharesArbitrum = susds.convertToShares(ARBITRUM_USDS_AMOUNT);
+        susds.approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, susdsSharesArbitrum);
         _sendArbTokens(Ethereum.SUSDS, susdsSharesArbitrum);
 
         // Bridge to Optimism
-        uint256 susdsSharesOptimism = IERC4626(Ethereum.SUSDS).convertToShares(OPTIMISM_USDS_AMOUNT);
-        IERC20(Ethereum.SUSDS).approve(Ethereum.OPTIMISM_TOKEN_BRIDGE, susdsSharesOptimism);
+        uint256 susdsSharesOptimism = susds.convertToShares(OPTIMISM_USDS_AMOUNT);
+        susds.approve(Ethereum.OPTIMISM_TOKEN_BRIDGE, susdsSharesOptimism);
         IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Optimism.SUSDS, Optimism.ALM_PROXY, susdsSharesOptimism, 1_000_000, "");
 
         // Onboard Curve weETH/WETH-ng for Swaps
