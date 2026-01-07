@@ -173,6 +173,15 @@ interface IMorphoOracleFactoryLike {
 }
 
 interface IMorphoVaultLike {
+
+    function acceptGuardian() external;
+
+    function curator() external returns (address);
+
+    function guardian() external returns (address);
+
+    function timelock() external returns (uint256);
+
     function isAllocator(address) external returns (bool);
 
     function setCurator(address newCurator) external;

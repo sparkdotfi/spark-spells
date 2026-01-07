@@ -12,10 +12,10 @@ import { IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
  * @title  January 15, 2026 Spark Base Proposal
  * @notice Spark USDC Morpho Vault - Update Vault Roles
  * @author Phoenix Labs
- * Forum:  
+ * Forum:  https://forum.sky.money/t/january-15-2026-proposed-changes-to-spark-for-upcoming-spell/27585
  * Vote:   
  */
-contract SparkBase_20251211 is SparkPayloadBase {
+contract SparkBase_20260115 is SparkPayloadBase {
 
     address internal constant SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
