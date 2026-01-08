@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
 import { VmSafe }   from "forge-std/Vm.sol";
 
 import { IMetaMorpho, MarketParams, Id, PendingUint192, MarketConfig } from "metamorpho/interfaces/IMetaMorpho.sol";
 import { MarketParamsLib }                                             from "lib/metamorpho/lib/morpho-blue/src/libraries/MarketParamsLib.sol";
+
+import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
@@ -17,7 +18,8 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
-import { IPool } from "sparklend-v1-core/interfaces/IPool.sol";
+import { AaveOracle } from "sparklend-v1-core/misc/AaveOracle.sol";
+import { IPool }      from "sparklend-v1-core/interfaces/IPool.sol";
 
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 import { ChainIdUtils }         from "src/libraries/ChainIdUtils.sol";
@@ -295,6 +297,53 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(_getBorrowEnabled(reserves[15]), false);
         assertEq(_getBorrowEnabled(reserves[16]), false);
         assertEq(_getBorrowEnabled(reserves[17]), false);
+    }
+
+    function test_ETHEREUM_positionLiquidableAfterkillSwitchActivationForLBTC() external onChain(ChainIdUtils.Ethereum()) {
+        address user = 0x219dE81f5d9b30f4759459C81c3CF47AbaA0dED1;
+
+        IKillSwitchOracle kso = IKillSwitchOracle(SparkLend.KILL_SWITCH_ORACLE);
+
+        IPool pool = IPool(SparkLend.POOL);
+
+        ( ,,,,, uint256 healthFactor ) = pool.getUserAccountData(user);
+
+        assertEq(healthFactor, 1.763842849507460125e18);
+
+        _executeAllPayloadsAndBridges();
+
+        // Replace Chainlink aggregator with MockAggregator reporting 
+        // below threshold and set the current phase ID
+        vm.store(
+            LBTC_BTC_ORACLE,
+            bytes32(uint256(2)),
+            bytes32((uint256(uint160(address(new MockAggregator(0.2e8)))) << 16) | 1)
+        );
+
+        kso.trigger(LBTC_BTC_ORACLE);
+
+        assertEq(kso.triggered(), true);
+
+        // Manipulate the price oracle used by sparklend
+        address mockOracle = address(new MockAggregator(10_000e8));
+
+        address[] memory assets  = new address[](1);
+        address[] memory sources = new address[](1);
+        assets[0]  = Ethereum.LBTC;
+        sources[0] = mockOracle;
+
+        vm.prank(Ethereum.SPARK_PROXY);
+        AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
+
+        ( ,,,,, healthFactor ) = pool.getUserAccountData(user);
+
+        assertEq(healthFactor, 0.195109189416086504e18);
+
+        // Should be able to liquidate the asset
+        deal(Ethereum.USDT, address(this), 100_000_000e6);
+        SafeERC20.safeIncreaseAllowance(IERC20(Ethereum.USDT), address(pool), 100_000_000e6);
+
+        pool.liquidationCall(Ethereum.LBTC, Ethereum.USDT, user, 10_000_000e6, false);
     }
 
     function _getBorrowEnabled(address asset) internal view returns (bool) {
