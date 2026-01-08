@@ -337,6 +337,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant B2C2                 = 0xa29E963992597B21bcDCaa969d571984869C4FF5;
     address internal constant CURVE_PYUSDUSDC      = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
     address internal constant CURVE_PYUSDUSDS      = 0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f;
+    address internal constant CURVE_WEETHWETHNG    = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
     address internal constant FLUID_SUSDS_ARBITRUM = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
     address internal constant MORPHO_TOKEN         = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
     address internal constant MORPHO_USDC_BC       = 0x56A76b428244a50513ec81e225a293d128fd581D;
@@ -3134,7 +3135,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](44);
+        integrations = new SLLIntegration[](47);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
@@ -3171,30 +3172,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",  Ethereum.MORPHO_VAULT_USDS);
         integrations[27] = _createERC4626Integration("ERC4626-SUSDS",              Ethereum.SUSDS);
         integrations[28] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
+        integrations[29] = _createERC4626Integration("ERC4626-ARKIS-USDC",         ARKIS);
 
-        integrations[29] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
+        integrations[30] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 
-        integrations[30] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
+        integrations[31] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
-        integrations[31] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
-        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
+        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
+        integrations[33] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
 
-        integrations[33] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[34] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[34] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN, SPARK_MULTISIG);
-        integrations[35] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,        SPARK_MULTISIG);
+        integrations[35] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
+        integrations[36] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
+        integrations[37] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
 
-        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",  Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[38] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[38] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[39] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[40] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[41] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
 
-        integrations[39] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
+        integrations[42] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[40] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        integrations[43] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
 
-        integrations[41] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
-        integrations[42] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
-        integrations[43] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+        integrations[44] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
+        integrations[45] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
+        integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3334,15 +3338,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 3);
+        newIntegrations = new SLLIntegration[](integrations.length + 1);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 3] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC", Ethereum.USDC, ANCHORAGE);
-        newIntegrations[newIntegrations.length - 2] = _createERC4626Integration("ERC4626-ARKIS-USDC", ARKIS);
-        newIntegrations[newIntegrations.length - 1] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
+        newIntegrations[integrations.length - 1] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG",  CURVE_WEETHWETHNG);
     }
 
     /**********************************************************************************************/
