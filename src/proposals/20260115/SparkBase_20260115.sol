@@ -17,13 +17,13 @@ import { IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
  */
 contract SparkBase_20260115 is SparkPayloadBase {
 
-    address internal constant SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
 
     function execute() external {
         // Spark USDC Morpho Vault - Update Vault Roles
-        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setCurator(SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
-        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).submitGuardian(SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).setCurator(CURATOR_MULTISIG);
+        IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).submitGuardian(GUARDIAN_MULTISIG);
         IMorphoVaultLike(Base.MORPHO_VAULT_SUSDC).submitTimelock(10 days);
     }
 

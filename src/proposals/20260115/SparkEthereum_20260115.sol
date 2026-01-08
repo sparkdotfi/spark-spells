@@ -70,10 +70,8 @@ interface IArbitrumTokenBridge {
  */
 contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
-    address internal constant SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG     = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG    = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
 
     address internal constant LBTC_BTC_ORACLE = 0x5c29868C58b6e15e2b962943278969Ab6a7D3212;
 
@@ -110,13 +108,13 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
         IKillSwitchOracle(SparkLend.KILL_SWITCH_ORACLE).setOracle(LBTC_BTC_ORACLE, 0.95e8);
 
         // Spark USDS Morpho Vault - Update Vault Roles
-        morphoUsds.setCurator(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
-        morphoUsds.submitGuardian(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        morphoUsds.setCurator(CURATOR_MULTISIG);
+        morphoUsds.submitGuardian(GUARDIAN_MULTISIG);
         morphoUsds.submitTimelock(10 days);
 
         // Spark Blue Chip USDC Morpho Vault - Update Vault Roles
-        morphoUsdc.setCurator(SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
-        morphoUsdc.submitGuardian(SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        morphoUsdc.setCurator(CURATOR_MULTISIG);
+        morphoUsdc.submitGuardian(GUARDIAN_MULTISIG);
         morphoUsdc.submitTimelock(10 days);
 
         // Increase Vault Deposit Caps
@@ -171,7 +169,7 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
         uint256 maxRedemption = gasLimit * maxFeePerGas;
 
         IERC20(token).approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, amount);
-        IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).outboundTransfer{value:maxSubmission + maxRedemption}({
+        IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).outboundTransfer{value: maxSubmission + maxRedemption}({
             l1Token:     token, 
             to:          Arbitrum.ALM_PROXY, 
             amount:      amount, 

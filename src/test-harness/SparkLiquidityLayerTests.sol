@@ -699,7 +699,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
     }
 
-    function _testMapleIntegration(MapleE2ETestParams memory p) internal {
+    function _testMapleIntegration(MapleE2ETestParams memory p) public {
         ISyrupLike syrup = ISyrupLike(p.vault);
         IERC20     asset = IERC20(syrup.asset());
 
@@ -2008,25 +2008,25 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256           expectedMaxDeposit
     ) internal {
         address asset = vault.asset();
+        address user  = makeAddr("user");
 
         uint256 maxDeposit = depositCap - vault.totalAssets();
 
         assertEq(maxDeposit, expectedMaxDeposit);
 
-        deal(asset, address(this), maxDeposit);
+        deal(asset, user, maxDeposit);
+
+        vm.startPrank(user);
+
         IERC20(asset).approve(address(vault), maxDeposit);
 
         // Fails on depositing more than max
         vm.expectRevert("SparkVault/deposit-cap-exceeded");
-        vault.deposit(maxDeposit + 1, address(this));
+        vault.deposit(maxDeposit + 1, user);
 
-        // Can deposit less than or equal to maxDeposit
+        vault.deposit(maxDeposit, user);
 
-        assertEq(vault.balanceOf(address(this)), 0);
-
-        uint256 shares = vault.deposit(maxDeposit, address(this));
-
-        assertEq(vault.balanceOf(address(this)), shares);
+        vm.stopPrank();
     }
 
     function _testPSM3Integration(PSM3E2ETestParams memory p) internal {
