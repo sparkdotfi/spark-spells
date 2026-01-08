@@ -308,7 +308,15 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         ( ,,,,, uint256 healthFactor ) = pool.getUserAccountData(user);
 
+
+        deal(Ethereum.USDT, address(this), 100_000_000e6);
+        SafeERC20.safeIncreaseAllowance(IERC20(Ethereum.USDT), address(pool), 100_000_000e6);
+
         assertEq(healthFactor, 1.763842849507460125e18);
+
+        // Should not be able to liquidate
+        vm.expectRevert(bytes("45"));   // HEALTH_FACTOR_NOT_BELOW_THRESHOLD
+        pool.liquidationCall(Ethereum.LBTC, Ethereum.USDT, user, 10_000_000e6, false);
 
         _executeAllPayloadsAndBridges();
 
@@ -340,9 +348,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(healthFactor, 0.195109189416086504e18);
 
         // Should be able to liquidate the asset
-        deal(Ethereum.USDT, address(this), 100_000_000e6);
-        SafeERC20.safeIncreaseAllowance(IERC20(Ethereum.USDT), address(pool), 100_000_000e6);
-
         pool.liquidationCall(Ethereum.LBTC, Ethereum.USDT, user, 10_000_000e6, false);
     }
 
