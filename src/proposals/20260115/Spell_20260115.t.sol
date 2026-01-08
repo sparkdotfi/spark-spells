@@ -52,7 +52,7 @@ contract MockAggregator {
     constructor(int256 _latestAnswer) {
         latestAnswer = _latestAnswer;
     }
-    
+
 }
 
 contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
@@ -64,7 +64,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "1767859429";  // 2026-01-08T08:04:00Z
+        _blockDate = 1767859429;  // 2026-01-08T08:04:00Z
     }
 
     function setUp() public override {
@@ -118,7 +118,7 @@ contract SparkEthereum_20260115_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "1767859429";  // 2026-01-08T08:04:00Z
+        _blockDate = 1767859429;  // 2026-01-08T08:04:00Z
     }
 
     function setUp() public override {
@@ -155,7 +155,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "1767859429";  // 2026-01-08T08:04:00Z
+        _blockDate = 1767859429;  // 2026-01-08T08:04:00Z
     }
 
     function setUp() public override {
@@ -191,7 +191,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         assertEq(kso.numOracles(),                      2);
         assertEq(kso.oracleThresholds(LBTC_BTC_ORACLE), 0.95e8);
-        
+
         // Sanity check the latest answers
         assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 1.00262946e8);
 
@@ -199,7 +199,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.expectRevert("KillSwitchOracle/price-above-threshold");
         kso.trigger(LBTC_BTC_ORACLE);
 
-        // Replace Chainlink aggregator with MockAggregator reporting 
+        // Replace Chainlink aggregator with MockAggregator reporting
         // below threshold and set the current phase ID
         vm.store(
             LBTC_BTC_ORACLE,
