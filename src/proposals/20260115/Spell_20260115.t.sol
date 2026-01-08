@@ -199,8 +199,8 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.expectRevert("KillSwitchOracle/price-above-threshold");
         kso.trigger(LBTC_BTC_ORACLE);
 
-        // Replace both Chainlink aggregator with MockAggregator reporting below
-        // threshold prices
+        // Replace Chainlink aggregator with MockAggregator reporting 
+        // below threshold and set the current phase ID
         vm.store(
             LBTC_BTC_ORACLE,
             bytes32(uint256(2)),
@@ -337,7 +337,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(morphoVaultBcUSDC.timelock(), 1 days);
 
         // Curator cannot set SupplyCap
-        vm.prank(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        vm.prank(SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
         vm.expectRevert(NotCuratorRole.selector);
         morphoVaultBcUSDC.submitCap(
             params,
@@ -348,7 +348,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(pendingCap.value, 0);
 
         // Guardian cannot revoke
-        vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        vm.prank(SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
         vm.expectRevert(NotCuratorNorGuardianRole.selector);
         morphoVaultBcUSDC.revokePendingCap(id);
 
@@ -359,11 +359,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(morphoVaultBcUSDC.timelock(), 10 days);
 
         // Clear any pending cap for the market.
-        vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        vm.prank(SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
         morphoVaultBcUSDC.revokePendingCap(id);
 
         // Curator setting supply cap should work.
-        vm.prank(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        vm.prank(SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
         morphoVaultBcUSDC.submitCap(
             params,
             1_500_000_000e18
@@ -373,7 +373,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(pendingCap.value, 1_500_000_000e18);
 
         // Guardian should be able to revoke the Pending Cap set by curator.
-        vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        vm.prank(SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
         morphoVaultBcUSDC.revokePendingCap(id);
 
         pendingCap = morphoVaultBcUSDC.pendingCap(id);
@@ -404,7 +404,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
             1_500_000_000e18
         );
 
-        // Guardian should be able to revoke the Pending Cap set by curator.
+        // Guardian should not be able to revoke the Pending Cap.
         vm.prank(SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
         vm.expectRevert(NotCuratorNorGuardianRole.selector);
         morphoVaultUSDC.revokePendingCap(id);
