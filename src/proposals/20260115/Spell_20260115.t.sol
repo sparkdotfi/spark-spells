@@ -64,7 +64,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "2026-01-06T11:27:00Z";
+        _blockDate = "1767859429";  // 2026-01-08T08:04:00Z
     }
 
     function setUp() public override {
@@ -118,7 +118,7 @@ contract SparkEthereum_20260115_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "2026-01-06T11:27:00Z";
+        _blockDate = "1767859429";  // 2026-01-08T08:04:00Z
     }
 
     function setUp() public override {
@@ -134,6 +134,9 @@ contract SparkEthereum_20260115_SparklendTests is SparklendTests {
 contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     using MarketParamsLib for MarketParams;
+
+    error NotCuratorRole();
+    error NotCuratorNorGuardianRole();
 
     address internal constant LBTC_BTC_ORACLE = 0x5c29868C58b6e15e2b962943278969Ab6a7D3212;
 
@@ -152,7 +155,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = "2026-01-06T14:35:00Z";
+        _blockDate = "1767859429";  // 2026-01-08T08:04:00Z
     }
 
     function setUp() public override {
@@ -190,7 +193,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(kso.oracleThresholds(LBTC_BTC_ORACLE), 0.95e8);
         
         // Sanity check the latest answers
-        assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 1.00175168e8);
+        assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 1.00262946e8);
 
         // Should not be able to trigger either
         vm.expectRevert("KillSwitchOracle/price-above-threshold");
@@ -206,33 +209,52 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 0.95e8);
 
+        // Fetch all assets from the pool
+        address[] memory reserves = IPool(SparkLend.POOL).getReservesList();
+
         assertEq(kso.triggered(), false);
 
-        assertEq(_getBorrowEnabled(Ethereum.DAI),    true);
-        assertEq(_getBorrowEnabled(Ethereum.SDAI),   false);
-        assertEq(_getBorrowEnabled(Ethereum.USDC),   true);
-        assertEq(_getBorrowEnabled(Ethereum.WETH),   true);
-        assertEq(_getBorrowEnabled(Ethereum.WSTETH), true);
-        assertEq(_getBorrowEnabled(Ethereum.WBTC),   false);
-        assertEq(_getBorrowEnabled(Ethereum.GNO),    false);
-        assertEq(_getBorrowEnabled(Ethereum.RETH),   true);
-        assertEq(_getBorrowEnabled(Ethereum.USDT),   true);
-        assertEq(_getBorrowEnabled(Ethereum.LBTC),   false);
+        assertEq(_getBorrowEnabled(reserves[0]),  true);
+        assertEq(_getBorrowEnabled(reserves[1]),  false);
+        assertEq(_getBorrowEnabled(reserves[2]),  true);
+        assertEq(_getBorrowEnabled(reserves[3]),  true);
+        assertEq(_getBorrowEnabled(reserves[4]),  true);
+        assertEq(_getBorrowEnabled(reserves[5]),  false);
+        assertEq(_getBorrowEnabled(reserves[6]),  false);
+        assertEq(_getBorrowEnabled(reserves[7]),  true);
+        assertEq(_getBorrowEnabled(reserves[8]),  true);
+        assertEq(_getBorrowEnabled(reserves[9]),  false);
+        assertEq(_getBorrowEnabled(reserves[10]), true);
+        assertEq(_getBorrowEnabled(reserves[11]), false);
+        assertEq(_getBorrowEnabled(reserves[12]), true);
+        assertEq(_getBorrowEnabled(reserves[13]), false);
+        assertEq(_getBorrowEnabled(reserves[14]), true);
+        assertEq(_getBorrowEnabled(reserves[15]), false);
+        assertEq(_getBorrowEnabled(reserves[16]), false);
+        assertEq(_getBorrowEnabled(reserves[17]), true);
 
         kso.trigger(LBTC_BTC_ORACLE);
 
         assertEq(kso.triggered(), true);
 
-        assertEq(_getBorrowEnabled(Ethereum.DAI),    false);
-        assertEq(_getBorrowEnabled(Ethereum.SDAI),   false);
-        assertEq(_getBorrowEnabled(Ethereum.USDC),   false);
-        assertEq(_getBorrowEnabled(Ethereum.WETH),   false);
-        assertEq(_getBorrowEnabled(Ethereum.WSTETH), false);
-        assertEq(_getBorrowEnabled(Ethereum.WBTC),   false);
-        assertEq(_getBorrowEnabled(Ethereum.GNO),    false);
-        assertEq(_getBorrowEnabled(Ethereum.RETH),   false);
-        assertEq(_getBorrowEnabled(Ethereum.USDT),   false);
-        assertEq(_getBorrowEnabled(Ethereum.LBTC),   false);
+         assertEq(_getBorrowEnabled(reserves[0]), false);
+        assertEq(_getBorrowEnabled(reserves[1]),  false);
+        assertEq(_getBorrowEnabled(reserves[2]),  false);
+        assertEq(_getBorrowEnabled(reserves[3]),  false);
+        assertEq(_getBorrowEnabled(reserves[4]),  false);
+        assertEq(_getBorrowEnabled(reserves[5]),  false);
+        assertEq(_getBorrowEnabled(reserves[6]),  false);
+        assertEq(_getBorrowEnabled(reserves[7]),  false);
+        assertEq(_getBorrowEnabled(reserves[8]),  false);
+        assertEq(_getBorrowEnabled(reserves[9]),  false);
+        assertEq(_getBorrowEnabled(reserves[10]), false);
+        assertEq(_getBorrowEnabled(reserves[11]), false);
+        assertEq(_getBorrowEnabled(reserves[12]), false);
+        assertEq(_getBorrowEnabled(reserves[13]), false);
+        assertEq(_getBorrowEnabled(reserves[14]), false);
+        assertEq(_getBorrowEnabled(reserves[15]), false);
+        assertEq(_getBorrowEnabled(reserves[16]), false);
+        assertEq(_getBorrowEnabled(reserves[17]), false);
     }
 
     function _getBorrowEnabled(address asset) internal view returns (bool) {
@@ -244,16 +266,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     function test_ETHEREUM_morphoVaultUSDS_updateRoles() external onChain(ChainIdUtils.Ethereum()) {
         IMetaMorpho morphoUsdsVault = IMetaMorpho(Ethereum.MORPHO_VAULT_USDS);
 
-        assertEq(morphoUsdsVault.curator(),  address(0));
-        assertEq(morphoUsdsVault.guardian(), address(0));
-        assertEq(morphoUsdsVault.timelock(), 1 days);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(morphoUsdsVault.curator(),  SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
-        assertEq(morphoUsdsVault.guardian(), SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
-        assertEq(morphoUsdsVault.timelock(), 10 days);
-
         MarketParams memory params = MarketParams({
             loanToken:       Ethereum.USDS,
             collateralToken: PT_USDE_27NOV2025,
@@ -262,6 +274,29 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
             lltv:            0.915e18
         });
         Id id = params.id();
+
+        assertEq(morphoUsdsVault.curator(),  address(0));
+        assertEq(morphoUsdsVault.guardian(), address(0));
+        assertEq(morphoUsdsVault.timelock(), 1 days);
+
+        // Curator cannot set SupplyCap
+        vm.prank(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        vm.expectRevert(NotCuratorRole.selector);
+        morphoUsdsVault.submitCap(
+            params,
+            1_500_000_000e18
+        );
+
+        // Guardian should be able to revoke the Pending Cap set by curator.
+        vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        vm.expectRevert(NotCuratorNorGuardianRole.selector);
+        morphoUsdsVault.revokePendingCap(id);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(morphoUsdsVault.curator(),  SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        assertEq(morphoUsdsVault.guardian(), SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        assertEq(morphoUsdsVault.timelock(), 10 days);
 
         // Clear any pending cap for the market.
         vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
@@ -288,16 +323,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     function test_ETHEREUM_morphoVaultBcUSDC_updateRoles() external onChain(ChainIdUtils.Ethereum()) {
         IMetaMorpho morphoVaultBcUSDC = IMetaMorpho(Ethereum.MORPHO_VAULT_USDC_BC);
 
-        assertEq(morphoVaultBcUSDC.curator(),  address(0));
-        assertEq(morphoVaultBcUSDC.guardian(), address(0));
-        assertEq(morphoVaultBcUSDC.timelock(), 1 days);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(morphoVaultBcUSDC.curator(),  SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
-        assertEq(morphoVaultBcUSDC.guardian(), SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
-        assertEq(morphoVaultBcUSDC.timelock(), 10 days);
-
         MarketParams memory params = MarketParams({
             loanToken:       Ethereum.USDC,
             collateralToken: Ethereum.CBBTC,
@@ -306,6 +331,32 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
             lltv:            0.86e18
         });
         Id id = params.id();
+
+        assertEq(morphoVaultBcUSDC.curator(),  address(0));
+        assertEq(morphoVaultBcUSDC.guardian(), address(0));
+        assertEq(morphoVaultBcUSDC.timelock(), 1 days);
+
+        // Curator cannot set SupplyCap
+        vm.prank(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        vm.expectRevert(NotCuratorRole.selector);
+        morphoVaultBcUSDC.submitCap(
+            params,
+            1_500_000_000e18
+        );
+
+        PendingUint192 memory pendingCap = morphoVaultBcUSDC.pendingCap(id);
+        assertEq(pendingCap.value, 0);
+
+        // Guardian cannot revoke
+        vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        vm.expectRevert(NotCuratorNorGuardianRole.selector);
+        morphoVaultBcUSDC.revokePendingCap(id);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(morphoVaultBcUSDC.curator(),  SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        assertEq(morphoVaultBcUSDC.guardian(), SPARK_BC_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        assertEq(morphoVaultBcUSDC.timelock(), 10 days);
 
         // Clear any pending cap for the market.
         vm.prank(SPARK_USDS_MORPHO_VAULT_GUARDIAN_MULTISIG);
@@ -318,7 +369,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
             1_500_000_000e18
         );
 
-        PendingUint192 memory pendingCap = morphoVaultBcUSDC.pendingCap(id);
+        pendingCap = morphoVaultBcUSDC.pendingCap(id);
         assertEq(pendingCap.value, 1_500_000_000e18);
 
         // Guardian should be able to revoke the Pending Cap set by curator.
@@ -332,16 +383,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     function test_BASE_morphoVaultUSDC_updateRoles() external onChain(ChainIdUtils.Base()) {
         IMetaMorpho morphoVaultUSDC = IMetaMorpho(Base.MORPHO_VAULT_SUSDC);
 
-        assertEq(morphoVaultUSDC.curator(),  address(0));
-        assertEq(morphoVaultUSDC.guardian(), address(0));
-        assertEq(morphoVaultUSDC.timelock(), 1 days);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(morphoVaultUSDC.curator(),  SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
-        assertEq(morphoVaultUSDC.guardian(), SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
-        assertEq(morphoVaultUSDC.timelock(), 10 days);
-
         MarketParams memory params = MarketParams({
             loanToken:       Base.USDC,
             collateralToken: ETH,
@@ -350,6 +391,29 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
             lltv:            0.86e18
         });
         Id id = params.id();
+
+        assertEq(morphoVaultUSDC.curator(),  address(0));
+        assertEq(morphoVaultUSDC.guardian(), address(0));
+        assertEq(morphoVaultUSDC.timelock(), 1 days);
+
+        // Curator setting supply cap should work.
+        vm.prank(SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        vm.expectRevert(NotCuratorRole.selector);
+        morphoVaultUSDC.submitCap(
+            params,
+            1_500_000_000e18
+        );
+
+        // Guardian should be able to revoke the Pending Cap set by curator.
+        vm.prank(SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        vm.expectRevert(NotCuratorNorGuardianRole.selector);
+        morphoVaultUSDC.revokePendingCap(id);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(morphoVaultUSDC.curator(),  SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        assertEq(morphoVaultUSDC.guardian(), SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
+        assertEq(morphoVaultUSDC.timelock(), 10 days);
 
         // Clear any pending cap for the market.
         vm.prank(SPARK_USDC_MORPHO_VAULT_GUARDIAN_MULTISIG);
@@ -465,7 +529,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
 
-        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 1);
+        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 0);
     }
 
 }
