@@ -47,6 +47,10 @@ interface IPermissionManagerLike {
     ) external;
 }
 
+interface ITokenBridgeLike {
+    function escrow() external returns (address);
+}
+
 contract MockAggregator {
 
     int256 public latestAnswer;
@@ -628,28 +632,47 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_ARBITRUM_sUsdsDistributions() public {
-        IERC4626 susds = IERC4626(Ethereum.SUSDS);
-        IERC20   usds  = IERC20(Ethereum.USDS);
+        IERC20   usds     = IERC20(Ethereum.USDS);
+        IERC4626 susds    = IERC4626(Ethereum.SUSDS);
+        IERC4626 arbSusds = IERC4626(Arbitrum.SUSDS);
 
-        vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
+        address escrow = ITokenBridgeLike(Ethereum.ARBITRUM_TOKEN_BRIDGE).escrow();
 
-        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
+        uint256 ethFork = chainData[ChainIdUtils.Ethereum()].domain.forkId;
+        uint256 arbFork = chainData[ChainIdUtils.ArbitrumOne()].domain.forkId;
+
+        vm.selectFork(ethFork);
+
+        uint256 sUsdsEscrowBalance    = susds.balanceOf(escrow);
+        uint256 usdsSparkProxyBalance = usds.balanceOf(Ethereum.SPARK_PROXY);
+        uint256 usdsTotalSupply       = usds.totalSupply();
+        uint256 susdsTotalSupply      = susds.totalSupply();
+
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
+        assertEq(susds.balanceOf(escrow),               sUsdsEscrowBalance);
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  usdsSparkProxyBalance);
 
-        vm.selectFork(chainData[ChainIdUtils.ArbitrumOne()].domain.forkId);
+        vm.selectFork(arbFork);
 
-        uint256 startingArbSUsdsShares = IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbSUsdsProxyBalance = arbSusds.balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbSUsdsTotalSupply  = arbSusds.totalSupply();
 
         _executeAllPayloadsAndBridges();
 
-        uint256 newShares = IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY) - startingArbSUsdsShares;
+        uint256 newShares = arbSusds.balanceOf(Arbitrum.ALM_PROXY) - arbSUsdsProxyBalance;
 
-        vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
+        assertEq(arbSusds.totalSupply(), arbSUsdsTotalSupply + newShares);
 
-        assertEq(susds.convertToAssets(newShares), 250_000_000e18 - 1);
+        vm.selectFork(ethFork);
 
-        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
-        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
+        assertEq(susds.convertToAssets(newShares), 250_000_000e18 - 1);                                        // $250m of value bridged to Arbitrum
+        assertEq(susds.totalSupply(),              susdsTotalSupply + susds.convertToShares(350_000_000e18));  // $350m of sUSDS minted to Arbitrum and Optimism
+
+        assertEq(usds.totalSupply(), usdsTotalSupply + 350_000_000e18);  // $350m of USDS minted for Arbitrum and Optimism
+
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);                                    // No funds remaining in Spark Proxy on Ethereum
+        assertEq(susds.balanceOf(escrow),               sUsdsEscrowBalance + 250_000_000e18);  // $250m of sUSDS held in escrow
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  usdsSparkProxyBalance);                // No remaining USDS left over
     }
 
     function test_ETHEREUM_OPTIMISM_sUsdsDistributions() public {
