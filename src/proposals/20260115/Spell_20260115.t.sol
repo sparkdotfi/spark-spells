@@ -59,7 +59,7 @@ contract MockAggregator {
 
 contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
 
-    address internal constant CURVE_WETHWETHNG = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
+    address internal constant CURVE_WEETHWETHNG = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
 
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
@@ -97,7 +97,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_curvePoolOnboarding() external onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             controller:                  Ethereum.ALM_CONTROLLER,
-            pool:                        CURVE_WETHWETHNG,
+            pool:                        CURVE_WEETHWETHNG,
             expectedDepositAmountToken0: 0,
             expectedSwapAmountToken0:    10e18,
             maxSlippage:                 0.9975e18,
@@ -106,7 +106,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
             withdrawLimit:               RateLimitData(0, 0)
         });
 
-        ICurvePoolLike pool = ICurvePoolLike(CURVE_WETHWETHNG);
+        ICurvePoolLike pool = ICurvePoolLike(CURVE_WEETHWETHNG);
 
         assertEq(pool.A(),   5_000);
         assertEq(pool.fee(), 0.00005e10);  // 0.005%
@@ -151,7 +151,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault:              usdcVault,
             depositCap:         500_000_000e6,
-            expectedMaxDeposit: 299_916_771.645952e6
+            expectedMaxDeposit: 301_781_699.829455e6
         });
     }
 
@@ -192,7 +192,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     address internal constant CBBTC_PRICE_FEED              = 0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a;
     address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
     address internal constant PT_USDE_27NOV2025_PRICE_FEED  = 0x52A34E1D7Cb12c70DaF0e8bdeb91E1d02deEf97d;
-    address internal constant ETH                           = 0x4200000000000000000000000000000000000006;
+    address internal constant WETH                          = 0x4200000000000000000000000000000000000006;
     address internal constant ETH_ORACLE                    = 0xFEa2D58cEfCb9fcb597723c6bAE66fFE4193aFE4;
 
     constructor() {
@@ -237,9 +237,23 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         // Sanity check the latest answers
         assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 1.00262946e8);
 
-        // Should not be able to trigger either
+        // Should not be able to trigger
         vm.expectRevert("KillSwitchOracle/price-above-threshold");
         kso.trigger(LBTC_BTC_ORACLE);
+
+        // Assert Boundary Condition
+        vm.store(
+            LBTC_BTC_ORACLE,
+            bytes32(uint256(2)),
+            bytes32((uint256(uint160(address(new MockAggregator(0.95e8 + 1)))) << 16) | 1)
+        );
+
+        assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 0.95e8 + 1);
+
+        vm.expectRevert("KillSwitchOracle/price-above-threshold");
+        kso.trigger(LBTC_BTC_ORACLE);
+
+        assertEq(kso.triggered(), false);
 
         // Replace Chainlink aggregator with MockAggregator reporting
         // below threshold and set the current phase ID
@@ -253,6 +267,8 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         // Fetch all assets from the pool
         address[] memory reserves = IPool(SparkLend.POOL).getReservesList();
+
+        assertEq(reserves.length, 18);
 
         assertEq(kso.triggered(), false);
 
@@ -307,7 +323,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         IPool pool = IPool(SparkLend.POOL);
 
         ( ,,,,, uint256 healthFactor ) = pool.getUserAccountData(user);
-
 
         deal(Ethereum.USDT, address(this), 100_000_000e6);
         SafeERC20.safeIncreaseAllowance(IERC20(Ethereum.USDT), address(pool), 100_000_000e6);
@@ -381,7 +396,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
             1_500_000_000e18
         );
 
-        // Guardian should be able to revoke the Pending Cap set by curator.
+        // Guardian can't revoke pending cap.
         vm.prank(ETH_GUARDIAN_MULTISIG);
         vm.expectRevert(NotCuratorNorGuardianRole.selector);
         morphoUsdsVault.revokePendingCap(id);
@@ -533,7 +548,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         MarketParams memory params = MarketParams({
             loanToken:       Base.USDC,
-            collateralToken: ETH,
+            collateralToken: WETH,
             oracle:          ETH_ORACLE,
             irm:             Base.MORPHO_DEFAULT_IRM,
             lltv:            0.86e18
@@ -544,7 +559,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(morphoVaultUSDC.guardian(), address(0));
         assertEq(morphoVaultUSDC.timelock(), 1 days);
 
-        // Curator setting supply cap should work.
+        // Curator cannot set SupplyCap.
         vm.prank(BASE_CURATOR_MULTISIG);
         vm.expectRevert(NotCuratorRole.selector);
         morphoVaultUSDC.submitCap(
@@ -618,8 +633,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
 
-        uint256 arbShares = susds.convertToShares(250_000_000e18);
-
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
 
@@ -629,9 +642,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY) - startingArbSUsdsShares, arbShares);
+        uint256 newShares = IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY) - startingArbSUsdsShares;
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
+
+        assertEq(susds.convertToAssets(newShares), 250_000_000e18 - 1);
 
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
@@ -643,8 +658,6 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
 
-        uint256 opShares  = susds.convertToShares(100_000_000e18);
-
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
 
@@ -654,9 +667,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY) - startingOptimismSUsdsShares, opShares);
+        uint256 newShares = IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY) - startingOptimismSUsdsShares;
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
+
+        assertEq(susds.convertToAssets(newShares), 100_000_000e18 - 1);
 
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);

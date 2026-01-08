@@ -699,7 +699,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
     }
 
-    function _testMapleIntegration(MapleE2ETestParams memory p) public {
+    function _testMapleIntegration(MapleE2ETestParams memory p) internal {
         ISyrupLike syrup = ISyrupLike(p.vault);
         IERC20     asset = IERC20(syrup.asset());
 
@@ -1004,8 +1004,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGe(IERC20(vars.pool.coins(0)).balanceOf(address(vars.ctx.proxy)), vars.minAmountOut);
         assertEq(IERC20(vars.pool.coins(1)).balanceOf(address(vars.ctx.proxy)), 0);
 
-        // Sanity check on maxSlippage of 20bps
-        assertGe(maxSlippage, 0.9975e18,  "maxSlippage too low");
+        // Sanity check on maxSlippage of 25bps
+        assertGe(maxSlippage, 0.9975e18, "maxSlippage too low");
         assertLe(maxSlippage, 1e18,      "maxSlippage too high");
     }
 

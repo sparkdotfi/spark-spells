@@ -66,7 +66,8 @@ interface IArbitrumTokenBridge {
  * Forum:  https://forum.sky.money/t/january-15-2026-proposed-changes-to-spark-for-upcoming-spell/27585
  * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xdd79e0fc0308fd0e4393b88cccb8e9b23237c9c398e0458c8c5c43198669e4bb
            https://snapshot.box/#/s:sparkfi.eth/proposal/0x994d54ecdadc8f4a69de921207afe3731f3066f086e63ff6a1fd0d4bbfb51b53
-           https://snapshot.box/#/s:sparkfi.eth/proposal/0x7eb3a86a4da21475e760e2b2ed0d82fd72bbd4d33c99a0fbedf3d978e472f362  
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x7eb3a86a4da21475e760e2b2ed0d82fd72bbd4d33c99a0fbedf3d978e472f362
+           https://snapshot.box/#/s:sparkfi.eth/proposal/0x85f242a3d35252380a21ae3e5c80b023122e74af95698a301b541c7b610ffee8
  */
 contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
@@ -78,7 +79,7 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
     uint256 internal constant ARBITRUM_USDS_AMOUNT = 250_000_000e18;
     uint256 internal constant OPTIMISM_USDS_AMOUNT = 100_000_000e18;
 
-    address internal constant CURVE_WETHWETHNG = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
+    address internal constant CURVE_WEETHWETHNG = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
 
     IMorphoVaultLike internal constant morphoUsds = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS);
     IMorphoVaultLike internal constant morphoUsdc = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC);
@@ -142,7 +143,7 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
         // Onboard Curve weETH/WETH-ng for Swaps
         _configureCurvePool({
             controller:    Ethereum.ALM_CONTROLLER,
-            pool:          CURVE_WETHWETHNG,
+            pool:          CURVE_WEETHWETHNG,
             maxSlippage:   0.9975e18,
             swapMax:       100e18,
             swapSlope:     1_000e18 / uint256(1 days),
