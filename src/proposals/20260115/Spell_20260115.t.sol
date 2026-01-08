@@ -558,15 +558,16 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(config.cap, 800_000_000e18);
     }
 
-    function test_ETHEREUM_ARBITRUM_OPTIMISM_sUsdsDistributions() public {
+    function test_ETHEREUM_ARBITRUM_sUsdsDistributions() public {
+        IERC4626 susds = IERC4626(Ethereum.SUSDS);
+        IERC20   usds  = IERC20(Ethereum.USDS);
+
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
 
-        uint256 arbShares = IERC4626(Ethereum.SUSDS).convertToShares(250_000_000e18);
-        uint256 opShares  = IERC4626(Ethereum.SUSDS).convertToShares(100_000_000e18);
+        uint256 arbShares = susds.convertToShares(250_000_000e18);
 
-        vm.selectFork(chainData[ChainIdUtils.Optimism()].domain.forkId);
-
-        uint256 startingOptimismSUsdsShares = IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY);
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
 
         vm.selectFork(chainData[ChainIdUtils.ArbitrumOne()].domain.forkId);
 
@@ -576,13 +577,35 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         assertEq(IERC4626(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY) - startingArbSUsdsShares, arbShares);
 
+        vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
+
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
+    }
+
+    function test_ETHEREUM_OPTIMISM_sUsdsDistributions() public {
+        IERC4626 susds = IERC4626(Ethereum.SUSDS);
+        IERC20   usds  = IERC20(Ethereum.USDS);
+
+        vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
+
+        uint256 opShares  = susds.convertToShares(100_000_000e18);
+
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
+
         vm.selectFork(chainData[ChainIdUtils.Optimism()].domain.forkId);
+
+        uint256 startingOptimismSUsdsShares = IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY);
+
+        _executeAllPayloadsAndBridges();
 
         assertEq(IERC4626(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY) - startingOptimismSUsdsShares, opShares);
 
         vm.selectFork(chainData[ChainIdUtils.Ethereum()].domain.forkId);
 
-        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 0);
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  30_389_488.445801365846236778e18);
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
     }
 
 }
