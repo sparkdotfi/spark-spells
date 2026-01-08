@@ -3344,7 +3344,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[integrations.length - 1] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG",  CURVE_WEETHWETHNG);
+        newIntegrations[newIntegrations.length - 1] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", CURVE_WEETHWETHNG);
     }
 
     /**********************************************************************************************/
