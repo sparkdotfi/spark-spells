@@ -2002,6 +2002,33 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(vault.assetsOf(user),  0);
     }
 
+    function _testSparkVaultDepositCapBoundary(
+        ISparkVaultV2Like vault,
+        uint256           depositCap,
+        uint256           expectedMaxDeposit
+    ) internal {
+        address asset = vault.asset();
+
+        uint256 maxDeposit = depositCap - vault.totalAssets();
+
+        assertEq(maxDeposit, expectedMaxDeposit);
+
+        deal(asset, address(this), maxDeposit);
+        IERC20(asset).approve(address(vault), maxDeposit);
+
+        // Fails on depositing more than max
+        vm.expectRevert("SparkVault/deposit-cap-exceeded");
+        vault.deposit(maxDeposit + 1, address(this));
+
+        // Can deposit less than or equal to maxDeposit
+
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        uint256 shares = vault.deposit(maxDeposit, address(this));
+
+        assertEq(vault.balanceOf(address(this)), shares);
+    }
+
     function _testPSM3Integration(PSM3E2ETestParams memory p) internal {
         IPSM3Like psm   = IPSM3Like(p.psm3);
         IERC20    asset = IERC20(p.asset);

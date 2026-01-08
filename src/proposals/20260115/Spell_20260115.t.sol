@@ -5,8 +5,8 @@ import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
 import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
 import { VmSafe }   from "forge-std/Vm.sol";
 
-import { IMetaMorpho, MarketParams, Id, PendingUint192 } from "metamorpho/interfaces/IMetaMorpho.sol";
-import { MarketParamsLib }                               from "lib/metamorpho/lib/morpho-blue/src/libraries/MarketParamsLib.sol";
+import { IMetaMorpho, MarketParams, Id, PendingUint192, MarketConfig } from "metamorpho/interfaces/IMetaMorpho.sol";
+import { MarketParamsLib }                                             from "lib/metamorpho/lib/morpho-blue/src/libraries/MarketParamsLib.sol";
 
 import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
@@ -112,6 +112,47 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
         assertEq(pool.offpeg_fee_multiplier(), 10e10);
     }
 
+    function test_ETHEREUM_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Ethereum()) {
+        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
+        ISparkVaultV2Like ethVault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
+
+        assertEq(usdcVault.depositCap(), 500_000_000e6);
+        assertEq(ethVault.depositCap(),  100_000e18);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(usdcVault.depositCap(), 1_000_000_000e6);
+        assertEq(ethVault.depositCap(),  250_000e18);
+
+        _testSparkVaultDepositCapBoundary({
+            vault:              usdcVault,
+            depositCap:         1_000_000_000e6,
+            expectedMaxDeposit: 779_644_583.499468e6
+        });
+
+        _testSparkVaultDepositCapBoundary({
+            vault:              ethVault,
+            depositCap:         250_000e18,
+            expectedMaxDeposit: 236_070.661082022093344741e18
+        });
+    }
+
+    function test_AVALANCHE_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Avalanche()) {
+        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
+
+        assertEq(usdcVault.depositCap(), 250_000_000e6);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(usdcVault.depositCap(), 500_000_000e6);
+
+        _testSparkVaultDepositCapBoundary({
+            vault:              usdcVault,
+            depositCap:         500_000_000e6,
+            expectedMaxDeposit: 299_916_771.645952e6
+        });
+    }
+
 }
 
 contract SparkEthereum_20260115_SparklendTests is SparklendTests {
@@ -137,6 +178,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     error NotCuratorRole();
     error NotCuratorNorGuardianRole();
+    error TimelockNotElapsed();
 
     address internal constant LBTC_BTC_ORACLE = 0x5c29868C58b6e15e2b962943278969Ab6a7D3212;
 
@@ -170,15 +212,15 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  333_849_082.286915784892880274e18);
-        assertEq(spUsdsBalanceBefore, 223_853_707.572674573310461547e18);
+        assertEq(spDaiBalanceBefore,  326_138_770.335962665625026796e18);
+        assertEq(spUsdsBalanceBefore, 224_340_049.016097029894731273e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 76_005.838616609321226274e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 29_341.248141612364654571e18);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 81_600.440168468291624562e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 32_773.538347293426995369e18);
     }
 
     function test_ETHEREUM_killSwitchActivationForLBTC() external onChain(ChainIdUtils.Ethereum()) {
@@ -318,6 +360,33 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         pendingCap = morphoUsdsVault.pendingCap(id);
         assertEq(pendingCap.value, 0);
+
+        // Boundary test for submitCap()
+
+        vm.prank(SPARK_USDS_MORPHO_VAULT_CURATOR_MULTISIG);
+        morphoUsdsVault.submitCap(
+            params,
+            800_000_000e18
+        );
+
+        pendingCap = morphoUsdsVault.pendingCap(id);
+        assertEq(pendingCap.value, 800_000_000e18);
+
+        skip(10 days - 1);
+
+        // acceptCap() should fail 1 second before the timelock.
+
+        vm.expectRevert(TimelockNotElapsed.selector);
+        morphoUsdsVault.acceptCap(params);
+
+        skip(1 seconds);
+
+        // acceptCap() should pass
+
+        morphoUsdsVault.acceptCap(params);
+
+        MarketConfig memory config = morphoUsdsVault.config(id);
+        assertEq(config.cap, 800_000_000e18);
     }
 
     function test_ETHEREUM_morphoVaultBcUSDC_updateRoles() external onChain(ChainIdUtils.Ethereum()) {
@@ -378,6 +447,33 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         pendingCap = morphoVaultBcUSDC.pendingCap(id);
         assertEq(pendingCap.value, 0);
+
+        // Boundary test for submitCap()
+
+        vm.prank(SPARK_BC_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        morphoVaultBcUSDC.submitCap(
+            params,
+            800_000_000e18
+        );
+
+        pendingCap = morphoVaultBcUSDC.pendingCap(id);
+        assertEq(pendingCap.value, 800_000_000e18);
+
+        skip(10 days - 1);
+
+        // acceptCap() should fail 1 second before the timelock.
+
+        vm.expectRevert(TimelockNotElapsed.selector);
+        morphoVaultBcUSDC.acceptCap(params);
+
+        skip(1 seconds);
+
+        // acceptCap() should pass
+
+        morphoVaultBcUSDC.acceptCap(params);
+
+        MarketConfig memory config = morphoVaultBcUSDC.config(id);
+        assertEq(config.cap, 800_000_000e18);
     }
 
     function test_BASE_morphoVaultUSDC_updateRoles() external onChain(ChainIdUtils.Base()) {
@@ -435,74 +531,33 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         pendingCap = morphoVaultUSDC.pendingCap(id);
         assertEq(pendingCap.value, 0);
-    }
 
-    function test_ETHEREUM_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Ethereum()) {
-        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
-        ISparkVaultV2Like ethVault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
+        // Boundary test for submitCap()
 
-        assertEq(usdcVault.depositCap(), 500_000_000e6);
-        assertEq(ethVault.depositCap(),  100_000e18);
+        vm.prank(SPARK_USDC_MORPHO_VAULT_CURATOR_MULTISIG);
+        morphoVaultUSDC.submitCap(
+            params,
+            800_000_000e18
+        );
 
-        _executeAllPayloadsAndBridges();
+        pendingCap = morphoVaultUSDC.pendingCap(id);
+        assertEq(pendingCap.value, 800_000_000e18);
 
-        assertEq(usdcVault.depositCap(), 1_000_000_000e6);
-        assertEq(ethVault.depositCap(),  250_000e18);
+        skip(10 days - 1);
 
-        _test_vault_depositBoundaryLimit({
-            vault:              usdcVault,
-            depositCap:         1_000_000_000e6,
-            expectedMaxDeposit: 780_023_691.407679e6
-        });
+        // acceptCap() should fail 1 second before the timelock.
 
-        _test_vault_depositBoundaryLimit({
-            vault:              ethVault,
-            depositCap:         250_000e18,
-            expectedMaxDeposit: 235_812.755774673383848284e18
-        });
-    }
+        vm.expectRevert(TimelockNotElapsed.selector);
+        morphoVaultUSDC.acceptCap(params);
 
-    function test_AVALANCHE_sparkSavingsV2_increaseVaultDepositCaps() public onChain(ChainIdUtils.Avalanche()) {
-        ISparkVaultV2Like usdcVault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
+        skip(1 seconds);
 
-        assertEq(usdcVault.depositCap(), 250_000_000e6);
+        // acceptCap() should pass
 
-        _executeAllPayloadsAndBridges();
+        morphoVaultUSDC.acceptCap(params);
 
-        assertEq(usdcVault.depositCap(), 500_000_000e6);
-
-        _test_vault_depositBoundaryLimit({
-            vault:              usdcVault,
-            depositCap:         500_000_000e6,
-            expectedMaxDeposit: 299_916_771.645952e6
-        });
-    }
-
-    function _test_vault_depositBoundaryLimit(
-        ISparkVaultV2Like vault,
-        uint256           depositCap,
-        uint256           expectedMaxDeposit
-    ) internal {
-        address asset = vault.asset();
-
-        uint256 maxDeposit = depositCap - vault.totalAssets();
-
-        assertEq(maxDeposit, expectedMaxDeposit);
-
-        // Fails on depositing more than max
-        vm.expectRevert("SparkVault/deposit-cap-exceeded");
-        vault.deposit(maxDeposit + 1, address(this));
-
-        // Can deposit less than or equal to maxDeposit
-
-        assertEq(vault.balanceOf(address(this)), 0);
-
-        deal(asset, address(this), maxDeposit);
-        IERC20(asset).approve(address(vault), maxDeposit);
-
-        uint256 shares = vault.deposit(maxDeposit, address(this));
-
-        assertEq(vault.balanceOf(address(this)), shares);
+        MarketConfig memory config = morphoVaultUSDC.config(id);
+        assertEq(config.cap, 800_000_000e18);
     }
 
     function test_ETHEREUM_ARBITRUM_OPTIMISM_sUsdsDistributions() public {
