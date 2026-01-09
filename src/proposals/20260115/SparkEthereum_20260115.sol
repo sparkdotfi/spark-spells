@@ -109,15 +109,15 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
         // Onboard Curve weETH/WETH-ng for Swaps
         _configureCurvePool({
-            controller:    Ethereum.ALM_CONTROLLER,
-            pool:          CURVE_WEETHWETHNG,
-            maxSlippage:   0.9975e18,
-            swapMax:       100e18,
-            swapSlope:     1_000e18 / uint256(1 days),
-            depositMax:    0,
-            depositSlope:  0,
-            withdrawMax:   0,
-            withdrawSlope: 0
+            controller    : Ethereum.ALM_CONTROLLER,
+            pool          : CURVE_WEETHWETHNG,
+            maxSlippage   : 0.9975e18,
+            swapMax       : 100e18,
+            swapSlope     : 1_000e18 / uint256(1 days),
+            depositMax    : 0,
+            depositSlope  : 0,
+            withdrawMax   : 0,
+            withdrawSlope : 0
         });
     }
 
