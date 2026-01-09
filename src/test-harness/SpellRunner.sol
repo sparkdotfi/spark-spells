@@ -396,7 +396,18 @@ abstract contract SpellRunner is Test {
             inputs[6] = "--header";
             inputs[7] = "accept: application/json";
 
-            string memory response = string(vm.ffi(inputs));
+            string memory response;
+
+            for (uint256 i; i < 10; i++) {
+                response = string(vm.ffi(inputs));
+
+                if (_isEqual(vm.parseJsonString(response, string(abi.encodePacked(".message"))), "NOTOK")) {
+                    vm.sleep(1000);  // Prevent rate limiting from Etherscan (5 calls/second)
+                    continue;
+                }
+
+                break;
+            }
 
             blocks[i] = vm.parseJsonUint(response, string(abi.encodePacked(".result")));
         }
@@ -417,18 +428,23 @@ abstract contract SpellRunner is Test {
 
             vm.createSelectFork(getChain(chainId).rpcUrl, midBlock);
 
-            uint256 midTimestamp = block.timestamp;
+            if (block.timestamp == searchTimestamp) return midBlock; // Exact match
 
-            if (midTimestamp == searchTimestamp) return midBlock; // Exact match
-
-            uint256 absDelta = midTimestamp >= searchTimestamp
-                ? (midTimestamp - searchTimestamp)
-                : (searchTimestamp - midTimestamp);
+            uint256 absDelta = block.timestamp >= searchTimestamp
+                ? (block.timestamp - searchTimestamp)
+                : (searchTimestamp - block.timestamp);
 
             // Update the best block if the absolute difference is smaller
             if (absDelta < bestAbsDelta) {
                 bestAbsDelta = absDelta;
                 bestBlock    = midBlock;
+            }
+
+            // Binary search decision
+            if (block.timestamp < searchTimestamp) {
+                startBlock = midBlock + 1;  // Move forwards
+            } else {
+                endBlock = midBlock - 1;  // Move backwards
             }
         }
 

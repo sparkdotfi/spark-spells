@@ -525,11 +525,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.prank(ETH_CURATOR_MULTISIG);
         morphoVaultBcUSDC.submitCap(
             params,
-            800_000_000e6
+            1_500_000_000e6
         );
 
         pendingCap = morphoVaultBcUSDC.pendingCap(id);
-        assertEq(pendingCap.value, 800_000_000e6);
+        assertEq(pendingCap.value, 1_500_000_000e6);
 
         skip(10 days - 1);
 
@@ -545,7 +545,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         morphoVaultBcUSDC.acceptCap(params);
 
         MarketConfig memory config = morphoVaultBcUSDC.config(id);
-        assertEq(config.cap, 800_000_000e6);
+        assertEq(config.cap, 1_500_000_000e6);
     }
 
     function test_BASE_morphoVaultUSDC_updateRoles() external onChain(ChainIdUtils.Base()) {
@@ -609,11 +609,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.prank(BASE_CURATOR_MULTISIG);
         morphoVaultUSDC.submitCap(
             params,
-            800_000_000e6
+            1_500_000_000e6
         );
 
         pendingCap = morphoVaultUSDC.pendingCap(id);
-        assertEq(pendingCap.value, 800_000_000e6);
+        assertEq(pendingCap.value, 1_500_000_000e6);
 
         skip(10 days - 1);
 
@@ -629,7 +629,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         morphoVaultUSDC.acceptCap(params);
 
         MarketConfig memory config = morphoVaultUSDC.config(id);
-        assertEq(config.cap, 800_000_000e6);
+        assertEq(config.cap, 1_500_000_000e6);
     }
 
     function test_ETHEREUM_ARBITRUM_sUsdsDistributions() public {
