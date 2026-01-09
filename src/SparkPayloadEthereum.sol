@@ -337,7 +337,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         });
 
         uint256 gasLimit      = 1_000_000;
-        uint256 baseFee.      = block.basefee;
+        uint256 baseFee       = block.basefee;
         uint256 maxFeePerGas  = 50e9;
         uint256 maxSubmission = ICrossDomainArbitrum(ArbitrumForwarder.L1_CROSS_DOMAIN_ARBITRUM_ONE).calculateRetryableSubmissionFee(finalizeDepositCalldata.length, baseFee);
         uint256 maxRedemption = gasLimit * maxFeePerGas;
