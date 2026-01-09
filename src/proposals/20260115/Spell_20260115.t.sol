@@ -300,7 +300,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         assertEq(kso.triggered(), true);
 
-        assertEq(_getBorrowEnabled(reserves[0]), false);
+        assertEq(_getBorrowEnabled(reserves[0]),  false);
         assertEq(_getBorrowEnabled(reserves[1]),  false);
         assertEq(_getBorrowEnabled(reserves[2]),  false);
         assertEq(_getBorrowEnabled(reserves[3]),  false);
