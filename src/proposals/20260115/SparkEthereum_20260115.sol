@@ -14,40 +14,9 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
-import { ArbitrumForwarder, ICrossDomainArbitrum } from 'xchain-helpers/forwarders/ArbitrumForwarder.sol';
-
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
 
 import { IMorphoVaultLike, ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
-
-interface IOptimismTokenBridge {
-    function bridgeERC20To(
-        address _localToken,
-        address _remoteToken,
-        address _to,
-        uint256 _amount,
-        uint32 _minGasLimit,
-        bytes calldata _extraData
-    ) external;
-}
-
-interface IArbitrumTokenBridge {
-    function outboundTransfer(
-        address l1Token,
-        address to,
-        uint256 amount,
-        uint256 maxGas,
-        uint256 gasPriceBid,
-        bytes calldata data
-    ) external payable returns (bytes memory res);
-    function getOutboundCalldata(
-        address l1Token,
-        address from,
-        address to,
-        uint256 amount,
-        bytes memory data
-    ) external pure returns (bytes memory outboundCalldata);
-}
 
 /**
  * @title  January 15, 2026 Spark Ethereum Proposal
@@ -71,8 +40,8 @@ interface IArbitrumTokenBridge {
  */
 contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
-    address internal constant CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant CURATOR_MULTISIG  = 0x0f963A8A8c01042B69054e787E5763ABbB0646A3;
+    address internal constant GUARDIAN_MULTISIG = 0xf5748bBeFa17505b2F7222B23ae11584932C908B;
 
     address internal constant LBTC_BTC_ORACLE = 0x5c29868C58b6e15e2b962943278969Ab6a7D3212;
 
@@ -132,13 +101,11 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
 
         // Bridge to Arbitrum
         uint256 susdsSharesArbitrum = susds.convertToShares(ARBITRUM_USDS_AMOUNT);
-        susds.approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, susdsSharesArbitrum);
         _sendArbTokens(Ethereum.SUSDS, susdsSharesArbitrum);
 
         // Bridge to Optimism
-        uint256 susdsSharesOptimism = susds.convertToShares(OPTIMISM_USDS_AMOUNT);
-        susds.approve(Ethereum.OPTIMISM_TOKEN_BRIDGE, susdsSharesOptimism);
-        IOptimismTokenBridge(Ethereum.OPTIMISM_TOKEN_BRIDGE).bridgeERC20To(Ethereum.SUSDS, Optimism.SUSDS, Optimism.ALM_PROXY, susdsSharesOptimism, 1_000_000, "");
+        uint256 susdsSharesOptimism = susdsShares - susdsSharesArbitrum;
+        _sendOpTokens(Ethereum.SUSDS, Optimism.SUSDS, susdsSharesOptimism);
 
         // Onboard Curve weETH/WETH-ng for Swaps
         _configureCurvePool({
@@ -151,32 +118,6 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
             depositSlope:  0,
             withdrawMax:   0,
             withdrawSlope: 0
-        });
-    }
-
-    function _sendArbTokens(address token, uint256 amount) internal {
-        // Gas submission adapted from ArbitrumForwarder.sendMessageL1toL2
-        bytes memory finalizeDepositCalldata = IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).getOutboundCalldata({
-            l1Token: token,
-            from:    address(this),
-            to:      Arbitrum.ALM_PROXY,
-            amount:  amount,
-            data:    ""
-        });
-        uint256 gasLimit = 1_000_000;
-        uint256 baseFee = block.basefee;
-        uint256 maxFeePerGas = 50e9;
-        uint256 maxSubmission = ICrossDomainArbitrum(ArbitrumForwarder.L1_CROSS_DOMAIN_ARBITRUM_ONE).calculateRetryableSubmissionFee(finalizeDepositCalldata.length, baseFee);
-        uint256 maxRedemption = gasLimit * maxFeePerGas;
-
-        IERC20(token).approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, amount);
-        IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).outboundTransfer{value: maxSubmission + maxRedemption}({
-            l1Token:     token, 
-            to:          Arbitrum.ALM_PROXY, 
-            amount:      amount, 
-            maxGas:      gasLimit, 
-            gasPriceBid: maxFeePerGas,
-            data:        abi.encode(maxSubmission, bytes(""))
         });
     }
 

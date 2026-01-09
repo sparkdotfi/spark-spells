@@ -16,6 +16,8 @@ import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+
 import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
 import { AaveOracle } from "sparklend-v1-core/misc/AaveOracle.sol";
@@ -31,7 +33,8 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import {
     ICurvePoolLike,
     ISparkVaultV2Like,
-    ISyrupLike
+    ISyrupLike,
+    IPSM3Like
 } from "src/interfaces/Interfaces.sol";
 
 interface IChainlinkAggregator {
@@ -186,10 +189,10 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     address internal constant LBTC_BTC_ORACLE = 0x5c29868C58b6e15e2b962943278969Ab6a7D3212;
 
-    address internal constant ETH_CURATOR_MULTISIG   = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant ETH_GUARDIAN_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant BASE_CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant BASE_GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant ETH_CURATOR_MULTISIG   = 0x0f963A8A8c01042B69054e787E5763ABbB0646A3;
+    address internal constant ETH_GUARDIAN_MULTISIG  = 0xf5748bBeFa17505b2F7222B23ae11584932C908B;
+    address internal constant BASE_CURATOR_MULTISIG  = 0x0f963A8A8c01042B69054e787E5763ABbB0646A3;
+    address internal constant BASE_GUARDIAN_MULTISIG = 0xf5748bBeFa17505b2F7222B23ae11584932C908B;
 
     address internal constant CBBTC_PRICE_FEED              = 0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a;
     address internal constant PT_USDE_27NOV2025             = 0x62C6E813b9589C3631Ba0Cdb013acdB8544038B7;
@@ -297,7 +300,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         assertEq(kso.triggered(), true);
 
-         assertEq(_getBorrowEnabled(reserves[0]), false);
+        assertEq(_getBorrowEnabled(reserves[0]), false);
         assertEq(_getBorrowEnabled(reserves[1]),  false);
         assertEq(_getBorrowEnabled(reserves[2]),  false);
         assertEq(_getBorrowEnabled(reserves[3]),  false);
@@ -479,7 +482,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.expectRevert(NotCuratorRole.selector);
         morphoVaultBcUSDC.submitCap(
             params,
-            1_500_000_000e18
+            1_500_000_000e6
         );
 
         PendingUint192 memory pendingCap = morphoVaultBcUSDC.pendingCap(id);
@@ -504,11 +507,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.prank(ETH_CURATOR_MULTISIG);
         morphoVaultBcUSDC.submitCap(
             params,
-            1_500_000_000e18
+            1_500_000_000e6
         );
 
         pendingCap = morphoVaultBcUSDC.pendingCap(id);
-        assertEq(pendingCap.value, 1_500_000_000e18);
+        assertEq(pendingCap.value, 1_500_000_000e6);
 
         // Guardian should be able to revoke the Pending Cap set by curator.
         vm.prank(ETH_GUARDIAN_MULTISIG);
@@ -522,11 +525,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.prank(ETH_CURATOR_MULTISIG);
         morphoVaultBcUSDC.submitCap(
             params,
-            800_000_000e18
+            800_000_000e6
         );
 
         pendingCap = morphoVaultBcUSDC.pendingCap(id);
-        assertEq(pendingCap.value, 800_000_000e18);
+        assertEq(pendingCap.value, 800_000_000e6);
 
         skip(10 days - 1);
 
@@ -542,7 +545,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         morphoVaultBcUSDC.acceptCap(params);
 
         MarketConfig memory config = morphoVaultBcUSDC.config(id);
-        assertEq(config.cap, 800_000_000e18);
+        assertEq(config.cap, 800_000_000e6);
     }
 
     function test_BASE_morphoVaultUSDC_updateRoles() external onChain(ChainIdUtils.Base()) {
@@ -566,7 +569,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.expectRevert(NotCuratorRole.selector);
         morphoVaultUSDC.submitCap(
             params,
-            1_500_000_000e18
+            1_500_000_000e6
         );
 
         // Guardian should not be able to revoke the Pending Cap.
@@ -588,11 +591,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.prank(BASE_CURATOR_MULTISIG);
         morphoVaultUSDC.submitCap(
             params,
-            1_500_000_000e18
+            1_500_000_000e6
         );
 
         PendingUint192 memory pendingCap = morphoVaultUSDC.pendingCap(id);
-        assertEq(pendingCap.value, 1_500_000_000e18);
+        assertEq(pendingCap.value, 1_500_000_000e6);
 
         // Guardian should be able to revoke the Pending Cap set by curator.
         vm.prank(BASE_GUARDIAN_MULTISIG);
@@ -606,11 +609,11 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         vm.prank(BASE_CURATOR_MULTISIG);
         morphoVaultUSDC.submitCap(
             params,
-            800_000_000e18
+            800_000_000e6
         );
 
         pendingCap = morphoVaultUSDC.pendingCap(id);
-        assertEq(pendingCap.value, 800_000_000e18);
+        assertEq(pendingCap.value, 800_000_000e6);
 
         skip(10 days - 1);
 
@@ -626,7 +629,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         morphoVaultUSDC.acceptCap(params);
 
         MarketConfig memory config = morphoVaultUSDC.config(id);
-        assertEq(config.cap, 800_000_000e18);
+        assertEq(config.cap, 800_000_000e6);
     }
 
     function test_ETHEREUM_ARBITRUM_sUsdsDistributions() public {
@@ -674,8 +677,8 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_OPTIMISM_sUsdsDistributions() public {
-        IERC20   usds     = IERC20(Ethereum.USDS);
-        IERC4626 susds    = IERC4626(Ethereum.SUSDS);
+        IERC20   usds    = IERC20(Ethereum.USDS);
+        IERC4626 susds   = IERC4626(Ethereum.SUSDS);
         IERC4626 opSusds = IERC4626(Optimism.SUSDS);
 
         address escrow = ITokenBridgeLike(Ethereum.OPTIMISM_TOKEN_BRIDGE).escrow();
@@ -707,14 +710,74 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         vm.selectFork(ethFork);
 
-        assertEq(susds.convertToAssets(newShares), 100_000_000e18 - 1);                                        // $250m of value bridged to Arbitrum
+        assertEq(susds.convertToAssets(newShares), 100_000_000e18 - 1);                                        // $100m of value bridged to Optimism
         assertEq(susds.totalSupply(),              susdsTotalSupply + susds.convertToShares(350_000_000e18));  // $350m of sUSDS minted to Arbitrum and Optimism
 
         assertApproxEqAbs(usds.totalSupply(), usdsTotalSupply + 350_000_000e18, 1000e18);  // $350m of USDS minted for Arbitrum and Optimism
 
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);                               // No funds remaining in Spark Proxy on Ethereum
-        assertEq(susds.balanceOf(escrow),               sUsdsEscrowBalance + newShares);  // $250m of sUSDS held in escrow
+        assertEq(susds.balanceOf(escrow),               sUsdsEscrowBalance + newShares);  // $100m of sUSDS held in escrow
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),  usdsSparkProxyBalance);           // No remaining USDS left over
+    }
+
+    function test_ETHEREUM_ARBITRUM_psm3Deposit() public onChain(ChainIdUtils.ArbitrumOne()) {
+        IERC20 arbSusds = IERC20(Arbitrum.SUSDS);
+
+        uint256 startingSUsdsProxyBalance = arbSusds.balanceOf(Arbitrum.ALM_PROXY);
+
+        _executeAllPayloadsAndBridges();
+
+        uint256 newSUsdsProxyBalance = arbSusds.balanceOf(Arbitrum.ALM_PROXY);
+
+        uint256 mintedSUsds = newSUsdsProxyBalance - startingSUsdsProxyBalance;
+
+        assertGe(mintedSUsds, 200_000_000e18);  // Sanity check
+
+        IPSM3Like psm3 = IPSM3Like(Arbitrum.PSM3);
+
+        uint256 sllPsm3Value = psm3.convertToAssetValue(psm3.shares(Arbitrum.ALM_PROXY));
+
+        vm.prank(Arbitrum.ALM_RELAYER);
+        uint256 shares = ForeignController(Arbitrum.ALM_CONTROLLER).depositPSM(Arbitrum.SUSDS, mintedSUsds);
+
+        // $250m deposited into PSM3, with some imprecision due to crosschain rateProvider
+        assertApproxEqAbs(
+            psm3.convertToAssetValue(psm3.shares(Arbitrum.ALM_PROXY)),
+            sllPsm3Value + 250_000_000e18,
+            10e18
+        );
+
+        assertEq(arbSusds.balanceOf(Arbitrum.ALM_PROXY), startingSUsdsProxyBalance); // Back to starting balance
+    }
+
+    function test_ETHEREUM_OPTIMISM_psm3Deposit() public onChain(ChainIdUtils.Optimism()) {
+        IERC20 opSusds = IERC20(Optimism.SUSDS);
+
+        uint256 startingSUsdsProxyBalance = opSusds.balanceOf(Optimism.ALM_PROXY);
+
+        _executeAllPayloadsAndBridges();
+
+        uint256 newSUsdsProxyBalance = opSusds.balanceOf(Optimism.ALM_PROXY);
+
+        uint256 mintedSUsds = newSUsdsProxyBalance - startingSUsdsProxyBalance;
+
+        assertGe(mintedSUsds, 50_000_000e18);  // Sanity check
+
+        IPSM3Like psm3 = IPSM3Like(Optimism.PSM3);
+
+        uint256 sllPsm3Value = psm3.convertToAssetValue(psm3.shares(Optimism.ALM_PROXY));
+
+        vm.prank(Optimism.ALM_RELAYER);
+        uint256 shares = ForeignController(Optimism.ALM_CONTROLLER).depositPSM(Optimism.SUSDS, mintedSUsds);
+
+        // $100m deposited into PSM3, with some imprecision due to crosschain rateProvider
+        assertApproxEqAbs(
+            psm3.convertToAssetValue(psm3.shares(Optimism.ALM_PROXY)),
+            sllPsm3Value + 100_000_000e18,
+            10e18
+        );
+
+        assertEq(opSusds.balanceOf(Optimism.ALM_PROXY), startingSUsdsProxyBalance);  // Back to starting balance
     }
 
 }

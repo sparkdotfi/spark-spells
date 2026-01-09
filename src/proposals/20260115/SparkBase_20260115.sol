@@ -17,8 +17,8 @@ import { IMorphoVaultLike } from "../../interfaces/Interfaces.sol";
  */
 contract SparkBase_20260115 is SparkPayloadBase {
 
-    address internal constant CURATOR_MULTISIG  = 0x38464507E02c983F20428a6E8566693fE9e422a9;
-    address internal constant GUARDIAN_MULTISIG = 0x38464507E02c983F20428a6E8566693fE9e422a9;
+    address internal constant CURATOR_MULTISIG  = 0x0f963A8A8c01042B69054e787E5763ABbB0646A3;
+    address internal constant GUARDIAN_MULTISIG = 0xf5748bBeFa17505b2F7222B23ae11584932C908B;
 
     function execute() external {
         // Spark USDC Morpho Vault - Update Vault Roles

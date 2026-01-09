@@ -103,7 +103,6 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[3]);
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[4]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(blocks[5]);
-
         chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[6]);
     }
 
@@ -412,10 +411,7 @@ abstract contract SpellRunner is Test {
 
         uint256 bestBlock;
 
-        uint256 numIterations = 0;
-
         while (startBlock <= endBlock) {
-            numIterations++;
 
             uint256 midBlock = (startBlock + endBlock) / 2;
 
@@ -423,7 +419,8 @@ abstract contract SpellRunner is Test {
 
             uint256 midTimestamp = block.timestamp;
 
-            // Calculate the absolute difference between the mid timestamp and the search timestamp
+            if (midTimestamp == searchTimestamp) return midBlock; // Exact match
+
             uint256 absDelta = midTimestamp >= searchTimestamp
                 ? (midTimestamp - searchTimestamp)
                 : (searchTimestamp - midTimestamp);
@@ -432,14 +429,6 @@ abstract contract SpellRunner is Test {
             if (absDelta < bestAbsDelta) {
                 bestAbsDelta = absDelta;
                 bestBlock    = midBlock;
-                if (absDelta == 0) break; // Exact match
-            }
-
-            // Binary search decision
-            if (midTimestamp < searchTimestamp) {
-                startBlock = midBlock + 1;  // Move forwards
-            } else {
-                endBlock = midBlock - 1;  // Move backwards
             }
         }
 

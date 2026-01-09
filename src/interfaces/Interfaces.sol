@@ -15,10 +15,39 @@ interface IALMProxyFreezableLike is IALMProxy {
     function DEFAULT_ADMIN_ROLE() external returns (bytes32);
 }
 
+interface IArbitrumTokenBridge {
+    function outboundTransfer(
+        address l1Token,
+        address to,
+        uint256 amount,
+        uint256 maxGas,
+        uint256 gasPriceBid,
+        bytes calldata data
+    ) external payable returns (bytes memory res);
+    function getOutboundCalldata(
+        address l1Token,
+        address from,
+        address to,
+        uint256 amount,
+        bytes memory data
+    ) external pure returns (bytes memory outboundCalldata);
+}
+
 interface IProxyLike {
 
     function implementation() external view returns (address);
 
+}
+
+interface IOptimismTokenBridge {
+    function bridgeERC20To(
+        address _localToken,
+        address _remoteToken,
+        address _to,
+        uint256 _amount,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) external;
 }
 
 interface IOracleLike {
