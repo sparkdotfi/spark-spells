@@ -62,8 +62,8 @@ contract SparkEthereum_20260115 is SparkPayloadEthereum {
     ISparkVaultV2Like internal constant spUsdc = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
 
     constructor() {
-        // AVALANCHE = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
-        // BASE      = 0xDB74dfDD3BB46bE8Ce6C33dC9D82777BCFc3dEd5;
+        PAYLOAD_AVALANCHE = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        PAYLOAD_BASE      = 0xeCCA0D296Cb133081d41E9772B60D57F5fd2798E;
     }
 
     function _postExecute() internal override {

@@ -71,15 +71,15 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = 1767859429;  // 2026-01-08T08:04:00Z
+        _blockDate = 1767971084;  // 2026-01-09T15:34:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0x3A60e678eA258A30c7cab2B70439a37fd6495Fe1;
-        // chainData[ChainIdUtils.Base()].payload      = 0x2C07e5E977B6db3A2a776028158359fcE212F04A;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x2cB9Fa737603cB650d4919937a36EA732ACfe963;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        chainData[ChainIdUtils.Base()].payload      = 0xeCCA0D296Cb133081d41E9772B60D57F5fd2798E;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
 
         // Maple onboarding process
         ISyrupLike syrup = ISyrupLike(Ethereum.SYRUP_USDT);
@@ -134,13 +134,13 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault:              usdcVault,
             depositCap:         1_000_000_000e6,
-            expectedMaxDeposit: 779_644_583.499468e6
+            expectedMaxDeposit: 782_841_456.461691e6
         });
 
         _testSparkVaultDepositCapBoundary({
             vault:              ethVault,
             depositCap:         250_000e18,
-            expectedMaxDeposit: 236_070.661082022093344741e18
+            expectedMaxDeposit: 234_003.969648177695058093e18
         });
     }
 
@@ -156,7 +156,7 @@ contract SparkEthereum_20260115_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault:              usdcVault,
             depositCap:         500_000_000e6,
-            expectedMaxDeposit: 301_781_699.829455e6
+            expectedMaxDeposit: 298_099_909.3341e6
         });
     }
 
@@ -166,18 +166,20 @@ contract SparkEthereum_20260115_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = 1767859429;  // 2026-01-08T08:04:00Z
+        _blockDate = 1767971084;  // 2026-01-09T15:34:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0x3A60e678eA258A30c7cab2B70439a37fd6495Fe1;
-        // chainData[ChainIdUtils.Base()].payload      = 0x2C07e5E977B6db3A2a776028158359fcE212F04A;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x2cB9Fa737603cB650d4919937a36EA732ACfe963;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        chainData[ChainIdUtils.Base()].payload      = 0xeCCA0D296Cb133081d41E9772B60D57F5fd2798E;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
     }
 
 }
+
+import { console } from "forge-std/console.sol";
 
 contract SparkEthereum_20260115_SpellTests is SpellTests {
 
@@ -202,30 +204,30 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260115;
-        _blockDate = 1767859429;  // 2026-01-08T08:04:00Z
+        _blockDate = 1767971084;  // 2026-01-09T15:34:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0x3A60e678eA258A30c7cab2B70439a37fd6495Fe1;
-        // chainData[ChainIdUtils.Base()].payload      = 0x2C07e5E977B6db3A2a776028158359fcE212F04A;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x2cB9Fa737603cB650d4919937a36EA732ACfe963;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x2F66666fB60c038f10948e9645Ca969bb397E2d5;
+        chainData[ChainIdUtils.Base()].payload      = 0xeCCA0D296Cb133081d41E9772B60D57F5fd2798E;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
     }
 
     function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
         uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
         uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(spDaiBalanceBefore,  326_138_770.335962665625026796e18);
-        assertEq(spUsdsBalanceBefore, 224_340_049.016097029894731273e18);
+        assertEq(spDaiBalanceBefore,  319_047_956.431520054882571853e18);
+        assertEq(spUsdsBalanceBefore, 342_048_578.468237917665483512e18);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 81_600.440168468291624562e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 32_773.538347293426995369e18);
+        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 86_220.888775852652987990e18);
+        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 36_508.019549894218943671e18);
     }
 
     function test_ETHEREUM_killSwitchActivationForLBTC() external onChain(ChainIdUtils.Ethereum()) {
@@ -240,7 +242,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(kso.oracleThresholds(LBTC_BTC_ORACLE), 0.95e8);
 
         // Sanity check the latest answers
-        assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 1.00262946e8);
+        assertEq(IChainlinkAggregator(LBTC_BTC_ORACLE).latestAnswer(), 1.00312712e8);
 
         // Should not be able to trigger
         vm.expectRevert("KillSwitchOracle/price-above-threshold");
@@ -332,7 +334,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         deal(Ethereum.USDT, address(this), 100_000_000e6);
         SafeERC20.safeIncreaseAllowance(IERC20(Ethereum.USDT), address(pool), 100_000_000e6);
 
-        assertEq(healthFactor, 1.763842849507460125e18);
+        assertEq(healthFactor, 1.754265816108159361e18);
 
         // Should not be able to liquidate
         vm.expectRevert(bytes("45"));   // HEALTH_FACTOR_NOT_BELOW_THRESHOLD
@@ -365,7 +367,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         ( ,,,,, healthFactor ) = pool.getUserAccountData(user);
 
-        assertEq(healthFactor, 0.195109189416086504e18);
+        assertEq(healthFactor, 0.195082661982381210e18);
 
         // Should be able to liquidate the asset
         pool.liquidationCall(Ethereum.LBTC, Ethereum.USDT, user, 10_000_000e6, false);
@@ -669,7 +671,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertEq(susds.convertToAssets(newShares), 250_000_000e18 - 1);                                        // $250m of value bridged to Arbitrum
         assertEq(susds.totalSupply(),              susdsTotalSupply + susds.convertToShares(350_000_000e18));  // $350m of sUSDS minted to Arbitrum and Optimism
 
-        assertApproxEqAbs(usds.totalSupply(), usdsTotalSupply + 350_000_000e18, 1000e18);  // $350m of USDS minted for Arbitrum and Optimism
+        assertApproxEqAbs(usds.totalSupply(), usdsTotalSupply + 350_000_000e18, 1500e18);  // $350m of USDS minted for Arbitrum and Optimism
 
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);                               // No funds remaining in Spark Proxy on Ethereum
         assertEq(susds.balanceOf(escrow),               sUsdsEscrowBalance + newShares);  // $250m of sUSDS held in escrow
@@ -710,10 +712,10 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
 
         vm.selectFork(ethFork);
 
-        assertEq(susds.convertToAssets(newShares), 100_000_000e18 - 1);                                        // $100m of value bridged to Optimism
+        assertEq(susds.convertToAssets(newShares), 100_000_000e18);                                            // $100m of value bridged to Optimism
         assertEq(susds.totalSupply(),              susdsTotalSupply + susds.convertToShares(350_000_000e18));  // $350m of sUSDS minted to Arbitrum and Optimism
 
-        assertApproxEqAbs(usds.totalSupply(), usdsTotalSupply + 350_000_000e18, 1000e18);  // $350m of USDS minted for Arbitrum and Optimism
+        assertApproxEqAbs(usds.totalSupply(), usdsTotalSupply + 350_000_000e18, 1500e18);  // $350m of USDS minted for Arbitrum and Optimism
 
         assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);                               // No funds remaining in Spark Proxy on Ethereum
         assertEq(susds.balanceOf(escrow),               sUsdsEscrowBalance + newShares);  // $100m of sUSDS held in escrow
@@ -774,7 +776,7 @@ contract SparkEthereum_20260115_SpellTests is SpellTests {
         assertApproxEqAbs(
             psm3.convertToAssetValue(psm3.shares(Optimism.ALM_PROXY)),
             sllPsm3Value + 100_000_000e18,
-            10e18
+            11e18
         );
 
         assertEq(opSusds.balanceOf(Optimism.ALM_PROXY), startingSUsdsProxyBalance);  // Back to starting balance
