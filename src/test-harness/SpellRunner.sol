@@ -54,7 +54,7 @@ abstract contract SpellRunner is Test {
 
     uint256 internal immutable _spellId;
 
-    string internal _blockDate;
+    uint256 internal _blockDate;
 
     mapping(uint256 chainId => DomainData data) internal chainData;
 
@@ -79,21 +79,7 @@ abstract contract SpellRunner is Test {
     /*** State-Modifying Functions                                                              ***/
     /**********************************************************************************************/
 
-    function _setupBlocksFromDate(string memory date) internal {
-        string[] memory chains = new string[](5);
-        chains[0] = "eth-mainnet";
-        chains[1] = "base-mainnet";
-        chains[2] = "arb-mainnet";
-        chains[3] = "opt-mainnet";
-        chains[4] = "avax-mainnet";
-
-        uint256[] memory blocks = _getBlocksFromDate(date, chains);
-
-        console.log("Mainnet block:   ", blocks[0]);
-        console.log("Base block:      ", blocks[1]);
-        console.log("Arbitrum block:  ", blocks[2]);
-        console.log("Optimism block:  ", blocks[3]);
-        console.log("Avalanche block: ", blocks[4]);
+    function _setupBlocksFromDate(uint256 date) internal {
 
         setChain("unichain", ChainData({
             name: "Unichain",
@@ -101,19 +87,36 @@ abstract contract SpellRunner is Test {
             chainId: 130
         }));
 
-        // TODO: MDL, magic values should be top-level constants.
+        uint256[] memory blocks = _getBlocksFromDate(date);
+
+        console.log("Mainnet block:  ", blocks[0]);
+        console.log("Base block:     ", blocks[1]);
+        console.log("Gnosis block:   ", blocks[2]);
+        console.log("Arbitrum block: ", blocks[3]);
+        console.log("Optimism block: ", blocks[4]);
+        console.log("Unichain block: ", blocks[5]);
+        console.log("Avalanche block:", blocks[6]);
+
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
-        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[2]);
-        chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(39404891);  // Gnosis block lookup is not supported by Alchemy
-        chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[3]);
-        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(34217800);
-        chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[4]);
+        chainData[ChainIdUtils.Gnosis()].domain      = getChain("gnosis_chain").createFork(blocks[2]);
+        chainData[ChainIdUtils.ArbitrumOne()].domain = getChain("arbitrum_one").createFork(blocks[3]);
+        chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[4]);
+        chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(blocks[5]);
+        chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[6]);
     }
 
     /// @dev to be called in setUp
     function _setupDomains() internal {
-        require(bytes(_blockDate).length > 0, "Block Date not set");
+        require(_blockDate != 0, "Block Date not set");
+
+        allChains.push(ChainIdUtils.Ethereum());
+        allChains.push(ChainIdUtils.Base());
+        allChains.push(ChainIdUtils.Gnosis());
+        allChains.push(ChainIdUtils.ArbitrumOne());
+        allChains.push(ChainIdUtils.Optimism());
+        allChains.push(ChainIdUtils.Unichain());
+        allChains.push(ChainIdUtils.Avalanche());
 
         _setupBlocksFromDate(_blockDate);
 
@@ -210,14 +213,6 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Avalanche()].domain
             )
         );
-
-        allChains.push(ChainIdUtils.Ethereum());
-        allChains.push(ChainIdUtils.Base());
-        allChains.push(ChainIdUtils.Gnosis());
-        allChains.push(ChainIdUtils.ArbitrumOne());
-        allChains.push(ChainIdUtils.Optimism());
-        allChains.push(ChainIdUtils.Unichain());
-        allChains.push(ChainIdUtils.Avalanche());
     }
 
     function _deployPayload(uint256 chainId) internal onChain(chainId) returns (address) {
@@ -381,29 +376,14 @@ abstract contract SpellRunner is Test {
         }
     }
 
-    /// @dev maximum 3 chains in 1 query
-    function _getBlocksFromDate(string memory date, string[] memory chains) internal returns (uint256[] memory blocks) {
-        blocks = new uint256[](chains.length);
+    function _getBlocksFromDate(uint256 date) internal returns (uint256[] memory blocks) {
+        blocks = new uint256[](allChains.length);
 
-        // Process chains in batches of 3
-        for (uint256 batchStart; batchStart < chains.length; batchStart += 3) {
-            uint256 batchSize = chains.length - batchStart < 3 ? chains.length - batchStart : 3;
-
-            string[] memory batchChains = new string[](batchSize);
-
-            // Create batch of chains
-            for (uint256 i = 0; i < batchSize; ++i) {
-                batchChains[i] = chains[batchStart + i];
-            }
-
-            // Build networks parameter for this batch
-            string memory networks = "";
-            for (uint256 i = 0; i < batchSize; ++i) {
-                if (i == 0) {
-                    networks = string(abi.encodePacked("networks=", batchChains[i]));
-                } else {
-                    networks = string(abi.encodePacked(networks, "&networks=", batchChains[i]));
-                }
+        for (uint256 i; i < allChains.length; ++i) {
+            // TODO: Remove this once Avalanche is working
+            if (allChains[i] == ChainIdUtils.Avalanche()) {
+                blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
+                continue;
             }
 
             string[] memory inputs = new string[](8);
@@ -412,17 +392,63 @@ abstract contract SpellRunner is Test {
             inputs[2] = "--request";
             inputs[3] = "GET";
             inputs[4] = "--url";
-            inputs[5] = string(abi.encodePacked("https://api.g.alchemy.com/data/v1/", vm.envString("ALCHEMY_APIKEY"), "/utility/blocks/by-timestamp?", networks, "&timestamp=", date, "&direction=AFTER"));
+            inputs[5] = string(abi.encodePacked("https://api.etherscan.io/v2/api?apiKey=", vm.envString("ETHERSCAN_API_KEY"), "&module=block&action=getblocknobytime&chainid=", vm.toString(allChains[i]), "&timestamp=", vm.toString(date), "&closest=after"));
             inputs[6] = "--header";
             inputs[7] = "accept: application/json";
 
-            string memory response = string(vm.ffi(inputs));
+            string memory response;
 
-            // Store results in the correct positions of the final blocks array
-            for (uint256 i = 0; i < batchSize; ++i) {
-                blocks[batchStart + i] = vm.parseJsonUint(response, string(abi.encodePacked(".data[", vm.toString(i), "].block.number")));
+            for (uint256 i; i < 10; i++) {
+                response = string(vm.ffi(inputs));
+
+                if (_isEqual(vm.parseJsonString(response, string(abi.encodePacked(".message"))), "NOTOK")) {
+                    vm.sleep(1000);  // Prevent rate limiting from Etherscan (5 calls/second)
+                    continue;
+                }
+
+                break;
+            }
+
+            blocks[i] = vm.parseJsonUint(response, string(abi.encodePacked(".result")));
+        }
+    }
+
+    function _getBlockFromTimestampBinarySearch(uint256 chainId, uint256 searchTimestamp, uint256 maxBlocks) internal returns (uint256) {
+        vm.createSelectFork(getChain(chainId).rpcUrl);
+
+        uint256 endBlock     = block.number;
+        uint256 startBlock   = endBlock - maxBlocks;
+        uint256 bestAbsDelta = type(uint256).max;  // Initialize to max uint256 to ensure the first comparison is always smaller
+
+        uint256 bestBlock;
+
+        while (startBlock <= endBlock) {
+
+            uint256 midBlock = (startBlock + endBlock) / 2;
+
+            vm.createSelectFork(getChain(chainId).rpcUrl, midBlock);
+
+            if (block.timestamp == searchTimestamp) return midBlock; // Exact match
+
+            uint256 absDelta = block.timestamp >= searchTimestamp
+                ? (block.timestamp - searchTimestamp)
+                : (searchTimestamp - block.timestamp);
+
+            // Update the best block if the absolute difference is smaller
+            if (absDelta < bestAbsDelta) {
+                bestAbsDelta = absDelta;
+                bestBlock    = midBlock;
+            }
+
+            // Binary search decision
+            if (block.timestamp < searchTimestamp) {
+                startBlock = midBlock + 1;  // Move forwards
+            } else {
+                endBlock = midBlock - 1;  // Move backwards
             }
         }
+
+        return bestBlock;
     }
 
     function _testPayloadBytecodeMatches(uint256 chainId) internal onChain(chainId) {
