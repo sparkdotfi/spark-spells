@@ -179,8 +179,6 @@ contract SparkEthereum_20260115_SparklendTests is SparklendTests {
 
 }
 
-import { console } from "forge-std/console.sol";
-
 contract SparkEthereum_20260115_SpellTests is SpellTests {
 
     using MarketParamsLib for MarketParams;
