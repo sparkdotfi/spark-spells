@@ -19,6 +19,11 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
+
+import { Currency }     from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
+import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
+import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
 
 import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
@@ -49,6 +54,23 @@ interface IPermissionManagerLike {
         address[] calldata lenders_,
         bool[]    calldata booleans_
     ) external;
+}
+
+interface IPositionManagerLike {
+
+    function transferFrom(address from, address to, uint256 id) external;
+
+    function getPoolAndPositionInfo(uint256 tokenId)
+        external view returns (PoolKey memory poolKey, PositionInfo info);
+
+    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
+
+    function nextTokenId() external view returns (uint256 nextTokenId);
+
+    function ownerOf(uint256 tokenId) external view returns (address owner);
+
+    function poolKeys(bytes25 poolId) external view returns (PoolKey memory poolKeys);
+
 }
 
 contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
@@ -108,6 +130,142 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             newController: ETHEREUM_NEW_ALM_CONTROLLER
         });
     }
+
+    function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4PYUSDUSDS() public onChain(ChainIdUtils.Ethereum()) {
+        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  PYUSD_USDS_POOL_ID));
+        bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), PYUSD_USDS_POOL_ID));
+        bytes32 swapPoolId     = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(),     PYUSD_USDS_POOL_ID));
+
+        assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), 0);
+        
+        _assertRateLimit(depositPoolId,  0, 0);
+        _assertRateLimit(withdrawPoolId, 0, 0);
+        _assertRateLimit(swapPoolId,     0, 0);
+
+        (int24 _tickLowerMin, int24 _tickUpperMax, uint24 _maxTickSpacing) = controller.uniswapV4TickLimits(PYUSD_USDS_POOL_ID);
+
+        assertEq(_tickLowerMin,   0);
+        assertEq(_tickUpperMax,   0);
+        assertEq(_maxTickSpacing, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), 0.999e18);
+
+        _assertRateLimit(depositPoolId,  10_000_000e18, 100_000_000e18 / uint256(1 days));
+        _assertRateLimit(withdrawPoolId, 50_000_000e18, 200_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapPoolId,     5_000_000e18, 50_000_000e18 / uint256(1 days));
+
+        (_tickLowerMin, _tickUpperMax, _maxTickSpacing) = controller.uniswapV4TickLimits(PYUSD_USDS_POOL_ID);
+
+        assertEq(_tickLowerMin,   276_314);
+        assertEq(_tickUpperMax,   276_334);
+        assertEq(_maxTickSpacing, 10);
+
+        // _testUniswapV4Onboarding({
+        //     poolId         : PYUSD_USDS_POOL_ID,
+        //     depositAmount0 : 1_000_000e6,
+        //     depositAmount1 : 1_000_000e18,
+        //     liquidity      : 1_000_000e12,
+        //     tickLower      : 276_314,
+        //     tickUpper      : 276_324
+        // });
+    }
+
+    // function _testUniswapV4Onboarding(
+    //     bytes32 poolId,
+    //     uint256 depositAmount0,
+    //     uint256 depositAmount1,
+    //     uint128 liquidity,
+    //     int24   tickLower,
+    //     int24   tickUpper
+    // ) internal {
+    //     MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+    //     PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
+
+    //     SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+    //     bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(), poolId));
+    //     bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), poolId));
+
+    //     uint256 depositLimitMaxAmount = controller.rateLimits().getRateLimitData(depositPoolId).maxAmount;
+
+    //     deal(
+    //         Currency.unwrap(poolKey.currency0),
+    //         address(ctx.proxy),
+    //         depositAmount0
+    //     );
+
+    //     deal(
+    //         Currency.unwrap(poolKey.currency1),
+    //         address(ctx.proxy),
+    //         depositAmount1
+    //     );
+
+    //     vm.prank(ctx.relayer);
+    //     controller.mintPositionUniswapV4({
+    //         poolId     : poolId,
+    //         tickLower  : tickLower,
+    //         tickUpper  : tickUpper,
+    //         liquidity  : liquidity,
+    //         amount0Max : depositAmount0,
+    //         amount1Max : depositAmount1
+    //     });
+
+    //     // assertEq(
+    //     //     depositLimitMaxAmount - controller.rateLimits().getCurrentRateLimit(depositPoolId),
+    //     //     _toNormalizedAmount(poolKey.currency0, depositAmount0) +
+    //     //     _toNormalizedAmount(poolKey.currency1, depositAmount1)
+    //     // );
+
+    //     uint256 tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
+
+    //     assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(tokenId), address(ctx.proxy));
+
+    //     assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId), liquidity);
+
+    //     // Decrease position
+        
+    //     uint256 token0BeforeCall    = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
+    //     uint256 token1BeforeCall    = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
+    //     uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(withdrawPoolId);
+
+    //     uint256 positionLiquidityBeforeCall = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId);
+
+    //     vm.prank(ctx.relayer);
+    //     controller.decreaseLiquidityUniswapV4({
+    //         poolId            : poolId,
+    //         tokenId           : tokenId,
+    //         liquidityDecrease : liquidity,
+    //         amount0Min        : 0,
+    //         amount1Min        : 0
+    //     });
+
+    //     uint256 amount0Received   = _getBalanceOf(poolKey.currency0, address(ctx.proxy)) - token0BeforeCall;
+    //     uint256 amount1Received   = _getBalanceOf(poolKey.currency1, address(ctx.proxy)) - token1BeforeCall;
+
+    //     assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(tokenId), address(ctx.proxy));
+
+    //     assertEq(
+    //         IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId),
+    //         positionLiquidityBeforeCall - liquidity
+    //     );
+    // }
+
+    // function _toNormalizedAmount(Currency currency, uint256 amount)
+    //     internal view returns (uint256 normalizedAmount)
+    // {
+    //     return amount * 1e18 / (10 ** IERC20Metadata(Currency.unwrap(currency)).decimals());
+    // }
+
+    // function _getBalanceOf(Currency currency, address  account)
+    //     internal view returns (uint256 balance)
+    // {
+    //     return IERC20(Currency.unwrap(currency)).balanceOf(account);
+    // }
 
 }
 
