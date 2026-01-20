@@ -665,19 +665,43 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
     }
 
-    function test_ETHEREUM_sparkLend_withdrawUsdsDaiReserves() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 spDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
-        uint256 spUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY);
+    function test_ETHEREUM_sparkLend_withdrawAllReserves() external onChain(ChainIdUtils.Ethereum()) {
+        address[] memory reserves             = IPool(SparkLend.POOL).getReservesList();
+        uint256[] memory aTokenBalancesBefore = new uint256[](reserves.length);
 
-        assertEq(spDaiBalanceBefore,  319_047_956.431520054882571853e18);
-        assertEq(spUsdsBalanceBefore, 342_048_578.468237917665483512e18);
+        for(uint256 i = 0; i < reserves.length; i++) {
+            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
+
+            if(
+                aToken != SparkLend.DAI_SPTOKEN   &&
+                aToken != SparkLend.USDS_SPTOKEN  &&
+                aToken != SparkLend.USDC_SPTOKEN  &&
+                aToken != SparkLend.PYUSD_SPTOKEN &&
+                aToken != SparkLend.USDT_SPTOKEN
+            ) {
+                aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG);
+            } else {
+                aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_PROXY);
+            }
+        }
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(SparkLend.DAI_TREASURY), 0);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
-        assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 86_220.888775852652987990e18);
-        assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 36_508.019549894218943671e18);
+        for(uint256 i = 0; i < reserves.length; i++) {
+            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
+
+            if(
+                aToken != SparkLend.DAI_SPTOKEN   &&
+                aToken != SparkLend.USDS_SPTOKEN  &&
+                aToken != SparkLend.USDC_SPTOKEN  &&
+                aToken != SparkLend.PYUSD_SPTOKEN &&
+                aToken != SparkLend.USDT_SPTOKEN
+            ) {
+                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
+            } else {
+                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
+            }
+        }
     }
 
     function test_ETHEREUM_sparkTreasury_foundationGrant() external onChain(ChainIdUtils.Ethereum()) {

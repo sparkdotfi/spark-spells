@@ -33,7 +33,6 @@ import { ArbitrumForwarder, ICrossDomainArbitrum } from "xchain-helpers/forwarde
 import { LZForwarder, ILayerZeroEndpointV2 }       from "xchain-helpers/forwarders/LZForwarder.sol";
 import { OptimismForwarder }                       from "xchain-helpers/forwarders/OptimismForwarder.sol";
 
-
 import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
 import { ITreasuryControllerLike, IArbitrumTokenBridge, IOptimismTokenBridge } from "./interfaces/Interfaces.sol";
@@ -114,12 +113,36 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
             });
         }
 
-        // Claim Reserves for USDS and DAI Markets
-        address[] memory aTokens = new address[](2);
+        // Claim Reserves for all Markets
+        address[] memory aTokens = new address[](5);
         aTokens[0] = SparkLend.DAI_SPTOKEN;
         aTokens[1] = SparkLend.USDS_SPTOKEN;
+        aTokens[2] = SparkLend.USDC_SPTOKEN;
+        aTokens[3] = SparkLend.PYUSD_SPTOKEN;
+        aTokens[4] = SparkLend.USDT_SPTOKEN;
 
-        _transferFromSparkLendTreasury(aTokens);
+        _transferFromSparkLendTreasury(aTokens, Ethereum.ALM_PROXY);
+
+        address[] memory remainingATokens = new address[](13);
+        address[] memory reserves         = IPool(SparkLend.POOL).getReservesList();
+
+        uint i;
+
+        for(uint j; j < reserves.length; ++j) {
+            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[j]).aTokenAddress;
+
+            if(
+                aToken == SparkLend.DAI_SPTOKEN   ||
+                aToken == SparkLend.USDS_SPTOKEN  ||
+                aToken == SparkLend.USDC_SPTOKEN  ||
+                aToken == SparkLend.PYUSD_SPTOKEN ||
+                aToken == SparkLend.USDT_SPTOKEN
+            ) continue;
+
+            remainingATokens[i++] = aToken;
+        }
+
+        _transferFromSparkLendTreasury(remainingATokens, Ethereum.ALM_OPS_MULTISIG);
     }
 
     /**
@@ -233,7 +256,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         );
     }
 
-    function _transferFromSparkLendTreasury(address[] memory aTokens) internal {
+    function _transferFromSparkLendTreasury(address[] memory aTokens, address recipient) internal {
         address[] memory assets = new address[](aTokens.length);
 
         for (uint256 i; i < aTokens.length; i++) {
@@ -250,7 +273,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
             ITreasuryControllerLike(SparkLend.TREASURY_CONTROLLER).transfer({
                 collector: treasury,
                 token:     aTokens[i],
-                recipient: Ethereum.ALM_PROXY,
+                recipient: recipient,
                 amount:    IERC20(aTokens[i]).balanceOf(treasury)
             });
         }
