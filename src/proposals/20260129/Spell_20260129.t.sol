@@ -652,6 +652,8 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20260129_SpellTests is SpellTests {
 
+    uint256 internal constant FOUNDATION_GRANT_AMOUNT = 1_100_000e18;
+
     constructor() {
         _spellId   = 20260129;
         _blockDate = 1768896843;  // 2026-01-20T08:14:00Z
@@ -676,6 +678,19 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(SparkLend.TREASURY),    0);
         assertEq(IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),     spDaiBalanceBefore + 86_220.888775852652987990e18);
         assertEq(IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.ALM_PROXY),    spUsdsBalanceBefore + 36_508.019549894218943671e18);
+    }
+
+    function test_ETHEREUM_sparkTreasury_foundationGrant() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 proxyBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
+        uint256 foundationBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
+
+        assertEq(proxyBalanceBefore,      30_389_488.445801365846236778e18);
+        assertEq(foundationBalanceBefore, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),               proxyBalanceBefore - FOUNDATION_GRANT_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG), foundationBalanceBefore + FOUNDATION_GRANT_AMOUNT);
     }
 
 }

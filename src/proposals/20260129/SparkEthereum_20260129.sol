@@ -29,6 +29,8 @@ import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
  *         - Onboard with Paxos
  *         - Onboard Uniswap v4 PYUSD/USDS Pool
  *         - Onboard Uniswap v4 USDT/USDS Pool
+ *         Spark Treasury:
+ *         - Spark Foundation Grant for February 2026
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/january-29-2026-proposed-changes/27620
  * Vote:   
@@ -45,6 +47,8 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
+
+    uint256 internal constant FOUNDATION_GRANT_AMOUNT = 1_100_000e18;
 
     constructor() {
         // PAYLOAD_GNOSIS = 
@@ -124,6 +128,9 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
             swapMax        : 5_000_000e18,
             swapSlope      : 50_000_000e18 / uint256(1 days)
         });
+
+        // Spark Foundation Grant for February 2026
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, FOUNDATION_GRANT_AMOUNT);
     }
 
 }
