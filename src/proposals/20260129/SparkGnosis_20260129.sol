@@ -17,13 +17,12 @@ contract SparkGnosis_20260129 is SparkPayloadGnosis {
     function _postExecute() internal override {
         // Deprecate Market Phase 1
 
-        // address[] memory reserves = LISTING_ENGINE.POOL().getReservesList();
+        address[] memory reserves = LISTING_ENGINE.POOL().getReservesList();
 
-        // for (uint256 i = 0; i < reserves.length; i++) {
-        //     LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFreeze(reserves[i], true);
-        //     LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(reserves[i], 50_00);
-        // }
-
+        for (uint256 i = 0; i < reserves.length; i++) {
+            LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFreeze(reserves[i], true);
+            LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(reserves[i], 50_00);
+        }
     }
 
 }

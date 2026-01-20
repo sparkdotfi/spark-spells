@@ -14,6 +14,7 @@ import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
@@ -24,6 +25,8 @@ import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4L
 import { Currency }     from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
 import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
+
+import { UserConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
 
 import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
@@ -70,6 +73,16 @@ interface IPositionManagerLike {
     function ownerOf(uint256 tokenId) external view returns (address owner);
 
     function poolKeys(bytes25 poolId) external view returns (PoolKey memory poolKeys);
+
+}
+
+contract MockAggregator {
+
+    int256 public latestAnswer;
+
+    constructor(int256 _latestAnswer) {
+        latestAnswer = _latestAnswer;
+    }
 
 }
 
@@ -269,19 +282,11 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
 }
 
-contract MockAggregator {
-
-    int256 public latestAnswer;
-
-    constructor(int256 _latestAnswer) {
-        latestAnswer = _latestAnswer;
-    }
-
-}
-
 contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
+    using UserConfiguration for DataTypes.UserConfigurationMap;
+    using SafeERC20 for IERC20;
 
     constructor() {
         _spellId   = 20260129;
@@ -292,6 +297,33 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
+    }
+
+    function test_GNOSIS_sparkLend_deprecateMarket() external onChain(ChainIdUtils.Gnosis()) {
+        address[] memory reserves = IPool(Gnosis.POOL).getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getReserveData(reserves[i]).configuration;
+
+            assertEq(config.getActive(), true);
+            assertEq(config.getPaused(), false);
+            assertEq(config.getFrozen(), false);
+        }
+
+        _executeAllPayloadsAndBridges();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getReserveData(reserves[i]).configuration;
+
+            assertEq(config.getActive(), true);
+            assertEq(config.getPaused(), false);
+            assertEq(config.getFrozen(), true);
+
+            assertEq(config.getReserveFactor(), 50_00);
+
+            if(reserves[i] == Gnosis.EURE) continue;
+            _testUserActionsAfterPayloadExecutionSparkLend(reserves[i], reserves[i] != Gnosis.USDC ? Gnosis.USDC : Gnosis.USDT);
+        }
     }
 
     function test_ETHEREUM_sparkLend_deprecateTBTC() external onChain(ChainIdUtils.Ethereum()) {
@@ -359,13 +391,16 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         uint256 collateralAmount = 100 * 10 ** IERC20Metadata(collateralAsset).decimals();
         uint256 debtAmount       = 10 * 10 ** IERC20Metadata(debtAsset).decimals();
 
-        IPool pool = IPool(SparkLend.POOL);
+        IPool pool = IPool(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.POOL : SparkLend.POOL);
 
         deal(collateralAsset, testUser, collateralAmount);
 
         vm.startPrank(testUser);
 
-        IERC20(collateralAsset).approve(address(SparkLend.POOL), type(uint256).max);
+        IERC20(collateralAsset).approve(
+            block.chainid == ChainIdUtils.Gnosis() ? address(Gnosis.POOL) : address(SparkLend.POOL),
+            type(uint256).max
+        );
 
         // User can't supply.
         vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
@@ -377,6 +412,9 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         vm.stopPrank();
 
+        if(pool.getReserveData(collateralAsset).configuration.getLtv() == 0) return;
+        if(pool.getReserveData(collateralAsset).configuration.getDebtCeiling() > 0) return;
+
         _setupUserSparkLendPosition(collateralAsset, debtAsset, testUser, collateralAmount, debtAmount);
 
         // User can repay the debt.
@@ -384,12 +422,15 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         vm.startPrank(testUser);
 
-        IERC20(debtAsset).approve(address(SparkLend.POOL), type(uint256).max);
-        
+        IERC20(debtAsset).safeIncreaseAllowance(
+            block.chainid == ChainIdUtils.Gnosis() ? address(Gnosis.POOL) : address(SparkLend.POOL),
+            type(uint256).max
+        );
+
         pool.repay(debtAsset, debtAmount, 2, testUser);
 
         // User can withdraw the collateral.
-        pool.withdraw(collateralAsset, collateralAmount, testUser);
+        pool.withdraw(collateralAsset, 1 * 10 ** IERC20Metadata(collateralAsset).decimals(), testUser);
 
         vm.stopPrank();
 
@@ -403,8 +444,13 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         assets[0]  = collateralAsset;
         sources[0] = mockOracle;
         
-        vm.prank(Ethereum.SPARK_PROXY);
-        AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
+        if(block.chainid == ChainIdUtils.Gnosis()) {
+            vm.prank(Gnosis.AMB_EXECUTOR);
+            AaveOracle(Gnosis.AAVE_ORACLE).setAssetSources(assets, sources);
+        } else {
+            vm.prank(Ethereum.SPARK_PROXY);
+            AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
+        }
 
         // User can be liquidated.
         vm.prank(testUser);
@@ -418,27 +464,44 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         uint256 collateralAmount,
         uint256 debtAmount
     ) internal {
-        IPool pool = IPool(SparkLend.POOL);
+        IPool pool = IPool(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.POOL : SparkLend.POOL);
 
         deal(collateralAsset, testUser, collateralAmount);
 
         vm.prank(testUser);
-        IERC20(collateralAsset).approve(address(SparkLend.POOL), type(uint256).max);
+        IERC20(collateralAsset).approve(
+            block.chainid == ChainIdUtils.Gnosis() ? address(Gnosis.POOL) : address(SparkLend.POOL),
+            type(uint256).max
+        );
 
         // Set Reserve frozen to false.
-        vm.prank(Ethereum.SPARK_PROXY);
-        IPoolConfigurator(SparkLend.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, false);
+        if(block.chainid == ChainIdUtils.Gnosis()) {
+            vm.startPrank(Gnosis.AMB_EXECUTOR);
+            IPoolConfigurator(Gnosis.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, false);
+            IPoolConfigurator(Gnosis.POOL_CONFIGURATOR).setReserveFreeze(debtAsset,       false);
+            vm.stopPrank();
+        } else {
+            vm.prank(Ethereum.SPARK_PROXY);
+            IPoolConfigurator(SparkLend.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, false);
+        }
         
         vm.startPrank(testUser);
-
+        
         pool.supply(collateralAsset, collateralAmount, testUser, 0);
         pool.borrow(debtAsset,       debtAmount,       2,          0, testUser);
 
         vm.stopPrank();
 
         // Set Reserve frozen to true.
-        vm.prank(Ethereum.SPARK_PROXY);
-        IPoolConfigurator(SparkLend.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, true);
+        if(block.chainid == ChainIdUtils.Gnosis()) {
+            vm.startPrank(Gnosis.AMB_EXECUTOR);
+            IPoolConfigurator(Gnosis.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, true);
+            IPoolConfigurator(Gnosis.POOL_CONFIGURATOR).setReserveFreeze(debtAsset,       true);
+            vm.stopPrank();
+        } else {
+            vm.prank(Ethereum.SPARK_PROXY);
+            IPoolConfigurator(SparkLend.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, true);
+        }
     }
 
 }

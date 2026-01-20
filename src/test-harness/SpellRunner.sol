@@ -32,6 +32,11 @@ import { IStarGuardLike } from "../interfaces/Interfaces.sol";
 
 import { SparkPayloadEthereum } from "../SparkPayloadEthereum.sol";
 
+interface IAMBExecutorLike {
+    function executeDelegateCall(address target, bytes calldata data) 
+        external payable returns (bool, bytes memory);
+}
+
 abstract contract SpellRunner is Test {
 
     using DomainHelpers for Domain;
@@ -332,10 +337,17 @@ abstract contract SpellRunner is Test {
 
                     vm.prank(address(executor));
 
-                    executor.executeDelegateCall(
-                        payload,
-                        abi.encodeWithSignature("execute()")
-                    );
+                    if (chainId == ChainIdUtils.Gnosis()) {
+                        IAMBExecutorLike(address(executor)).executeDelegateCall(
+                            payload,
+                            abi.encodeWithSignature("execute()")
+                        );
+                    } else {
+                        executor.executeDelegateCall(
+                            payload,
+                            abi.encodeWithSignature("execute()")
+                        );
+                    }
 
                     console.log("simulating execution payload for network: ", ChainIdUtils.toDomainString(chainId));
                 }
