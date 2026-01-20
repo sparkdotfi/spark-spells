@@ -76,6 +76,20 @@ interface IPositionManagerLike {
 
 }
 
+interface IV4QuoterLike {
+
+    struct QuoteExactSingleParams {
+        PoolKey poolKey;
+        bool    zeroForOne;
+        uint128 exactAmount;
+        bytes   hookData;
+    }
+
+    function quoteExactInputSingle(QuoteExactSingleParams memory params)
+        external returns (uint256 amountOut, uint256 gasEstimate);
+
+}
+
 contract MockAggregator {
 
     int256 public latestAnswer;
@@ -92,6 +106,8 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+
+    address internal constant _V4_QUOTER = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
 
     constructor() {
         _spellId   = 20260129;
@@ -144,6 +160,15 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         });
     }
 
+    struct UniswapV4DepositWithdrawParams {
+        bytes32 poolId;
+        uint256 depositAmount0;
+        uint256 depositAmount1;
+        uint128 liquidity;
+        int24   tickLower;
+        int24   tickUpper;
+    }
+
     function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4PYUSDUSDS() public onChain(ChainIdUtils.Ethereum()) {
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
@@ -177,108 +202,226 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         assertEq(_tickUpperMax,   276_334);
         assertEq(_maxTickSpacing, 10);
 
-        // _testUniswapV4Onboarding({
-        //     poolId         : PYUSD_USDS_POOL_ID,
-        //     depositAmount0 : 1_000_000e6,
-        //     depositAmount1 : 1_000_000e18,
-        //     liquidity      : 1_000_000e12,
-        //     tickLower      : 276_314,
-        //     tickUpper      : 276_324
-        // });
+        _testUniswapV4DepositWithdraw(
+            UniswapV4DepositWithdrawParams({
+                poolId         : PYUSD_USDS_POOL_ID,
+                depositAmount0 : 1_000_000e6,
+                depositAmount1 : 1_000_000e18,
+                liquidity      : 1_000_000e12,
+                tickLower      : 276_314,
+                tickUpper      : 276_324
+            })
+        );
+        _testUniswapV4Swap({
+            poolId : PYUSD_USDS_POOL_ID
+        });
     }
 
-    // function _testUniswapV4Onboarding(
-    //     bytes32 poolId,
-    //     uint256 depositAmount0,
-    //     uint256 depositAmount1,
-    //     uint128 liquidity,
-    //     int24   tickLower,
-    //     int24   tickUpper
-    // ) internal {
-    //     MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+    function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4USDTUSDS() public onChain(ChainIdUtils.Ethereum()) {
+        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
-    //     PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
+        bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  USDT_USDS_POOL_ID));
+        bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), USDT_USDS_POOL_ID));
+        bytes32 swapPoolId     = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(),     USDT_USDS_POOL_ID));
 
-    //     SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-    //     bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(), poolId));
-    //     bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), poolId));
-
-    //     uint256 depositLimitMaxAmount = controller.rateLimits().getRateLimitData(depositPoolId).maxAmount;
-
-    //     deal(
-    //         Currency.unwrap(poolKey.currency0),
-    //         address(ctx.proxy),
-    //         depositAmount0
-    //     );
-
-    //     deal(
-    //         Currency.unwrap(poolKey.currency1),
-    //         address(ctx.proxy),
-    //         depositAmount1
-    //     );
-
-    //     vm.prank(ctx.relayer);
-    //     controller.mintPositionUniswapV4({
-    //         poolId     : poolId,
-    //         tickLower  : tickLower,
-    //         tickUpper  : tickUpper,
-    //         liquidity  : liquidity,
-    //         amount0Max : depositAmount0,
-    //         amount1Max : depositAmount1
-    //     });
-
-    //     // assertEq(
-    //     //     depositLimitMaxAmount - controller.rateLimits().getCurrentRateLimit(depositPoolId),
-    //     //     _toNormalizedAmount(poolKey.currency0, depositAmount0) +
-    //     //     _toNormalizedAmount(poolKey.currency1, depositAmount1)
-    //     // );
-
-    //     uint256 tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
-
-    //     assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(tokenId), address(ctx.proxy));
-
-    //     assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId), liquidity);
-
-    //     // Decrease position
+        assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))), 0);
         
-    //     uint256 token0BeforeCall    = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
-    //     uint256 token1BeforeCall    = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
-    //     uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(withdrawPoolId);
+        _assertRateLimit(depositPoolId,  0, 0);
+        _assertRateLimit(withdrawPoolId, 0, 0);
+        _assertRateLimit(swapPoolId,     0, 0);
 
-    //     uint256 positionLiquidityBeforeCall = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId);
+        (int24 _tickLowerMin, int24 _tickUpperMax, uint24 _maxTickSpacing) = controller.uniswapV4TickLimits(USDT_USDS_POOL_ID);
 
-    //     vm.prank(ctx.relayer);
-    //     controller.decreaseLiquidityUniswapV4({
-    //         poolId            : poolId,
-    //         tokenId           : tokenId,
-    //         liquidityDecrease : liquidity,
-    //         amount0Min        : 0,
-    //         amount1Min        : 0
-    //     });
+        assertEq(_tickLowerMin,   0);
+        assertEq(_tickUpperMax,   0);
+        assertEq(_maxTickSpacing, 0);
 
-    //     uint256 amount0Received   = _getBalanceOf(poolKey.currency0, address(ctx.proxy)) - token0BeforeCall;
-    //     uint256 amount1Received   = _getBalanceOf(poolKey.currency1, address(ctx.proxy)) - token1BeforeCall;
+        _executeAllPayloadsAndBridges();
 
-    //     assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(tokenId), address(ctx.proxy));
+        assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))), 0.998e18);
 
-    //     assertEq(
-    //         IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId),
-    //         positionLiquidityBeforeCall - liquidity
-    //     );
-    // }
+        _assertRateLimit(depositPoolId,  5_000_000e18, 50_000_000e18 / uint256(1 days));
+        _assertRateLimit(withdrawPoolId, 50_000_000e18, 200_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapPoolId,     5_000_000e18, 50_000_000e18 / uint256(1 days));
 
-    // function _toNormalizedAmount(Currency currency, uint256 amount)
-    //     internal view returns (uint256 normalizedAmount)
-    // {
-    //     return amount * 1e18 / (10 ** IERC20Metadata(Currency.unwrap(currency)).decimals());
-    // }
+        (_tickLowerMin, _tickUpperMax, _maxTickSpacing) = controller.uniswapV4TickLimits(USDT_USDS_POOL_ID);
 
-    // function _getBalanceOf(Currency currency, address  account)
-    //     internal view returns (uint256 balance)
-    // {
-    //     return IERC20(Currency.unwrap(currency)).balanceOf(account);
-    // }
+        assertEq(_tickLowerMin,   276_304);
+        assertEq(_tickUpperMax,   276_344);
+        assertEq(_maxTickSpacing, 10);
+
+        _testUniswapV4DepositWithdraw(
+            UniswapV4DepositWithdrawParams({
+                poolId         : USDT_USDS_POOL_ID,
+                depositAmount0 : 1_000_000e6,
+                depositAmount1 : 1_000_000e18,
+                liquidity      : 1_000_000e12,
+                tickLower      : 276_304,
+                tickUpper      : 276_314
+            })
+        );
+        _testUniswapV4Swap({
+            poolId : USDT_USDS_POOL_ID
+        });
+    }
+
+    function _testUniswapV4DepositWithdraw(UniswapV4DepositWithdrawParams memory params) internal {
+        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(params.poolId));
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  params.poolId));
+        bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), params.poolId));
+
+        uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(depositPoolId);
+
+        // Increase position.
+
+        deal(
+            Currency.unwrap(poolKey.currency0),
+            address(ctx.proxy),
+            params.depositAmount0
+        );
+        deal(
+            Currency.unwrap(poolKey.currency1),
+            address(ctx.proxy),
+            params.depositAmount1
+        );
+
+        vm.prank(ctx.relayer);
+        controller.mintPositionUniswapV4({
+            poolId     : params.poolId,
+            tickLower  : params.tickLower,
+            tickUpper  : params.tickUpper,
+            liquidity  : params.liquidity,
+            amount0Max : params.depositAmount0,
+            amount1Max : params.depositAmount1
+        });
+
+        // assertEq(
+        //     rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(depositPoolId),
+        //     _toNormalizedAmount(poolKey.currency0, params.depositAmount0) +
+        //     _toNormalizedAmount(poolKey.currency1, params.depositAmount1)
+        // );
+
+        uint256 tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
+
+        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(tokenId), address(ctx.proxy));
+
+        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId), params.liquidity);
+
+        // Decrease position.
+
+        uint256 token0BeforeCall = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
+        uint256 token1BeforeCall = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
+
+        rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(withdrawPoolId);
+
+        uint256 positionLiquidityBeforeCall = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId);
+
+        vm.prank(ctx.relayer);
+        controller.decreaseLiquidityUniswapV4({
+            poolId            : params.poolId,
+            tokenId           : tokenId,
+            liquidityDecrease : params.liquidity,
+            amount0Min        : 0,
+            amount1Min        : 0
+        });
+
+        uint256 amount0Received = _getBalanceOf(poolKey.currency0, address(ctx.proxy)) - token0BeforeCall;
+        uint256 amount1Received = _getBalanceOf(poolKey.currency1, address(ctx.proxy)) - token1BeforeCall;
+
+        assertEq(
+            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(withdrawPoolId),
+            _toNormalizedAmount(poolKey.currency0, amount0Received) +
+            _toNormalizedAmount(poolKey.currency1, amount1Received)
+        );
+
+        assertEq(
+            IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId),
+            positionLiquidityBeforeCall - params.liquidity
+        );
+    }
+
+    function _testUniswapV4Swap(bytes32 poolId) internal {
+        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
+
+        Currency currencyIn  = poolKey.currency0;
+        Currency currencyOut = poolKey.currency1;
+
+        uint128 swapAmount = uint128(10_000 * 10 ** IERC20Metadata(Currency.unwrap(currencyIn)).decimals());
+
+        bytes32 swapPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(), poolId));
+
+        deal(
+            Currency.unwrap(currencyIn),
+            address(ctx.proxy), _getBalanceOf(currencyIn, address(ctx.proxy)) + swapAmount
+        );
+
+        uint256 token0BeforeCall    = _getBalanceOf(currencyIn, address(ctx.proxy));
+        uint256 token1BeforeCall    = _getBalanceOf(currencyOut, address(ctx.proxy));
+        uint128 amountOutMin        = _getSwapAmountOutMin(poolId, Currency.unwrap(currencyIn), swapAmount, 0.9999e18);
+        uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(swapPoolId);
+
+        vm.prank(ctx.relayer);
+        controller.swapUniswapV4({
+            poolId       : poolId,
+            tokenIn      : Currency.unwrap(currencyIn),
+            amountIn     : swapAmount,
+            amountOutMin : amountOutMin
+        });
+
+        assertEq(token0BeforeCall - _getBalanceOf(currencyIn, address(ctx.proxy)),  swapAmount);
+        assertGe(_getBalanceOf(currencyOut, address(ctx.proxy)) - token1BeforeCall, amountOutMin);
+
+        assertEq(
+            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(swapPoolId),
+            _toNormalizedAmount(currencyIn, swapAmount)
+        );
+    }
+
+    function _getSwapAmountOutMin(
+        bytes32 poolId,
+        address tokenIn,
+        uint128 amountIn,
+        uint256 maxSlippage
+    )
+        internal returns (uint128 amountOutMin)
+    {
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
+
+        address token0 = Currency.unwrap(poolKey.currency0);
+        address token1 = Currency.unwrap(poolKey.currency1);
+
+        IV4QuoterLike.QuoteExactSingleParams memory params = IV4QuoterLike.QuoteExactSingleParams({
+            poolKey     : poolKey,
+            zeroForOne  : tokenIn == token0,
+            exactAmount : amountIn,
+            hookData    : bytes("")
+        });
+
+        ( uint256 amountOut, ) = IV4QuoterLike(_V4_QUOTER).quoteExactInputSingle(params);
+
+        return uint128((amountOut * maxSlippage) / 1e18);
+    }
+
+    function _toNormalizedAmount(Currency currency, uint256 amount)
+        internal view returns (uint256 normalizedAmount)
+    {
+        return amount * 1e18 / (10 ** IERC20Metadata(Currency.unwrap(currency)).decimals());
+    }
+
+    function _getBalanceOf(Currency currency, address  account)
+        internal view returns (uint256 balance)
+    {
+        return IERC20(Currency.unwrap(currency)).balanceOf(account);
+    }
 
 }
 
@@ -303,7 +446,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         address[] memory reserves = IPool(Gnosis.POOL).getReservesList();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getReserveData(reserves[i]).configuration;
+            DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getConfiguration(reserves[i]);
 
             assertEq(config.getActive(), true);
             assertEq(config.getPaused(), false);
@@ -313,7 +456,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         _executeAllPayloadsAndBridges();
 
         for (uint256 i = 0; i < reserves.length; i++) {
-            DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getReserveData(reserves[i]).configuration;
+            DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getConfiguration(reserves[i]);
 
             assertEq(config.getActive(), true);
             assertEq(config.getPaused(), false);
@@ -327,7 +470,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
     }
 
     function test_ETHEREUM_sparkLend_deprecateTBTC() external onChain(ChainIdUtils.Ethereum()) {
-        DataTypes.ReserveConfigurationMap memory oldConfig = IPool(SparkLend.POOL).getReserveData(Ethereum.TBTC).configuration;
+        DataTypes.ReserveConfigurationMap memory oldConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.TBTC);
 
         assertEq(oldConfig.getActive(),        true);
         assertEq(oldConfig.getPaused(),        false);
@@ -336,7 +479,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         _executeAllPayloadsAndBridges();
 
-        DataTypes.ReserveConfigurationMap memory newConfig = IPool(SparkLend.POOL).getReserveData(Ethereum.TBTC).configuration;
+        DataTypes.ReserveConfigurationMap memory newConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.TBTC);
 
         assertEq(newConfig.getActive(),        true);
         assertEq(newConfig.getPaused(),        false);
@@ -347,7 +490,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
     }
 
     function test_ETHEREUM_sparkLend_deprecateEZETH() external onChain(ChainIdUtils.Ethereum()) {
-        DataTypes.ReserveConfigurationMap memory oldConfig = IPool(SparkLend.POOL).getReserveData(Ethereum.EZETH).configuration;
+        DataTypes.ReserveConfigurationMap memory oldConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.EZETH);
 
         assertEq(oldConfig.getActive(),        true);
         assertEq(oldConfig.getPaused(),        false);
@@ -356,7 +499,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         _executeAllPayloadsAndBridges();
 
-        DataTypes.ReserveConfigurationMap memory newConfig = IPool(SparkLend.POOL).getReserveData(Ethereum.EZETH).configuration;
+        DataTypes.ReserveConfigurationMap memory newConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.EZETH);
 
         assertEq(newConfig.getActive(),        true);
         assertEq(newConfig.getPaused(),        false);
@@ -367,7 +510,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
     }
 
     function test_ETHEREUM_sparkLend_deprecateRSETH() external onChain(ChainIdUtils.Ethereum()) {
-        DataTypes.ReserveConfigurationMap memory oldConfig = IPool(SparkLend.POOL).getReserveData(Ethereum.RSETH).configuration;
+        DataTypes.ReserveConfigurationMap memory oldConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.RSETH);
 
         assertEq(oldConfig.getActive(),        true);
         assertEq(oldConfig.getPaused(),        false);
@@ -376,7 +519,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         _executeAllPayloadsAndBridges();
 
-        DataTypes.ReserveConfigurationMap memory newConfig = IPool(SparkLend.POOL).getReserveData(Ethereum.RSETH).configuration;
+        DataTypes.ReserveConfigurationMap memory newConfig = IPool(SparkLend.POOL).getConfiguration(Ethereum.RSETH);
 
         assertEq(newConfig.getActive(),        true);
         assertEq(newConfig.getPaused(),        false);
@@ -412,6 +555,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         vm.stopPrank();
 
+        // If the reserve is not active or has a debt ceiling, skip the test as user collateral enabled will be false.
         if(pool.getReserveData(collateralAsset).configuration.getLtv() == 0) return;
         if(pool.getReserveData(collateralAsset).configuration.getDebtCeiling() > 0) return;
 
@@ -443,7 +587,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         address[] memory sources = new address[](1);
         assets[0]  = collateralAsset;
         sources[0] = mockOracle;
-        
+
         if(block.chainid == ChainIdUtils.Gnosis()) {
             vm.prank(Gnosis.AMB_EXECUTOR);
             AaveOracle(Gnosis.AAVE_ORACLE).setAssetSources(assets, sources);
@@ -484,9 +628,9 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
             vm.prank(Ethereum.SPARK_PROXY);
             IPoolConfigurator(SparkLend.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, false);
         }
-        
+
         vm.startPrank(testUser);
-        
+
         pool.supply(collateralAsset, collateralAmount, testUser, 0);
         pool.borrow(debtAsset,       debtAmount,       2,          0, testUser);
 
