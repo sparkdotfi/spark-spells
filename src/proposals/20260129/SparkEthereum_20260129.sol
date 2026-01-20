@@ -61,29 +61,33 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         // Upgrade Controller to v1.9
         _upgradeController(Ethereum.ALM_CONTROLLER, NEW_ALM_CONTROLLER);
 
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDC_BC, 1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_DAI_1,   1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.MORPHO_VAULT_USDS,    1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDS,                1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.FLUID_SUSDS,          1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDE,                1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDC,           1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDT,           1, 10);
-        NEW_ALM_CONTROLLER.setMaxExchangeRate(ARKIS,                         1, 10);
+        _migrateMaxExchangeRate(Ethereum.MORPHO_VAULT_USDC_BC);
+        _migrateMaxExchangeRate(Ethereum.MORPHO_VAULT_DAI_1);
+        _migrateMaxExchangeRate(Ethereum.MORPHO_VAULT_USDS);
+        _migrateMaxExchangeRate(Ethereum.SUSDS);
+        _migrateMaxExchangeRate(Ethereum.FLUID_SUSDS);
+        _migrateMaxExchangeRate(Ethereum.SUSDE);
+        _migrateMaxExchangeRate(Ethereum.SYRUP_USDC);
+        _migrateMaxExchangeRate(Ethereum.SYRUP_USDT);
+        _migrateMaxExchangeRate(ARKIS);
 
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDC,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDE,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDS,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDT,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_PRIME_USDS, 0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.CURVE_WEETHWETHNG, 0.9975e18);
+        _migrateMaxSlippage(Ethereum.CURVE_SUSDSUSDT);
+        _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDC);
+        _migrateMaxSlippage(Ethereum.CURVE_USDCUSDT);
+        _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDS);
+        _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDC);
+        _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDE);
+        _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDS);
+        _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDT);
+        _migrateMaxSlippage(Ethereum.ATOKEN_PRIME_USDS);
+        _migrateMaxSlippage(Ethereum.CURVE_WEETHWETHNG);
 
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.DAI_SPTOKEN,   0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.USDC_SPTOKEN,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.USDS_SPTOKEN,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.USDT_SPTOKEN,  0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.PYUSD_SPTOKEN, 0.99999e18);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.WETH_SPTOKEN,  0.99999e18);
+        _migrateMaxSlippage(SparkLend.DAI_SPTOKEN);
+        _migrateMaxSlippage(SparkLend.USDC_SPTOKEN);
+        _migrateMaxSlippage(SparkLend.USDS_SPTOKEN);
+        _migrateMaxSlippage(SparkLend.USDT_SPTOKEN);
+        _migrateMaxSlippage(SparkLend.PYUSD_SPTOKEN);
+        _migrateMaxSlippage(SparkLend.WETH_SPTOKEN);
 
         // Deprecate tBTC Phase 1
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.TBTC, 99_00);
@@ -131,6 +135,23 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
 
         // Spark Foundation Grant for February 2026
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, FOUNDATION_GRANT_AMOUNT);
+    }
+
+    function _migrateMaxExchangeRate(address vault) internal {
+        uint256 oldMaxExchangeRate = MainnetController(Ethereum.ALM_CONTROLLER).maxExchangeRates(vault);
+
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(vault, 1, 10);
+
+        require(
+            oldMaxExchangeRate == MainnetController(NEW_ALM_CONTROLLER).maxExchangeRates(vault),
+            "Max exchange rate mismatch"
+        );
+    }
+
+    function _migrateMaxSlippage(address pool) internal {
+        uint256 oldMaxSlippage = MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(pool);
+
+        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(pool, oldMaxSlippage);
     }
 
 }

@@ -481,27 +481,7 @@ library SLLHelpers {
 
         MainnetControllerInit.LayerZeroRecipient[] memory layerZeroRecipients = new MainnetControllerInit.LayerZeroRecipient[](0);
 
-        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](4);
-
-        maxSlippageParams[0] = MainnetControllerInit.MaxSlippageParams({
-            pool        : Ethereum.CURVE_SUSDSUSDT,
-            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_SUSDSUSDT)
-        });
-
-        maxSlippageParams[1] = MainnetControllerInit.MaxSlippageParams({
-            pool        : Ethereum.CURVE_PYUSDUSDC,
-            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_PYUSDUSDC)
-        });
-
-        maxSlippageParams[2] = MainnetControllerInit.MaxSlippageParams({
-            pool        : Ethereum.CURVE_USDCUSDT,
-            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_USDCUSDT)
-        });
-
-        maxSlippageParams[3] = MainnetControllerInit.MaxSlippageParams({
-            pool        : Ethereum.CURVE_PYUSDUSDS,
-            maxSlippage : MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(Ethereum.CURVE_PYUSDUSDS)
-        });
+        MainnetControllerInit.MaxSlippageParams[] memory maxSlippageParams = new MainnetControllerInit.MaxSlippageParams[](0);
 
         address[] memory relayers = new address[](2);
         relayers[0] = Ethereum.ALM_RELAYER_MULTISIG;
