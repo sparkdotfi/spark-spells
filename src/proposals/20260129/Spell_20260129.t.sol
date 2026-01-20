@@ -100,6 +100,8 @@ contract MockAggregator {
 
 }
 
+import { console2 } from "forge-std/console2.sol";
+
 contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
     IPermissionManagerLike internal constant permissionManager
@@ -272,10 +274,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  params.poolId));
-        bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), params.poolId));
-
-        uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(depositPoolId);
+        uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(
+            keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  params.poolId))
+        );
 
         // Increase position.
 
@@ -290,6 +291,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             params.depositAmount1
         );
 
+        uint256 token0BeforeCall = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
+        uint256 token1BeforeCall = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
+
         vm.prank(ctx.relayer);
         controller.mintPositionUniswapV4({
             poolId     : params.poolId,
@@ -300,11 +304,16 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             amount1Max : params.depositAmount1
         });
 
-        // assertEq(
-        //     rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(depositPoolId),
-        //     _toNormalizedAmount(poolKey.currency0, params.depositAmount0) +
-        //     _toNormalizedAmount(poolKey.currency1, params.depositAmount1)
-        // );
+        uint256 amount0Received = token0BeforeCall - _getBalanceOf(poolKey.currency0, address(ctx.proxy));
+        uint256 amount1Received = token1BeforeCall - _getBalanceOf(poolKey.currency1, address(ctx.proxy));
+
+        assertEq(
+            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(
+                keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  params.poolId))
+            ),
+            _toNormalizedAmount(poolKey.currency0, amount0Received) +
+            _toNormalizedAmount(poolKey.currency1, amount1Received)
+        );
 
         uint256 tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
 
@@ -314,10 +323,12 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         // Decrease position.
 
-        uint256 token0BeforeCall = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
-        uint256 token1BeforeCall = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
+        token0BeforeCall = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
+        token1BeforeCall = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
 
-        rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(withdrawPoolId);
+        rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(
+            keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), params.poolId))
+        );
 
         uint256 positionLiquidityBeforeCall = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId);
 
@@ -330,11 +341,13 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             amount1Min        : 0
         });
 
-        uint256 amount0Received = _getBalanceOf(poolKey.currency0, address(ctx.proxy)) - token0BeforeCall;
-        uint256 amount1Received = _getBalanceOf(poolKey.currency1, address(ctx.proxy)) - token1BeforeCall;
+        amount0Received = _getBalanceOf(poolKey.currency0, address(ctx.proxy)) - token0BeforeCall;
+        amount1Received = _getBalanceOf(poolKey.currency1, address(ctx.proxy)) - token1BeforeCall;
 
         assertEq(
-            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(withdrawPoolId),
+            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(
+                keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), params.poolId))
+            ),
             _toNormalizedAmount(poolKey.currency0, amount0Received) +
             _toNormalizedAmount(poolKey.currency1, amount1Received)
         );
@@ -366,7 +379,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         uint256 token0BeforeCall    = _getBalanceOf(currencyIn, address(ctx.proxy));
         uint256 token1BeforeCall    = _getBalanceOf(currencyOut, address(ctx.proxy));
-        uint128 amountOutMin        = _getSwapAmountOutMin(poolId, Currency.unwrap(currencyIn), swapAmount, 0.9999e18);
+        uint128 amountOutMin        = _getSwapAmountOutMin(poolId, Currency.unwrap(currencyIn), swapAmount, 1.5e18);
         uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(swapPoolId);
 
         vm.prank(ctx.relayer);
@@ -397,7 +410,6 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
 
         address token0 = Currency.unwrap(poolKey.currency0);
-        address token1 = Currency.unwrap(poolKey.currency1);
 
         IV4QuoterLike.QuoteExactSingleParams memory params = IV4QuoterLike.QuoteExactSingleParams({
             poolKey     : poolKey,
@@ -407,6 +419,10 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         });
 
         ( uint256 amountOut, ) = IV4QuoterLike(_V4_QUOTER).quoteExactInputSingle(params);
+
+        console2.log("Amount In: %s", amountIn);
+        console2.log("Amount out: %s", amountOut);
+        console2.log("Max Slippage: %s", maxSlippage);
 
         return uint128((amountOut * maxSlippage) / 1e18);
     }
