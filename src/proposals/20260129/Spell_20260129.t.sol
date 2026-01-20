@@ -25,6 +25,9 @@ import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4L
 import { Currency }     from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
 import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { TickMath }     from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/TickMath.sol";
+import { PoolId }       from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolId.sol";
+import { FullMath }     from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/FullMath.sol";
 
 import { UserConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
 
@@ -76,6 +79,13 @@ interface IPositionManagerLike {
 
 }
 
+interface IStateViewLike {
+
+    function getSlot0(PoolId poolId)
+        external view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
+
+}
+
 interface IV4QuoterLike {
 
     struct QuoteExactSingleParams {
@@ -109,7 +119,8 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
 
-    address internal constant _V4_QUOTER = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
+    address internal constant _V4_QUOTER  = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
+    address internal constant _STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
 
     constructor() {
         _spellId   = 20260129;
@@ -216,8 +227,8 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         );
         _testUniswapV4Swap({
             poolId : PYUSD_USDS_POOL_ID,
-            tickLower : 276_314,
-            tickUpper : 276_324
+            tickLower : 276_324,
+            tickUpper : 276_326
         });
     }
 
@@ -372,9 +383,16 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         Currency currencyIn  = poolKey.currency0;
         Currency currencyOut = poolKey.currency1;
 
-        uint128 swapAmount = uint128(10_000 * 10 ** IERC20Metadata(Currency.unwrap(currencyIn)).decimals());
+        uint128 swapAmount = uint128(1 * 10 ** IERC20Metadata(Currency.unwrap(currencyIn)).decimals());
 
         bytes32 swapPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(), poolId));
+
+        ( uint256 amount0Forecasted, uint256 amount1Forecasted ) = _quoteLiquidity(
+            keccak256(abi.encode(poolKey)),
+            tickLower,
+            tickUpper,
+            100_000_000e12
+        );
 
         // Increase Liquidity of the pool
 
@@ -394,9 +412,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             poolId     : poolId,
             tickLower  : tickLower,
             tickUpper  : tickUpper,
-            liquidity  : 10_000_000e12,
-            amount0Max : 10_000_000e6,
-            amount1Max : 10_000_000e18
+            liquidity  : 100_000_000e12,
+            amount0Max : amount0Forecasted,
+            amount1Max : amount1Forecasted
         });
 
         // Swap 
@@ -466,6 +484,82 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         internal view returns (uint256 balance)
     {
         return IERC20(Currency.unwrap(currency)).balanceOf(account);
+    }
+
+    function _quoteLiquidity(
+        bytes32 poolId,
+        int24   tickLower,
+        int24   tickUpper,
+        uint128 liquidityAmount
+    )
+        internal view returns (uint256 amount0, uint256 amount1)
+    {
+        ( uint160 sqrtPriceX96, , , ) = IStateViewLike(_STATE_VIEW).getSlot0(PoolId.wrap(poolId));
+
+        return _getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            liquidityAmount
+        );
+    }
+
+    function _getAmount0ForLiquidity(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount0)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-0");
+
+        return FullMath.mulDiv(
+            uint256(liquidity) << 96,
+            sqrtPriceBX96 - sqrtPriceAX96,
+            uint256(sqrtPriceBX96) * sqrtPriceAX96
+        );
+    }
+
+    function _getAmount1ForLiquidity(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount1)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-1");
+
+        return FullMath.mulDiv(liquidity, sqrtPriceBX96 - sqrtPriceAX96, 1 << 96);
+    }
+
+    function _getAmountsForLiquidity(
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount0, uint256 amount1)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices");
+
+        if (sqrtPriceX96 <= sqrtPriceAX96) {
+            return (
+                _getAmount0ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity),
+                0
+            );
+        }
+
+        if (sqrtPriceX96 >= sqrtPriceBX96) {
+            return (
+                0,
+                _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity)
+            );
+        }
+
+        return (
+            _getAmount0ForLiquidity(sqrtPriceX96, sqrtPriceBX96, liquidity),
+            _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceX96, liquidity)
+        );
     }
 
 }
