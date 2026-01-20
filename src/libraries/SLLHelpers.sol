@@ -287,6 +287,64 @@ library SLLHelpers {
         }
     }
 
+    function configureUniswapV4Pool(
+        address controller,
+        address rateLimits,
+        bytes32 poolId,
+        uint256 maxSlippage,
+        int24   tickLower,
+        int24   tickUpper,
+        uint24  maxTickSpacing,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 withdrawMax,
+        uint256 withdrawSlope,
+        uint256 swapMax,
+        uint256 swapSlope
+    ) internal {
+        MainnetController(controller).setUniswapV4TickLimits(poolId, tickLower, tickUpper, maxTickSpacing);
+        MainnetController(controller).setMaxSlippage(address(uint160(uint256(poolId))), maxSlippage);
+
+        if (depositMax != 0) {
+            setRateLimitData(
+                keccak256(abi.encode(
+                    MainnetController(controller).LIMIT_UNISWAP_V4_DEPOSIT(),
+                    poolId
+                )),
+                rateLimits,
+                depositMax,
+                depositSlope,
+                18
+            );
+        }
+
+        if (withdrawMax != 0) {
+            setRateLimitData(
+                keccak256(abi.encode(
+                    MainnetController(controller).LIMIT_UNISWAP_V4_WITHDRAW(),
+                    poolId
+                )),
+                rateLimits,
+                withdrawMax,
+                withdrawSlope,
+                18
+            );
+        }
+
+        if (swapMax != 0) {
+            setRateLimitData(
+                keccak256(abi.encode(
+                    MainnetController(controller).LIMIT_UNISWAP_V4_SWAP(),
+                    poolId
+                )),
+                rateLimits,
+                swapMax,
+                swapSlope,
+                18
+            );
+        }
+    }
+
     function morphoIdleMarket(
         address asset
     ) internal pure returns (MarketParams memory) {

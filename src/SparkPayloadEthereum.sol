@@ -113,6 +113,13 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
                 _payInLzToken:  false
             });
         }
+
+        // Claim Reserves for USDS and DAI Markets
+        address[] memory aTokens = new address[](2);
+        aTokens[0] = SparkLend.DAI_SPTOKEN;
+        aTokens[1] = SparkLend.USDS_SPTOKEN;
+
+        _transferFromSparkLendTreasury(aTokens);
     }
 
     /**

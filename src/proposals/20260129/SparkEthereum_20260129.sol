@@ -39,6 +39,7 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
 
     ISparkVaultV2Like internal constant spUsdt = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
+    address internal constant ARKIS              = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
     address internal constant USDG               = 0xe343167631d89B6Ffc58B88d6b7fB0228795491D;
 
@@ -50,13 +51,6 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
     }
 
     function _postExecute() internal override {
-        // Claim Reserves for USDS and DAI Markets
-        address[] memory aTokens = new address[](2);
-        aTokens[0] = SparkLend.DAI_SPTOKEN;
-        aTokens[1] = SparkLend.USDS_SPTOKEN;
-
-        _transferFromSparkLendTreasury(aTokens);
-
         // Increase spUSDT Supply Cap
         spUsdt.setDepositCap(2_000_000_000e6);
 
@@ -71,12 +65,14 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SUSDE,                1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDC,           1, 10);
         NEW_ALM_CONTROLLER.setMaxExchangeRate(Ethereum.SYRUP_USDT,           1, 10);
+        NEW_ALM_CONTROLLER.setMaxExchangeRate(ARKIS,                         1, 10);
 
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDC,  0.99999e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDE,  0.99999e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDS,  0.99999e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_CORE_USDT,  0.99999e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.ATOKEN_PRIME_USDS, 0.99999e18);
+        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(Ethereum.CURVE_WEETHWETHNG, 0.9975e18);
 
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.DAI_SPTOKEN,   0.99999e18);
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(SparkLend.USDC_SPTOKEN,  0.99999e18);
@@ -95,131 +91,39 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         // Deprecate rsETH (Phase 1)
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFreeze(Ethereum.RSETH, true);
 
-        // Onboard with Paxos
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                address(0xdeadbeef)
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            50_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.PYUSD,
-                address(0xdeadbeef)
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            200_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.PYUSD,
-                address(0xdeadbeef1)
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            50_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(NEW_ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                USDG,
-                address(0xdeadbeef)
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            100_000_000e6 / uint256(1 days),
-            6
-        );
-
         // Onboard Uniswap v4 PYUSD/USDS Pool
-        MainnetController(NEW_ALM_CONTROLLER).setUniswapV4TickLimits(PYUSD_USDS_POOL_ID, 276_314, 276_334, 10);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(address(uint160(uint256(PYUSD_USDS_POOL_ID))), 0.999e18);
-        SLLHelpers.setRateLimitData(
-            keccak256(
-                abi.encode(
-                    MainnetController(NEW_ALM_CONTROLLER).LIMIT_UNISWAP_V4_DEPOSIT(),
-                    PYUSD_USDS_POOL_ID
-                )
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            10_000_000e18,
-            100_000_000e18 / uint256(1 days),
-            18
-        );
-        SLLHelpers.setRateLimitData(
-            keccak256(
-                abi.encode(
-                    MainnetController(NEW_ALM_CONTROLLER).LIMIT_UNISWAP_V4_WITHDRAW(),
-                    PYUSD_USDS_POOL_ID
-                )
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            50_000_000e18,
-            200_000_000e18 / uint256(1 days),
-            18
-        );
-        SLLHelpers.setRateLimitData(
-            keccak256(
-                abi.encode(
-                    MainnetController(NEW_ALM_CONTROLLER).LIMIT_UNISWAP_V4_SWAP(),
-                    PYUSD_USDS_POOL_ID
-                )
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e18,
-            50_000_000e18 / uint256(1 days),
-            18
-        );
+        SLLHelpers.configureUniswapV4Pool({
+            controller     : NEW_ALM_CONTROLLER,
+            rateLimits     : Ethereum.ALM_RATE_LIMITS,
+            poolId         : PYUSD_USDS_POOL_ID,
+            maxSlippage    : 0.999e18,
+            tickLower      : 276_314,
+            tickUpper      : 276_334,
+            maxTickSpacing : 10,
+            depositMax     : 10_000_000e18,
+            depositSlope   : 100_000_000e18 / uint256(1 days),
+            withdrawMax    : 50_000_000e18,
+            withdrawSlope  : 200_000_000e18 / uint256(1 days),
+            swapMax        : 5_000_000e18,
+            swapSlope      : 50_000_000e18 / uint256(1 days)
+        });
 
         // Onboard Uniswap v4 USDT/USDS Pool
-        MainnetController(NEW_ALM_CONTROLLER).setUniswapV4TickLimits(USDT_USDS_POOL_ID, 276_304, 276_344, 10);
-        MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(address(uint160(uint256(USDT_USDS_POOL_ID))), 0.998e18);
-        SLLHelpers.setRateLimitData(
-            keccak256(
-                abi.encode(
-                    MainnetController(NEW_ALM_CONTROLLER).LIMIT_UNISWAP_V4_DEPOSIT(),
-                    USDT_USDS_POOL_ID
-                )
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e18,
-            50_000_000e18 / uint256(1 days),
-            18
-        );
-        SLLHelpers.setRateLimitData(
-            keccak256(
-                abi.encode(
-                    MainnetController(NEW_ALM_CONTROLLER).LIMIT_UNISWAP_V4_WITHDRAW(),
-                    USDT_USDS_POOL_ID
-                )
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            50_000_000e18,
-            200_000_000e18 / uint256(1 days),
-            18
-        );
-        SLLHelpers.setRateLimitData(
-            keccak256(
-                abi.encode(
-                    MainnetController(NEW_ALM_CONTROLLER).LIMIT_UNISWAP_V4_SWAP(),
-                    USDT_USDS_POOL_ID
-                )
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e18,
-            50_000_000e18 / uint256(1 days),
-            18
-        );
+        SLLHelpers.configureUniswapV4Pool({
+            controller     : NEW_ALM_CONTROLLER,
+            rateLimits     : Ethereum.ALM_RATE_LIMITS,
+            poolId         : USDT_USDS_POOL_ID,
+            maxSlippage    : 0.998e18,
+            tickLower      : 276_304,
+            tickUpper      : 276_344,
+            maxTickSpacing : 10,
+            depositMax     : 5_000_000e18,
+            depositSlope   : 50_000_000e18 / uint256(1 days),
+            withdrawMax    : 50_000_000e18,
+            withdrawSlope  : 200_000_000e18 / uint256(1 days),
+            swapMax        : 5_000_000e18,
+            swapSlope      : 50_000_000e18 / uint256(1 days)
+        });
     }
 
 }
