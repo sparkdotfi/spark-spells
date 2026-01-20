@@ -215,7 +215,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             })
         );
         _testUniswapV4Swap({
-            poolId : PYUSD_USDS_POOL_ID
+            poolId : PYUSD_USDS_POOL_ID,
+            tickLower : 276_314,
+            tickUpper : 276_324
         });
     }
 
@@ -263,7 +265,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
             })
         );
         _testUniswapV4Swap({
-            poolId : USDT_USDS_POOL_ID
+            poolId : USDT_USDS_POOL_ID,
+            tickLower : 276_304,
+            tickUpper : 276_314
         });
     }
 
@@ -358,7 +362,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         );
     }
 
-    function _testUniswapV4Swap(bytes32 poolId) internal {
+    function _testUniswapV4Swap(bytes32 poolId, int24 tickLower, int24 tickUpper) internal {
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
@@ -372,6 +376,31 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         bytes32 swapPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(), poolId));
 
+        // Increase Liquidity of the pool
+
+        deal(
+            Currency.unwrap(poolKey.currency0),
+            address(ctx.proxy),
+            10_000_000e6
+        );
+        deal(
+            Currency.unwrap(poolKey.currency1),
+            address(ctx.proxy),
+            10_000_000e18
+        );
+
+        vm.prank(ctx.relayer);
+        controller.mintPositionUniswapV4({
+            poolId     : poolId,
+            tickLower  : tickLower,
+            tickUpper  : tickUpper,
+            liquidity  : 10_000_000e12,
+            amount0Max : 10_000_000e6,
+            amount1Max : 10_000_000e18
+        });
+
+        // Swap 
+
         deal(
             Currency.unwrap(currencyIn),
             address(ctx.proxy), _getBalanceOf(currencyIn, address(ctx.proxy)) + swapAmount
@@ -379,7 +408,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         uint256 token0BeforeCall    = _getBalanceOf(currencyIn, address(ctx.proxy));
         uint256 token1BeforeCall    = _getBalanceOf(currencyOut, address(ctx.proxy));
-        uint128 amountOutMin        = _getSwapAmountOutMin(poolId, Currency.unwrap(currencyIn), swapAmount, 1.5e18);
+        uint128 amountOutMin        = _getSwapAmountOutMin(poolId, Currency.unwrap(currencyIn), swapAmount, 0.9999e18);
         uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(swapPoolId);
 
         vm.prank(ctx.relayer);
