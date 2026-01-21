@@ -2479,12 +2479,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    SLLHelpers.addrToBytes32(address(0)));
 
-            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),   0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC),   0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),    0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),   0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0);
 
-            // New maxSlippages
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0);
@@ -2498,7 +2498,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),     0);
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),     0);
 
-            // New maxExchangeRates
             assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          0);
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   0);
             assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 0);
@@ -2507,7 +2506,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           0);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           0);
-
+            assertEq(controller.maxExchangeRates(ARKIS),                         0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
@@ -2630,6 +2629,121 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(Ethereum.ALM_PROXY));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), ForeignController(oldController).mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM));
         }
+    }
+
+    function _testMainnetControllerUpgradeEvents(address _oldController, address _newController) internal {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController newController = MainnetController(_newController);
+        MainnetController oldController = MainnetController(_oldController);
+
+        VmSafe.EthGetLogs[] memory oldSlippageLogs      = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
+        VmSafe.EthGetLogs[] memory oldCctpLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory oldLayerZeroLogs     = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory oldExchangeRatesLogs = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
+
+        assertEq(oldSlippageLogs.length,      16);
+        assertEq(oldCctpLogs.length,          5);
+        assertEq(oldLayerZeroLogs.length,     0);
+        assertEq(oldExchangeRatesLogs.length, 9);
+
+        vm.recordLogs();  // Used to get events from rate limits after execution
+
+        _executeMainnetPayload();
+
+        VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
+
+        uint256 newSlippageLogsCount;
+        uint256 newMintRecipientLogsCount;
+        uint256 newLayerZeroRecipientLogsCount;
+        uint256 newExchangeRateLogsCount;
+
+        for (uint256 i = 0; i < newLogs.length; ++i) {
+            if (newLogs[i].emitter != address(newController)) continue;
+
+            if (newLogs[i].topics[0] == MainnetController.MaxSlippageSet.selector) {
+                newSlippageLogsCount++;
+
+                try this.externalFindLogMatch(newLogs[i], oldSlippageLogs) returns (uint256 index) {
+                    address oldPool        = _toAddress(oldSlippageLogs[index].topics[1]);
+                    uint256 oldMaxSlippage = uint256(bytes32(oldSlippageLogs[index].data));
+
+                    assertEq(_toAddress(newLogs[i].topics[1]),  oldPool);
+                    assertEq(uint256(bytes32(newLogs[i].data)), oldMaxSlippage);
+
+                    assertEq(newController.maxSlippages(oldPool), oldController.maxSlippages(oldPool));
+                } catch {}
+            } else if (newLogs[i].topics[0] == MainnetController.MintRecipientSet.selector) {
+                newMintRecipientLogsCount++;
+
+                try this.externalFindLogMatch(newLogs[i], oldCctpLogs) returns (uint256 index) {
+                    uint32 oldDomain     = uint32(uint256(oldCctpLogs[index].topics[1]));
+                    address oldRecipient = _toAddress(bytes32(oldCctpLogs[index].data));
+
+                    assertEq(uint32(uint256(newLogs[i].topics[1])), oldDomain);
+                    assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
+
+                    assertEq(newController.mintRecipients(oldDomain), oldController.mintRecipients(oldDomain));
+                } catch {}
+            } else if (newLogs[i].topics[0] == MainnetController.LayerZeroRecipientSet.selector) {
+                newLayerZeroRecipientLogsCount++;
+
+                try this.externalFindLogMatch(newLogs[i], oldLayerZeroLogs) returns (uint256 index) {
+                    uint32 oldEndpointId = uint32(uint256(oldLayerZeroLogs[index].topics[1]));
+                    address oldRecipient = _toAddress(bytes32(oldLayerZeroLogs[index].data));
+
+                    assertEq(uint32(uint256(newLogs[i].topics[1])), oldEndpointId);
+                    assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
+
+                    assertEq(newController.layerZeroRecipients(oldEndpointId), oldController.layerZeroRecipients(oldEndpointId));
+                } catch {}
+            } else if (newLogs[i].topics[0] == MainnetController.MaxExchangeRateSet.selector) {
+                newExchangeRateLogsCount++;
+
+                try this.externalFindLogMatch(newLogs[i], oldExchangeRatesLogs) returns (uint256 index) {
+                    address oldToken           = _toAddress(oldExchangeRatesLogs[index].topics[1]);
+                    uint256 oldMaxExchangeRate = uint256(bytes32(oldExchangeRatesLogs[index].data));
+
+                    assertEq(_toAddress(newLogs[i].topics[1]),  oldToken);
+                    assertEq(uint256(bytes32(newLogs[i].data)), oldMaxExchangeRate);
+
+                    assertEq(newController.maxExchangeRates(oldToken), oldController.maxExchangeRates(oldToken));
+                } catch {}
+            }
+        }
+
+        assertGe(newSlippageLogsCount,           oldSlippageLogs.length);
+        assertGe(newMintRecipientLogsCount,      oldCctpLogs.length);
+        assertGe(newLayerZeroRecipientLogsCount, oldLayerZeroLogs.length);
+        assertGe(newExchangeRateLogsCount,       oldExchangeRatesLogs.length);
+    }
+
+    function _toAddress(bytes32 b) internal pure returns (address) {
+        return address(uint160(uint256(b)));
+    }
+
+    function _findLogMatch(
+        VmSafe.Log memory newLog,
+        VmSafe.EthGetLogs[] memory oldLogs
+    )
+        internal pure returns (uint256)
+    {
+        for (uint256 i = 0; i < oldLogs.length; ++i) {
+            if (oldLogs[i].topics[1] == newLog.topics[1]) {
+                return i;
+            }
+        }
+
+        revert("Log Match not found");
+    }
+
+    function externalFindLogMatch(
+        VmSafe.Log memory newLog,
+        VmSafe.EthGetLogs[] memory oldLogs
+    )
+        external pure returns (uint256)
+    {
+        return _findLogMatch(newLog, oldLogs);
     }
 
     function _assertOldControllerEvents(address _oldController) internal {

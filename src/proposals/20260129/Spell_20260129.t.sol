@@ -125,6 +125,13 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         });
     }
 
+    function test_ETHEREUM_controllerUpgradeEvents() public onChain(ChainIdUtils.Ethereum()) {
+        _testMainnetControllerUpgradeEvents({
+            _oldController: Ethereum.ALM_CONTROLLER,
+            _newController: ETHEREUM_NEW_ALM_CONTROLLER
+        });
+    }
+
     struct UniswapV4DepositWithdrawParams {
         bytes32 poolId;
         uint256 depositAmount0;
