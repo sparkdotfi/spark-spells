@@ -361,7 +361,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     using DomainHelpers for Domain;
 
     // TODO: Put in registry
-    address internal constant ARKIS                = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant ANCHORAGE            = 0x49506C3Aa028693458d6eE816b2EC28522946872;
     address internal constant AAVE_ATOKEN_USDC     = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address internal constant AAVE_CORE_AUSDT      = 0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a;
@@ -2506,7 +2505,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           0);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           0);
-            assertEq(controller.maxExchangeRates(ARKIS),                         0);
+            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
@@ -2601,7 +2600,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           1e37);
             assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           1e37);
-            assertEq(controller.maxExchangeRates(ARKIS),                         1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          1e37);
         } else {
             VmSafe.EthGetLogs[] memory slippageLogs = _getEvents(block.chainid, oldController, ForeignController.MaxSlippageSet.selector);
             VmSafe.EthGetLogs[] memory cctpLogs     = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
@@ -2813,7 +2812,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(address(uint160(uint256(exchangeRatesLogs[5].topics[1]))), Ethereum.SUSDE);
         assertEq(address(uint160(uint256(exchangeRatesLogs[6].topics[1]))), Ethereum.SYRUP_USDC);
         assertEq(address(uint160(uint256(exchangeRatesLogs[7].topics[1]))), Ethereum.SYRUP_USDT);
-        assertEq(address(uint160(uint256(exchangeRatesLogs[8].topics[1]))), ARKIS);
+        assertEq(address(uint160(uint256(exchangeRatesLogs[8].topics[1]))), Ethereum.ARKIS_VAULT);
 
         assertEq(oldController.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 10e18 * 1e36 / 1e18
         assertEq(oldController.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   1e37);
@@ -2823,7 +2822,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(oldController.maxExchangeRates(Ethereum.SUSDS),                1e37);
         assertEq(oldController.maxExchangeRates(Ethereum.SYRUP_USDC),           1e37);
         assertEq(oldController.maxExchangeRates(Ethereum.SYRUP_USDT),           1e37);
-        assertEq(oldController.maxExchangeRates(ARKIS),                         1e37);
+        assertEq(oldController.maxExchangeRates(Ethereum.ARKIS_VAULT),          1e37);
     }
 
     function _testE2ESLLCrossChainForDomain(
@@ -3546,7 +3545,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",  Ethereum.MORPHO_VAULT_USDS);
         integrations[28] = _createERC4626Integration("ERC4626-SUSDS",              Ethereum.SUSDS);
         integrations[29] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
-        integrations[30] = _createERC4626Integration("ERC4626-ARKIS-USDC",         ARKIS);
+        integrations[30] = _createERC4626Integration("ERC4626-ARKIS-USDC",         Ethereum.ARKIS_VAULT);
 
         integrations[31] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 

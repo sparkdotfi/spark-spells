@@ -114,21 +114,21 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         }
 
         // Claim Reserves for all Markets
-        address[] memory aTokens = new address[](5);
-        aTokens[0] = SparkLend.DAI_SPTOKEN;
-        aTokens[1] = SparkLend.USDS_SPTOKEN;
-        aTokens[2] = SparkLend.USDC_SPTOKEN;
-        aTokens[3] = SparkLend.PYUSD_SPTOKEN;
-        aTokens[4] = SparkLend.USDT_SPTOKEN;
+        address[] memory stablecoinATokens = new address[](5);
+        stablecoinATokens[0] = SparkLend.DAI_SPTOKEN;
+        stablecoinATokens[1] = SparkLend.USDS_SPTOKEN;
+        stablecoinATokens[2] = SparkLend.USDC_SPTOKEN;
+        stablecoinATokens[3] = SparkLend.PYUSD_SPTOKEN;
+        stablecoinATokens[4] = SparkLend.USDT_SPTOKEN;
 
-        _transferFromSparkLendTreasury(aTokens, Ethereum.ALM_PROXY);
+        _transferFromSparkLendTreasury(stablecoinATokens, Ethereum.ALM_PROXY);
 
-        address[] memory remainingATokens = new address[](13);
         address[] memory reserves         = IPool(SparkLend.POOL).getReservesList();
+        address[] memory remainingATokens = new address[](reserves.length - stablecoinATokens.length);
 
-        uint i;
+        uint256 i;
 
-        for(uint j; j < reserves.length; ++j) {
+        for (uint256 j; j < reserves.length; ++j) {
             address aToken = IPool(SparkLend.POOL).getReserveData(reserves[j]).aTokenAddress;
 
             if(

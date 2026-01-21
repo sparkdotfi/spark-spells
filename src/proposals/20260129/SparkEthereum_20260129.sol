@@ -26,7 +26,7 @@ import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
  *         - Deprecate ezETH Phase 1
  *         - Deprecate rsETH (Phase 1)
  *         Spark Liquidity Layer:
- *         - Onboard with Paxos
+ *         - Upgrade ALM Controller to v1.9.0
  *         - Onboard Uniswap v4 PYUSD/USDS Pool
  *         - Onboard Uniswap v4 USDT/USDS Pool
  *         Spark Treasury:
@@ -41,9 +41,7 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
 
     ISparkVaultV2Like internal constant spUsdt = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-    address internal constant ARKIS              = 0x38464507E02c983F20428a6E8566693fE9e422a9;
     address internal constant NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
-    address internal constant USDG               = 0xe343167631d89B6Ffc58B88d6b7fB0228795491D;
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
@@ -69,18 +67,19 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         _migrateMaxExchangeRate(Ethereum.SUSDE);
         _migrateMaxExchangeRate(Ethereum.SYRUP_USDC);
         _migrateMaxExchangeRate(Ethereum.SYRUP_USDT);
-        _migrateMaxExchangeRate(ARKIS);
+        _migrateMaxExchangeRate(Ethereum.ARKIS_VAULT);
 
         _migrateMaxSlippage(Ethereum.CURVE_SUSDSUSDT);
         _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDC);
         _migrateMaxSlippage(Ethereum.CURVE_USDCUSDT);
         _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDS);
+        _migrateMaxSlippage(Ethereum.CURVE_WEETHWETHNG);
+
         _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDC);
         _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDE);
         _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDS);
         _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDT);
         _migrateMaxSlippage(Ethereum.ATOKEN_PRIME_USDS);
-        _migrateMaxSlippage(Ethereum.CURVE_WEETHWETHNG);
 
         _migrateMaxSlippage(SparkLend.DAI_SPTOKEN);
         _migrateMaxSlippage(SparkLend.USDC_SPTOKEN);
@@ -143,7 +142,7 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         NEW_ALM_CONTROLLER.setMaxExchangeRate(vault, 1, 10);
 
         require(
-            oldMaxExchangeRate == MainnetController(NEW_ALM_CONTROLLER).maxExchangeRates(vault),
+            MainnetController(NEW_ALM_CONTROLLER).maxExchangeRates(vault) == oldMaxExchangeRate,
             "Max exchange rate mismatch"
         );
     }
