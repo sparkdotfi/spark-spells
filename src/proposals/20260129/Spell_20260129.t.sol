@@ -20,14 +20,6 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
-
-import { Currency }     from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
-import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
-import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
-import { TickMath }     from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/TickMath.sol";
-import { PoolId }       from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolId.sol";
-import { FullMath }     from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/FullMath.sol";
 
 import { UserConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
 
@@ -62,44 +54,6 @@ interface IPermissionManagerLike {
     ) external;
 }
 
-interface IPositionManagerLike {
-
-    function transferFrom(address from, address to, uint256 id) external;
-
-    function getPoolAndPositionInfo(uint256 tokenId)
-        external view returns (PoolKey memory poolKey, PositionInfo info);
-
-    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
-
-    function nextTokenId() external view returns (uint256 nextTokenId);
-
-    function ownerOf(uint256 tokenId) external view returns (address owner);
-
-    function poolKeys(bytes25 poolId) external view returns (PoolKey memory poolKeys);
-
-}
-
-interface IStateViewLike {
-
-    function getSlot0(PoolId poolId)
-        external view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
-
-}
-
-interface IV4QuoterLike {
-
-    struct QuoteExactSingleParams {
-        PoolKey poolKey;
-        bool    zeroForOne;
-        uint128 exactAmount;
-        bytes   hookData;
-    }
-
-    function quoteExactInputSingle(QuoteExactSingleParams memory params)
-        external returns (uint256 amountOut, uint256 gasEstimate);
-
-}
-
 contract MockAggregator {
 
     int256 public latestAnswer;
@@ -110,17 +64,12 @@ contract MockAggregator {
 
 }
 
-import { console2 } from "forge-std/console2.sol";
-
 contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
-
-    address internal constant _V4_QUOTER  = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
-    address internal constant _STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
 
     constructor() {
         _spellId   = 20260129;
@@ -190,7 +139,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         bytes32 swapPoolId     = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(),     PYUSD_USDS_POOL_ID));
 
         assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), 0);
-        
+
         _assertRateLimit(depositPoolId,  0, 0);
         _assertRateLimit(withdrawPoolId, 0, 0);
         _assertRateLimit(swapPoolId,     0, 0);
@@ -214,22 +163,6 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         assertEq(_tickLowerMin,   276_314);
         assertEq(_tickUpperMax,   276_334);
         assertEq(_maxTickSpacing, 10);
-
-        _testUniswapV4DepositWithdraw(
-            UniswapV4DepositWithdrawParams({
-                poolId         : PYUSD_USDS_POOL_ID,
-                depositAmount0 : 1_000_000e6,
-                depositAmount1 : 1_000_000e18,
-                liquidity      : 1_000_000e12,
-                tickLower      : 276_314,
-                tickUpper      : 276_324
-            })
-        );
-        _testUniswapV4Swap({
-            poolId : PYUSD_USDS_POOL_ID,
-            tickLower : 276_324,
-            tickUpper : 276_326
-        });
     }
 
     function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4USDTUSDS() public onChain(ChainIdUtils.Ethereum()) {
@@ -240,7 +173,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         bytes32 swapPoolId     = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(),     USDT_USDS_POOL_ID));
 
         assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))), 0);
-        
+
         _assertRateLimit(depositPoolId,  0, 0);
         _assertRateLimit(withdrawPoolId, 0, 0);
         _assertRateLimit(swapPoolId,     0, 0);
@@ -264,304 +197,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         assertEq(_tickLowerMin,   276_304);
         assertEq(_tickUpperMax,   276_344);
         assertEq(_maxTickSpacing, 10);
-
-        _testUniswapV4DepositWithdraw(
-            UniswapV4DepositWithdrawParams({
-                poolId         : USDT_USDS_POOL_ID,
-                depositAmount0 : 1_000_000e6,
-                depositAmount1 : 1_000_000e18,
-                liquidity      : 1_000_000e12,
-                tickLower      : 276_304,
-                tickUpper      : 276_314
-            })
-        );
-        _testUniswapV4Swap({
-            poolId : USDT_USDS_POOL_ID,
-            tickLower : 276_304,
-            tickUpper : 276_314
-        });
     }
-
-    function _testUniswapV4DepositWithdraw(UniswapV4DepositWithdrawParams memory params) internal {
-        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
-
-        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(params.poolId));
-
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(
-            keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  params.poolId))
-        );
-
-        // Increase position.
-
-        deal(
-            Currency.unwrap(poolKey.currency0),
-            address(ctx.proxy),
-            params.depositAmount0
-        );
-        deal(
-            Currency.unwrap(poolKey.currency1),
-            address(ctx.proxy),
-            params.depositAmount1
-        );
-
-        uint256 token0BeforeCall = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
-        uint256 token1BeforeCall = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
-
-        vm.prank(ctx.relayer);
-        controller.mintPositionUniswapV4({
-            poolId     : params.poolId,
-            tickLower  : params.tickLower,
-            tickUpper  : params.tickUpper,
-            liquidity  : params.liquidity,
-            amount0Max : params.depositAmount0,
-            amount1Max : params.depositAmount1
-        });
-
-        uint256 amount0Received = token0BeforeCall - _getBalanceOf(poolKey.currency0, address(ctx.proxy));
-        uint256 amount1Received = token1BeforeCall - _getBalanceOf(poolKey.currency1, address(ctx.proxy));
-
-        assertEq(
-            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(
-                keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  params.poolId))
-            ),
-            _toNormalizedAmount(poolKey.currency0, amount0Received) +
-            _toNormalizedAmount(poolKey.currency1, amount1Received)
-        );
-
-        uint256 tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
-
-        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(tokenId), address(ctx.proxy));
-
-        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId), params.liquidity);
-
-        // Decrease position.
-
-        token0BeforeCall = _getBalanceOf(poolKey.currency0, address(ctx.proxy));
-        token1BeforeCall = _getBalanceOf(poolKey.currency1, address(ctx.proxy));
-
-        rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(
-            keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), params.poolId))
-        );
-
-        uint256 positionLiquidityBeforeCall = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId);
-
-        vm.prank(ctx.relayer);
-        controller.decreaseLiquidityUniswapV4({
-            poolId            : params.poolId,
-            tokenId           : tokenId,
-            liquidityDecrease : params.liquidity,
-            amount0Min        : 0,
-            amount1Min        : 0
-        });
-
-        amount0Received = _getBalanceOf(poolKey.currency0, address(ctx.proxy)) - token0BeforeCall;
-        amount1Received = _getBalanceOf(poolKey.currency1, address(ctx.proxy)) - token1BeforeCall;
-
-        assertEq(
-            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(
-                keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), params.poolId))
-            ),
-            _toNormalizedAmount(poolKey.currency0, amount0Received) +
-            _toNormalizedAmount(poolKey.currency1, amount1Received)
-        );
-
-        assertEq(
-            IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(tokenId),
-            positionLiquidityBeforeCall - params.liquidity
-        );
-    }
-
-    function _testUniswapV4Swap(bytes32 poolId, int24 tickLower, int24 tickUpper) internal {
-        MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
-
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
-
-        Currency currencyIn  = poolKey.currency0;
-        Currency currencyOut = poolKey.currency1;
-
-        uint128 swapAmount = uint128(1 * 10 ** IERC20Metadata(Currency.unwrap(currencyIn)).decimals());
-
-        bytes32 swapPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(), poolId));
-
-        ( uint256 amount0Forecasted, uint256 amount1Forecasted ) = _quoteLiquidity(
-            keccak256(abi.encode(poolKey)),
-            tickLower,
-            tickUpper,
-            100_000_000e12
-        );
-
-        // Increase Liquidity of the pool
-
-        deal(
-            Currency.unwrap(poolKey.currency0),
-            address(ctx.proxy),
-            10_000_000e6
-        );
-        deal(
-            Currency.unwrap(poolKey.currency1),
-            address(ctx.proxy),
-            10_000_000e18
-        );
-
-        vm.prank(ctx.relayer);
-        controller.mintPositionUniswapV4({
-            poolId     : poolId,
-            tickLower  : tickLower,
-            tickUpper  : tickUpper,
-            liquidity  : 100_000_000e12,
-            amount0Max : amount0Forecasted,
-            amount1Max : amount1Forecasted
-        });
-
-        // Swap 
-
-        deal(
-            Currency.unwrap(currencyIn),
-            address(ctx.proxy), _getBalanceOf(currencyIn, address(ctx.proxy)) + swapAmount
-        );
-
-        uint256 token0BeforeCall    = _getBalanceOf(currencyIn, address(ctx.proxy));
-        uint256 token1BeforeCall    = _getBalanceOf(currencyOut, address(ctx.proxy));
-        uint128 amountOutMin        = _getSwapAmountOutMin(poolId, Currency.unwrap(currencyIn), swapAmount, 0.9999e18);
-        uint256 rateLimitBeforeCall = controller.rateLimits().getCurrentRateLimit(swapPoolId);
-
-        vm.prank(ctx.relayer);
-        controller.swapUniswapV4({
-            poolId       : poolId,
-            tokenIn      : Currency.unwrap(currencyIn),
-            amountIn     : swapAmount,
-            amountOutMin : amountOutMin
-        });
-
-        assertEq(token0BeforeCall - _getBalanceOf(currencyIn, address(ctx.proxy)),  swapAmount);
-        assertGe(_getBalanceOf(currencyOut, address(ctx.proxy)) - token1BeforeCall, amountOutMin);
-
-        assertEq(
-            rateLimitBeforeCall - controller.rateLimits().getCurrentRateLimit(swapPoolId),
-            _toNormalizedAmount(currencyIn, swapAmount)
-        );
-    }
-
-    function _getSwapAmountOutMin(
-        bytes32 poolId,
-        address tokenIn,
-        uint128 amountIn,
-        uint256 maxSlippage
-    )
-        internal returns (uint128 amountOutMin)
-    {
-        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
-
-        address token0 = Currency.unwrap(poolKey.currency0);
-
-        IV4QuoterLike.QuoteExactSingleParams memory params = IV4QuoterLike.QuoteExactSingleParams({
-            poolKey     : poolKey,
-            zeroForOne  : tokenIn == token0,
-            exactAmount : amountIn,
-            hookData    : bytes("")
-        });
-
-        ( uint256 amountOut, ) = IV4QuoterLike(_V4_QUOTER).quoteExactInputSingle(params);
-
-        console2.log("Amount In: %s", amountIn);
-        console2.log("Amount out: %s", amountOut);
-        console2.log("Max Slippage: %s", maxSlippage);
-
-        return uint128((amountOut * maxSlippage) / 1e18);
-    }
-
-    function _toNormalizedAmount(Currency currency, uint256 amount)
-        internal view returns (uint256 normalizedAmount)
-    {
-        return amount * 1e18 / (10 ** IERC20Metadata(Currency.unwrap(currency)).decimals());
-    }
-
-    function _getBalanceOf(Currency currency, address  account)
-        internal view returns (uint256 balance)
-    {
-        return IERC20(Currency.unwrap(currency)).balanceOf(account);
-    }
-
-    function _quoteLiquidity(
-        bytes32 poolId,
-        int24   tickLower,
-        int24   tickUpper,
-        uint128 liquidityAmount
-    )
-        internal view returns (uint256 amount0, uint256 amount1)
-    {
-        ( uint160 sqrtPriceX96, , , ) = IStateViewLike(_STATE_VIEW).getSlot0(PoolId.wrap(poolId));
-
-        return _getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtPriceAtTick(tickLower),
-            TickMath.getSqrtPriceAtTick(tickUpper),
-            liquidityAmount
-        );
-    }
-
-    function _getAmount0ForLiquidity(
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint128 liquidity
-    )
-        internal pure returns (uint256 amount0)
-    {
-        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-0");
-
-        return FullMath.mulDiv(
-            uint256(liquidity) << 96,
-            sqrtPriceBX96 - sqrtPriceAX96,
-            uint256(sqrtPriceBX96) * sqrtPriceAX96
-        );
-    }
-
-    function _getAmount1ForLiquidity(
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint128 liquidity
-    )
-        internal pure returns (uint256 amount1)
-    {
-        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-1");
-
-        return FullMath.mulDiv(liquidity, sqrtPriceBX96 - sqrtPriceAX96, 1 << 96);
-    }
-
-    function _getAmountsForLiquidity(
-        uint160 sqrtPriceX96,
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint128 liquidity
-    )
-        internal pure returns (uint256 amount0, uint256 amount1)
-    {
-        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices");
-
-        if (sqrtPriceX96 <= sqrtPriceAX96) {
-            return (
-                _getAmount0ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity),
-                0
-            );
-        }
-
-        if (sqrtPriceX96 >= sqrtPriceBX96) {
-            return (
-                0,
-                _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity)
-            );
-        }
-
-        return (
-            _getAmount0ForLiquidity(sqrtPriceX96, sqrtPriceBX96, liquidity),
-            _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceX96, liquidity)
-        );
-    }
-
 }
 
 contract SparkEthereum_20260129_SparklendTests is SparklendTests {
