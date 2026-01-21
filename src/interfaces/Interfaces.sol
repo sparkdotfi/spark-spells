@@ -505,3 +505,18 @@ interface IStateViewLike {
         external view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
 
 }
+
+// Uniswap V4
+interface IV4QuoterLike {
+
+    struct QuoteExactSingleParams {
+        PoolKey poolKey;
+        bool    zeroForOne;
+        uint128 exactAmount;
+        bytes   hookData;
+    }
+
+    function quoteExactInputSingle(QuoteExactSingleParams memory params)
+        external returns (uint256 amountOut, uint256 gasEstimate);
+
+}
