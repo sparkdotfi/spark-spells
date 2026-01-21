@@ -2478,11 +2478,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     SLLHelpers.addrToBytes32(address(0)));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    SLLHelpers.addrToBytes32(address(0)));
 
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   0);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    0);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          0);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                0);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           0);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           0);
+            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          0);
+
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),   0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC),   0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),    0);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),   0);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0);
 
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0);
@@ -2491,21 +2500,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0);
 
             assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),      0);
-            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0);
-            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),     0);
             assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),     0);
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),     0);
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),     0);
+            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN),    0);
+            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),     0);
 
-            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          0);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   0);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 0);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    0);
-            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                0);
-            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                0);
-            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           0);
-            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           0);
-            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          0);
+            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
@@ -2552,55 +2553,69 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),     _oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN));
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    _oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE));
 
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);  // 1e25 is 10e6 * 1e36 / 1e18
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 10e18 * 1e36 / 1e18
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           1e37);
+            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          1e37);
+
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), _oldController.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC));
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   _oldController.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1));
+            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    _oldController.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS));
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                _oldController.maxExchangeRates(Ethereum.SUSDS));
+            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          _oldController.maxExchangeRates(Ethereum.FLUID_SUSDS));
+            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                _oldController.maxExchangeRates(Ethereum.SUSDE));
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           _oldController.maxExchangeRates(Ethereum.SYRUP_USDC));
+            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           _oldController.maxExchangeRates(Ethereum.SYRUP_USDT));
+            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          _oldController.maxExchangeRates(Ethereum.ARKIS_VAULT));
+
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), 0.9990e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  0.9985e18);
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), 0.998e18);
+
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  0.99999e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  0.99999e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  0.99999e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  0.99999e18);
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), 0.99999e18);
-            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0.9975e18);
 
             assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),   0.99999e18);
-            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN), 0.99999e18);
-            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),  0.99999e18);
             assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),  0.99999e18);
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),  0.99999e18);
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),  0.99999e18);
+            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN), 0.99999e18);
+            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),  0.99999e18);
+
+            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0.9975e18);
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),   _oldController.maxSlippages(Ethereum.CURVE_SUSDSUSDT));
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC),   _oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDC));
             assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),    _oldController.maxSlippages(Ethereum.CURVE_USDCUSDT));
             assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),   _oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDS));
+
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  _oldController.maxSlippages(Ethereum.ATOKEN_CORE_USDC));
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  _oldController.maxSlippages(Ethereum.ATOKEN_CORE_USDE));
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDS),  _oldController.maxSlippages(Ethereum.ATOKEN_CORE_USDS));
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDT),  _oldController.maxSlippages(Ethereum.ATOKEN_CORE_USDT));
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_PRIME_USDS), _oldController.maxSlippages(Ethereum.ATOKEN_PRIME_USDS));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), _oldController.maxSlippages(Ethereum.CURVE_WEETHWETHNG));
 
             assertEq(controller.maxSlippages(SparkLend.DAI_SPTOKEN),   _oldController.maxSlippages(SparkLend.DAI_SPTOKEN));
-            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN), _oldController.maxSlippages(SparkLend.PYUSD_SPTOKEN));
-            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),  _oldController.maxSlippages(SparkLend.WETH_SPTOKEN));
             assertEq(controller.maxSlippages(SparkLend.USDC_SPTOKEN),  _oldController.maxSlippages(SparkLend.USDC_SPTOKEN));
             assertEq(controller.maxSlippages(SparkLend.USDS_SPTOKEN),  _oldController.maxSlippages(SparkLend.USDS_SPTOKEN));
             assertEq(controller.maxSlippages(SparkLend.USDT_SPTOKEN),  _oldController.maxSlippages(SparkLend.USDT_SPTOKEN));
+            assertEq(controller.maxSlippages(SparkLend.PYUSD_SPTOKEN), _oldController.maxSlippages(SparkLend.PYUSD_SPTOKEN));
+            assertEq(controller.maxSlippages(SparkLend.WETH_SPTOKEN),  _oldController.maxSlippages(SparkLend.WETH_SPTOKEN));
+
+            assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), _oldController.maxSlippages(Ethereum.CURVE_WEETHWETHNG));
 
             // New max Slippages
             assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), 0.999e18);
             assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))),  0.998e18);
-
-            assertEq(controller.maxExchangeRates(Ethereum.FLUID_SUSDS),          1e37);  // 1e37 is 10e18 * 1e36 / 1e18
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_DAI_1),   1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDC_BC), 1e25);  // 1e25 is 10e6 * 1e36 / 1e18
-            assertEq(controller.maxExchangeRates(Ethereum.MORPHO_VAULT_USDS),    1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.SUSDE),                1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.SUSDS),                1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDC),           1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.SYRUP_USDT),           1e37);
-            assertEq(controller.maxExchangeRates(Ethereum.ARKIS_VAULT),          1e37);
         } else {
             VmSafe.EthGetLogs[] memory slippageLogs = _getEvents(block.chainid, oldController, ForeignController.MaxSlippageSet.selector);
             VmSafe.EthGetLogs[] memory cctpLogs     = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
