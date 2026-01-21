@@ -2663,51 +2663,60 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             if (newLogs[i].topics[0] == MainnetController.MaxSlippageSet.selector) {
                 newSlippageLogsCount++;
 
-                try this.externalFindLogMatch(newLogs[i], oldSlippageLogs) returns (uint256 index) {
-                    address oldPool        = _toAddress(oldSlippageLogs[index].topics[1]);
-                    uint256 oldMaxSlippage = uint256(bytes32(oldSlippageLogs[index].data));
+                // Only assert equivalent events, new slippage config events aren't in old controller
+                if (newSlippageLogsCount > oldSlippageLogs.length) continue;
 
-                    assertEq(_toAddress(newLogs[i].topics[1]),  oldPool);
-                    assertEq(uint256(bytes32(newLogs[i].data)), oldMaxSlippage);
+                uint256 index = newSlippageLogsCount - 1;
 
-                    assertEq(newController.maxSlippages(oldPool), oldController.maxSlippages(oldPool));
-                } catch {}
-            } else if (newLogs[i].topics[0] == MainnetController.MintRecipientSet.selector) {
+                address oldPool        = _toAddress(oldSlippageLogs[index].topics[1]);
+                uint256 oldMaxSlippage = uint256(bytes32(oldSlippageLogs[index].data));
+
+                assertEq(_toAddress(newLogs[i].topics[1]),  oldPool);
+                assertEq(uint256(bytes32(newLogs[i].data)), oldMaxSlippage);
+
+                assertEq(newController.maxSlippages(oldPool), oldController.maxSlippages(oldPool));
+            }
+            else if (newLogs[i].topics[0] == MainnetController.MintRecipientSet.selector) {
                 newMintRecipientLogsCount++;
 
-                try this.externalFindLogMatch(newLogs[i], oldCctpLogs) returns (uint256 index) {
-                    uint32 oldDomain     = uint32(uint256(oldCctpLogs[index].topics[1]));
-                    address oldRecipient = _toAddress(bytes32(oldCctpLogs[index].data));
+                uint256 index = newMintRecipientLogsCount - 1;
 
-                    assertEq(uint32(uint256(newLogs[i].topics[1])), oldDomain);
-                    assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
+                uint32  oldDomain     = uint32(uint256(oldCctpLogs[index].topics[1]));
+                address oldRecipient  = _toAddress(bytes32(oldCctpLogs[index].data));
 
-                    assertEq(newController.mintRecipients(oldDomain), oldController.mintRecipients(oldDomain));
-                } catch {}
-            } else if (newLogs[i].topics[0] == MainnetController.LayerZeroRecipientSet.selector) {
+                assertEq(uint32(uint256(newLogs[i].topics[1])), oldDomain);
+                assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
+
+                assertEq(newController.mintRecipients(oldDomain), oldController.mintRecipients(oldDomain));
+            }
+            else if (newLogs[i].topics[0] == MainnetController.LayerZeroRecipientSet.selector) {
                 newLayerZeroRecipientLogsCount++;
 
-                try this.externalFindLogMatch(newLogs[i], oldLayerZeroLogs) returns (uint256 index) {
-                    uint32 oldEndpointId = uint32(uint256(oldLayerZeroLogs[index].topics[1]));
-                    address oldRecipient = _toAddress(bytes32(oldLayerZeroLogs[index].data));
+                uint256 index = newLayerZeroRecipientLogsCount - 1;
 
-                    assertEq(uint32(uint256(newLogs[i].topics[1])), oldEndpointId);
-                    assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
+                uint32  oldEndpointId = uint32(uint256(oldLayerZeroLogs[index].topics[1]));
+                address oldRecipient  = _toAddress(bytes32(oldLayerZeroLogs[index].data));
 
-                    assertEq(newController.layerZeroRecipients(oldEndpointId), oldController.layerZeroRecipients(oldEndpointId));
-                } catch {}
-            } else if (newLogs[i].topics[0] == MainnetController.MaxExchangeRateSet.selector) {
+                assertEq(uint32(uint256(newLogs[i].topics[1])), oldEndpointId);
+                assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
+
+                assertEq(newController.layerZeroRecipients(oldEndpointId), oldController.layerZeroRecipients(oldEndpointId));
+            }
+            else if (newLogs[i].topics[0] == MainnetController.MaxExchangeRateSet.selector) {
                 newExchangeRateLogsCount++;
 
-                try this.externalFindLogMatch(newLogs[i], oldExchangeRatesLogs) returns (uint256 index) {
-                    address oldToken           = _toAddress(oldExchangeRatesLogs[index].topics[1]);
-                    uint256 oldMaxExchangeRate = uint256(bytes32(oldExchangeRatesLogs[index].data));
+                // Only assert equivalent events, new exchange rate config events aren't in old controller
+                if (newExchangeRateLogsCount > oldExchangeRatesLogs.length) continue;
 
-                    assertEq(_toAddress(newLogs[i].topics[1]),  oldToken);
-                    assertEq(uint256(bytes32(newLogs[i].data)), oldMaxExchangeRate);
+                uint256 index = newExchangeRateLogsCount - 1;
 
-                    assertEq(newController.maxExchangeRates(oldToken), oldController.maxExchangeRates(oldToken));
-                } catch {}
+                address oldToken           = _toAddress(oldExchangeRatesLogs[index].topics[1]);
+                uint256 oldMaxExchangeRate = uint256(bytes32(oldExchangeRatesLogs[index].data));
+
+                assertEq(_toAddress(newLogs[i].topics[1]),  oldToken);
+                assertEq(uint256(bytes32(newLogs[i].data)), oldMaxExchangeRate);
+
+                assertEq(newController.maxExchangeRates(oldToken), oldController.maxExchangeRates(oldToken));
             }
         }
 
@@ -2719,30 +2728,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _toAddress(bytes32 b) internal pure returns (address) {
         return address(uint160(uint256(b)));
-    }
-
-    function _findLogMatch(
-        VmSafe.Log memory newLog,
-        VmSafe.EthGetLogs[] memory oldLogs
-    )
-        internal pure returns (uint256)
-    {
-        for (uint256 i = 0; i < oldLogs.length; ++i) {
-            if (oldLogs[i].topics[1] == newLog.topics[1]) {
-                return i;
-            }
-        }
-
-        revert("Log Match not found");
-    }
-
-    function externalFindLogMatch(
-        VmSafe.Log memory newLog,
-        VmSafe.EthGetLogs[] memory oldLogs
-    )
-        external pure returns (uint256)
-    {
-        return _findLogMatch(newLog, oldLogs);
     }
 
     function _assertOldControllerEvents(address _oldController) internal {

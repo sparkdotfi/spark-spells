@@ -73,7 +73,6 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDC);
         _migrateMaxSlippage(Ethereum.CURVE_USDCUSDT);
         _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDS);
-        _migrateMaxSlippage(Ethereum.CURVE_WEETHWETHNG);
 
         _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDC);
         _migrateMaxSlippage(Ethereum.ATOKEN_CORE_USDE);
@@ -87,6 +86,8 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
         _migrateMaxSlippage(SparkLend.USDT_SPTOKEN);
         _migrateMaxSlippage(SparkLend.PYUSD_SPTOKEN);
         _migrateMaxSlippage(SparkLend.WETH_SPTOKEN);
+
+        _migrateMaxSlippage(Ethereum.CURVE_WEETHWETHNG);
 
         // Deprecate tBTC Phase 1
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.TBTC, 99_00);

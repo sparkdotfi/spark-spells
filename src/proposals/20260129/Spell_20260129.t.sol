@@ -350,6 +350,16 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         if (pool.getReserveData(collateralAsset).configuration.getLtv() == 0) return;
         if (pool.getReserveData(collateralAsset).configuration.getDebtCeiling() > 0) return;
 
+        // Increase the supply cap.
+
+        IPoolConfigurator poolConfigurator =
+            IPoolConfigurator(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.POOL_CONFIGURATOR : SparkLend.POOL_CONFIGURATOR);
+
+        uint256 currentSupplyCap = pool.getConfiguration(collateralAsset).getSupplyCap();
+
+        vm.prank(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.AMB_EXECUTOR : Ethereum.SPARK_PROXY);
+        poolConfigurator.setSupplyCap(collateralAsset, currentSupplyCap + 1_000_000);
+
         _setupUserSparkLendPosition(collateralAsset, debtAsset, testUser, collateralAmount, debtAmount);
 
         // User can repay the debt.
@@ -385,6 +395,9 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
             vm.prank(Ethereum.SPARK_PROXY);
             AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
         }
+
+        deal(debtAsset,       testUser, debtAmount);
+        deal(collateralAsset, testUser, collateralAmount);
 
         // User can be liquidated.
         vm.prank(testUser);
