@@ -8,6 +8,10 @@ import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
+import { PoolId }       from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolId.sol";
+import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
+import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
+
 import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
 interface IALMProxyFreezableLike is IALMProxy {
@@ -102,7 +106,7 @@ interface ISparkVaultV2Like {
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
 
-    function grantRole(bytes32 role, address account) external; 
+    function grantRole(bytes32 role, address account) external;
 
     function hasRole(bytes32 role, address account) external view returns (bool);
 
@@ -473,5 +477,31 @@ interface IERC20Like {
     function balanceOf(address account) external view returns (uint256);
 
     function decimals() external view returns (uint8);
+
+}
+
+// Uniswap V4
+interface IPositionManagerLike {
+
+    function transferFrom(address from, address to, uint256 id) external;
+
+    function getPoolAndPositionInfo(uint256 tokenId)
+        external view returns (PoolKey memory poolKey, PositionInfo info);
+
+    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
+
+    function nextTokenId() external view returns (uint256 nextTokenId);
+
+    function ownerOf(uint256 tokenId) external view returns (address owner);
+
+    function poolKeys(bytes25 poolId) external view returns (PoolKey memory poolKeys);
+
+}
+
+// Uniswap V4
+interface IStateViewLike {
+
+    function getSlot0(PoolId poolId)
+        external view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
 
 }

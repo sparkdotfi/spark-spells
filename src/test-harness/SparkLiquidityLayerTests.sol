@@ -26,6 +26,13 @@ import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimi
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
+
+import { FullMath } from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/FullMath.sol";
+import { TickMath } from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/TickMath.sol";
+import { Currency } from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
+import { PoolId }   from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolId.sol";
+import { PoolKey }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
 
 import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 
@@ -49,9 +56,11 @@ import {
     IFarmLike,
     IMapleStrategyLike,
     IPoolManagerLike,
+    IPositionManagerLike,
     IPSMLike,
     IPSM3Like,
     ISparkVaultV2Like,
+    IStateViewLike,
     ISuperstateTokenLike,
     ISUSDELike,
     ISyrupLike,
@@ -82,7 +91,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         PSM3,
         SUPERSTATE_USCC,
         TREASURY,
-        TRANSFER_ASSET
+        TRANSFER_ASSET,
+        UNISWAP_V4_LP,
+        UNISWAP_V4_SWAP
     }
 
     struct BUIDLE2ETestParams {
@@ -249,6 +260,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 slope;
     }
 
+    struct SLLIntegration {
+        string   label;
+        Category category;
+        address  integration;
+        bytes32  entryId;
+        bytes32  entryId2;
+        bytes32  exitId;
+        bytes32  exitId2;
+        bytes    extraData;
+    }
+
     struct SparkLiquidityLayerContext {
         address     controller;
         address     prevController;  // Only if upgrading
@@ -301,23 +323,38 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256                    transferAmount;
     }
 
+    struct UniswapV4LPE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        bytes32 poolId;
+        address asset0;
+        address asset1;
+        uint256 depositAmount; // Amount across both assets
+        bytes32 depositKey;
+        bytes32 withdrawKey;
+    }
+
+    struct UniswapV4E2ETestVars {
+        uint256   depositAmount0;
+        uint256   depositAmount1;
+        int24     tickLower;
+        int24     tickUpper;
+        uint256   maxSlippage;
+        uint256   depositLimit;
+        uint256   withdrawLimit;
+        uint256   totalDepositValue;
+        uint128   liquidityAmount;
+        uint256   tokenId;
+        uint256   withdrawAmount0;
+        uint256   withdrawAmount1;
+        uint256   totalWithdrawnValue;
+    }
+
     struct VaultTakeE2ETestParams {
         SparkLiquidityLayerContext ctx;
         address                    asset;
         address                    vault;
         bytes32                    takeKey;
         uint256                    takeAmount;
-    }
-
-    struct SLLIntegration {
-        string   label;
-        Category category;
-        address  integration;
-        bytes32  entryId;
-        bytes32  entryId2;
-        bytes32  exitId;
-        bytes32  exitId2;
-        bytes    extraData;
     }
 
     using DomainHelpers for Domain;
@@ -350,6 +387,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
+
+    address internal constant UNISWAPV4_STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
 
     uint256 internal constant START_BLOCK = 21029247;
 
@@ -1208,6 +1247,126 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+    }
+
+    function _testUniswapV4LPIntegration(UniswapV4LPE2ETestParams memory p) internal {
+        skip(10 days);  // Recharge rate limits
+
+        UniswapV4E2ETestVars memory v;
+
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(p.poolId));
+
+        ( v.tickLower, v.tickUpper, ) = MainnetController(p.ctx.controller).uniswapV4TickLimits(p.poolId);
+
+        // Figure out how much of each asset is needed for some nominal liquidity amount of 1e18.
+        ( uint256 amount0, uint256 amount1 ) = _quoteLiquidity(p.poolId, v.tickLower, v.tickUpper, 1e18);
+
+        uint256 totalAmounts = _toNormalizedAmount(p.asset0, amount0) + _toNormalizedAmount(p.asset1, amount1);
+
+        // Scale the actual liquidity amount given how much higher or lower the total amount is than `p.depositAmount`.
+        v.liquidityAmount = uint128(1e18 * p.depositAmount / totalAmounts);
+
+        // Scale the deposit amounts given how much higher or lower the total amount is than `p.depositAmount`.
+        v.depositAmount0 = amount0 * p.depositAmount / totalAmounts;
+        v.depositAmount1 = amount1 * p.depositAmount / totalAmounts;
+
+        v.totalDepositValue =
+            _toNormalizedAmount(p.asset0, v.depositAmount0) +
+            _toNormalizedAmount(p.asset1, v.depositAmount1);
+
+        deal(address(p.asset0), address(p.ctx.proxy), v.depositAmount0);
+        deal(address(p.asset1), address(p.ctx.proxy), v.depositAmount1);
+
+        v.depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
+        v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
+
+        // Uniswap V4 rate limits should not be unlimited
+        assertTrue(v.depositLimit  != type(uint256).max);
+        assertTrue(v.withdrawLimit != type(uint256).max);
+
+        _checkRateLimitValue(p.ctx, p.depositKey,  18);
+        _checkRateLimitValue(p.ctx, p.withdrawKey, 18);
+
+        if (v.depositLimit > 0) {
+            IRateLimits.RateLimitData memory data = p.ctx.rateLimits.getRateLimitData(
+                RateLimitHelpers.makeBytes32Key(
+                    MainnetController(p.ctx.controller).LIMIT_UNISWAP_V4_SWAP(),
+                    p.poolId
+                )
+            );
+
+            assertGt(data.maxAmount, 0);
+        }
+
+        v.maxSlippage = MainnetController(p.ctx.controller).maxSlippages(address(uint160(uint256(p.poolId))));
+
+        /****************************************************/
+        /*** Step 1: Deposit and check resulting position ***/
+        /****************************************************/
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.depositAmount0);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).mintPositionUniswapV4({
+            poolId     : p.poolId,
+            tickLower  : v.tickLower,
+            tickUpper  : v.tickUpper,
+            liquidity  : v.liquidityAmount,
+            amount0Max : v.depositAmount0,
+            amount1Max : v.depositAmount1
+        });
+
+        v.tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
+
+        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).ownerOf(v.tokenId), address(p.ctx.proxy));
+
+        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        /**************************************************************************************/
+        /*** Step 2: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
+        /**************************************************************************************/
+
+        v.withdrawAmount0 = v.depositAmount0;
+        v.withdrawAmount1 = v.depositAmount1;
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).decreaseLiquidityUniswapV4({
+            poolId            : p.poolId,
+            tokenId           : v.tokenId,
+            liquidityDecrease : v.liquidityAmount,
+            amount0Min        : 0,
+            amount1Min        : 0
+        });
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmount0); // TODO: May need to be assertGe where v.withdrawAmount0 is reduced need of some slippage
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmount1); // TODO: May need to be assertGe where v.withdrawAmount1 is reduced need of some slippage
+
+        v.totalWithdrawnValue = _toNormalizedAmount(p.asset0, v.withdrawAmount0) + _toNormalizedAmount(p.asset1, v.withdrawAmount1);
+
+        // Ensure that value withdrawn is greater than the value deposited * maxSlippage (18 decimal precision)
+        assertGe(v.totalWithdrawnValue, v.totalDepositValue * v.maxSlippage / 1e18); // TODO: This doesn't really work that way for Uniswap V4
+
+        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), 0);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
+
+        /************************************/
+        /*** Step 3: Recharge rate limits ***/
+        /************************************/
+
+        skip(10 days);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), p.ctx.rateLimits.getRateLimitData(p.withdrawKey).maxAmount);
+
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
     function _testPSMIntegration(PSMSwapE2ETestParams memory p) internal {
@@ -3118,6 +3277,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }));
         }
 
+        else if (integration.category == Category.UNISWAP_V4_LP) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            bytes32 poolId = abi.decode(integration.extraData, (bytes32));
+
+            PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
+
+            _testUniswapV4LPIntegration(UniswapV4LPE2ETestParams({
+                ctx:            ctx,
+                poolId:         poolId,
+                asset0:         Currency.unwrap(poolKey.currency0),
+                asset1:         Currency.unwrap(poolKey.currency1),
+                depositAmount:  1_000_000e18,  // Amount across both assets
+                depositKey:     integration.entryId,
+                withdrawKey:    integration.exitId
+            }));
+        }
+
         else {
             console2.log("NOT running SLL E2E test for", integration.label);
         }
@@ -3202,7 +3379,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](47);
+        integrations = new SLLIntegration[](48);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
@@ -3233,39 +3410,40 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[21] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
         integrations[22] = _createCurveSwapIntegration("CURVE_SWAP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
         integrations[23] = _createCurveSwapIntegration("CURVE_SWAP-USDCUSDT",  Ethereum.CURVE_USDCUSDT);
+        integrations[24] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", CURVE_WEETHWETHNG); // TODO: Should be Ethereum.CURVE_WEETHWETHNG.
 
-        integrations[24] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",     MORPHO_USDC_BC);
-        integrations[25] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1", Ethereum.MORPHO_VAULT_DAI_1);
-        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",  Ethereum.MORPHO_VAULT_USDS);
-        integrations[27] = _createERC4626Integration("ERC4626-SUSDS",              Ethereum.SUSDS);
-        integrations[28] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
-        integrations[29] = _createERC4626Integration("ERC4626-ARKIS-USDC",         ARKIS);
+        integrations[25] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",     MORPHO_USDC_BC);
+        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1", Ethereum.MORPHO_VAULT_DAI_1);
+        integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",  Ethereum.MORPHO_VAULT_USDS);
+        integrations[28] = _createERC4626Integration("ERC4626-SUSDS",              Ethereum.SUSDS);
+        integrations[29] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
+        integrations[30] = _createERC4626Integration("ERC4626-ARKIS-USDC",         ARKIS);
 
-        integrations[30] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
+        integrations[31] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 
-        integrations[31] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
+        integrations[32] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
-        integrations[32] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
-        integrations[33] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
+        integrations[33] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
+        integrations[34] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
 
-        integrations[34] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[35] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[35] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
-        integrations[36] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
-        integrations[37] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
+        integrations[36] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
+        integrations[37] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
+        integrations[38] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
 
-        integrations[38] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[39] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[40] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
-        integrations[41] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
+        integrations[39] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[40] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[41] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[42] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
 
-        integrations[42] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
+        integrations[43] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[43] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        integrations[44] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
 
-        integrations[44] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
-        integrations[45] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
-        integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+        integrations[45] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
+        integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
+        integrations[47] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3405,13 +3583,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 1);
+        newIntegrations = new SLLIntegration[](integrations.length + 2);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 1] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", CURVE_WEETHWETHNG);
+        newIntegrations[newIntegrations.length - 1] = _createUniswapV4LpIntegration("PYUSD_USDS_POOL_ID", PYUSD_USDS_POOL_ID); // TODO: Should be UNISWAP_V4_PYUSD_USDS_POOL_ID
+        newIntegrations[newIntegrations.length - 1] = _createUniswapV4LpIntegration("USDT_USDS_POOL_ID", USDT_USDS_POOL_ID); // TODO: Should be UNISWAP_V4_USDT_USDS_POOL_ID
     }
 
     /**********************************************************************************************/
@@ -3731,6 +3910,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
+    function _createUniswapV4LpIntegration(
+        string  memory label,
+        bytes32        poolId
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.UNISWAP_V4_LP,
+            integration: address(0), // Not compatible, see extraData.
+            entryId:     RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_DEPOSIT(), poolId),
+            entryId2:    bytes32(0),
+            exitId:      RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_WITHDRAW(), poolId),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(poolId)
+        });
+    }
+
     /**********************************************************************************************/
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
@@ -3987,4 +4184,91 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ( newArray, ) = _removeAndReturnFound(array, value);
     }
 
+    /**********************************************************************************************/
+    /*** Uniswap V4 helper functions                                                            ***/
+    /**********************************************************************************************/
+
+    function _quoteLiquidity(
+        bytes32 poolId,
+        int24   tickLower,
+        int24   tickUpper,
+        uint128 liquidityAmount
+    )
+        internal view returns (uint256 amount0, uint256 amount1)
+    {
+        ( uint160 sqrtPriceX96, , , ) = IStateViewLike(UNISWAPV4_STATE_VIEW).getSlot0(PoolId.wrap(poolId));
+
+        return _getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            liquidityAmount
+        );
+    }
+
+    function _getAmountsForLiquidity(
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount0, uint256 amount1)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices");
+
+        if (sqrtPriceX96 <= sqrtPriceAX96) {
+            return (
+                _getAmount0ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity),
+                0
+            );
+        }
+
+        if (sqrtPriceX96 >= sqrtPriceBX96) {
+            return (
+                0,
+                _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity)
+            );
+        }
+
+        return (
+            _getAmount0ForLiquidity(sqrtPriceX96, sqrtPriceBX96, liquidity),
+            _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceX96, liquidity)
+        );
+    }
+
+    function _getAmount0ForLiquidity(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount0)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-0");
+
+        return FullMath.mulDiv(
+            uint256(liquidity) << 96,
+            sqrtPriceBX96 - sqrtPriceAX96,
+            uint256(sqrtPriceBX96) * sqrtPriceAX96
+        );
+    }
+
+    function _getAmount1ForLiquidity(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount1)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-1");
+
+        return FullMath.mulDiv(liquidity, sqrtPriceBX96 - sqrtPriceAX96, 1 << 96);
+    }
+
+    function _fromNormalizedAmount(address token, uint256 normalizedAmount) internal view returns (uint256 amount) {
+        return normalizedAmount * (10 ** IERC20Metadata(token).decimals()) / 1e18;
+    }
+
+    function _toNormalizedAmount(address token, uint256 amount) internal view returns (uint256 normalizedAmount) {
+        return amount * 1e18 / (10 ** IERC20Metadata(token).decimals());
+    }
 }
