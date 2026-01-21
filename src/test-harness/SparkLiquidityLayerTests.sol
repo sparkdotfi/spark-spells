@@ -448,25 +448,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function test_ETHEREUM_E2E_dev() external onChain(ChainIdUtils.Ethereum()) {
-        vm.skip(true);
-
-        _executeMainnetPayload();
-
-        SLLIntegration[] memory integrations = new SLLIntegration[](1);
-
-        // integrations[0] = _createUniswapV4LpIntegration("UNISWAP_V4_LP_PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        // integrations[0] = _createUniswapV4LpIntegration("UNISWAP_V4_LP_USDT_USDS", USDT_USDS_POOL_ID);
-        integrations[0] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
-        // integrations[0] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_USDT_USDS", USDT_USDS_POOL_ID, 10_000e18);
-
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            _runSLLE2ETests(ctx, integrations[i]);
-        }
-    }
-
     function test_ARBITRUM_E2E_sparkLiquidityLayer() external {
         _runSLLE2ETestsForDomain(ChainIdUtils.ArbitrumOne());
     }
@@ -3860,10 +3841,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         newIntegrations[integrations.length]     = _createUniswapV4LpIntegration("UNISWAP_V4_LP_PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        newIntegrations[integrations.length + 1] = _createUniswapV4LpIntegration("UNISWAP_V4_LP_USDT_USDS", USDT_USDS_POOL_ID);
+        newIntegrations[integrations.length + 1] = _createUniswapV4LpIntegration("UNISWAP_V4_LP_USDT_USDS",  USDT_USDS_POOL_ID);
 
         newIntegrations[integrations.length + 2] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
-        newIntegrations[integrations.length + 3] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_USDT_USDS", USDT_USDS_POOL_ID, 10_000e18);
+        newIntegrations[integrations.length + 3] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_USDT_USDS",  USDT_USDS_POOL_ID,  10_000e18);
     }
 
     /**********************************************************************************************/
