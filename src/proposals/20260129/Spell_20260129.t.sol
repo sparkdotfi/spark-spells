@@ -69,11 +69,11 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
-    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xc9ff605003A1b389980f650e1aEFA1ef25C8eE32;
 
     constructor() {
         _spellId   = 20260129;
-        _blockDate = 1768896843;  // 2026-01-20T08:14:00Z
+        _blockDate = 1769005086;  // 2026-01-21T14:18:00Z
     }
 
     function setUp() public override {
@@ -114,7 +114,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault:              usdtVault,
             depositCap:         2_000_000_000e6,
-            expectedMaxDeposit: 1_845_509_060.394753e6
+            expectedMaxDeposit: 1_840_172_664.849384e6
         });
     }
 
@@ -216,11 +216,11 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
     using UserConfiguration for DataTypes.UserConfigurationMap;
     using SafeERC20 for IERC20;
 
-    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xc9ff605003A1b389980f650e1aEFA1ef25C8eE32;
 
     constructor() {
         _spellId   = 20260129;
-        _blockDate = 1768896843;  // 2026-01-20T08:14:00Z
+        _blockDate = 1769005086;  // 2026-01-21T14:18:00Z
     }
 
     function setUp() public override {
@@ -234,6 +234,8 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
     function test_GNOSIS_sparkLend_deprecateMarket() external onChain(ChainIdUtils.Gnosis()) {
         address[] memory reserves = IPool(Gnosis.POOL).getReservesList();
+
+        assertGt(reserves.length, 0);
 
         for (uint256 i = 0; i < reserves.length; i++) {
             DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getConfiguration(reserves[i]);
@@ -439,11 +441,11 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
 
     uint256 internal constant FOUNDATION_GRANT_AMOUNT = 1_100_000e18;
 
-    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xc9ff605003A1b389980f650e1aEFA1ef25C8eE32;
 
     constructor() {
         _spellId   = 20260129;
-        _blockDate = 1768896843;  // 2026-01-20T08:14:00Z
+        _blockDate = 1769005086;  // 2026-01-21T14:18:00Z
     }
 
     function setUp() public override {

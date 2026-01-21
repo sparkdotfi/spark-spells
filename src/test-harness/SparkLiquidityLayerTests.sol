@@ -2195,7 +2195,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.startPrank(user);
 
-        IERC20(asset).approve(address(vault), maxDeposit);
+        SafeERC20.safeIncreaseAllowance(IERC20(asset), address(vault), maxDeposit);
 
         // Fails on depositing more than max
         vm.expectRevert("SparkVault/deposit-cap-exceeded");

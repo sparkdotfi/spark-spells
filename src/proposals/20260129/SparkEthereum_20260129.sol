@@ -41,7 +41,7 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
 
     ISparkVaultV2Like internal constant spUsdt = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-    address internal constant NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+    address internal constant NEW_ALM_CONTROLLER = 0xc9ff605003A1b389980f650e1aEFA1ef25C8eE32;
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
