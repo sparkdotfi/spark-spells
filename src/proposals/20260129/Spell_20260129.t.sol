@@ -32,7 +32,9 @@ import { DataTypes }         from "sparklend-v1-core/protocol/libraries/types/Da
 import { IPoolDataProvider } from "sparklend-v1-core/interfaces/IPoolDataProvider.sol";
 
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
-import { ChainIdUtils }         from "src/libraries/ChainIdUtils.sol";
+
+import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
+import { DealUtils }    from "src/libraries/DealUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
@@ -258,8 +260,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
             assertEq(config.getReserveFactor(), 50_00);
 
-            if(reserves[i] == Gnosis.EURE) continue;  // Necessary because EURe doesn't work with deal.
-            _testUserActionsAfterPayloadExecutionSparkLend(reserves[i], reserves[i] != Gnosis.USDC ? Gnosis.USDC : Gnosis.USDT);
+            _testUserActionsAfterPayloadExecutionSparkLend(reserves[i], Gnosis.USDC);
         }
     }
 
@@ -446,6 +447,14 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
             vm.prank(Ethereum.SPARK_PROXY);
             IPoolConfigurator(SparkLend.POOL_CONFIGURATOR).setReserveFreeze(collateralAsset, true);
         }
+    }
+
+    function deal(address token, address to, uint256 amount) internal override {
+        if (token != Gnosis.EURE) {
+            super.deal(token, to, amount);
+            return;
+        }
+        DealUtils.patchedDeal(token, to, amount);
     }
 
 }
