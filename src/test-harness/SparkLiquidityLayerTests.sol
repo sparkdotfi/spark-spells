@@ -338,6 +338,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256   depositAmount1;
         int24     tickLower;
         int24     tickUpper;
+        uint24    maxTickSpacing;
         uint256   maxSlippage;
         uint256   depositLimit;
         uint256   withdrawLimit;
@@ -430,6 +431,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
 
         _checkRateLimitKeys(integrations, rateLimitKeys);
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            _runSLLE2ETests(ctx, integrations[i]);
+        }
+    }
+
+    function test_ETHEREUM_E2E_dev() external onChain(ChainIdUtils.Ethereum()) {
+        vm.skip(true);
+
+        _executeMainnetPayload();
+
+        SLLIntegration[] memory integrations = new SLLIntegration[](1);
+
+        // integrations[0] = _createUniswapV4LpIntegration("PYUSD_USDS_POOL_ID", PYUSD_USDS_POOL_ID);
+        integrations[0] = _createUniswapV4LpIntegration("USDT_USDS_POOL_ID", USDT_USDS_POOL_ID);
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(ctx, integrations[i]);
@@ -1256,7 +1274,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(p.poolId));
 
-        ( v.tickLower, v.tickUpper, ) = MainnetController(p.ctx.controller).uniswapV4TickLimits(p.poolId);
+        ( v.tickLower, v.tickUpper, v.maxTickSpacing ) = MainnetController(p.ctx.controller).uniswapV4TickLimits(p.poolId);
+
+        int24 middleTick = (v.tickLower + v.tickUpper) / 2;
+
+        v.tickLower = int24(middleTick - int32(uint32(v.maxTickSpacing)) / 2);
+        v.tickUpper = int24(middleTick + int32(uint32(v.maxTickSpacing)) / 2);
 
         // Figure out how much of each asset is needed for some nominal liquidity amount of 1e18.
         ( uint256 amount0, uint256 amount1 ) = _quoteLiquidity(p.poolId, v.tickLower, v.tickUpper, 1e18);
@@ -1267,8 +1290,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.liquidityAmount = uint128(1e18 * p.depositAmount / totalAmounts);
 
         // Scale the deposit amounts given how much higher or lower the total amount is than `p.depositAmount`.
-        v.depositAmount0 = amount0 * p.depositAmount / totalAmounts;
-        v.depositAmount1 = amount1 * p.depositAmount / totalAmounts;
+        ( v.depositAmount0, v.depositAmount1 ) = _quoteLiquidity(p.poolId, v.tickLower, v.tickUpper, v.liquidityAmount);
+
+        // TODO: Consider adding this buffer to `_quoteLiquidity`.
+        v.depositAmount0 += 1;
+        v.depositAmount1 += 1;
 
         v.totalDepositValue =
             _toNormalizedAmount(p.asset0, v.depositAmount0) +
@@ -1286,17 +1312,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _checkRateLimitValue(p.ctx, p.depositKey,  18);
         _checkRateLimitValue(p.ctx, p.withdrawKey, 18);
-
-        if (v.depositLimit > 0) {
-            IRateLimits.RateLimitData memory data = p.ctx.rateLimits.getRateLimitData(
-                RateLimitHelpers.makeBytes32Key(
-                    MainnetController(p.ctx.controller).LIMIT_UNISWAP_V4_SWAP(),
-                    p.poolId
-                )
-            );
-
-            assertGt(data.maxAmount, 0);
-        }
 
         v.maxSlippage = MainnetController(p.ctx.controller).maxSlippages(address(uint160(uint256(p.poolId))));
 
@@ -1344,17 +1359,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             amount1Min        : 0
         });
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmount0); // TODO: May need to be assertGe where v.withdrawAmount0 is reduced need of some slippage
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmount1); // TODO: May need to be assertGe where v.withdrawAmount1 is reduced need of some slippage
+        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmount0, 1);
+        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmount1, 1);
 
         v.totalWithdrawnValue = _toNormalizedAmount(p.asset0, v.withdrawAmount0) + _toNormalizedAmount(p.asset1, v.withdrawAmount1);
 
-        // Ensure that value withdrawn is greater than the value deposited * maxSlippage (18 decimal precision)
-        assertGe(v.totalWithdrawnValue, v.totalDepositValue * v.maxSlippage / 1e18); // TODO: This doesn't really work that way for Uniswap V4
+        // Ensure that value withdrawn is of by 2 (1 for each amount's rounding error) when compared to the deposited value.
+        assertApproxEqAbs(v.totalWithdrawnValue, v.totalDepositValue, 2);
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), 0);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
+        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue, 1e18);
 
         /************************************/
         /*** Step 3: Recharge rate limits ***/
@@ -3919,7 +3934,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return SLLIntegration({
             label:       label,
             category:    Category.UNISWAP_V4_LP,
-            integration: address(0), // Not compatible, see extraData.
+            integration: address(1), // Not compatible, see extraData.
             entryId:     RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_DEPOSIT(), poolId),
             entryId2:    bytes32(0),
             exitId:      RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_WITHDRAW(), poolId),

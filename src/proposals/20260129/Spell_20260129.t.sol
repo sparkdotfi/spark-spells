@@ -81,6 +81,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
 
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
+
         // Maple onboarding process
         ISyrupLike syrup = ISyrupLike(Ethereum.SYRUP_USDT);
 
@@ -206,6 +209,8 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
     using UserConfiguration for DataTypes.UserConfigurationMap;
     using SafeERC20 for IERC20;
 
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+
     constructor() {
         _spellId   = 20260129;
         _blockDate = 1768896843;  // 2026-01-20T08:14:00Z
@@ -215,6 +220,9 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
+
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
     }
 
     function test_GNOSIS_sparkLend_deprecateMarket() external onChain(ChainIdUtils.Gnosis()) {
@@ -429,6 +437,8 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
 
     uint256 internal constant FOUNDATION_GRANT_AMOUNT = 1_100_000e18;
 
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0xE43c41356CbBa9449fE6CF27c6182F62C4FB3fE9;
+
     constructor() {
         _spellId   = 20260129;
         _blockDate = 1768896843;  // 2026-01-20T08:14:00Z
@@ -438,6 +448,9 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
+
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
     }
 
     function test_ETHEREUM_sparkLend_withdrawAllReserves() external onChain(ChainIdUtils.Ethereum()) {
