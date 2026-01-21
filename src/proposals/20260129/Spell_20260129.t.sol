@@ -258,7 +258,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
             assertEq(config.getReserveFactor(), 50_00);
 
-            if(reserves[i] == Gnosis.EURE) continue;
+            if(reserves[i] == Gnosis.EURE) continue;  // Necessary because EURe doesn't work with deal.
             _testUserActionsAfterPayloadExecutionSparkLend(reserves[i], reserves[i] != Gnosis.USDC ? Gnosis.USDC : Gnosis.USDT);
         }
     }
