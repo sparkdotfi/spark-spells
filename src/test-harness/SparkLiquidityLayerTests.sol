@@ -142,13 +142,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     struct CurveLPE2ETestParams {
         SparkLiquidityLayerContext ctx;
-        address pool;
-        address asset0;
-        address asset1;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-        uint256 tolerance;
+        address                    pool;
+        address                    asset0;
+        address                    asset1;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        bytes32                    withdrawKey;
+        uint256                    tolerance;
     }
 
     struct CurveOnboardingVars {
@@ -179,11 +179,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     struct E2ETestParams {
         SparkLiquidityLayerContext ctx;
-        address vault;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 withdrawKey;
-        uint256 tolerance;
+        address                    vault;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        bytes32                    withdrawKey;
+        uint256                    tolerance;
     }
 
     struct EthenaE2ETestParams {
@@ -202,8 +202,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 cooldownLimit;
         uint256 burnLimit;
         uint256 usdeAmount;
-        uint256 proxyUsdeBalance;
-        uint256 proxyUsdcBalance;
+        uint256 proxyUSDEBalance;
+        uint256 proxyUSDCBalance;
         uint256 startingShares;
         uint256 startingAssets;
         uint256 shares;
@@ -219,12 +219,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     struct MapleE2ETestParams {
         SparkLiquidityLayerContext ctx;
-        address vault;
-        uint256 depositAmount;
-        bytes32 depositKey;
-        bytes32 redeemKey;
-        bytes32 withdrawKey;
-        uint256 tolerance;
+        address                    vault;
+        uint256                    depositAmount;
+        bytes32                    depositKey;
+        bytes32                    redeemKey;
+        bytes32                    withdrawKey;
+        uint256                    tolerance;
     }
 
     struct MapleE2ETestVars {
@@ -304,7 +304,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32                    withdrawKey;
     }
 
-    struct SuperstateUsccE2ETestParams {
+    struct SuperstateUSCCE2ETestParams {
         SparkLiquidityLayerContext ctx;
         address                    depositAsset;
         address                    depositDestination;
@@ -1127,7 +1127,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.depositAmount0);
         assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
 
-        uint256 startingLpBalance = pool.balanceOf(address(p.ctx.proxy));
+        uint256 startingLPBalance = pool.balanceOf(address(p.ctx.proxy));
 
         vm.prank(p.ctx.relayer);
         uint256 shares = MainnetController(p.ctx.controller).addLiquidityCurve(p.pool, v.depositAmounts, v.minLPAmount);
@@ -1141,7 +1141,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
         assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
 
-        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLpBalance + shares);
+        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLPBalance + shares);
 
         /**************************************************************************************/
         /*** Step 2: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
@@ -1166,7 +1166,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Ensure that value withdrawn is greater than the value deposited * maxSlippage (18 decimal precision)
         assertGe(v.totalWithdrawnValue, v.totalDepositValue * v.maxSlippage / 1e18);
 
-        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLpBalance);
+        assertEq(pool.balanceOf(address(p.ctx.proxy)), startingLPBalance);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
 
@@ -1383,8 +1383,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ) = MainnetController(p.ctx.controller).uniswapV4TickLimits(p.poolId);
 
         int24 middleTick = (tickLowerMin + tickUpperMax) / 2;
-        int24 tickLower = int24(middleTick - int32(uint32(maxTickSpacing)) / 2);
-        int24 tickUpper = int24(middleTick + int32(uint32(maxTickSpacing)) / 2);
+        int24 tickLower  = int24(middleTick - int32(uint32(maxTickSpacing)) / 2);
+        int24 tickUpper  = int24(middleTick + int32(uint32(maxTickSpacing)) / 2);
 
         ( uint256 amount0, uint256 amount1 ) = _quoteLiquidity(p.poolId, tickLower, tickUpper, p.seedLiquidity);
 
@@ -1496,9 +1496,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         deal(address(usds), address(p.ctx.proxy), usdsSwapAmount);  // 2 swaps will be done
 
-        uint256 swapToUsdcLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+        uint256 swapToUSDCLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
 
-        assertNotEq(swapToUsdcLimit, type(uint256).max);
+        assertNotEq(swapToUSDCLimit, type(uint256).max);
 
         /********************************/
         /*** Step 1: Check rate limit ***/
@@ -1508,34 +1508,34 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
-        MainnetController(p.ctx.controller).swapUSDSToUSDC(swapToUsdcLimit + 1);
+        MainnetController(p.ctx.controller).swapUSDSToUSDC(swapToUSDCLimit + 1);
 
         /**************************************************************/
         /*** Step 2: Swap USDS to USDC and check resulting position ***/
         /**************************************************************/
 
-        uint256 psmUsdcBalance   = usdc.balanceOf(pocket);
-        uint256 proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        uint256 psmUSDCBalance   = usdc.balanceOf(pocket);
+        uint256 proxyUSDCBalance = usdc.balanceOf(address(p.ctx.proxy));
         uint256 usdsTotalSupply  = usds.totalSupply();
 
-        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance);
-        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance);
+        assertEq(usdc.balanceOf(address(pocket)),      psmUSDCBalance);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUSDCBalance);
 
         assertEq(usds.totalSupply(),                   usdsTotalSupply);
         assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsSwapAmount);  // Set by deal
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUSDCLimit);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).swapUSDSToUSDC(p.swapAmount);  // Use USDC precision
 
-        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance   - p.swapAmount);
-        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance + p.swapAmount);
+        assertEq(usdc.balanceOf(address(pocket)),      psmUSDCBalance   - p.swapAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUSDCBalance + p.swapAmount);
 
         assertEq(usds.totalSupply(),                   usdsTotalSupply - usdsSwapAmount);
         assertEq(usds.balanceOf(address(p.ctx.proxy)), 0);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUsdcLimit - p.swapAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapToUSDCLimit - p.swapAmount);
 
         /********************************************************/
         /*** Step 3: Warp to recharge rate limits, not to max ***/
@@ -1543,40 +1543,40 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(10 minutes);
 
-        uint256 newSwapToUsdcLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+        uint256 newSwapToUSDCLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
 
-        assertGt(newSwapToUsdcLimit, swapToUsdcLimit - p.swapAmount);
+        assertGt(newSwapToUSDCLimit, swapToUSDCLimit - p.swapAmount);
 
         /***************************************************************************************/
         /*** Step 4: Swap 10% of the USDC to USDS and check that the rate limit is increased ***/
         /***************************************************************************************/
 
-        psmUsdcBalance   = usdc.balanceOf(pocket);
-        proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        psmUSDCBalance   = usdc.balanceOf(pocket);
+        proxyUSDCBalance = usdc.balanceOf(address(p.ctx.proxy));
         usdsTotalSupply  = usds.totalSupply();
 
         // Do a 10% swap to increase the rate limit without hitting the max
         p.swapAmount   = p.swapAmount / 10;
         usdsSwapAmount = usdsSwapAmount / 10;
 
-        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance);
-        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance);
+        assertEq(usdc.balanceOf(address(pocket)),      psmUSDCBalance);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUSDCBalance);
 
         assertEq(usds.totalSupply(),                   usdsTotalSupply);
         assertEq(usds.balanceOf(address(p.ctx.proxy)), 0);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUSDCLimit);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).swapUSDCToUSDS(p.swapAmount);
 
-        assertEq(usdc.balanceOf(address(pocket)),      psmUsdcBalance   + p.swapAmount);
-        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUsdcBalance - p.swapAmount);
+        assertEq(usdc.balanceOf(address(pocket)),      psmUSDCBalance   + p.swapAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)), proxyUSDCBalance - p.swapAmount);
 
         assertEq(usds.totalSupply(),                   usdsTotalSupply + usdsSwapAmount);
         assertEq(usds.balanceOf(address(p.ctx.proxy)), usdsSwapAmount);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUSDCLimit + p.swapAmount);
 
         /**************************************************/
         /*** Step 5: Warp to recharge rate limits fully ***/
@@ -1584,7 +1584,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(10 days);
 
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUsdcLimit + p.swapAmount);
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), newSwapToUSDCLimit + p.swapAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
     }
 
@@ -1740,14 +1740,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         deal(address(usde), Ethereum.ETHENA_MINTER, v.usdeAmount);
 
-        v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
+        v.proxyUSDEBalance = usde.balanceOf(address(p.ctx.proxy));
 
         vm.startPrank(Ethereum.ETHENA_MINTER);
         usdc.transferFrom(address(p.ctx.proxy), Ethereum.ETHENA_MINTER, p.depositAmount);
         usde.transfer(address(p.ctx.proxy), v.usdeAmount);
         vm.stopPrank();
 
-        assertEq(usde.balanceOf(address(p.ctx.proxy)),   v.proxyUsdeBalance + v.usdeAmount);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)),   v.proxyUSDEBalance + v.usdeAmount);
         assertEq(usde.balanceOf(Ethereum.ETHENA_MINTER), 0);  // Balance set by deal so should go to zero
 
         assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), 0);
@@ -1764,7 +1764,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 5: Deposit and check resulting position ***/
         /****************************************************/
 
-        v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
+        v.proxyUSDEBalance = usde.balanceOf(address(p.ctx.proxy));
 
         v.startingShares = susde.balanceOf(address(p.ctx.proxy));
         v.startingAssets = susde.convertToAssets(v.startingShares);
@@ -1774,7 +1774,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.usdeAmount);
 
-        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance - v.usdeAmount);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUSDEBalance - v.usdeAmount);
 
         assertApproxEqAbs(susde.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares, p.tolerance);
 
@@ -1792,7 +1792,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address silo = susde.silo();
 
         uint256 siloBalance    = usde.balanceOf(silo);
-        uint256 underlyingUsde = susde.convertToAssets(v.shares);
+        uint256 underlyingUSDE = susde.convertToAssets(v.shares);
 
         assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares + v.shares);
 
@@ -1803,7 +1803,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).cooldownSharesSUSDe(v.shares);
 
-        assertEq(usde.balanceOf(silo),                  siloBalance + underlyingUsde);
+        assertEq(usde.balanceOf(silo),                  siloBalance + underlyingUSDE);
         assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
@@ -1819,9 +1819,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).cooldownAssetsSUSDe(underlyingUsde);
+        MainnetController(p.ctx.controller).cooldownAssetsSUSDe(underlyingUSDE);
 
-        assertEq(usde.balanceOf(silo),                  siloBalance + underlyingUsde);
+        assertEq(usde.balanceOf(silo),                  siloBalance + underlyingUSDE);
         assertEq(susde.balanceOf(address(p.ctx.proxy)), v.startingShares);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
@@ -1832,16 +1832,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(7 days);
 
-        v.proxyUsdeBalance = usde.balanceOf(address(p.ctx.proxy));
+        v.proxyUSDEBalance = usde.balanceOf(address(p.ctx.proxy));
 
-        assertEq(usde.balanceOf(address(silo)),        siloBalance + underlyingUsde);
-        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance);
+        assertEq(usde.balanceOf(address(silo)),        siloBalance + underlyingUSDE);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUSDEBalance);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).unstakeSUSDe();
 
         assertEq(usde.balanceOf(address(silo)),        siloBalance);
-        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUsdeBalance + underlyingUsde);
+        assertEq(usde.balanceOf(address(p.ctx.proxy)), v.proxyUSDEBalance + underlyingUSDE);
 
         /*************************************/
         /*** Step 9: Check burn rate limit ***/
@@ -1862,28 +1862,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), usdeAllowance);
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).prepareUSDeBurn(underlyingUsde);
+        MainnetController(p.ctx.controller).prepareUSDeBurn(underlyingUSDE);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUsde);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUSDE);
 
-        assertEq(usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), underlyingUsde);
+        assertEq(usde.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), underlyingUSDE);
 
         /***********************************************/
         /*** Step 11: Simulate USDE burn from Ethena ***/
         /***********************************************/
 
-        uint256 usdcAmount = underlyingUsde / 1e12;
+        uint256 usdcAmount = underlyingUSDE / 1e12;
 
         deal(address(usdc), Ethereum.ETHENA_MINTER, usdcAmount);
 
-        v.proxyUsdcBalance = usdc.balanceOf(address(p.ctx.proxy));
+        v.proxyUSDCBalance = usdc.balanceOf(address(p.ctx.proxy));
 
         vm.startPrank(Ethereum.ETHENA_MINTER);
-        usde.transferFrom(address(p.ctx.proxy), Ethereum.ETHENA_MINTER, underlyingUsde);
+        usde.transferFrom(address(p.ctx.proxy), Ethereum.ETHENA_MINTER, underlyingUSDE);
         usdc.transfer(address(p.ctx.proxy), usdcAmount);
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(address(p.ctx.proxy)),   v.proxyUsdcBalance + usdcAmount);
+        assertEq(usdc.balanceOf(address(p.ctx.proxy)),   v.proxyUSDCBalance + usdcAmount);
         assertEq(usdc.balanceOf(Ethereum.ETHENA_MINTER), 0);  // Balance set by deal so should go to zero
 
         assertEq(usdc.allowance(address(p.ctx.proxy), Ethereum.ETHENA_MINTER), 0);
@@ -1902,7 +1902,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.cooldownKey), type(uint256).max);
 
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUsde);
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), v.burnLimit - underlyingUSDE);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.burnKey), p.ctx.rateLimits.getRateLimitData(p.burnKey).maxAmount);
     }
 
@@ -2136,7 +2136,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
-    function _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams memory p) internal {
+    function _testSuperstateUSCCIntegration(SuperstateUSCCE2ETestParams memory p) internal {
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx:            p.ctx,
             asset:          p.depositAsset,
@@ -2694,10 +2694,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0.9975e18);
 
-            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),   _oldController.maxSlippages(Ethereum.CURVE_SUSDSUSDT));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC),   _oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDC));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),    _oldController.maxSlippages(Ethereum.CURVE_USDCUSDT));
-            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),   _oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDS));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), _oldController.maxSlippages(Ethereum.CURVE_SUSDSUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDC), _oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDC));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_USDCUSDT),  _oldController.maxSlippages(Ethereum.CURVE_USDCUSDT));
+            assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS), _oldController.maxSlippages(Ethereum.CURVE_PYUSDUSDS));
 
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDC),  _oldController.maxSlippages(Ethereum.ATOKEN_CORE_USDC));
             assertEq(controller.maxSlippages(Ethereum.ATOKEN_CORE_USDE),  _oldController.maxSlippages(Ethereum.ATOKEN_CORE_USDE));
@@ -2753,12 +2753,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         MainnetController oldController = MainnetController(_oldController);
 
         VmSafe.EthGetLogs[] memory oldSlippageLogs      = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
-        VmSafe.EthGetLogs[] memory oldCctpLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory oldCCTPLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
         VmSafe.EthGetLogs[] memory oldLayerZeroLogs     = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
         VmSafe.EthGetLogs[] memory oldExchangeRatesLogs = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
 
         assertEq(oldSlippageLogs.length,      16);
-        assertEq(oldCctpLogs.length,          5);
+        assertEq(oldCCTPLogs.length,          5);
         assertEq(oldLayerZeroLogs.length,     0);
         assertEq(oldExchangeRatesLogs.length, 9);
 
@@ -2797,8 +2797,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
                 uint256 index = newMintRecipientLogsCount - 1;
 
-                uint32  oldDomain     = uint32(uint256(oldCctpLogs[index].topics[1]));
-                address oldRecipient  = _toAddress(bytes32(oldCctpLogs[index].data));
+                uint32  oldDomain    = uint32(uint256(oldCCTPLogs[index].topics[1]));
+                address oldRecipient = _toAddress(bytes32(oldCCTPLogs[index].data));
 
                 assertEq(uint32(uint256(newLogs[i].topics[1])), oldDomain);
                 assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
@@ -2837,7 +2837,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         assertGe(newSlippageLogsCount,           oldSlippageLogs.length);
-        assertGe(newMintRecipientLogsCount,      oldCctpLogs.length);
+        assertGe(newMintRecipientLogsCount,      oldCCTPLogs.length);
         assertGe(newLayerZeroRecipientLogsCount, oldLayerZeroLogs.length);
         assertGe(newExchangeRateLogsCount,       oldExchangeRatesLogs.length);
     }
@@ -2933,38 +2933,38 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     )
         internal onChain(ChainIdUtils.Ethereum())
     {
-        IERC20  domainUsdc;
-        address domainPsm3;
-        uint32  domainCctpId;
+        IERC20  domainUSDC;
+        address domainPSM3;
+        uint32  domainCCTPId;
         Bridge storage bridge = chainData[domainId].bridges[1];
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
-            domainUsdc   = IERC20(Arbitrum.USDC);
-            domainPsm3   = Arbitrum.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE;
+            domainUSDC   = IERC20(Arbitrum.USDC);
+            domainPSM3   = Arbitrum.PSM3;
+            domainCCTPId = CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE;
         } else if (domainId == ChainIdUtils.Base()) {
-            domainUsdc   = IERC20(Base.USDC);
-            domainPsm3   = Base.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
+            domainUSDC   = IERC20(Base.USDC);
+            domainPSM3   = Base.PSM3;
+            domainCCTPId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
         } else if (domainId == ChainIdUtils.Optimism()) {
-            domainUsdc   = IERC20(Optimism.USDC);
-            domainPsm3   = Optimism.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
+            domainUSDC   = IERC20(Optimism.USDC);
+            domainPSM3   = Optimism.PSM3;
+            domainCCTPId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
         } else if (domainId == ChainIdUtils.Unichain()) {
-            domainUsdc   = IERC20(Unichain.USDC);
-            domainPsm3   = Unichain.PSM3;
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
+            domainUSDC   = IERC20(Unichain.USDC);
+            domainPSM3   = Unichain.PSM3;
+            domainCCTPId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
         } else if (domainId == ChainIdUtils.Avalanche()) {
-            domainUsdc   = IERC20(Avalanche.USDC);
-            domainPsm3   = address(0);
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE;
+            domainUSDC   = IERC20(Avalanche.USDC);
+            domainPSM3   = address(0);
+            domainCCTPId = CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE;
         } else {
             revert("SLL/unknown domain");
         }
 
         IERC20 usdc = IERC20(Ethereum.USDC);
 
-        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
+        uint256 mainnetUSDCProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         // --- Step 1: Mint and bridge 10m USDC to Base ---
 
@@ -2973,45 +2973,45 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetController.mintUSDS(usdcAmount * 1e12);
         mainnetController.swapUSDSToUSDC(usdcAmount);
-        mainnetController.transferUSDCToCCTP(usdcAmount, domainCctpId);
+        mainnetController.transferUSDCToCCTP(usdcAmount, domainCCTPId);
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUSDCProxyBalance);
 
         chainData[domainId].domain.selectFork();
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        address domainAlmProxy = address(ctx.proxy);
+        address domainALMProxy = address(ctx.proxy);
 
-        uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
+        uint256 domainUSDCProxyBalance = domainUSDC.balanceOf(domainALMProxy);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domainUSDC.balanceOf(domainALMProxy), domainUSDCProxyBalance);
 
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
+        assertEq(domainUSDC.balanceOf(domainALMProxy), domainUSDCProxyBalance + usdcAmount);
 
-        if (domainPsm3 != address(0)) {
-            uint256 domainUsdcPsmBalance = domainUsdc.balanceOf(domainPsm3);
+        if (domainPSM3 != address(0)) {
+            uint256 domainUSDCPSMBalance = domainUSDC.balanceOf(domainPSM3);
 
             // --- Step 3: Deposit USDC into PSM3 ---
 
             vm.prank(ctx.relayer);
-            foreignController.depositPSM(address(domainUsdc), usdcAmount);
+            foreignController.depositPSM(address(domainUSDC), usdcAmount);
 
-            assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
-            assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
+            assertEq(domainUSDC.balanceOf(domainALMProxy), domainUSDCProxyBalance);
+            assertEq(domainUSDC.balanceOf(domainPSM3),     domainUSDCPSMBalance + usdcAmount);
 
             // --- Step 4: Withdraw all assets from PSM3 ---
 
             vm.prank(ctx.relayer);
-            foreignController.withdrawPSM(address(domainUsdc), usdcAmount);
+            foreignController.withdrawPSM(address(domainUSDC), usdcAmount);
 
-            assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
-            assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+            assertEq(domainUSDC.balanceOf(domainALMProxy), domainUSDCProxyBalance + usdcAmount);
+            assertEq(domainUSDC.balanceOf(domainPSM3),     domainUSDCPSMBalance);
         }
 
         // --- Step 5: Bridge USDC back to mainnet ---
@@ -3021,17 +3021,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(ctx.relayer);
         foreignController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domainUSDC.balanceOf(domainALMProxy), domainUSDCProxyBalance);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUSDCProxyBalance);
 
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToSource(bridge, true);
 
-        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUSDCProxyBalance + usdcAmount);
 
         // --- Step 6: Swap USDC to USDS and burn ---
 
@@ -3040,7 +3040,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         mainnetController.burnUSDS(usdcAmount * 1e12);
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUSDCProxyBalance);
     }
 
     function _testMorphoVaultCreation(
@@ -3436,7 +3436,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address withdrawDestination
             ) = abi.decode(integration.extraData, (address, address, address, address));
 
-            _testSuperstateUsccIntegration(SuperstateUsccE2ETestParams({
+            _testSuperstateUSCCIntegration(SuperstateUSCCE2ETestParams({
                 ctx:                 ctx,
                 depositAsset:        depositAsset,
                 depositDestination:  depositDestination,
@@ -3640,18 +3640,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
         integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
 
-        integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL");
+        integrations[11] = _createCCTPGeneralIntegration("CCTP_GENERAL");
 
-        integrations[12] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[13] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
-        integrations[14] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[15] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[16] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[12] = _createCCTPIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[13] = _createCCTPIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+        integrations[14] = _createCCTPIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        integrations[15] = _createCCTPIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        integrations[16] = _createCCTPIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
 
         integrations[17] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
 
-        integrations[18] = _createCurveLpIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
-        integrations[19] = _createCurveLpIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
+        integrations[18] = _createCurveLPIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
+        integrations[19] = _createCurveLPIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
 
         integrations[20] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDC", Ethereum.CURVE_PYUSDUSDC);
         integrations[21] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
@@ -3673,7 +3673,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[33] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
         integrations[34] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
 
-        integrations[35] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[35] = _createPSMIntegration("PSM-USDS", Ethereum.PSM);
 
         integrations[36] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
         integrations[37] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
@@ -3686,14 +3686,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[43] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[44] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        integrations[44] = _createSuperstateUSCCIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
 
         integrations[45] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
         integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
         integrations[47] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
     }
 
-    function _getPreExecutionIntegrationsBasicPsm3(
+    function _getPreExecutionIntegrationsBasicPSM3(
         address psm,
         address usdc,
         address usds,
@@ -3703,19 +3703,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     {
         integrations = new SLLIntegration[](5);
 
-        integrations[0] = _createPsm3Integration("PSM3-USDC",  psm, usdc);
-        integrations[1] = _createPsm3Integration("PSM3-USDS",  psm, usds);
-        integrations[2] = _createPsm3Integration("PSM3-SUSDS", psm, susds);
+        integrations[0] = _createPSM3Integration("PSM3-USDC",  psm, usdc);
+        integrations[1] = _createPSM3Integration("PSM3-USDS",  psm, usds);
+        integrations[2] = _createPSM3Integration("PSM3-SUSDS", psm, susds);
 
-        integrations[3] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        integrations[3] = _createCCTPIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        integrations[4] = _createCctpGeneralIntegration("CCTP_GENERAL");
+        integrations[4] = _createCCTPGeneralIntegration("CCTP_GENERAL");
 
         return integrations;
     }
 
     function _getPreExecutionIntegrationsArbitrumOne() internal view returns (SLLIntegration[] memory integrations) {
-        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
+        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPSM3(Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
 
         integrations = new SLLIntegration[](basicIntegrations.length + 2);
 
@@ -3731,7 +3731,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsBase() internal view returns (SLLIntegration[] memory integrations) {
-        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
+        SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPSM3(Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
 
         integrations = new SLLIntegration[](basicIntegrations.length + 4);
 
@@ -3752,9 +3752,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsAvalanche() internal view returns (SLLIntegration[] memory integrations) {
         integrations = new SLLIntegration[](4);
 
-        integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        integrations[0] = _createCCTPIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        integrations[1] = _createCctpGeneralIntegration("CCTP_GENERAL");
+        integrations[1] = _createCCTPGeneralIntegration("CCTP_GENERAL");
 
         integrations[2] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Avalanche.SPARK_VAULT_V2_SPUSDC);
 
@@ -3782,11 +3782,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         if (block.chainid == ChainIdUtils.Optimism()) {
-            return _getPreExecutionIntegrationsBasicPsm3(Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
+            return _getPreExecutionIntegrationsBasicPSM3(Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
         }
 
         if (block.chainid == ChainIdUtils.Unichain()) {
-            return _getPreExecutionIntegrationsBasicPsm3(Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
+            return _getPreExecutionIntegrationsBasicPSM3(Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
         }
 
         revert("Invalid chainId");
@@ -3836,11 +3836,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[integrations.length]     = _createUniswapV4LpIntegration("UNISWAP_V4_LP_PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        newIntegrations[integrations.length + 1] = _createUniswapV4LpIntegration("UNISWAP_V4_LP_USDT_USDS",  USDT_USDS_POOL_ID);
+        newIntegrations[integrations.length]     = _createUniswapV4LPIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
+        newIntegrations[integrations.length + 1] = _createUniswapV4LPIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
 
-        newIntegrations[integrations.length + 2] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
-        newIntegrations[integrations.length + 3] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP_USDT_USDS",  USDT_USDS_POOL_ID,  10_000e18);
+        newIntegrations[integrations.length + 2] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
+        newIntegrations[integrations.length + 3] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  10_000e18);
     }
 
     /**********************************************************************************************/
@@ -3886,7 +3886,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createCctpIntegration(
+    function _createCCTPIntegration(
         string  memory label,
         uint32         cctpId
     ) internal view returns (SLLIntegration memory) {
@@ -3904,7 +3904,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createCctpGeneralIntegration(string  memory label) internal view returns (SLLIntegration memory) {
+    function _createCCTPGeneralIntegration(string  memory label) internal view returns (SLLIntegration memory) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
         return SLLIntegration({
@@ -3937,7 +3937,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createCurveLpIntegration(
+    function _createCurveLPIntegration(
         string  memory label,
         address        integration
     ) internal view returns (SLLIntegration memory) {
@@ -4045,7 +4045,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createPsmIntegration(
+    function _createPSMIntegration(
         string  memory label,
         address        integration
     ) internal view returns (SLLIntegration memory) {
@@ -4063,7 +4063,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createPsm3Integration(
+    function _createPSM3Integration(
         string  memory label,
         address        integration,
         address        asset
@@ -4139,7 +4139,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createSuperstateUsccIntegration(
+    function _createSuperstateUSCCIntegration(
         string  memory label,
         address        assetIn,
         address        assetOut,
@@ -4160,7 +4160,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _createUniswapV4LpIntegration(
+    function _createUniswapV4LPIntegration(
         string  memory label,
         bytes32        poolId
     ) internal view returns (SLLIntegration memory) {
