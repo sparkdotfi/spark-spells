@@ -262,7 +262,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
             assertEq(config.getReserveFactor(), 50_00);
 
-            _testUserActionsAfterPayloadExecutionSparkLend(reserves[i], Gnosis.USDC);
+            _testUserActionsOnFrozenReserve(reserves[i], Gnosis.USDC);
 
             vm.revertToState(snapshot);
         }
@@ -285,7 +285,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         assertEq(newConfig.getFrozen(),        true);
         assertEq(newConfig.getReserveFactor(), 99_00);
 
-        _testUserActionsAfterPayloadExecutionSparkLend(Ethereum.TBTC, Ethereum.USDC);
+        _testUserActionsOnFrozenReserve(Ethereum.TBTC, Ethereum.USDC);
     }
 
     function test_ETHEREUM_sparkLend_deprecateEZETH() external onChain(ChainIdUtils.Ethereum()) {
@@ -305,7 +305,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         assertEq(newConfig.getFrozen(),        true);
         assertEq(newConfig.getReserveFactor(), 15_00);
 
-        _testUserActionsAfterPayloadExecutionSparkLend(Ethereum.EZETH, Ethereum.USDC);
+        _testUserActionsOnFrozenReserve(Ethereum.EZETH, Ethereum.USDC);
     }
 
     function test_ETHEREUM_sparkLend_deprecateRSETH() external onChain(ChainIdUtils.Ethereum()) {
@@ -325,10 +325,10 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         assertEq(newConfig.getFrozen(),        true);
         assertEq(newConfig.getReserveFactor(), 15_00);
 
-        _testUserActionsAfterPayloadExecutionSparkLend(Ethereum.RSETH, Ethereum.USDC);
+        _testUserActionsOnFrozenReserve(Ethereum.RSETH, Ethereum.USDC);
     }
 
-    function _testUserActionsAfterPayloadExecutionSparkLend(address collateralAsset, address debtAsset) internal {
+    function _testUserActionsOnFrozenReserve(address collateralAsset, address debtAsset) internal {
         address testUser         = makeAddr("testUser");
         uint256 collateralAmount = 100 * 10 ** IERC20Metadata(collateralAsset).decimals();
         uint256 debtAmount       = 10 * 10 ** IERC20Metadata(debtAsset).decimals();
