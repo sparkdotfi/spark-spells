@@ -349,8 +349,13 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
         pool.borrow(collateralAsset, debtAmount, 2, 0, testUser);
 
-        vm.expectRevert(bytes("39"));  // NO_DEBT_OF_SELECTED_TYPE (able to repay if there is debt)
+        // User can repay when conditions are correct.
+        vm.expectRevert(bytes("39"));  // NO_DEBT_OF_SELECTED_TYPE (past RESERVE_FROZEN error, able to repay if there is debt)
         pool.repay(collateralAsset, debtAmount, 2, testUser);
+
+        // User can repay when conditions are correct.
+        vm.expectRevert(bytes("32"));  // NOT_ENOUGH_AVAILABLE_USER_BALANCE (past RESERVE_FROZEN error, able to withdraw if there is collateral)
+        pool.withdraw(collateralAsset, collateralAmount, testUser);
 
         vm.stopPrank();
 
