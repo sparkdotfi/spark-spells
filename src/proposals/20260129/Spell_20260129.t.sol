@@ -328,52 +328,52 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         _testUserActionsOnFrozenReserve(Ethereum.RSETH, Ethereum.USDC);
     }
 
-    function _testUserActionsOnFrozenReserve(address collateralAsset, address debtAsset) internal {
+    function _testUserActionsOnFrozenReserve(address reserveAsset, address debtAsset) internal {
         address testUser         = makeAddr("testUser");
-        uint256 collateralAmount = 100 * 10 ** IERC20Metadata(collateralAsset).decimals();
+        uint256 collateralAmount = 100 * 10 ** IERC20Metadata(reserveAsset).decimals();
         uint256 debtAmount       = 10 * 10 ** IERC20Metadata(debtAsset).decimals();
 
         IPool pool = IPool(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.POOL : SparkLend.POOL);
 
-        deal(collateralAsset, testUser, collateralAmount);
+        deal(reserveAsset, testUser, collateralAmount);
 
         vm.startPrank(testUser);
 
-        IERC20(collateralAsset).approve(address(pool), type(uint256).max);
+        IERC20(reserveAsset).approve(address(pool), type(uint256).max);
 
         // User can't supply.
         vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
-        pool.supply(collateralAsset, collateralAmount, testUser, 0);
+        pool.supply(reserveAsset, collateralAmount, testUser, 0);
 
         // User can't borrow.
         vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
-        pool.borrow(collateralAsset, debtAmount, 2, 0, testUser);
+        pool.borrow(reserveAsset, debtAmount, 2, 0, testUser);
 
         // User can repay when conditions are correct.
         vm.expectRevert(bytes("39"));  // NO_DEBT_OF_SELECTED_TYPE (past RESERVE_FROZEN error, able to repay if there is debt)
-        pool.repay(collateralAsset, debtAmount, 2, testUser);
+        pool.repay(reserveAsset, debtAmount, 2, testUser);
 
         // User can repay when conditions are correct.
         vm.expectRevert(bytes("32"));  // NOT_ENOUGH_AVAILABLE_USER_BALANCE (past RESERVE_FROZEN error, able to withdraw if there is collateral)
-        pool.withdraw(collateralAsset, collateralAmount, testUser);
+        pool.withdraw(reserveAsset, collateralAmount, testUser);
 
         vm.stopPrank();
 
         // If the reserve is not active or has a debt ceiling, skip the test as user collateral enabled will be false.
-        if (pool.getReserveData(collateralAsset).configuration.getLtv() == 0) return;
-        if (pool.getReserveData(collateralAsset).configuration.getDebtCeiling() > 0) return;
+        if (pool.getReserveData(reserveAsset).configuration.getLtv() == 0) return;
+        if (pool.getReserveData(reserveAsset).configuration.getDebtCeiling() > 0) return;
 
         // Increase the supply cap.
 
         IPoolConfigurator poolConfigurator =
             IPoolConfigurator(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.POOL_CONFIGURATOR : SparkLend.POOL_CONFIGURATOR);
 
-        uint256 currentSupplyCap = pool.getConfiguration(collateralAsset).getSupplyCap();
+        uint256 currentSupplyCap = pool.getConfiguration(reserveAsset).getSupplyCap();
 
         vm.prank(block.chainid == ChainIdUtils.Gnosis() ? Gnosis.AMB_EXECUTOR : Ethereum.SPARK_PROXY);
-        poolConfigurator.setSupplyCap(collateralAsset, currentSupplyCap + 1_000_000);
+        poolConfigurator.setSupplyCap(reserveAsset, currentSupplyCap + 1_000_000);
 
-        _setupUserSparkLendPosition(collateralAsset, debtAsset, testUser, collateralAmount, debtAmount);
+        _setupUserSparkLendPosition(reserveAsset, debtAsset, testUser, collateralAmount, debtAmount);
 
         // User can repay the debt.
 
@@ -386,11 +386,11 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         pool.repay(debtAsset, debtAmount, 2, testUser);
 
         // User can withdraw the collateral.
-        pool.withdraw(collateralAsset, 1 * 10 ** IERC20Metadata(collateralAsset).decimals(), testUser);
+        pool.withdraw(reserveAsset, 1 * 10 ** IERC20Metadata(reserveAsset).decimals(), testUser);
 
         vm.stopPrank();
 
-        _setupUserSparkLendPosition(collateralAsset, debtAsset, testUser, collateralAmount, debtAmount);
+        _setupUserSparkLendPosition(reserveAsset, debtAsset, testUser, collateralAmount, debtAmount);
 
         // Manipulate the price oracle used by sparklend.
         address mockOracle = address(new MockAggregator(1));
@@ -398,7 +398,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         address[] memory assets  = new address[](1);
         address[] memory sources = new address[](1);
 
-        assets[0]  = collateralAsset;
+        assets[0]  = reserveAsset;
         sources[0] = mockOracle;
 
         if (block.chainid == ChainIdUtils.Gnosis()) {
@@ -409,12 +409,12 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
             AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
         }
 
-        deal(debtAsset,       testUser, debtAmount);
-        deal(collateralAsset, testUser, collateralAmount);
+        deal(debtAsset,    testUser, debtAmount);
+        deal(reserveAsset, testUser, collateralAmount);
 
         // User can be liquidated.
         vm.prank(testUser);
-        pool.liquidationCall(collateralAsset, debtAsset, testUser, debtAmount, false);
+        pool.liquidationCall(reserveAsset, debtAsset, testUser, debtAmount, false);
     }
 
     function _setupUserSparkLendPosition(
