@@ -1390,7 +1390,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue, totalError);
 
         /************************************/
-        /*** Step 3: Recharge rate limits ***/
+        /*** Step 4: Recharge rate limits ***/
         /************************************/
 
         skip(10 days);
