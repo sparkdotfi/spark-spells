@@ -1495,10 +1495,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             amountOutMin : uint128(amountOutMin)
         });
 
-        amountOut = IERC20(p.asset0).balanceOf(address(p.ctx.proxy));
-
         assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
-        assertGe(amountOut,                                        amountOutMin);
+        assertGe(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), amountOutMin);
 
         /********************************************/
         /*** Step 5: Warp to recharge rate limits ***/

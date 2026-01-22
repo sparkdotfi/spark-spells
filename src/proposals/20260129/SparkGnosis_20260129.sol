@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
-import { IERC20 } from 'lib/erc20-helpers/src/interfaces/IERC20.sol';
-
 import { SparkPayloadGnosis } from 'src/SparkPayloadGnosis.sol';
 
 /**
