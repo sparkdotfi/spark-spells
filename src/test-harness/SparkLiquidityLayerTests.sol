@@ -1380,12 +1380,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         v.totalWithdrawnValue = _toNormalizedAmount(p.asset0, v.withdrawAmount0) + _toNormalizedAmount(p.asset1, v.withdrawAmount1);
 
+        uint256 totalError = _toNormalizedAmount(p.asset0, 2) + _toNormalizedAmount(p.asset1, 2);
+
         // Ensure that value withdrawn is of by 2 (1 for each amount's rounding error) when compared to the deposited value.
         assertApproxEqAbs(v.totalWithdrawnValue, v.totalDepositValue * 2, 2);
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), 0);
 
-        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue, 1e18);
+        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue, totalError);
 
         /************************************/
         /*** Step 3: Recharge rate limits ***/
