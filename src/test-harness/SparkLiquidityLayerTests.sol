@@ -1333,29 +1333,55 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
         assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
 
+        /***************************************************************/
+        /*** Step 2: Increase liquidity and check resulting position ***/
+        /***************************************************************/
+
+        deal(address(p.asset0), address(p.ctx.proxy), v.depositAmount0);
+        deal(address(p.asset1), address(p.ctx.proxy), v.depositAmount1);
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.depositAmount0);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).increaseLiquidityUniswapV4({
+            poolId            : p.poolId,
+            tokenId           : v.tokenId,
+            liquidityIncrease : v.liquidityAmount,
+            amount0Max        : v.depositAmount0,
+            amount1Max        : v.depositAmount1
+        });
+
+        assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount * 2);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2);
+
+        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
         /**************************************************************************************/
-        /*** Step 2: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
+        /*** Step 3: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
         /**************************************************************************************/
 
-        v.withdrawAmount0 = v.depositAmount0;
-        v.withdrawAmount1 = v.depositAmount1;
+        v.withdrawAmount0 = v.depositAmount0 * 2;
+        v.withdrawAmount1 = v.depositAmount1 * 2;
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).decreaseLiquidityUniswapV4({
             poolId            : p.poolId,
             tokenId           : v.tokenId,
-            liquidityDecrease : v.liquidityAmount,
+            liquidityDecrease : v.liquidityAmount * 2,
             amount0Min        : 0,
             amount1Min        : 0
         });
 
-        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmount0, 1);
-        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmount1, 1);
+        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), v.withdrawAmount0, 2);
+        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.withdrawAmount1, 2);
 
         v.totalWithdrawnValue = _toNormalizedAmount(p.asset0, v.withdrawAmount0) + _toNormalizedAmount(p.asset1, v.withdrawAmount1);
 
         // Ensure that value withdrawn is of by 2 (1 for each amount's rounding error) when compared to the deposited value.
-        assertApproxEqAbs(v.totalWithdrawnValue, v.totalDepositValue, 2);
+        assertApproxEqAbs(v.totalWithdrawnValue, v.totalDepositValue * 2, 2);
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), 0);
 
@@ -1370,7 +1396,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), p.ctx.rateLimits.getRateLimitData(p.withdrawKey).maxAmount);
 
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
