@@ -28,7 +28,9 @@ import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
  *         - Spark Foundation Grant for February 2026
  * @author Phoenix Labs
  * Forum:  https://forum.sky.money/t/january-29-2026-proposed-changes/27620
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x7888032804772315db4be8e2d0c59ec50c70fbc0d4e7c5bab0af0a4b7391070e
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0x64bd800579115f0a11a1290af898bdbe587947cd483afab3998b8454e3a4fb2d
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0xa1b2e3a136cca3a6df5498a074aeecad8bee871866726b7568b19c087ff33178
  */
 contract SparkEthereum_20260129 is SparkPayloadEthereum {
 

@@ -307,10 +307,10 @@ library SLLHelpers {
 
         if (depositMax != 0) {
             setRateLimitData(
-                keccak256(abi.encode(
+                RateLimitHelpers.makeBytes32Key(
                     MainnetController(controller).LIMIT_UNISWAP_V4_DEPOSIT(),
                     poolId
-                )),
+                ),
                 rateLimits,
                 depositMax,
                 depositSlope,
@@ -320,10 +320,10 @@ library SLLHelpers {
 
         if (withdrawMax != 0) {
             setRateLimitData(
-                keccak256(abi.encode(
+                RateLimitHelpers.makeBytes32Key(
                     MainnetController(controller).LIMIT_UNISWAP_V4_WITHDRAW(),
                     poolId
-                )),
+                ),
                 rateLimits,
                 withdrawMax,
                 withdrawSlope,
@@ -333,10 +333,10 @@ library SLLHelpers {
 
         if (swapMax != 0) {
             setRateLimitData(
-                keccak256(abi.encode(
+                RateLimitHelpers.makeBytes32Key(
                     MainnetController(controller).LIMIT_UNISWAP_V4_SWAP(),
                     poolId
-                )),
+                ),
                 rateLimits,
                 swapMax,
                 swapSlope,

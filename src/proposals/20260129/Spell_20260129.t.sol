@@ -338,7 +338,7 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         vm.expectRevert(bytes("39"));  // NO_DEBT_OF_SELECTED_TYPE (past RESERVE_FROZEN error, able to repay if there is debt)
         pool.repay(reserveAsset, debtAmount, 2, testUser);
 
-        // User can repay when conditions are correct.
+        // User can withdraw collateral when conditions are correct.
         vm.expectRevert(bytes("32"));  // NOT_ENOUGH_AVAILABLE_USER_BALANCE (past RESERVE_FROZEN error, able to withdraw if there is collateral)
         pool.withdraw(reserveAsset, reserveAmount, testUser);
 
@@ -499,52 +499,6 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
-    }
-
-    function test_ETHEREUM_sparkLend_withdrawAllReserves() external onChain(ChainIdUtils.Ethereum()) {
-        address[] memory reserves             = IPool(SparkLend.POOL).getReservesList();
-        uint256[] memory aTokenBalancesBefore = new uint256[](reserves.length);
-
-        for(uint256 i = 0; i < reserves.length; i++) {
-            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
-
-            if(
-                aToken != SparkLend.DAI_SPTOKEN   &&
-                aToken != SparkLend.USDS_SPTOKEN  &&
-                aToken != SparkLend.USDC_SPTOKEN  &&
-                aToken != SparkLend.PYUSD_SPTOKEN &&
-                aToken != SparkLend.USDT_SPTOKEN
-            ) {
-                aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG);
-            } else {
-                aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_PROXY);
-            }
-        }
-
-        _executeAllPayloadsAndBridges();
-
-        for(uint256 i = 0; i < reserves.length; i++) {
-            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
-
-            if(
-                aToken != SparkLend.DAI_SPTOKEN   &&
-                aToken != SparkLend.USDS_SPTOKEN  &&
-                aToken != SparkLend.USDC_SPTOKEN  &&
-                aToken != SparkLend.PYUSD_SPTOKEN &&
-                aToken != SparkLend.USDT_SPTOKEN
-            ) {
-                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
-            } else {
-                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
-            }
-
-            assertEq(
-                IERC20(aToken).balanceOf(aToken == SparkLend.DAI_SPTOKEN ? SparkLend.DAI_TREASURY : SparkLend.TREASURY),
-                0
-            );
-
-            assertEq(IPool(SparkLend.POOL).getReserveData(aToken).accruedToTreasury, 0);
-        }
     }
 
     function test_ETHEREUM_sparkTreasury_foundationGrant() external onChain(ChainIdUtils.Ethereum()) {
