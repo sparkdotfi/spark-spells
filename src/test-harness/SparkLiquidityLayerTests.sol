@@ -326,29 +326,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     struct UniswapV4LPE2ETestParams {
         SparkLiquidityLayerContext ctx;
-        bytes32 poolId;
-        address asset0;
-        address asset1;
-        uint256 depositAmount; // Amount across both assets
-        bytes32 depositKey;
-        bytes32 withdrawKey;
+        bytes32                    poolId;
+        address                    asset0;
+        address                    asset1;
+        uint256                    depositAmount; // Amount across both assets
+        bytes32                    depositKey;
+        bytes32                    withdrawKey;
     }
 
     struct UniswapV4E2ETestVars {
-        uint256   depositAmount0;
-        uint256   depositAmount1;
-        int24     tickLower;
-        int24     tickUpper;
-        uint24    maxTickSpacing;
-        uint256   maxSlippage;
-        uint256   depositLimit;
-        uint256   withdrawLimit;
-        uint256   totalDepositValue;
-        uint128   liquidityAmount;
-        uint256   tokenId;
-        uint256   withdrawAmount0;
-        uint256   withdrawAmount1;
-        uint256   totalWithdrawnValue;
+        uint256 depositAmount0;
+        uint256 depositAmount1;
+        int24   tickLower;
+        int24   tickUpper;
+        uint24  maxTickSpacing;
+        uint256 depositLimit;
+        uint256 withdrawLimit;
+        uint256 totalDepositValue;
+        uint128 liquidityAmount;
+        uint256 tokenId;
+        uint256 withdrawAmount0;
+        uint256 withdrawAmount1;
+        uint256 totalWithdrawnValue;
     }
 
     struct UniswapV4SwapE2ETestParams {
@@ -1307,8 +1306,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _checkRateLimitValue(p.ctx, p.depositKey,  18);
         _checkRateLimitValue(p.ctx, p.withdrawKey, 18);
 
-        v.maxSlippage = MainnetController(p.ctx.controller).maxSlippages(address(uint160(uint256(p.poolId))));
-
         /****************************************************/
         /*** Step 1: Deposit and check resulting position ***/
         /****************************************************/
@@ -1418,7 +1415,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _checkRateLimitValue(p.ctx, p.swapKey, 18);
 
-        uint256 maxSlippage  = MainnetController(p.ctx.controller).maxSlippages(address(uint160(uint256(p.poolId))));
         uint256 amountIn     = _fromNormalizedAmount(p.asset0, p.swapAmount);
         uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, p.asset0, uint128(amountIn), 0.99999e18);
 
