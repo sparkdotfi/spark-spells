@@ -2781,41 +2781,41 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 // Only assert equivalent events, new slippage config events aren't in old controller
                 if (newSlippageLogsCount > oldSlippageLogs.length) continue;
 
-                uint256 index = newSlippageLogsCount - 1;
-
-                address oldPool        = _toAddress(oldSlippageLogs[index].topics[1]);
-                uint256 oldMaxSlippage = uint256(bytes32(oldSlippageLogs[index].data));
+                address oldPool        = _toAddress(oldSlippageLogs[newSlippageLogsCount - 1].topics[1]);
+                uint256 oldMaxSlippage = uint256(bytes32(oldSlippageLogs[newSlippageLogsCount - 1].data));
 
                 assertEq(_toAddress(newLogs[i].topics[1]),  oldPool);
                 assertEq(uint256(bytes32(newLogs[i].data)), oldMaxSlippage);
 
                 assertEq(newController.maxSlippages(oldPool), oldController.maxSlippages(oldPool));
+
+                assertTrue(newController.maxSlippages(oldPool) != 0);
             }
             else if (newLogs[i].topics[0] == MainnetController.MintRecipientSet.selector) {
                 newMintRecipientLogsCount++;
 
-                uint256 index = newMintRecipientLogsCount - 1;
-
-                uint32  oldDomain     = uint32(uint256(oldCctpLogs[index].topics[1]));
-                address oldRecipient  = _toAddress(bytes32(oldCctpLogs[index].data));
+                uint32  oldDomain     = uint32(uint256(oldCctpLogs[newMintRecipientLogsCount - 1].topics[1]));
+                address oldRecipient  = _toAddress(bytes32(oldCctpLogs[newMintRecipientLogsCount - 1].data));
 
                 assertEq(uint32(uint256(newLogs[i].topics[1])), oldDomain);
                 assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
 
                 assertEq(newController.mintRecipients(oldDomain), oldController.mintRecipients(oldDomain));
+
+                assertTrue(newController.mintRecipients(oldDomain) != bytes32(0));
             }
             else if (newLogs[i].topics[0] == MainnetController.LayerZeroRecipientSet.selector) {
                 newLayerZeroRecipientLogsCount++;
 
-                uint256 index = newLayerZeroRecipientLogsCount - 1;
-
-                uint32  oldEndpointId = uint32(uint256(oldLayerZeroLogs[index].topics[1]));
-                address oldRecipient  = _toAddress(bytes32(oldLayerZeroLogs[index].data));
+                uint32  oldEndpointId = uint32(uint256(oldLayerZeroLogs[newLayerZeroRecipientLogsCount - 1].topics[1]));
+                address oldRecipient  = _toAddress(bytes32(oldLayerZeroLogs[newLayerZeroRecipientLogsCount - 1].data));
 
                 assertEq(uint32(uint256(newLogs[i].topics[1])), oldEndpointId);
                 assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
 
                 assertEq(newController.layerZeroRecipients(oldEndpointId), oldController.layerZeroRecipients(oldEndpointId));
+
+                assertTrue(newController.layerZeroRecipients(oldEndpointId) != bytes32(0));
             }
             else if (newLogs[i].topics[0] == MainnetController.MaxExchangeRateSet.selector) {
                 newExchangeRateLogsCount++;
@@ -2823,15 +2823,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 // Only assert equivalent events, new exchange rate config events aren't in old controller
                 if (newExchangeRateLogsCount > oldExchangeRatesLogs.length) continue;
 
-                uint256 index = newExchangeRateLogsCount - 1;
-
-                address oldToken           = _toAddress(oldExchangeRatesLogs[index].topics[1]);
-                uint256 oldMaxExchangeRate = uint256(bytes32(oldExchangeRatesLogs[index].data));
+                address oldToken           = _toAddress(oldExchangeRatesLogs[newExchangeRateLogsCount - 1].topics[1]);
+                uint256 oldMaxExchangeRate = uint256(bytes32(oldExchangeRatesLogs[newExchangeRateLogsCount - 1].data));
 
                 assertEq(_toAddress(newLogs[i].topics[1]),  oldToken);
                 assertEq(uint256(bytes32(newLogs[i].data)), oldMaxExchangeRate);
 
                 assertEq(newController.maxExchangeRates(oldToken), oldController.maxExchangeRates(oldToken));
+
+                assertTrue(newController.maxExchangeRates(oldToken) != 0);
             }
         }
 
