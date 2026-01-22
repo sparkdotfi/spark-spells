@@ -251,6 +251,8 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         _executeAllPayloadsAndBridges();
 
+        uint256 snapshot = vm.snapshotState();
+
         for (uint256 i = 0; i < reserves.length; i++) {
             DataTypes.ReserveConfigurationMap memory config = IPool(Gnosis.POOL).getConfiguration(reserves[i]);
 
@@ -261,6 +263,8 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
             assertEq(config.getReserveFactor(), 50_00);
 
             _testUserActionsAfterPayloadExecutionSparkLend(reserves[i], Gnosis.USDC);
+
+            vm.revertToState(snapshot);
         }
     }
 
@@ -344,6 +348,9 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         // User can't borrow.
         vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
         pool.borrow(collateralAsset, debtAmount, 2, 0, testUser);
+
+        vm.expectRevert(bytes("39"));  // NO_DEBT_OF_SELECTED_TYPE (able to repay if there is debt)
+        pool.repay(collateralAsset, debtAmount, 2, testUser);
 
         vm.stopPrank();
 
