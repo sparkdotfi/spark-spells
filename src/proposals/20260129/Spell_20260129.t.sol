@@ -1,37 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
-import { VmSafe }   from "forge-std/Vm.sol";
-
-import { IMetaMorpho, MarketParams, Id, PendingUint192, MarketConfig } from "metamorpho/interfaces/IMetaMorpho.sol";
-import { MarketParamsLib }                                             from "lib/metamorpho/lib/morpho-blue/src/libraries/MarketParamsLib.sol";
-
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
-import { Avalanche } from "spark-address-registry/Avalanche.sol";
-import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
-import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
-import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 
-import { UserConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
-
-import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
+import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
+import { UserConfiguration }    from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
 
 import { AaveOracle }        from "sparklend-v1-core/misc/AaveOracle.sol";
 import { IPool }             from "sparklend-v1-core/interfaces/IPool.sol";
 import { IPoolConfigurator } from "sparklend-v1-core/interfaces/IPoolConfigurator.sol";
 import { DataTypes }         from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
-import { IPoolDataProvider } from "sparklend-v1-core/interfaces/IPoolDataProvider.sol";
-
-import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 import { DealUtils }    from "src/libraries/DealUtils.sol";
@@ -41,10 +26,8 @@ import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTe
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
 import {
-    ICurvePoolLike,
     ISparkVaultV2Like,
-    ISyrupLike,
-    IPSM3Like
+    ISyrupLike
 } from "src/interfaces/Interfaces.sol";
 
 interface IPermissionManagerLike {
