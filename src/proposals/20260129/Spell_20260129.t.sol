@@ -390,15 +390,35 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
         pool.repay(debtAsset, debtAmount, 2, testUser);
 
+        vm.stopPrank();
+
+        // User can repay the debt in reserveAsset
+
+        if (pool.getConfiguration(reserveAsset).getBorrowingEnabled()) {
+            _setupUserSparkLendPosition(reserveAsset, reserveAsset, testUser, reserveAmount, debtAmount);
+
+            vm.startPrank(testUser);
+
+            deal(reserveAsset, testUser, debtAmount);
+
+            IERC20(reserveAsset).safeIncreaseAllowance(address(pool), type(uint256).max);
+
+            pool.repay(reserveAsset, debtAmount, 2, testUser);
+
+            vm.stopPrank();
+        } 
+
         // User can withdraw the collateral
+
+        vm.startPrank(testUser);
 
         pool.withdraw(reserveAsset, 1 * 10 ** IERC20Metadata(reserveAsset).decimals(), testUser);
 
         vm.stopPrank();
 
-        _setupUserSparkLendPosition(reserveAsset, debtAsset, testUser, reserveAmount, debtAmount);
-
         // User can get liquidated
+
+        _setupUserSparkLendPosition(reserveAsset, debtAsset, testUser, reserveAmount, debtAmount);
 
         address mockOracle = address(new MockAggregator(1));
 
@@ -534,6 +554,13 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
             } else {
                 assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
             }
+
+            assertEq(
+                IERC20(aToken).balanceOf(aToken == SparkLend.DAI_SPTOKEN ? SparkLend.DAI_TREASURY : SparkLend.TREASURY),
+                0
+            );
+
+            assertEq(IPool(SparkLend.POOL).getReserveData(aToken).accruedToTreasury, 0);
         }
     }
 
