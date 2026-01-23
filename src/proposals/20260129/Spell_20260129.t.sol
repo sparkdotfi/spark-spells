@@ -426,11 +426,11 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         params[0] = abi.encode(
             IV4Router.ExactOutputSingleParams({
-                poolKey          : poolKey,
-                zeroForOne       : currencyIn == poolKey.currency0,
-                amountOut        : amountOut,
-                amountInMaximum  : uint128(amountInMaximum),
-                hookData         : bytes("")
+                poolKey         : poolKey,
+                zeroForOne      : currencyIn == poolKey.currency0,
+                amountOut       : amountOut,
+                amountInMaximum : uint128(amountInMaximum),
+                hookData        : bytes("")
             })
         );
 
