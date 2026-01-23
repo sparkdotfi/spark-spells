@@ -2,7 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
+
+import { IPool } from "sparklend-v1-core/interfaces/IPool.sol";
 
 import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
 
@@ -17,6 +22,52 @@ abstract contract SpellTests is SpellRunner {
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
+
+    function test_ETHEREUM_sparkLend_withdrawAllReserves() external onChain(ChainIdUtils.Ethereum()) {
+        address[] memory reserves             = IPool(SparkLend.POOL).getReservesList();
+        uint256[] memory aTokenBalancesBefore = new uint256[](reserves.length);
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
+
+            if (
+                aToken != SparkLend.DAI_SPTOKEN   &&
+                aToken != SparkLend.USDS_SPTOKEN  &&
+                aToken != SparkLend.USDC_SPTOKEN  &&
+                aToken != SparkLend.PYUSD_SPTOKEN &&
+                aToken != SparkLend.USDT_SPTOKEN
+            ) {
+                aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG);
+            } else {
+                aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_PROXY);
+            }
+        }
+
+        _executeAllPayloadsAndBridges();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
+
+            if (
+                aToken != SparkLend.DAI_SPTOKEN   &&
+                aToken != SparkLend.USDS_SPTOKEN  &&
+                aToken != SparkLend.USDC_SPTOKEN  &&
+                aToken != SparkLend.PYUSD_SPTOKEN &&
+                aToken != SparkLend.USDT_SPTOKEN
+            ) {
+                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
+            } else {
+                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
+            }
+
+            assertEq(
+                IERC20(aToken).balanceOf(aToken == SparkLend.DAI_SPTOKEN ? SparkLend.DAI_TREASURY : SparkLend.TREASURY),
+                0
+            );
+
+            assertEq(IPool(SparkLend.POOL).getReserveData(aToken).accruedToTreasury, 0);
+        }
+    }
 
     function test_ETHEREUM_PayloadsConfigured() external onChain(ChainIdUtils.Ethereum()) {
         for (uint256 i = 0; i < allChains.length; ++i) {

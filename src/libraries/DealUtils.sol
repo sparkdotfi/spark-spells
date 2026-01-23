@@ -29,8 +29,8 @@ library DealUtils {
     address internal constant USDC_BASE = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     address internal constant USDC_MAINNET_WHALE = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
-    address internal constant EURE_GNOSIS_WHALE  = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
-    address internal constant USDCE_GNOSIS_WHALE = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+    address internal constant EURE_GNOSIS_WHALE  = 0xbDA14C8F73773469a819C52C110FdC1A63884aDc;
+    address internal constant USDCE_GNOSIS_WHALE = 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3;
     address internal constant USDC_BASE_WHALE    = 0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78;
 
     /**
