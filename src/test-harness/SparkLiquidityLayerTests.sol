@@ -3537,7 +3537,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _testCCTPIntegration(CCTPE2ETestParams({
                 ctx:            ctx,
                 cctp:           integration.integration,
-                transferAmount: 40_000_000e6,
+                transferAmount: 20_000_000e6,
                 transferKey:    integration.entryId,
                 cctpId:         abi.decode(integration.extraData, (uint32))
             }));

@@ -97,13 +97,14 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260129;
-        _blockDate = 1769005086;  // 2026-01-21T14:18:00Z
+        _blockDate = 1769186727;  // 2026-01-23T16:45:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
+        chainData[ChainIdUtils.Gnosis()].payload   = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xa091BeD493C27efaa4D6e06e32684eCa0325adcA;
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
@@ -138,7 +139,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault:              usdtVault,
             depositCap:         2_000_000_000e6,
-            expectedMaxDeposit: 1_840_172_664.849384e6
+            expectedMaxDeposit: 1_848_359_589.005704e6
         });
     }
 
@@ -488,13 +489,14 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260129;
-        _blockDate = 1769005086;  // 2026-01-21T14:18:00Z
+        _blockDate = 1769186727;  // 2026-01-23T16:45:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
+        chainData[ChainIdUtils.Gnosis()].payload   = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xa091BeD493C27efaa4D6e06e32684eCa0325adcA;
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
@@ -772,13 +774,14 @@ contract SparkEthereum_20260129_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260129;
-        _blockDate = 1769005086;  // 2026-01-21T14:18:00Z
+        _blockDate = 1769186727;  // 2026-01-23T16:45:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xCE352d9429A5e10b29D3d610C7217f9333e04aB4;
+        chainData[ChainIdUtils.Gnosis()].payload   = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xa091BeD493C27efaa4D6e06e32684eCa0325adcA;
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;

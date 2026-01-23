@@ -46,7 +46,7 @@ contract SparkEthereum_20260129 is SparkPayloadEthereum {
     uint256 internal constant FOUNDATION_GRANT_AMOUNT = 1_100_000e18;
 
     constructor() {
-        // PAYLOAD_GNOSIS = 
+        PAYLOAD_GNOSIS = 0x08AbA599Bd82e4De7b78516077cDF1CB24788CC1;
     }
 
     function _postExecute() internal override {
