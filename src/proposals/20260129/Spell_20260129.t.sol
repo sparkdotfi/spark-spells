@@ -39,9 +39,10 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
 import {
     ISparkVaultV2Like,
-    ISyrupLike
+    IStateViewLike,
+    ISyrupLike,
+    IPositionManagerLike
 } from "src/interfaces/Interfaces.sol";
-
 interface IPermissionManagerLike {
     function admin() external view returns (address);
     function setLenderAllowlist(
@@ -49,30 +50,6 @@ interface IPermissionManagerLike {
         address[] calldata lenders_,
         bool[]    calldata booleans_
     ) external;
-}
-
-interface IPositionManagerLike {
-
-    function transferFrom(address from, address to, uint256 id) external;
-
-    function getPoolAndPositionInfo(uint256 tokenId)
-        external view returns (PoolKey memory poolKey, PositionInfo info);
-
-    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
-
-    function nextTokenId() external view returns (uint256 nextTokenId);
-
-    function ownerOf(uint256 tokenId) external view returns (address owner);
-
-    function poolKeys(bytes25 poolId) external view returns (PoolKey memory poolKeys);
-
-}
-
-interface IStateViewLike {
-
-    function getSlot0(PoolId poolId)
-        external view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
-
 }
 
 interface IPermit2Like {
@@ -204,7 +181,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(depositPoolId,  10_000_000e18, 100_000_000e18 / uint256(1 days));
         _assertRateLimit(withdrawPoolId, 50_000_000e18, 200_000_000e18 / uint256(1 days));
-        _assertRateLimit(swapPoolId,     5_000_000e18, 50_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapPoolId,     5_000_000e18,  50_000_000e18 / uint256(1 days));
 
         (_tickLowerMin, _tickUpperMax, _maxTickSpacing) = controller.uniswapV4TickLimits(PYUSD_USDS_POOL_ID);
 
@@ -238,9 +215,9 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))), 0.998e18);
 
-        _assertRateLimit(depositPoolId,  5_000_000e18, 50_000_000e18 / uint256(1 days));
+        _assertRateLimit(depositPoolId,  5_000_000e18,  50_000_000e18 / uint256(1 days));
         _assertRateLimit(withdrawPoolId, 50_000_000e18, 200_000_000e18 / uint256(1 days));
-        _assertRateLimit(swapPoolId,     5_000_000e18, 50_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapPoolId,     5_000_000e18,  50_000_000e18 / uint256(1 days));
 
         (_tickLowerMin, _tickUpperMax, _maxTickSpacing) = controller.uniswapV4TickLimits(USDT_USDS_POOL_ID);
 
@@ -686,9 +663,9 @@ contract SparkEthereum_20260129_SparklendTests is SparklendTests {
         if (pool.getConfiguration(reserveAsset).getBorrowingEnabled()) {
             _setupUserSparkLendPosition(reserveAsset, reserveAsset, testUser, reserveAmount, debtAmount);
 
-            vm.startPrank(testUser);
-
             deal(reserveAsset, testUser, debtAmount);
+
+            vm.startPrank(testUser);
 
             IERC20(reserveAsset).safeIncreaseAllowance(address(pool), type(uint256).max);
 

@@ -368,6 +368,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256                    takeAmount;
     }
 
+    struct ControllerEvents {
+        VmSafe.EthGetLogs[] oldSlippageLogs;
+        VmSafe.EthGetLogs[] oldCctpLogs;
+        VmSafe.EthGetLogs[] oldLayerZeroLogs;
+        VmSafe.EthGetLogs[] oldExchangeRatesLogs;
+        VmSafe.EthGetLogs[] oldOTCBufferLogs;
+    }
+
     using DomainHelpers for Domain;
 
     // TODO: Put in registry
@@ -1433,7 +1441,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         skip(10 days);  // Recharge rate limits
 
         if (p.seedLiquidity > 0) {
-            _seedUniswapV4Liquidity(p); // Add liquidity to the pool as it is illiquid (TODO: Remove)
+            _seedUniswapV4Liquidity(p); // Add liquidity to the pool as it is considered illiquid (TODO: Remove)
         }
 
         /*********************************/
@@ -2777,15 +2785,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         MainnetController newController = MainnetController(_newController);
         MainnetController oldController = MainnetController(_oldController);
 
-        VmSafe.EthGetLogs[] memory oldSlippageLogs      = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
-        VmSafe.EthGetLogs[] memory oldCctpLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
-        VmSafe.EthGetLogs[] memory oldLayerZeroLogs     = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
-        VmSafe.EthGetLogs[] memory oldExchangeRatesLogs = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
+        ControllerEvents memory vars;
 
-        assertEq(oldSlippageLogs.length,      16);
-        assertEq(oldCctpLogs.length,          5);
-        assertEq(oldLayerZeroLogs.length,     0);
-        assertEq(oldExchangeRatesLogs.length, 9);
+        vars.oldSlippageLogs      = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
+        vars.oldCctpLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        vars.oldLayerZeroLogs     = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
+        vars.oldExchangeRatesLogs = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
+        vars.oldOTCBufferLogs     = _getEvents(block.chainid, _oldController, MainnetController.OTCBufferSet.selector);
+
+        assertEq(vars.oldSlippageLogs.length,      16);
+        assertEq(vars.oldCctpLogs.length,          5);
+        assertEq(vars.oldLayerZeroLogs.length,     0);
+        assertEq(vars.oldExchangeRatesLogs.length, 9);
+        assertEq(vars.oldOTCBufferLogs.length,     0);
 
         vm.recordLogs();  // Used to get events from rate limits after execution
 
@@ -2805,10 +2817,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 newSlippageLogsCount++;
 
                 // Only assert equivalent events, new slippage config events aren't in old controller
-                if (newSlippageLogsCount > oldSlippageLogs.length) continue;
+                if (newSlippageLogsCount > vars.oldSlippageLogs.length) continue;
 
-                address oldPool        = _toAddress(oldSlippageLogs[newSlippageLogsCount - 1].topics[1]);
-                uint256 oldMaxSlippage = uint256(bytes32(oldSlippageLogs[newSlippageLogsCount - 1].data));
+                address oldPool        = _toAddress(vars.oldSlippageLogs[newSlippageLogsCount - 1].topics[1]);
+                uint256 oldMaxSlippage = uint256(bytes32(vars.oldSlippageLogs[newSlippageLogsCount - 1].data));
 
                 assertEq(_toAddress(newLogs[i].topics[1]),  oldPool);
                 assertEq(uint256(bytes32(newLogs[i].data)), oldMaxSlippage);
@@ -2820,8 +2832,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             else if (newLogs[i].topics[0] == MainnetController.MintRecipientSet.selector) {
                 newMintRecipientLogsCount++;
 
-                uint32  oldDomain     = uint32(uint256(oldCctpLogs[newMintRecipientLogsCount - 1].topics[1]));
-                address oldRecipient  = _toAddress(bytes32(oldCctpLogs[newMintRecipientLogsCount - 1].data));
+                uint32  oldDomain     = uint32(uint256(vars.oldCctpLogs[newMintRecipientLogsCount - 1].topics[1]));
+                address oldRecipient  = _toAddress(bytes32(vars.oldCctpLogs[newMintRecipientLogsCount - 1].data));
 
                 assertEq(uint32(uint256(newLogs[i].topics[1])), oldDomain);
                 assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
@@ -2833,8 +2845,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             else if (newLogs[i].topics[0] == MainnetController.LayerZeroRecipientSet.selector) {
                 newLayerZeroRecipientLogsCount++;
 
-                uint32  oldEndpointId = uint32(uint256(oldLayerZeroLogs[newLayerZeroRecipientLogsCount - 1].topics[1]));
-                address oldRecipient  = _toAddress(bytes32(oldLayerZeroLogs[newLayerZeroRecipientLogsCount - 1].data));
+                uint32  oldEndpointId = uint32(uint256(vars.oldLayerZeroLogs[newLayerZeroRecipientLogsCount - 1].topics[1]));
+                address oldRecipient  = _toAddress(bytes32(vars.oldLayerZeroLogs[newLayerZeroRecipientLogsCount - 1].data));
 
                 assertEq(uint32(uint256(newLogs[i].topics[1])), oldEndpointId);
                 assertEq(_toAddress(bytes32(newLogs[i].data)),  oldRecipient);
@@ -2847,10 +2859,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 newExchangeRateLogsCount++;
 
                 // Only assert equivalent events, new exchange rate config events aren't in old controller
-                if (newExchangeRateLogsCount > oldExchangeRatesLogs.length) continue;
+                if (newExchangeRateLogsCount > vars.oldExchangeRatesLogs.length) continue;
 
-                address oldToken           = _toAddress(oldExchangeRatesLogs[newExchangeRateLogsCount - 1].topics[1]);
-                uint256 oldMaxExchangeRate = uint256(bytes32(oldExchangeRatesLogs[newExchangeRateLogsCount - 1].data));
+                address oldToken           = _toAddress(vars.oldExchangeRatesLogs[newExchangeRateLogsCount - 1].topics[1]);
+                uint256 oldMaxExchangeRate = uint256(bytes32(vars.oldExchangeRatesLogs[newExchangeRateLogsCount - 1].data));
 
                 assertEq(_toAddress(newLogs[i].topics[1]),  oldToken);
                 assertEq(uint256(bytes32(newLogs[i].data)), oldMaxExchangeRate);
@@ -2861,10 +2873,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }
         }
 
-        assertGe(newSlippageLogsCount,           oldSlippageLogs.length);
-        assertGe(newMintRecipientLogsCount,      oldCctpLogs.length);
-        assertGe(newLayerZeroRecipientLogsCount, oldLayerZeroLogs.length);
-        assertGe(newExchangeRateLogsCount,       oldExchangeRatesLogs.length);
+        assertGe(newSlippageLogsCount,           vars.oldSlippageLogs.length);
+        assertGe(newMintRecipientLogsCount,      vars.oldCctpLogs.length);
+        assertGe(newLayerZeroRecipientLogsCount, vars.oldLayerZeroLogs.length);
+        assertGe(newExchangeRateLogsCount,       vars.oldExchangeRatesLogs.length);
     }
 
     function _toAddress(bytes32 b) internal pure returns (address) {
@@ -3150,11 +3162,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
 
         bytes32 takeKey = RateLimitHelpers.makeAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
+            MainnetController(ctx.controller).LIMIT_SPARK_VAULT_TAKE(),
             vault_
         );
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
-            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            MainnetController(ctx.controller).LIMIT_ASSET_TRANSFER(),
             vault.asset(),
             vault_
         );
@@ -3539,13 +3551,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
 
             _testUniswapV4LPIntegration(UniswapV4LPE2ETestParams({
-                ctx:            ctx,
-                poolId:         poolId,
-                asset0:         Currency.unwrap(poolKey.currency0),
-                asset1:         Currency.unwrap(poolKey.currency1),
-                depositAmount:  1_000_000e18,  // Amount across both assets
-                depositKey:     integration.entryId,
-                withdrawKey:    integration.exitId
+                ctx:           ctx,
+                poolId:        poolId,
+                asset0:        Currency.unwrap(poolKey.currency0),
+                asset1:        Currency.unwrap(poolKey.currency1),
+                depositAmount: 1_000_000e18,  // Amount across both assets
+                depositKey:    integration.entryId,
+                withdrawKey:   integration.exitId
             }));
         }
 
@@ -3557,13 +3569,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
 
             _testUniswapV4SwapIntegration(UniswapV4SwapE2ETestParams({
-                ctx:            ctx,
-                poolId:         poolId,
-                asset0:         Currency.unwrap(poolKey.currency0),
-                asset1:         Currency.unwrap(poolKey.currency1),
-                seedLiquidity:  seedLiquidity, // TODO: Remove this when pools have enough liquidity
-                swapAmount:     1_000_000e18,  // Amount for each swap direction
-                swapKey:        integration.entryId
+                ctx:           ctx,
+                poolId:        poolId,
+                asset0:        Currency.unwrap(poolKey.currency0),
+                asset1:        Currency.unwrap(poolKey.currency1),
+                seedLiquidity: seedLiquidity, // TODO: Remove this when pools have enough liquidity
+                swapAmount:    1_000_000e18,  // Amount for each swap direction
+                swapKey:       integration.entryId
             }));
         }
 
@@ -4194,7 +4206,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return SLLIntegration({
             label:       label,
             category:    Category.UNISWAP_V4_LP,
-            integration: address(1), // Not compatible, see extraData.
+            integration: address(uint160(uint256(poolId))),  // Unique ID.
             entryId:     RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_DEPOSIT(), poolId),
             entryId2:    bytes32(0),
             exitId:      RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_WITHDRAW(), poolId),
@@ -4213,7 +4225,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return SLLIntegration({
             label:       label,
             category:    Category.UNISWAP_V4_SWAP,
-            integration: address(1), // Not compatible, see extraData.
+            integration: address(uint160(uint256(poolId))),  // Unique ID.
             entryId:     RateLimitHelpers.makeBytes32Key(mainnetController.LIMIT_UNISWAP_V4_SWAP(), poolId),
             entryId2:    bytes32(0),
             exitId:      bytes32(0),

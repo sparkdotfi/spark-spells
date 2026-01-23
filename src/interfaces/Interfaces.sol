@@ -483,11 +483,6 @@ interface IERC20Like {
 // Uniswap V4
 interface IPositionManagerLike {
 
-    function transferFrom(address from, address to, uint256 id) external;
-
-    function getPoolAndPositionInfo(uint256 tokenId)
-        external view returns (PoolKey memory poolKey, PositionInfo info);
-
     function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
 
     function nextTokenId() external view returns (uint256 nextTokenId);
