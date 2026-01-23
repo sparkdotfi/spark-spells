@@ -92,9 +92,6 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
 
     uint256 internal constant _V4_SWAP = 0x10;
 
-    address internal constant _STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
-    address internal constant _V4_QUOTER  = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
-
     constructor() {
         _spellId   = 20260129;
         _blockDate = 1769186727;  // 2026-01-23T16:45:00Z
@@ -157,8 +154,33 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
         });
     }
 
+    function test_newControllerConstructorParams() public onChain(ChainIdUtils.Ethereum()) {
+        MainnetController newController = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        assertEq(
+            newController.hasRole(newController.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),
+            true
+        );
+
+        assertEq(address(newController.proxy()),        Ethereum.ALM_PROXY);
+        assertEq(address(newController.rateLimits()),   Ethereum.ALM_RATE_LIMITS);
+        assertEq(address(newController.vault()),        Ethereum.ALLOCATOR_VAULT);
+        assertEq(address(newController.psm()),          Ethereum.PSM);
+        assertEq(address(newController.daiUsds()),      Ethereum.DAI_USDS);
+        assertEq(address(newController.cctp()),         Ethereum.CCTP_TOKEN_MESSENGER);
+    }
+
     function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4PYUSDUSDS() public onChain(ChainIdUtils.Ethereum()) {
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
+
+        _assertPoolKey(
+            PYUSD_USDS_POOL_ID,
+            Ethereum.PYUSD,
+            Ethereum.USDS,
+            5,
+            1,
+            address(0)
+        );
 
         bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  PYUSD_USDS_POOL_ID));
         bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), PYUSD_USDS_POOL_ID));
@@ -196,6 +218,15 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4USDTUSDS() public onChain(ChainIdUtils.Ethereum()) {
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
 
+        _assertPoolKey(
+            USDT_USDS_POOL_ID,
+            Ethereum.USDT,
+            Ethereum.USDS,
+            5,
+            1,
+            address(0)
+        );
+
         bytes32 depositPoolId  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  USDT_USDS_POOL_ID));
         bytes32 withdrawPoolId = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), USDT_USDS_POOL_ID));
         bytes32 swapPoolId     = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(),     USDT_USDS_POOL_ID));
@@ -230,6 +261,23 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
     }
 
     // Helper functions
+    function _assertPoolKey(                                                                                
+        bytes32 poolId,
+        address expectedCurrency0,
+        address expectedCurrency1,
+        uint24  expectedFee,
+        int24   expectedTickSpacing,
+        address expectedHooks
+    ) internal view {
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER)                       
+            .poolKeys(bytes25(poolId));
+                                                                                                            
+        assertEq(Currency.unwrap(poolKey.currency0), expectedCurrency0);
+        assertEq(Currency.unwrap(poolKey.currency1), expectedCurrency1);
+        assertEq(poolKey.fee,                        expectedFee);
+        assertEq(poolKey.tickSpacing,                expectedTickSpacing);
+        assertEq(address(poolKey.hooks),             expectedHooks);
+    }
 
     function _testUniswapV4LimitOrder(bytes32 poolId) internal {
         MainnetController controller = MainnetController(ETHEREUM_NEW_ALM_CONTROLLER);
@@ -289,7 +337,7 @@ contract SparkEthereum_20260129_SLLTests is SparkLiquidityLayerTests {
     }
 
     function _getCurrentTick(bytes32 poolId) internal view returns (int24 tick) {
-        ( uint160 sqrtPriceX96, , , ) = IStateViewLike(_STATE_VIEW).getSlot0(PoolId.wrap(poolId));
+        ( uint160 sqrtPriceX96, , , ) = IStateViewLike(UNISWAP_V4_STATE_VIEW).getSlot0(PoolId.wrap(poolId));
 
         return TickMath.getTickAtSqrtPrice(sqrtPriceX96);
     }
