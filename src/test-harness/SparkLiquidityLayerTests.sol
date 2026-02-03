@@ -4260,8 +4260,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Base.ALM_PROXY),
                 IRateLimits(Base.ALM_RATE_LIMITS),
-                Base.ALM_RELAYER,
-                Base.ALM_FREEZER
+                Base.ALM_RELAYER_MULTISIG,
+                Base.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.ArbitrumOne()) {
             ctx = SparkLiquidityLayerContext(
@@ -4269,8 +4269,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Arbitrum.ALM_PROXY),
                 IRateLimits(Arbitrum.ALM_RATE_LIMITS),
-                Arbitrum.ALM_RELAYER,
-                Arbitrum.ALM_FREEZER
+                Arbitrum.ALM_RELAYER_MULTISIG,
+                Arbitrum.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Optimism()) {
             ctx = SparkLiquidityLayerContext(
@@ -4278,8 +4278,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Optimism.ALM_PROXY),
                 IRateLimits(Optimism.ALM_RATE_LIMITS),
-                Optimism.ALM_RELAYER,
-                Optimism.ALM_FREEZER
+                Optimism.ALM_RELAYER_MULTISIG,
+                Optimism.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Unichain()) {
             ctx = SparkLiquidityLayerContext(
@@ -4287,8 +4287,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Unichain.ALM_PROXY),
                 IRateLimits(Unichain.ALM_RATE_LIMITS),
-                Unichain.ALM_RELAYER,
-                Unichain.ALM_FREEZER
+                Unichain.ALM_RELAYER_MULTISIG,
+                Unichain.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Avalanche()) {
             ctx = SparkLiquidityLayerContext(
@@ -4296,8 +4296,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Avalanche.ALM_PROXY),
                 IRateLimits(Avalanche.ALM_RATE_LIMITS),
-                Avalanche.ALM_RELAYER,
-                Avalanche.ALM_FREEZER
+                Avalanche.ALM_RELAYER_MULTISIG,
+                Avalanche.ALM_FREEZER_MULTISIG
             );
         } else {
             revert("SLL/executing on unknown chain");
