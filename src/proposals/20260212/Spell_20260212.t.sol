@@ -49,10 +49,13 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
     event Init(uint256 indexed id, address indexed usr);
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event File(bytes32 indexed what, uint256 data);
 
     address internal constant DEPLOYER  = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
     address internal constant DSS_VEST  = 0x6Bad07722818Ceff1deAcc33280DbbFdA4939A09;
     address internal constant VEST_USER = 0xEFF097C5CC7F63e9537188FE381D1360158c1511;
+
+    uint256 internal constant SPK_VESTING_AMOUNT = 1_200_000_000e18;
 
     constructor() {
         _spellId   = 20260212;
@@ -101,20 +104,27 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
         _executeMainnetPayload();  // Have to use this to properly load logs on mainnet
 
         VmSafe.Log[] memory recordedLogs = vm.getRecordedLogs();  // This gets the logs of all payloads
-        VmSafe.Log[] memory newLogs      = new VmSafe.Log[](1);
+        VmSafe.Log[] memory newLogs      = new VmSafe.Log[](2);
 
         uint256 j = 0;
         for (uint256 i = 0; i < recordedLogs.length; ++i) {
-            if (recordedLogs[i].emitter   != DSS_VEST)      continue;
-            if (recordedLogs[i].topics[0] != Init.selector) continue;
+            if (recordedLogs[i].emitter != DSS_VEST) continue;
+
             newLogs[j] = recordedLogs[i];
             j++;
         }
 
-        assertEq(newLogs.length, 1);
+        assertEq(newLogs.length, 2);
 
-        assertEq(uint256(newLogs[0].topics[1]),                   1);
-        assertEq(address(uint160(uint256(newLogs[0].topics[2]))), VEST_USER);
+        assertEq32(newLogs[0].topics[0], File.selector);
+        assertEq32(newLogs[1].topics[0], Init.selector);
+
+        assertEq32(newLogs[0].topics[1], bytes32("cap"));
+
+        assertEq(abi.decode(newLogs[0].data, (uint256)), SPK_VESTING_AMOUNT / (4 * 365 days));
+
+        assertEq(uint256(newLogs[1].topics[1]),                   1);
+        assertEq(address(uint160(uint256(newLogs[1].topics[2]))), VEST_USER);
     }
 
 }
@@ -226,7 +236,7 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         // Claim again in a month, assert balance and state changes.
 
-        vm.warp(block.timestamp + 30 days);
+        vm.warp(VEST_START + 365 days + 30 days);
 
         uint256 claimedAmount2 = SPK_VESTING_AMOUNT * 30 days / (4 * 365 days);
 
@@ -242,7 +252,7 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         // Warp to the end, claim, assert balance and state changes.
 
-        vm.warp(block.timestamp + 3 * 365 days - 30 days);
+        vm.warp(VEST_START + 4 * 365 days);
 
         assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
         assertEq(dssVest.unpaid(vestingId),  SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2);
@@ -256,7 +266,7 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         // Warp past the end
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(VEST_START + 4 * 365 days + 1 days);
 
         assertEq(dssVest.rxd(vestingId),     SPK_VESTING_AMOUNT);
         assertEq(spk.balanceOf(VEST_USER),   SPK_VESTING_AMOUNT);
