@@ -2539,13 +2539,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
 
         if (topic0 != 0) {
-            url = string(
-                abi.encodePacked(
-                    url,
-                    "&topic0=",
-                    vm.toString(topic0)
-                )
-            );
+            url = string(abi.encodePacked(url, "&topic0=", vm.toString(topic0)));
         }
 
         string[] memory inputs = new string[](8);
