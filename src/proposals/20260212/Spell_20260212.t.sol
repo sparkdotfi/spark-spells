@@ -83,16 +83,18 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_ETHEREUM_dssVest_events() external onChain(ChainIdUtils.Ethereum()) {
-        VmSafe.EthGetLogs[] memory relyLogs = _getEvents(block.chainid, DSS_VEST, Rely.selector);
-        VmSafe.EthGetLogs[] memory denyLogs = _getEvents(block.chainid, DSS_VEST, Deny.selector);
+        VmSafe.EthGetLogs[] memory allLogs = _getEvents(block.chainid, DSS_VEST, bytes32(0));
 
-        assertEq(relyLogs.length, 2);
-        assertEq(denyLogs.length, 1);
+        assertEq(allLogs.length, 3);
 
-        assertEq(address(uint160(uint256(relyLogs[0].topics[1]))), DEPLOYER);
-        assertEq(address(uint160(uint256(relyLogs[1].topics[1]))), Ethereum.SPARK_PROXY);
+        assertEq32(allLogs[0].topics[0], Rely.selector);
+        assertEq32(allLogs[1].topics[0], Rely.selector);
+        assertEq32(allLogs[2].topics[0], Deny.selector);
 
-        assertEq(address(uint160(uint256(denyLogs[0].topics[1]))), DEPLOYER);
+        assertEq(address(uint160(uint256(allLogs[0].topics[1]))), DEPLOYER);
+        assertEq(address(uint160(uint256(allLogs[1].topics[1]))), Ethereum.SPARK_PROXY);
+
+        assertEq(address(uint160(uint256(allLogs[2].topics[1]))), DEPLOYER);
 
         vm.recordLogs();
 
