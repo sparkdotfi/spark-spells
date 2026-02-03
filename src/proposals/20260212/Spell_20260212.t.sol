@@ -34,9 +34,13 @@ interface IDssVestLike {
     function bgn(uint256) external view returns (uint256);
     function cap() external view returns (uint256);
     function clf(uint256) external view returns (uint256);
+    function czar() external view returns (address);
+    function gem() external view returns (address);
+    function ids() external view returns (uint256);
     function fin(uint256) external view returns (uint256);
     function mgr(uint256) external view returns (address);
     function rxd(uint256) external view returns (uint256);
+    function res(uint256) external view returns (uint256);
     function tot(uint256) external view returns (uint256);
     function unpaid(uint256) external view returns (uint256);
     function usr(uint256) external view returns (address);
@@ -190,15 +194,21 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         assertEq(dssVest.wards(DEPLOYER),             0);
         assertEq(dssVest.wards(Ethereum.SPARK_PROXY), 1);
+        assertEq(dssVest.czar(),                      Ethereum.SPARK_PROXY);
+        assertEq(dssVest.gem(),                       Ethereum.SPK);
 
         assertEq(dssVest.cap(), 0);
+        assertEq(dssVest.ids(), 0);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(dssVest.wards(DEPLOYER),             0);
         assertEq(dssVest.wards(Ethereum.SPARK_PROXY), 1);
+        assertEq(dssVest.czar(),                      Ethereum.SPARK_PROXY);
+        assertEq(dssVest.gem(),                       Ethereum.SPK);
 
         assertEq(dssVest.cap(), SPK_VESTING_AMOUNT / (4 * 365 days));
+        assertEq(dssVest.ids(), 1);
 
         uint256 vestingId = 1;
 
@@ -209,6 +219,7 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
         assertEq(dssVest.mgr(vestingId),   Ethereum.SPARK_PROXY);
         assertEq(dssVest.usr(vestingId),   VEST_USER);
         assertEq(dssVest.valid(vestingId), true);
+        assertEq(dssVest.res(vestingId),   0);
 
         // Warp to before cliff, assert zero, then after cliff claim, assert balance and state changes.
 
