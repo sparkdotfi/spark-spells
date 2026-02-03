@@ -34,7 +34,7 @@ contract SparkEthereum_20260212 is SparkPayloadEthereum {
 
     uint256 internal constant GROVE_PAYMENT_AMOUNT = 78_394e18;
     uint256 internal constant SPK_VESTING_AMOUNT   = 1_200_000_000e18;
-    uint256 internal constant VEST_START           = 1750118400;  // 2025-06-17T00:00:00Z
+    uint256 internal constant VEST_START           = 1750147200;  // 2025-06-17T08:00:00Z
 
     address internal constant DSS_VEST  = 0x6Bad07722818Ceff1deAcc33280DbbFdA4939A09;
     address internal constant VEST_USER = 0xEFF097C5CC7F63e9537188FE381D1360158c1511; 
