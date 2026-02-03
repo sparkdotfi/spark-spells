@@ -3663,7 +3663,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](48);
+        integrations = new SLLIntegration[](52);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
@@ -3728,6 +3728,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[45] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
         integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
         integrations[47] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+
+        integrations[48] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
+        integrations[49] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
+
+        integrations[50] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
+        integrations[51] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  10_000e18);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3867,17 +3873,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 4);
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
-
-        newIntegrations[integrations.length]     = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        newIntegrations[integrations.length + 1] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
-
-        newIntegrations[integrations.length + 2] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
-        newIntegrations[integrations.length + 3] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  10_000e18);
     }
 
     /**********************************************************************************************/
