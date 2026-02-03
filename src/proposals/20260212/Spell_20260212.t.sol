@@ -99,6 +99,7 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
     address internal constant VEST_USER = 0xEFF097C5CC7F63e9537188FE381D1360158c1511;
 
     uint256 internal constant SPK_VESTING_AMOUNT = 1_200_000_000e18;
+    uint256 internal constant VEST_START         = 1750118400;  // 2025-06-17T00:00:00Z
 
     constructor() {
         _spellId   = 20260212;
@@ -127,95 +128,97 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
     function test_ETHEREUM_dssVest() external onChain(ChainIdUtils.Ethereum()) {
         IERC20 spk = IERC20(Ethereum.SPK);
 
-        assertEq(IDssVestLike(DSS_VEST).wards(DEPLOYER),             0);
-        assertEq(IDssVestLike(DSS_VEST).wards(Ethereum.SPARK_PROXY), 1);
+        IDssVestLike dssVest = IDssVestLike(DSS_VEST);
 
-        assertEq(IDssVestLike(DSS_VEST).cap(), 0);
+        assertEq(dssVest.wards(DEPLOYER),             0);
+        assertEq(dssVest.wards(Ethereum.SPARK_PROXY), 1);
+
+        assertEq(dssVest.cap(), 0);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(IDssVestLike(DSS_VEST).wards(DEPLOYER),             0);
-        assertEq(IDssVestLike(DSS_VEST).wards(Ethereum.SPARK_PROXY), 1);
+        assertEq(dssVest.wards(DEPLOYER),             0);
+        assertEq(dssVest.wards(Ethereum.SPARK_PROXY), 1);
 
-        assertEq(IDssVestLike(DSS_VEST).cap(), SPK_VESTING_AMOUNT / 365 days);
+        assertEq(dssVest.cap(), SPK_VESTING_AMOUNT / (4 * 365 days));
 
         uint256 vestingId = 1;
 
-        assertEq(IDssVestLike(DSS_VEST).tot(vestingId),   SPK_VESTING_AMOUNT);
-        assertEq(IDssVestLike(DSS_VEST).bgn(vestingId),   1750116627);
-        assertEq(IDssVestLike(DSS_VEST).clf(vestingId),   1750116627 + 1 * 365 days);
-        assertEq(IDssVestLike(DSS_VEST).fin(vestingId),   1750116627 + 4 * 365 days);
-        assertEq(IDssVestLike(DSS_VEST).mgr(vestingId),   Ethereum.SPARK_PROXY);
-        assertEq(IDssVestLike(DSS_VEST).usr(vestingId),   VEST_USER);
-        assertEq(IDssVestLike(DSS_VEST).valid(vestingId), true);
+        assertEq(dssVest.tot(vestingId),   SPK_VESTING_AMOUNT);
+        assertEq(dssVest.bgn(vestingId),   VEST_START);
+        assertEq(dssVest.clf(vestingId),   VEST_START + 365 days);
+        assertEq(dssVest.fin(vestingId),   VEST_START + 4 * 365 days);
+        assertEq(dssVest.mgr(vestingId),   Ethereum.SPARK_PROXY);
+        assertEq(dssVest.usr(vestingId),   VEST_USER);
+        assertEq(dssVest.valid(vestingId), true);
 
         // Warp to before cliff, assert zero, then after cliff claim, assert balance and state changes.
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),    0);
-        assertEq(spk.balanceOf(VEST_USER),                 0);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId), 0);
+        assertEq(dssVest.rxd(vestingId),    0);
+        assertEq(spk.balanceOf(VEST_USER),  0);
+        assertEq(dssVest.unpaid(vestingId), 0);
 
-        vm.warp(1750116627 + 1 * 365 days - 1);
+        vm.warp(VEST_START + 365 days - 1);
 
-        IDssVestLike(DSS_VEST).vest(vestingId);
+        dssVest.vest(vestingId);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),    0);
-        assertEq(spk.balanceOf(VEST_USER),                 0);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId), 0);
+        assertEq(dssVest.rxd(vestingId),    0);
+        assertEq(spk.balanceOf(VEST_USER),  0);
+        assertEq(dssVest.unpaid(vestingId), 0);
 
-        vm.warp(1750116627 + 1 * 365 days);
+        vm.warp(VEST_START + 365 days);
 
-        uint256 claimedAmount = SPK_VESTING_AMOUNT / 4;
+        uint256 claimedAmount1 = SPK_VESTING_AMOUNT / 4;
 
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), claimedAmount);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  claimedAmount);
+        assertEq(dssVest.accrued(vestingId), claimedAmount1);
+        assertEq(dssVest.unpaid(vestingId),  claimedAmount1);
 
-        IDssVestLike(DSS_VEST).vest(vestingId);
+        dssVest.vest(vestingId);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),     claimedAmount);
-        assertEq(spk.balanceOf(VEST_USER),                  claimedAmount);
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), claimedAmount);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  0);
+        assertEq(dssVest.rxd(vestingId),     claimedAmount1);
+        assertEq(spk.balanceOf(VEST_USER),   claimedAmount1);
+        assertEq(dssVest.accrued(vestingId), claimedAmount1);
+        assertEq(dssVest.unpaid(vestingId),  0);
 
         // Claim again in a month, assert balance and state changes.
 
-        skip(30 days);
+        vm.warp(block.timestamp + 30 days);
 
-        uint256 claimedAmount1 = SPK_VESTING_AMOUNT * 30 days / (4 * 365 days);
+        uint256 claimedAmount2 = SPK_VESTING_AMOUNT * 30 days / (4 * 365 days);
 
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), claimedAmount + claimedAmount1);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  claimedAmount1);
+        assertEq(dssVest.accrued(vestingId), claimedAmount1 + claimedAmount2);
+        assertEq(dssVest.unpaid(vestingId),  claimedAmount2);
 
-        IDssVestLike(DSS_VEST).vest(vestingId);
+        dssVest.vest(vestingId);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),     claimedAmount + claimedAmount1);
-        assertEq(spk.balanceOf(VEST_USER),                  claimedAmount + claimedAmount1);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  0);
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), claimedAmount + claimedAmount1);
+        assertEq(dssVest.rxd(vestingId),     claimedAmount1 + claimedAmount2);
+        assertEq(spk.balanceOf(VEST_USER),   claimedAmount1 + claimedAmount2);
+        assertEq(dssVest.unpaid(vestingId),  0);
+        assertEq(dssVest.accrued(vestingId), claimedAmount1 + claimedAmount2);
 
         // Warp to the end, claim, assert balance and state changes.
 
-        skip(4 * 365 days - 30 days);
+        vm.warp(block.timestamp + 3 * 365 days - 30 days);
 
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), SPK_VESTING_AMOUNT);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  SPK_VESTING_AMOUNT - claimedAmount - claimedAmount1);
+        assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
+        assertEq(dssVest.unpaid(vestingId),  SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2);
 
-        IDssVestLike(DSS_VEST).vest(vestingId);
+        dssVest.vest(vestingId);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),     SPK_VESTING_AMOUNT);
-        assertEq(spk.balanceOf(VEST_USER),                  SPK_VESTING_AMOUNT);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  0);
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), SPK_VESTING_AMOUNT);
+        assertEq(dssVest.rxd(vestingId),     SPK_VESTING_AMOUNT);
+        assertEq(spk.balanceOf(VEST_USER),   SPK_VESTING_AMOUNT);
+        assertEq(dssVest.unpaid(vestingId),  0);
+        assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
 
         // Warp past the end
 
-        skip(1 days);
+        vm.warp(block.timestamp + 1 days);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),     SPK_VESTING_AMOUNT);
-        assertEq(spk.balanceOf(VEST_USER),                  SPK_VESTING_AMOUNT);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  0);
-        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), SPK_VESTING_AMOUNT);
-        assertEq(IDssVestLike(DSS_VEST).valid(vestingId),   false);
+        assertEq(dssVest.rxd(vestingId),     SPK_VESTING_AMOUNT);
+        assertEq(spk.balanceOf(VEST_USER),   SPK_VESTING_AMOUNT);
+        assertEq(dssVest.unpaid(vestingId),  0);
+        assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
+        assertEq(dssVest.valid(vestingId),   false);
     }
 
 }
