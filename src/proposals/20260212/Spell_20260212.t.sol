@@ -26,6 +26,10 @@ interface IPermissionManagerLike {
 }
 
 interface IDssVestLike {
+    event Init(uint256 indexed id, address indexed usr);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+
     function accrued(uint256) external view returns (uint256);
     function bgn(uint256) external view returns (uint256);
     function cap() external view returns (uint256);
@@ -46,9 +50,6 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
-    event Init(uint256 indexed id, address indexed usr);
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
     event File(bytes32 indexed what, uint256 data);
 
     address internal constant DEPLOYER  = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
@@ -90,13 +91,12 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(allLogs.length, 3);
 
-        assertEq32(allLogs[0].topics[0], Rely.selector);
-        assertEq32(allLogs[1].topics[0], Rely.selector);
-        assertEq32(allLogs[2].topics[0], Deny.selector);
+        assertEq32(allLogs[0].topics[0], IDssVestLike.Rely.selector);
+        assertEq32(allLogs[1].topics[0], IDssVestLike.Rely.selector);
+        assertEq32(allLogs[2].topics[0], IDssVestLike.Deny.selector);
 
         assertEq(address(uint160(uint256(allLogs[0].topics[1]))), DEPLOYER);
         assertEq(address(uint160(uint256(allLogs[1].topics[1]))), Ethereum.SPARK_PROXY);
-
         assertEq(address(uint160(uint256(allLogs[2].topics[1]))), DEPLOYER);
 
         vm.recordLogs();
@@ -116,12 +116,16 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(newLogs.length, 2);
 
-        assertEq32(newLogs[0].topics[0], File.selector);
-        assertEq32(newLogs[1].topics[0], Init.selector);
+        // File event
 
+        assertEq32(newLogs[0].topics[0], File.selector);
         assertEq32(newLogs[0].topics[1], bytes32("cap"));
 
         assertEq(abi.decode(newLogs[0].data, (uint256)), SPK_VESTING_AMOUNT / (4 * 365 days));
+
+        // Init event
+
+        assertEq32(newLogs[1].topics[0], IDssVestLike.Init.selector);
 
         assertEq(uint256(newLogs[1].topics[1]),                   1);
         assertEq(address(uint160(uint256(newLogs[1].topics[2]))), VEST_USER);
