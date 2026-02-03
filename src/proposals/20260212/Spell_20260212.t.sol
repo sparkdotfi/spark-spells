@@ -172,8 +172,10 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         IDssVestLike(DSS_VEST).vest(vestingId);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId), claimedAmount);
-        assertEq(spk.balanceOf(VEST_USER),              claimedAmount);
+        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),     claimedAmount);
+        assertEq(spk.balanceOf(VEST_USER),                  claimedAmount);
+        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), claimedAmount);
+        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  0);
 
         // Claim again in a month, assert balance and state changes.
 
@@ -186,9 +188,10 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         IDssVestLike(DSS_VEST).vest(vestingId);
 
-        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),    claimedAmount + claimedAmount1);
-        assertEq(spk.balanceOf(VEST_USER),                 claimedAmount + claimedAmount1);
-        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId), 0);
+        assertEq(IDssVestLike(DSS_VEST).rxd(vestingId),     claimedAmount + claimedAmount1);
+        assertEq(spk.balanceOf(VEST_USER),                  claimedAmount + claimedAmount1);
+        assertEq(IDssVestLike(DSS_VEST).unpaid(vestingId),  0);
+        assertEq(IDssVestLike(DSS_VEST).accrued(vestingId), claimedAmount + claimedAmount1);
 
         // Warp to the end, claim, assert balance and state changes.
 
