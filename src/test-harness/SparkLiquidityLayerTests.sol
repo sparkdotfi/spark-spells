@@ -1451,29 +1451,53 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testUniswapV4SwapIntegration(UniswapV4SwapE2ETestParams memory p) internal {
         skip(10 days);  // Recharge rate limits
 
+        /****************************************/
+        /*** Step 1: Seed liquidity if needed ***/
+        /****************************************/
+
         if (p.seedLiquidity > 0) {
             _seedUniswapV4Liquidity(p); // Add liquidity to the pool as it is considered illiquid (TODO: Remove)
         }
+
+        /*********************************/
+        /*** Step 2: Prepare for swaps ***/
+        /*********************************/
 
         _checkRateLimitValue(p.ctx, p.swapKey, 18);
 
         bool startWithZeroForOne = _isZeroForOneUniswapV4SwapPossible(p, 0.99999e18);
 
+        /********************************************/
+        /*** Step 3: Test a swap in one direction ***/
+        /********************************************/
+
         if (startWithZeroForOne) {
             _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount, 0.99999e18);
         } else {
             _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount, 0.99999e18);
         }
+
+        /**************************************************************/
+        /*** Step 4: Test waiting enough for rate limit to recharge ***/
+        /**************************************************************/
 
         skip(10 days);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
 
+        /**************************************************/
+        /*** Step 5: Test a swap in the other direction ***/
+        /**************************************************/
+
         if (startWithZeroForOne) {
             _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount, 0.99999e18);
         } else {
             _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount, 0.99999e18);
         }
+
+        /**************************************************************/
+        /*** Step 6: Test waiting enough for rate limit to recharge ***/
+        /**************************************************************/
 
         skip(10 days);
 
@@ -1502,12 +1526,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 amountIn     = _fromNormalizedAmount(tokenIn, swapAmount);
         uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, tokenIn, uint128(amountIn), maxSlippage);
 
-        deal(tokenIn, address(p.ctx.proxy), amountIn);
+        deal(tokenIn, address(p.ctx.proxy),  amountIn);
         deal(tokenOut, address(p.ctx.proxy), 0);  // Make easier assertions
 
         uint256 swapLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
 
-        // Swap asset0 to asset1
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).swapUniswapV4({
             poolId       : p.poolId,
