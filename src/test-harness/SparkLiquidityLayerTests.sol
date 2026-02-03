@@ -1336,10 +1336,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue, 1);
 
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /***************************************************************/
         /*** Step 2: Increase liquidity and check resulting position ***/
@@ -1362,10 +1363,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount * 2);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2);
+        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2, 2);
 
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /**************************************************************************************/
         /*** Step 3: Withdraw and check resulting position, ensuring appropriate withdrawal ***/

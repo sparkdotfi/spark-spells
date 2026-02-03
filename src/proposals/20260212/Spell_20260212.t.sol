@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 
@@ -45,6 +46,14 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
+    event Init(uint256 indexed id, address indexed usr);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+
+    address internal constant DEPLOYER  = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
+    address internal constant DSS_VEST  = 0x6Bad07722818Ceff1deAcc33280DbbFdA4939A09;
+    address internal constant VEST_USER = 0xEFF097C5CC7F63e9537188FE381D1360158c1511;
+
     constructor() {
         _spellId   = 20260212;
         _blockDate = 1770100525;  // 2026-02-03T06:35:25Z
@@ -71,6 +80,39 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
             booleans
         );
         vm.stopPrank();
+    }
+
+    function test_ETHEREUM_dssVest_events() external onChain(ChainIdUtils.Ethereum()) {
+        VmSafe.EthGetLogs[] memory relyLogs = _getEvents(block.chainid, DSS_VEST, Rely.selector);
+        VmSafe.EthGetLogs[] memory denyLogs = _getEvents(block.chainid, DSS_VEST, Deny.selector);
+
+        assertEq(relyLogs.length, 2);
+        assertEq(denyLogs.length, 1);
+
+        assertEq(address(uint160(uint256(relyLogs[0].topics[1]))), DEPLOYER);
+        assertEq(address(uint160(uint256(relyLogs[1].topics[1]))), Ethereum.SPARK_PROXY);
+
+        assertEq(address(uint160(uint256(denyLogs[0].topics[1]))), DEPLOYER);
+
+        vm.recordLogs();
+
+        _executeMainnetPayload();  // Have to use this to properly load logs on mainnet
+
+        VmSafe.Log[] memory recordedLogs = vm.getRecordedLogs();  // This gets the logs of all payloads
+        VmSafe.Log[] memory newLogs      = new VmSafe.Log[](1);
+
+        uint256 j = 0;
+        for (uint256 i = 0; i < recordedLogs.length; ++i) {
+            if (recordedLogs[i].emitter   != DSS_VEST)      continue;
+            if (recordedLogs[i].topics[0] != Init.selector) continue;
+            newLogs[j] = recordedLogs[i];
+            j++;
+        }
+
+        assertEq(newLogs.length, 1);
+
+        assertEq(uint256(newLogs[0].topics[1]),                   1);
+        assertEq(address(uint160(uint256(newLogs[0].topics[2]))), VEST_USER);
     }
 
 }
