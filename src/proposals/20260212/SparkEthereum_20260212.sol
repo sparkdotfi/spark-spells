@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
 import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
