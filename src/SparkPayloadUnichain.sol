@@ -17,8 +17,8 @@ abstract contract SparkPayloadUnichain {
 
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
-        relayers[0] = Unichain.ALM_RELAYER;
-        relayers[1] = Unichain.ALM_RELAYER2;
+        relayers[0] = Unichain.ALM_RELAYER_MULTISIG;
+        relayers[1] = Unichain.ALM_BACKSTOP_RELAYER_MULTISIG;
 
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
@@ -27,7 +27,7 @@ abstract contract SparkPayloadUnichain {
                 rateLimits:  Unichain.ALM_RATE_LIMITS
             }),
             ForeignControllerInit.ConfigAddressParams({
-                freezer:       Unichain.ALM_FREEZER,
+                freezer:       Unichain.ALM_FREEZER_MULTISIG,
                 relayers:      relayers,
                 oldController: oldController
             }),
@@ -64,7 +64,7 @@ abstract contract SparkPayloadUnichain {
     function _activateMorphoVault(address vault) internal {
         SLLHelpers.activateMorphoVault(
             vault,
-            Unichain.ALM_RELAYER
+            Unichain.ALM_RELAYER_MULTISIG
         );
     }
 

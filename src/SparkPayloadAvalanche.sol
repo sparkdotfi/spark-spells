@@ -17,8 +17,8 @@ abstract contract SparkPayloadAvalanche {
 
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
-        relayers[0] = Avalanche.ALM_RELAYER;
-        relayers[1] = Avalanche.ALM_RELAYER2;
+        relayers[0] = Avalanche.ALM_RELAYER_MULTISIG;
+        relayers[1] = Avalanche.ALM_BACKSTOP_RELAYER_MULTISIG;
 
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
@@ -27,7 +27,7 @@ abstract contract SparkPayloadAvalanche {
                 rateLimits:  Avalanche.ALM_RATE_LIMITS
             }),
             ForeignControllerInit.ConfigAddressParams({
-                freezer:       Avalanche.ALM_FREEZER,
+                freezer:       Avalanche.ALM_FREEZER_MULTISIG,
                 relayers:      relayers,
                 oldController: oldController
             }),
@@ -64,7 +64,7 @@ abstract contract SparkPayloadAvalanche {
     function _activateMorphoVault(address vault) internal {
         SLLHelpers.activateMorphoVault(
             vault,
-            Avalanche.ALM_RELAYER
+            Avalanche.ALM_RELAYER_MULTISIG
         );
     }
 

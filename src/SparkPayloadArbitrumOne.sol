@@ -17,8 +17,8 @@ abstract contract SparkPayloadArbitrumOne {
 
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
-        relayers[0] = Arbitrum.ALM_RELAYER;
-        relayers[1] = Arbitrum.ALM_RELAYER2;
+        relayers[0] = Arbitrum.ALM_RELAYER_MULTISIG;
+        relayers[1] = Arbitrum.ALM_BACKSTOP_RELAYER_MULTISIG;
 
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
@@ -27,7 +27,7 @@ abstract contract SparkPayloadArbitrumOne {
                 rateLimits:  Arbitrum.ALM_RATE_LIMITS
             }),
             ForeignControllerInit.ConfigAddressParams({
-                freezer:       Arbitrum.ALM_FREEZER,
+                freezer:       Arbitrum.ALM_FREEZER_MULTISIG,
                 relayers:      relayers,
                 oldController: oldController
             }),
@@ -64,7 +64,7 @@ abstract contract SparkPayloadArbitrumOne {
     function _activateMorphoVault(address vault) internal {
         SLLHelpers.activateMorphoVault(
             vault,
-            Arbitrum.ALM_RELAYER
+            Arbitrum.ALM_RELAYER_MULTISIG
         );
     }
 
