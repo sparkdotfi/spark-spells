@@ -27,7 +27,7 @@ abstract contract SpellTests is SpellRunner {
     function test_ETHEREUM_sparkLend_withdrawAllReserves() external onChain(ChainIdUtils.Ethereum()) {
         address[] memory reserves             = IPool(SparkLend.POOL).getReservesList();
         uint256[] memory aTokenBalancesBefore = new uint256[](reserves.length);
-        bool[] memory accruedToTreasury       = new bool[](reserves.length);
+        bool[]    memory accruedToTreasury    = new bool[](reserves.length);
 
         for (uint256 i = 0; i < reserves.length; i++) {
             address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
