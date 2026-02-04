@@ -29,6 +29,7 @@ interface IDssVestLike {
     event Init(uint256 indexed id, address indexed usr);
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event File(bytes32 indexed what, uint256 data);
 
     function accrued(uint256) external view returns (uint256);
     function bgn(uint256) external view returns (uint256);
@@ -53,8 +54,6 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
 
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
-
-    event File(bytes32 indexed what, uint256 data);
 
     address internal constant DEPLOYER  = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;
     address internal constant DSS_VEST  = 0x6Bad07722818Ceff1deAcc33280DbbFdA4939A09;
@@ -122,7 +121,7 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
 
         // File event
 
-        assertEq32(newLogs[0].topics[0], File.selector);
+        assertEq32(newLogs[0].topics[0], IDssVestLike.File.selector);
         assertEq32(newLogs[0].topics[1], bytes32("cap"));
 
         assertEq(abi.decode(newLogs[0].data, (uint256)), SPK_VESTING_AMOUNT / (4 * 365 days));

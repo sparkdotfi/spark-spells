@@ -9,12 +9,12 @@ import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
 interface IDssVestLike {
     function create(
-        address _usr,
-        uint256 _tot,
-        uint256 _bgn,
-        uint256 _tau,
-        uint256 _eta,
-        address _mgr
+        address usr,
+        uint256 tot,
+        uint256 bgn,
+        uint256 tau,
+        uint256 eta,
+        address mgr
     ) external returns (uint256);
 
     function file(bytes32, uint256) external;
@@ -48,12 +48,12 @@ contract SparkEthereum_20260212 is SparkPayloadEthereum {
         IDssVestLike(DSS_VEST).file(bytes32("cap"), SPK_VESTING_AMOUNT / (4 * 365 days));
 
         IDssVestLike(DSS_VEST).create({
-            _usr : VEST_USER,
-            _tot : SPK_VESTING_AMOUNT,
-            _bgn : VEST_START,
-            _tau : 4 * 365 days,
-            _eta : 365 days,
-            _mgr : Ethereum.SPARK_PROXY
+            usr : VEST_USER,
+            tot : SPK_VESTING_AMOUNT,
+            bgn : VEST_START,
+            tau : 4 * 365 days,
+            eta : 365 days,
+            mgr : Ethereum.SPARK_PROXY
         });
 
         IERC20(Ethereum.SPK).approve(DSS_VEST, SPK_VESTING_AMOUNT);
