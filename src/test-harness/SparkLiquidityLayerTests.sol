@@ -1526,7 +1526,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 amountIn     = _fromNormalizedAmount(tokenIn, swapAmount);
         uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, tokenIn, uint128(amountIn), maxSlippage);
 
-        deal(tokenIn, address(p.ctx.proxy),  amountIn);
+        deal(tokenIn,  address(p.ctx.proxy), amountIn);
         deal(tokenOut, address(p.ctx.proxy), 0);  // Make easier assertions
 
         uint256 swapLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);

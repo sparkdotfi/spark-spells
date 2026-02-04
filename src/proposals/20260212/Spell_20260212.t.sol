@@ -223,31 +223,55 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         // Warp to before cliff, assert zero, then after cliff claim, assert balance and state changes.
 
-        assertEq(dssVest.rxd(vestingId),    0);
-        assertEq(spk.balanceOf(VEST_USER),  0);
-        assertEq(dssVest.unpaid(vestingId), 0);
-
         vm.warp(VEST_START + 365 days - 1);
+
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT,
+            userBalance         : 0,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT,
+            accrued             : 299_999_990.487062404870624048e18,
+            unpaid              : 0,
+            rxd                 : 0
+        });
 
         dssVest.vest(vestingId);
 
-        assertEq(dssVest.rxd(vestingId),    0);
-        assertEq(spk.balanceOf(VEST_USER),  0);
-        assertEq(dssVest.unpaid(vestingId), 0);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT,
+            userBalance         : 0,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT,
+            accrued             : 299_999_990.487062404870624048e18,
+            unpaid              : 0,
+            rxd                 : 0
+        });
 
         vm.warp(VEST_START + 365 days);
 
         uint256 claimedAmount1 = SPK_VESTING_AMOUNT / 4;
 
-        assertEq(dssVest.accrued(vestingId), claimedAmount1);
-        assertEq(dssVest.unpaid(vestingId),  claimedAmount1);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT,
+            userBalance         : 0,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT,
+            accrued             : claimedAmount1,
+            unpaid              : claimedAmount1,
+            rxd                 : 0
+        });
 
         dssVest.vest(vestingId);
 
-        assertEq(dssVest.rxd(vestingId),     claimedAmount1);
-        assertEq(spk.balanceOf(VEST_USER),   claimedAmount1);
-        assertEq(dssVest.accrued(vestingId), claimedAmount1);
-        assertEq(dssVest.unpaid(vestingId),  0);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT - claimedAmount1,
+            userBalance         : claimedAmount1,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT - claimedAmount1,
+            accrued             : claimedAmount1,
+            unpaid              : 0,
+            rxd                 : claimedAmount1
+        });
 
         // Claim again in a month, assert balance and state changes.
 
@@ -255,39 +279,91 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         uint256 claimedAmount2 = SPK_VESTING_AMOUNT * 30 days / (4 * 365 days);
 
-        assertEq(dssVest.accrued(vestingId), claimedAmount1 + claimedAmount2);
-        assertEq(dssVest.unpaid(vestingId),  claimedAmount2);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT - claimedAmount1,
+            userBalance         : claimedAmount1,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT - claimedAmount1,
+            accrued             : claimedAmount1 + claimedAmount2,
+            unpaid              : claimedAmount2,
+            rxd                 : claimedAmount1
+        });
 
         dssVest.vest(vestingId);
 
-        assertEq(dssVest.rxd(vestingId),     claimedAmount1 + claimedAmount2);
-        assertEq(spk.balanceOf(VEST_USER),   claimedAmount1 + claimedAmount2);
-        assertEq(dssVest.unpaid(vestingId),  0);
-        assertEq(dssVest.accrued(vestingId), claimedAmount1 + claimedAmount2);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2,
+            userBalance         : claimedAmount1 + claimedAmount2,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2,
+            accrued             : claimedAmount1 + claimedAmount2,
+            unpaid              : 0,
+            rxd                 : claimedAmount1 + claimedAmount2
+        });
 
         // Warp to the end, claim, assert balance and state changes.
 
         vm.warp(VEST_START + 4 * 365 days);
 
-        assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
-        assertEq(dssVest.unpaid(vestingId),  SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2,
+            userBalance         : claimedAmount1 + claimedAmount2,
+            sparkProxyAllowance : SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2,
+            accrued             : SPK_VESTING_AMOUNT,
+            unpaid              : SPK_VESTING_AMOUNT - claimedAmount1 - claimedAmount2,
+            rxd                 : claimedAmount1 + claimedAmount2
+        });
 
         dssVest.vest(vestingId);
 
-        assertEq(dssVest.rxd(vestingId),     SPK_VESTING_AMOUNT);
-        assertEq(spk.balanceOf(VEST_USER),   SPK_VESTING_AMOUNT);
-        assertEq(dssVest.unpaid(vestingId),  0);
-        assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : 0,
+            userBalance         : SPK_VESTING_AMOUNT,
+            sparkProxyAllowance : 0,
+            accrued             : SPK_VESTING_AMOUNT,
+            unpaid              : 0,
+            rxd                 : SPK_VESTING_AMOUNT
+        });
 
         // Warp past the end
 
         vm.warp(VEST_START + 4 * 365 days + 1 days);
 
-        assertEq(dssVest.rxd(vestingId),     SPK_VESTING_AMOUNT);
-        assertEq(spk.balanceOf(VEST_USER),   SPK_VESTING_AMOUNT);
-        assertEq(dssVest.unpaid(vestingId),  0);
-        assertEq(dssVest.accrued(vestingId), SPK_VESTING_AMOUNT);
-        assertEq(dssVest.valid(vestingId),   false);
+        _assertVestingState({
+            vestingId           : vestingId,
+            sparkProxyBalance   : 0,
+            userBalance         : SPK_VESTING_AMOUNT,
+            sparkProxyAllowance : 0,
+            accrued             : SPK_VESTING_AMOUNT,
+            unpaid              : 0,
+            rxd                 : SPK_VESTING_AMOUNT
+        });
+    }
+
+    function _assertVestingState(
+        uint256 vestingId,
+        uint256 sparkProxyBalance,
+        uint256 userBalance,
+        uint256 sparkProxyAllowance,
+        uint256 accrued,
+        uint256 unpaid,
+        uint256 rxd
+    )
+        internal view
+    {
+        IERC20       spk     = IERC20(Ethereum.SPK);
+        IDssVestLike dssVest = IDssVestLike(DSS_VEST);
+
+        assertEq(spk.balanceOf(Ethereum.SPARK_PROXY), sparkProxyBalance);
+        assertEq(spk.balanceOf(VEST_USER),            userBalance);
+
+        assertEq(spk.allowance(Ethereum.SPARK_PROXY, DSS_VEST), sparkProxyAllowance);
+
+        assertEq(dssVest.accrued(vestingId), accrued);
+        assertEq(dssVest.unpaid(vestingId),  unpaid);
+        assertEq(dssVest.rxd(vestingId),     rxd);
     }
 
 }
