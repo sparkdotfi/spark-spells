@@ -330,6 +330,8 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
         vm.warp(VEST_START + 4 * 365 days + 1 days);
 
+        dssVest.vest(vestingId);
+
         _assertVestingState({
             vestingId           : vestingId,
             sparkProxyBalance   : 0,
