@@ -63,13 +63,13 @@ contract SparkEthereum_20260212_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260212;
-        _blockDate = 1770100525;  // 2026-02-03T06:35:25Z
+        _blockDate = 1770217852;  // 2026-02-04T15:10:52Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xa091BeD493C27efaa4D6e06e32684eCa0325adcA;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
 
         // Maple onboarding process
         ISyrupLike syrup = ISyrupLike(Ethereum.SYRUP_USDT);
@@ -140,13 +140,13 @@ contract SparkEthereum_20260212_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260212;
-        _blockDate = 1770100525;  // 2026-02-03T06:35:25Z
+        _blockDate = 1770217852;  // 2026-02-04T15:10:52Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xa091BeD493C27efaa4D6e06e32684eCa0325adcA;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
     }
 
 }
@@ -164,13 +164,13 @@ contract SparkEthereum_20260212_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260212;
-        _blockDate = 1770100525;  // 2026-02-03T06:35:25Z
+        _blockDate = 1770217852;  // 2026-02-04T15:10:52Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xa091BeD493C27efaa4D6e06e32684eCa0325adcA;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
     }
 
     function test_ETHEREUM_sparkTreasury_grovePayment() external onChain(ChainIdUtils.Ethereum()) {
