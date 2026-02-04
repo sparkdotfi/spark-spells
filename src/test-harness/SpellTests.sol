@@ -7,7 +7,8 @@ import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
-import { IPool } from "sparklend-v1-core/interfaces/IPool.sol";
+import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
+import { IPool }   from "sparklend-v1-core/interfaces/IPool.sol";
 
 import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
 
@@ -26,6 +27,7 @@ abstract contract SpellTests is SpellRunner {
     function test_ETHEREUM_sparkLend_withdrawAllReserves() external onChain(ChainIdUtils.Ethereum()) {
         address[] memory reserves             = IPool(SparkLend.POOL).getReservesList();
         uint256[] memory aTokenBalancesBefore = new uint256[](reserves.length);
+        bool[] memory accruedToTreasury       = new bool[](reserves.length);
 
         for (uint256 i = 0; i < reserves.length; i++) {
             address aToken = IPool(SparkLend.POOL).getReserveData(reserves[i]).aTokenAddress;
@@ -41,6 +43,8 @@ abstract contract SpellTests is SpellRunner {
             } else {
                 aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_PROXY);
             }
+
+            accruedToTreasury[i] = IPool(SparkLend.POOL).getReserveData(IAToken(aToken).UNDERLYING_ASSET_ADDRESS()).accruedToTreasury > 0;
         }
 
         _executeAllPayloadsAndBridges();
@@ -55,9 +59,11 @@ abstract contract SpellTests is SpellRunner {
                 aToken != SparkLend.PYUSD_SPTOKEN &&
                 aToken != SparkLend.USDT_SPTOKEN
             ) {
-                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
+                if (accruedToTreasury[i]) assertGt(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
+                else                      assertEq(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
             } else {
-                assertGe(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
+                if (accruedToTreasury[i]) assertGt(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
+                else                      assertEq(IERC20(aToken).balanceOf(Ethereum.ALM_PROXY), aTokenBalancesBefore[i]);
             }
 
             assertEq(
@@ -65,7 +71,7 @@ abstract contract SpellTests is SpellRunner {
                 0
             );
 
-            assertEq(IPool(SparkLend.POOL).getReserveData(aToken).accruedToTreasury, 0);
+            assertEq(IPool(SparkLend.POOL).getReserveData(IAToken(aToken).UNDERLYING_ASSET_ADDRESS()).accruedToTreasury, 0);
         }
     }
 
