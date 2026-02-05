@@ -1,0 +1,42 @@
+
+
+Integration: CCTP-ETHEREUM
+--- KEYS ---
+CCTP to domain : 0x90b598dae614822d554ec4f627bb5feab505106473a7911f34b36c0b3b9695c7
+--- MAX AMOUNTS ---
+CCTP to domain : 100000000000000
+--- SLOPES ---
+CCTP to domain : 49999999939200
+
+
+Integration: CCTP_GENERAL
+--- KEYS ---
+CCTP general : 0x0476a9fd902eafdb5bcdabd9f0523dd7aacf7aa0c38c0e6ab912f5fed00f8e11
+--- MAX AMOUNTS ---
+CCTP general : unlimited
+--- SLOPES ---
+CCTP general : 0
+
+
+Integration: SPARK_VAULT_V2-SPUSDC
+--- KEYS ---
+Spark Vault V2 deposit : 0x551ef1c80901ee595b1b050448a47310d62b478340eeadc1b630250809d5b5b6
+Spark Vault V2 withdraw : 0xb34048d30071f98784a7c416117ebf45591b3dd53eab120dd5f613265ccef1c7
+--- MAX AMOUNTS ---
+Spark Vault V2 deposit : unlimited
+Spark Vault V2 withdraw : unlimited
+--- SLOPES ---
+Spark Vault V2 deposit : 0
+Spark Vault V2 withdraw : 0
+
+
+Integration: AAVE-ATOKEN_USDC
+--- KEYS ---
+AAVE deposit : 0x581b5aa5993137d5b9c01fd721d93f8c16162d6af91afaca8c85012faa471e75
+AAVE withdraw : 0xf68614de9a9127342bf636825b8bd3c32f16c3f07cde678b69f38ae0c792b91b
+--- MAX AMOUNTS ---
+AAVE deposit : 20000000000000
+AAVE withdraw : unlimited
+--- SLOPES ---
+AAVE deposit : 9999999936000
+AAVE withdraw : 0

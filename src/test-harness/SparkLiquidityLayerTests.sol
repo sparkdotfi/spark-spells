@@ -452,10 +452,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(ctx, integrations[i]);
         }
-
-        if (vm.envBool("PRINT_RATE_LIMIT_INFO")) {
-            _printAllRateLimitInfo(integrations);
-        }
+        _printAllRateLimitInfo(integrations);
     }
 
     function test_ARBITRUM_E2E_sparkLiquidityLayer() external {
@@ -3619,10 +3616,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         for (uint256 i = 0; i < integrations.length; ++i) {
             _runSLLE2ETests(ctx, integrations[i]);
         }
-
-        if (vm.envBool("PRINT_RATE_LIMIT_INFO")) {
-            _printAllRateLimitInfo(integrations);
-        }
+        _printAllRateLimitInfo(integrations);
     }
 
     /**********************************************************************************************/
@@ -4618,69 +4612,72 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         string memory exitLabel,
         string memory entryId2Label,
         string memory exitId2Label
-    ) internal {
-        console2.log("--- KEYS ---");
-        if (bytes(entryLabel).length > 0)    console2.log(entryLabel,    ":", vm.toString(integration.entryId));
-        if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", vm.toString(integration.exitId));
-        if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", vm.toString(integration.entryId2));
-        if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", vm.toString(integration.exitId2));
+    ) internal view returns (string memory output) {
+        output = string.concat(output, "--- KEYS ---\n");
+        if (bytes(entryLabel).length > 0)    output = string.concat(output, entryLabel,    " : ", vm.toString(integration.entryId), "\n");
+        if (bytes(exitLabel).length > 0)     output = string.concat(output, exitLabel,     " : ", vm.toString(integration.exitId), "\n");
+        if (bytes(entryId2Label).length > 0) output = string.concat(output, entryId2Label, " : ", vm.toString(integration.entryId2), "\n");
+        if (bytes(exitId2Label).length > 0)  output = string.concat(output, exitId2Label,  " : ", vm.toString(integration.exitId2), "\n");
 
         IRateLimits rateLimits = IRateLimits(_getSparkLiquidityLayerContext().rateLimits);
 
-        console2.log("--- MAX AMOUNTS ---");
-        if (bytes(entryLabel).length > 0)    console2.log(entryLabel,    ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).maxAmount));
-        if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).maxAmount));
-        if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).maxAmount));
-        if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).maxAmount));
+        output = string.concat(output, "--- MAX AMOUNTS ---\n");
+        if (bytes(entryLabel).length > 0)    output = string.concat(output, entryLabel,    " : ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).maxAmount), "\n");
+        if (bytes(exitLabel).length > 0)     output = string.concat(output, exitLabel,     " : ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).maxAmount), "\n");
+        if (bytes(entryId2Label).length > 0) output = string.concat(output, entryId2Label, " : ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).maxAmount), "\n");
+        if (bytes(exitId2Label).length > 0)  output = string.concat(output, exitId2Label,  " : ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).maxAmount), "\n");
 
-        console2.log("--- SLOPES ---");
-        if (bytes(entryLabel).length > 0)    console2.log(entryLabel,    ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).slope * 1 days));
-        if (bytes(exitLabel).length > 0)     console2.log(exitLabel,     ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).slope * 1 days));
-        if (bytes(entryId2Label).length > 0) console2.log(entryId2Label, ":", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).slope * 1 days));
-        if (bytes(exitId2Label).length > 0)  console2.log(exitId2Label,  ":", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).slope * 1 days));
+        output = string.concat(output, "--- SLOPES ---\n");
+        if (bytes(entryLabel).length > 0)    output = string.concat(output, entryLabel,    " : ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId).slope * 1 days), "\n");
+        if (bytes(exitLabel).length > 0)     output = string.concat(output, exitLabel,     " : ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId).slope * 1 days), "\n");
+        if (bytes(entryId2Label).length > 0) output = string.concat(output, entryId2Label, " : ", _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).slope * 1 days), "\n");
+        if (bytes(exitId2Label).length > 0)  output = string.concat(output, exitId2Label,  " : ", _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).slope * 1 days), "\n");
     }
 
     function _formattedAmount(uint256 maxAmount) internal pure returns (string memory) {
         return maxAmount == type(uint256).max ? "unlimited" : vm.toString(maxAmount);
     }
 
-    function _printAllRateLimitInfo(SLLIntegration memory integration) internal {
+    function _printAllRateLimitInfo(SLLIntegration memory integration) internal view returns (string memory output) {
         string memory entryLabel;
         string memory exitLabel;
         string memory entryId2Label;
         string memory exitId2Label;
 
-        console2.log("");
-        console2.log("");
-        console2.log("Integration:", integration.label);
+        output = string.concat(output, "\n\nIntegration: ", integration.label, "\n");
 
-        if (integration.category == Category.AAVE)             _printKeys(integration, "AAVE deposit",            "AAVE withdraw",           "",                "");
-        if (integration.category == Category.BUIDL)            _printKeys(integration, "BUIDL deposit",           "BUIDL withdraw",          "",                "");
-        if (integration.category == Category.CCTP_GENERAL)     _printKeys(integration, "CCTP general",            "",                        "",                "");
-        if (integration.category == Category.CCTP)             _printKeys(integration, "CCTP to domain",          "",                        "",                "");
-        if (integration.category == Category.CENTRIFUGE)       _printKeys(integration, "Centrifuge deposit",      "Centrifuge redeem",       "",                "");
-        if (integration.category == Category.CORE)             _printKeys(integration, "USDS mint",               "",                        "",                "");
-        if (integration.category == Category.CURVE_LP)         _printKeys(integration, "Curve LP deposit",        "Curve LP withdraw",       "",                "");
-        if (integration.category == Category.CURVE_SWAP)       _printKeys(integration, "Curve swap",              "",                        "",                "");
-        if (integration.category == Category.ERC4626)          _printKeys(integration, "ERC4626 deposit",         "ERC4626 withdraw",        "",                "");
-        if (integration.category == Category.ETHENA)           _printKeys(integration, "ETHENA mint",             "ETHENA deposit",          "ETHENA cooldown", "ETHENA burn");
-        if (integration.category == Category.FARM)             _printKeys(integration, "FARM deposit",            "FARM withdraw",           "",                "");
-        if (integration.category == Category.MAPLE)            _printKeys(integration, "Maple deposit",           "Maple request redeem",    "Maple withdraw",  "");
-        if (integration.category == Category.PSM)              _printKeys(integration, "PSM deposit",             "PSM withdraw",            "",                "");
-        if (integration.category == Category.SUPERSTATE)       _printKeys(integration, "Superstate subscribe",    "Superstate redeem",       "",                "");
-        if (integration.category == Category.PSM3)             _printKeys(integration, "PSM3 deposit",            "PSM3 withdraw",           "",                "");
-        if (integration.category == Category.SUPERSTATE_USCC)  _printKeys(integration, "Superstate USCC deposit", "Superstate USCC redeem",  "",                "");
-        if (integration.category == Category.TREASURY)         _printKeys(integration, "Treasury deposit",        "Treasury withdraw",       "",                "");
-        if (integration.category == Category.TRANSFER_ASSET)   _printKeys(integration, "Transfer asset",          "",                        "",                "");
-        if (integration.category == Category.UNISWAP_V4_LP)    _printKeys(integration, "Uniswap V4 LP deposit",   "Uniswap V4 LP withdraw",  "",                "");
-        if (integration.category == Category.UNISWAP_V4_SWAP)  _printKeys(integration, "Uniswap V4 swap",         "",                        "",                "");
-        if (integration.category == Category.SPARK_VAULT_V2)   _printKeys(integration, "Spark Vault V2 deposit",  "Spark Vault V2 withdraw", "",                "");
+        if (integration.category == Category.AAVE)             output = string.concat(output, _printKeys(integration, "AAVE deposit",            "AAVE withdraw",           "",                ""));
+        if (integration.category == Category.BUIDL)            output = string.concat(output, _printKeys(integration, "BUIDL deposit",           "BUIDL withdraw",          "",                ""));
+        if (integration.category == Category.CCTP_GENERAL)     output = string.concat(output, _printKeys(integration, "CCTP general",            "",                        "",                ""));
+        if (integration.category == Category.CCTP)             output = string.concat(output, _printKeys(integration, "CCTP to domain",          "",                        "",                ""));
+        if (integration.category == Category.CENTRIFUGE)       output = string.concat(output, _printKeys(integration, "Centrifuge deposit",      "Centrifuge redeem",       "",                ""));
+        if (integration.category == Category.CORE)             output = string.concat(output, _printKeys(integration, "USDS mint",               "",                        "",                ""));
+        if (integration.category == Category.CURVE_LP)         output = string.concat(output, _printKeys(integration, "Curve LP deposit",        "Curve LP withdraw",       "",                ""));
+        if (integration.category == Category.CURVE_SWAP)       output = string.concat(output, _printKeys(integration, "Curve swap",              "",                        "",                ""));
+        if (integration.category == Category.ERC4626)          output = string.concat(output, _printKeys(integration, "ERC4626 deposit",         "ERC4626 withdraw",        "",                ""));
+        if (integration.category == Category.ETHENA)           output = string.concat(output, _printKeys(integration, "ETHENA mint",             "ETHENA deposit",          "ETHENA cooldown", "ETHENA burn"));
+        if (integration.category == Category.FARM)             output = string.concat(output, _printKeys(integration, "FARM deposit",            "FARM withdraw",           "",                ""));
+        if (integration.category == Category.MAPLE)            output = string.concat(output, _printKeys(integration, "Maple deposit",           "Maple request redeem",    "Maple withdraw",  ""));
+        if (integration.category == Category.PSM)              output = string.concat(output, _printKeys(integration, "PSM deposit",             "PSM withdraw",            "",                ""));
+        if (integration.category == Category.SUPERSTATE)       output = string.concat(output, _printKeys(integration, "Superstate subscribe",    "Superstate redeem",       "",                ""));
+        if (integration.category == Category.PSM3)             output = string.concat(output, _printKeys(integration, "PSM3 deposit",            "PSM3 withdraw",           "",                ""));
+        if (integration.category == Category.SUPERSTATE_USCC)  output = string.concat(output, _printKeys(integration, "Superstate USCC deposit", "Superstate USCC redeem",  "",                ""));
+        if (integration.category == Category.TREASURY)         output = string.concat(output, _printKeys(integration, "Treasury deposit",        "Treasury withdraw",       "",                ""));
+        if (integration.category == Category.TRANSFER_ASSET)   output = string.concat(output, _printKeys(integration, "Transfer asset",          "",                        "",                ""));
+        if (integration.category == Category.UNISWAP_V4_LP)    output = string.concat(output, _printKeys(integration, "Uniswap V4 LP deposit",   "Uniswap V4 LP withdraw",  "",                ""));
+        if (integration.category == Category.UNISWAP_V4_SWAP)  output = string.concat(output, _printKeys(integration, "Uniswap V4 swap",         "",                        "",                ""));
+        if (integration.category == Category.SPARK_VAULT_V2)   output = string.concat(output, _printKeys(integration, "Spark Vault V2 deposit",  "Spark Vault V2 withdraw", "",                ""));
     }
 
     function _printAllRateLimitInfo(SLLIntegration[] memory integrations) internal {
+        string memory output = "";
+
         for (uint256 i = 0; i < integrations.length; ++i) {
-            _printAllRateLimitInfo(integrations[i]);
+            output = string.concat(output, _printAllRateLimitInfo(integrations[i]));
         }
+
+        string memory filename = string.concat("rate-limit-info/", vm.toString(block.chainid), ".txt");
+        vm.writeFile(filename, output);
     }
 
     function test_printAllRateLimitInfo() external {

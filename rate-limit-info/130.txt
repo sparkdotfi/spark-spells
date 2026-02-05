@@ -1,0 +1,54 @@
+
+
+Integration: PSM3-USDC
+--- KEYS ---
+PSM3 deposit : 0x626f9d411db2c8d796bbe4e5f3a4bde11f54640d1f3084cd9b221391322c13c4
+PSM3 withdraw : 0x4e9eb4e11df44d8d86121dba330af9ab1998f441135034e84e55f117586d6ce1
+--- MAX AMOUNTS ---
+PSM3 deposit : 50000000000000
+PSM3 withdraw : 50000000000000
+--- SLOPES ---
+PSM3 deposit : 49999999939200
+PSM3 withdraw : 49999999939200
+
+
+Integration: PSM3-USDS
+--- KEYS ---
+PSM3 deposit : 0xcf0726d2ab3fd0c549c5c69742ff1df9ba0d15abf09ae2a27b28738f29811b58
+PSM3 withdraw : 0x57b1a4a172dace099aa87f4ffae1c1694eb3084377ce738c9918f15fe8b48942
+--- MAX AMOUNTS ---
+PSM3 deposit : unlimited
+PSM3 withdraw : unlimited
+--- SLOPES ---
+PSM3 deposit : 0
+PSM3 withdraw : 0
+
+
+Integration: PSM3-SUSDS
+--- KEYS ---
+PSM3 deposit : 0x65caa0fa6bc5735f511ddd50b4a75e014f74afed66cd8d7fd0feb9c8b95bb6c7
+PSM3 withdraw : 0x8743c81931ac6a7caa71bf2f23be7600cfcc3f9113e74927c96873318ba7980d
+--- MAX AMOUNTS ---
+PSM3 deposit : unlimited
+PSM3 withdraw : unlimited
+--- SLOPES ---
+PSM3 deposit : 0
+PSM3 withdraw : 0
+
+
+Integration: CCTP-ETHEREUM
+--- KEYS ---
+CCTP to domain : 0x90b598dae614822d554ec4f627bb5feab505106473a7911f34b36c0b3b9695c7
+--- MAX AMOUNTS ---
+CCTP to domain : 50000000000000
+--- SLOPES ---
+CCTP to domain : 24999999926400
+
+
+Integration: CCTP_GENERAL
+--- KEYS ---
+CCTP general : 0x0476a9fd902eafdb5bcdabd9f0523dd7aacf7aa0c38c0e6ab912f5fed00f8e11
+--- MAX AMOUNTS ---
+CCTP general : unlimited
+--- SLOPES ---
+CCTP general : 0

@@ -1,0 +1,78 @@
+
+
+Integration: PSM3-USDC
+--- KEYS ---
+PSM3 deposit : 0xf25ee41990cabd3f16ed7355bf4d19bf392c2b38337ac55509333c2266ba37c6
+PSM3 withdraw : 0x1d70482e4e7cf039dc1221fffbcacbfafdb29d13131db1824ca5e2ba6507c2c1
+--- MAX AMOUNTS ---
+PSM3 deposit : 50000000000000
+PSM3 withdraw : 50000000000000
+--- SLOPES ---
+PSM3 deposit : 49999999939200
+PSM3 withdraw : 49999999939200
+
+
+Integration: PSM3-USDS
+--- KEYS ---
+PSM3 deposit : 0xf474d2a87b7ebf81f4a110b9cdcc8a076164a1003148af2b0b406f88e7e8032b
+PSM3 withdraw : 0xae68b00eb16796e855d35719c9235677f6e665e514d3a94e28b51f867be05c7e
+--- MAX AMOUNTS ---
+PSM3 deposit : unlimited
+PSM3 withdraw : unlimited
+--- SLOPES ---
+PSM3 deposit : 0
+PSM3 withdraw : 0
+
+
+Integration: PSM3-SUSDS
+--- KEYS ---
+PSM3 deposit : 0xe6b6e4da2937f57c86354a25541e2677d3fa463cfc40f3394e22ac26da600cea
+PSM3 withdraw : 0x755b047b39dc2d56d36429dab8587468fc72d1363d20495c1c665e0dc4ad3bf6
+--- MAX AMOUNTS ---
+PSM3 deposit : unlimited
+PSM3 withdraw : unlimited
+--- SLOPES ---
+PSM3 deposit : 0
+PSM3 withdraw : 0
+
+
+Integration: CCTP-ETHEREUM
+--- KEYS ---
+CCTP to domain : 0x90b598dae614822d554ec4f627bb5feab505106473a7911f34b36c0b3b9695c7
+--- MAX AMOUNTS ---
+CCTP to domain : 50000000000000
+--- SLOPES ---
+CCTP to domain : 24999999926400
+
+
+Integration: CCTP_GENERAL
+--- KEYS ---
+CCTP general : 0x0476a9fd902eafdb5bcdabd9f0523dd7aacf7aa0c38c0e6ab912f5fed00f8e11
+--- MAX AMOUNTS ---
+CCTP general : unlimited
+--- SLOPES ---
+CCTP general : 0
+
+
+Integration: ERC4626-FLUID_SUSDS
+--- KEYS ---
+ERC4626 deposit : 0xe30ba0cc41901c061ab58608af5bb15438df83e125392e28f39c808f1289ae6f
+ERC4626 withdraw : 0xdcd26d02a38c1b9a241da3490d844d2153bb356a1c9e86de1a6e9f9c056c60f3
+--- MAX AMOUNTS ---
+ERC4626 deposit : 10000000000000000000000000
+ERC4626 withdraw : unlimited
+--- SLOPES ---
+ERC4626 deposit : 4999999999999999999968000
+ERC4626 withdraw : 0
+
+
+Integration: AAVE-ATOKEN_USDC
+--- KEYS ---
+AAVE deposit : 0xcaf65d847338fe5e0545ae627cf023144640437b0aec3c4ea2195eaec4a7f129
+AAVE withdraw : 0x48a0bf138bca29b316f00acce891e2f7275487ef4858aacbb684a16129a3e3b1
+--- MAX AMOUNTS ---
+AAVE deposit : 30000000000000
+AAVE withdraw : unlimited
+--- SLOPES ---
+AAVE deposit : 14999999990400
+AAVE withdraw : 0

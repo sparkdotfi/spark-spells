@@ -4,7 +4,8 @@ out = 'out'
 libs = ['lib']
 fs_permissions = [
     { access = "read", path = "./out" },
-    { access = "write", path = "./reports" }
+    { access = "write", path = "./reports" },
+    { access = "write", path = "./rate-limit-info" }
 ]
 solc = "0.8.25"
 optimizer = true
