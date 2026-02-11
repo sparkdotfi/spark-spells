@@ -17,8 +17,8 @@ abstract contract SparkPayloadOptimism {
 
     function _upgradeController(address oldController, address newController) internal {
         address[] memory relayers = new address[](2);
-        relayers[0] = Optimism.ALM_RELAYER;
-        relayers[1] = Optimism.ALM_RELAYER2;
+        relayers[0] = Optimism.ALM_RELAYER_MULTISIG;
+        relayers[1] = Optimism.ALM_BACKSTOP_RELAYER_MULTISIG;
 
         SLLHelpers.upgradeForeignController(
             ControllerInstance({
@@ -27,7 +27,7 @@ abstract contract SparkPayloadOptimism {
                 rateLimits : Optimism.ALM_RATE_LIMITS
             }),
             ForeignControllerInit.ConfigAddressParams({
-                freezer       : Optimism.ALM_FREEZER,
+                freezer       : Optimism.ALM_FREEZER_MULTISIG,
                 relayers      : relayers,
                 oldController : oldController
             }),
@@ -64,7 +64,7 @@ abstract contract SparkPayloadOptimism {
     function _activateMorphoVault(address vault) internal {
         SLLHelpers.activateMorphoVault(
             vault,
-            Optimism.ALM_RELAYER
+            Optimism.ALM_RELAYER_MULTISIG
         );
     }
 

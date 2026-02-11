@@ -1336,10 +1336,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue);
+        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue, 1);
 
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /***************************************************************/
         /*** Step 2: Increase liquidity and check resulting position ***/
@@ -1362,10 +1363,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount * 2);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2);
+        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2, 2);
 
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+
+        assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /**************************************************************************************/
         /*** Step 3: Withdraw and check resulting position, ensuring appropriate withdrawal ***/
@@ -1421,7 +1423,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         int24 tickLower = int24(middleTick - int32(uint32(maxTickSpacing)) / 2);
         int24 tickUpper = int24(middleTick + int32(uint32(maxTickSpacing)) / 2);
 
-        ( uint256 amount0, uint256 amount1 ) = _quoteLiquidity(p.poolId, tickLower, tickUpper, p.seedLiquidity);
+        // Figure out how much of each asset is needed for some nominal liquidity amount of 1e18.
+        ( uint256 amount0, uint256 amount1 ) = _quoteLiquidity(p.poolId, tickLower, tickUpper, 1e18);
+
+        uint256 totalAmounts = _toNormalizedAmount(p.asset0, amount0) + _toNormalizedAmount(p.asset1, amount1);
+
+        // Scale the actual liquidity amount given how much higher or lower the total amount is than `p.depositAmount`.
+        uint128 liquidityAmount = uint128(uint256(1e18) * p.seedLiquidity / totalAmounts);
+
+        // Scale the deposit amounts given how much higher or lower the total amount is than `p.depositAmount`.
+        ( amount0, amount1 ) = _quoteLiquidity(p.poolId, tickLower, tickUpper, liquidityAmount);
 
         deal(address(p.asset0), address(p.ctx.proxy), amount0 + 1);
         deal(address(p.asset1), address(p.ctx.proxy), amount1 + 1);
@@ -1431,7 +1442,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             poolId     : p.poolId,
             tickLower  : tickLower,
             tickUpper  : tickUpper,
-            liquidity  : p.seedLiquidity,
+            liquidity  : liquidityAmount,
             amount0Max : amount0 + 1,
             amount1Max : amount1 + 1
         });
@@ -1440,81 +1451,100 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _testUniswapV4SwapIntegration(UniswapV4SwapE2ETestParams memory p) internal {
         skip(10 days);  // Recharge rate limits
 
+        /****************************************/
+        /*** Step 1: Seed liquidity if needed ***/
+        /****************************************/
+
         if (p.seedLiquidity > 0) {
             _seedUniswapV4Liquidity(p); // Add liquidity to the pool as it is considered illiquid (TODO: Remove)
         }
 
         /*********************************/
-        /*** Step 1: Prepare for swaps ***/
+        /*** Step 2: Prepare for swaps ***/
         /*********************************/
 
         _checkRateLimitValue(p.ctx, p.swapKey, 18);
 
-        uint256 amountIn     = _fromNormalizedAmount(p.asset0, p.swapAmount);
-        uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, p.asset0, uint128(amountIn), 0.99999e18);
+        bool startWithZeroForOne = _isZeroForOneUniswapV4SwapPossible(p, 0.99999e18);
 
-        deal(address(p.asset0), address(p.ctx.proxy), amountIn);
-        deal(address(p.asset1), address(p.ctx.proxy), 0);  // Make easier assertions
+        /********************************************/
+        /*** Step 3: Test a swap in one direction ***/
+        /********************************************/
+
+        if (startWithZeroForOne) {
+            _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount, 0.99999e18);
+        } else {
+            _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount, 0.99999e18);
+        }
+
+        /**************************************************************/
+        /*** Step 4: Test waiting enough for rate limit to recharge ***/
+        /**************************************************************/
+
+        skip(10 days);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+
+        /**************************************************/
+        /*** Step 5: Test a swap in the other direction ***/
+        /**************************************************/
+
+        if (startWithZeroForOne) {
+            _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount, 0.99999e18);
+        } else {
+            _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount, 0.99999e18);
+        }
+
+        /**************************************************************/
+        /*** Step 6: Test waiting enough for rate limit to recharge ***/
+        /**************************************************************/
+
+        skip(10 days);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+    }
+
+    function _isZeroForOneUniswapV4SwapPossible(
+        UniswapV4SwapE2ETestParams memory p,
+        uint256                           maxSlippage
+    ) internal returns (bool zeroForOne) {
+        // Get quote for a zeroForOne swap.
+        uint256 amountIn     = _fromNormalizedAmount(p.asset0, p.swapAmount);
+        uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, p.asset0, uint128(amountIn), maxSlippage);
+
+        // If the amount out min is greater than the amount in, then the zeroForOne swap is fine.
+        return uint256(amountOutMin) * 1e18 > p.swapAmount * maxSlippage;
+    }
+
+    function _testUniswapV4Swap(
+        UniswapV4SwapE2ETestParams memory p,
+        address                           tokenIn,
+        address                           tokenOut,
+        uint256                           swapAmount,
+        uint256                           maxSlippage
+    ) internal returns (uint256 amountOut) {
+        uint256 amountIn     = _fromNormalizedAmount(tokenIn, swapAmount);
+        uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, tokenIn, uint128(amountIn), maxSlippage);
+
+        deal(tokenIn,  address(p.ctx.proxy), amountIn);
+        deal(tokenOut, address(p.ctx.proxy), 0);  // Make easier assertions
 
         uint256 swapLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
 
-        /******************************************************************/
-        /*** Step 2: Swap asset0 to asset1 and check resulting position ***/
-        /******************************************************************/
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), amountIn);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
-
-        // Swap asset0 to asset1
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).swapUniswapV4({
             poolId       : p.poolId,
-            tokenIn      : p.asset0,
+            tokenIn      : tokenIn,
             amountIn     : uint128(amountIn),
             amountOutMin : uint128(amountOutMin)
         });
 
-        uint256 amountOut = IERC20(p.asset1).balanceOf(address(p.ctx.proxy));
+        amountOut = IERC20(tokenOut).balanceOf(address(p.ctx.proxy));
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertGe(amountOut,                                        amountOutMin);
+        assertEq(IERC20(tokenIn).balanceOf(address(p.ctx.proxy)), 0);
+        assertGe(amountOut,                                       amountOutMin);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - p.swapAmount);
-
-        /********************************************/
-        /*** Step 3: Warp to recharge rate limits ***/
-        /********************************************/
-
-        skip(10 days);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
-
-        /******************************************************************/
-        /*** Step 4: Swap asset1 to asset0 and check resulting position ***/
-        /******************************************************************/
-
-        amountIn     = amountOut;
-        amountOutMin = _getSwapAmountOutMin(p.poolId, p.asset1, uint128(amountIn), 0.99999e18);
-
-        // Swap asset1 to asset0
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).swapUniswapV4({
-            poolId       : p.poolId,
-            tokenIn      : p.asset1,
-            amountIn     : uint128(amountIn),
-            amountOutMin : uint128(amountOutMin)
-        });
-
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
-        assertGe(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), amountOutMin);
-
-        /********************************************/
-        /*** Step 5: Warp to recharge rate limits ***/
-        /********************************************/
-
-        skip(10 days);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapAmount);
     }
 
     function _testPSMIntegration(PSMSwapE2ETestParams memory p) internal {
@@ -2519,13 +2549,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         require(retryCount < 4, "Etherscan API returned non-success status");
 
-        string[] memory inputs = new string[](8);
-        inputs[0] = "curl";
-        inputs[1] = "-s";
-        inputs[2] = "--request";
-        inputs[3] = "GET";
-        inputs[4] = "--url";
-        inputs[5] = string(
+        string memory url = string(
             abi.encodePacked(
                 "https://api.etherscan.io/v2/api?",
                 "chainid=",
@@ -2535,14 +2559,24 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 "&toBlock=latest",
                 "&address=",
                 vm.toString(target),
-                "&topic0=",
-                vm.toString(topic0),
                 "&page=1",
                 "&offset=1000",
                 "&apikey=",
                 apiKey
             )
         );
+
+        if (topic0 != 0) {
+            url = string(abi.encodePacked(url, "&topic0=", vm.toString(topic0)));
+        }
+
+        string[] memory inputs = new string[](8);
+        inputs[0] = "curl";
+        inputs[1] = "-s";
+        inputs[2] = "--request";
+        inputs[3] = "GET";
+        inputs[4] = "--url";
+        inputs[5] = url;
         inputs[6] = "--header";
         inputs[7] = "accept: application/json";
 
@@ -3663,7 +3697,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](48);
+        integrations = new SLLIntegration[](52);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
@@ -3728,6 +3762,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[45] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
         integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
         integrations[47] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+
+        integrations[48] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
+        integrations[49] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
+
+        integrations[50] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 2_000_000e18);
+        integrations[51] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  2_000_000e18);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3867,17 +3907,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 4);
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
-
-        newIntegrations[integrations.length]     = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        newIntegrations[integrations.length + 1] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
-
-        newIntegrations[integrations.length + 2] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 10_000e18);
-        newIntegrations[integrations.length + 3] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  10_000e18);
     }
 
     /**********************************************************************************************/
@@ -4254,8 +4288,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Base.ALM_PROXY),
                 IRateLimits(Base.ALM_RATE_LIMITS),
-                Base.ALM_RELAYER,
-                Base.ALM_FREEZER
+                Base.ALM_RELAYER_MULTISIG,
+                Base.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.ArbitrumOne()) {
             ctx = SparkLiquidityLayerContext(
@@ -4263,8 +4297,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Arbitrum.ALM_PROXY),
                 IRateLimits(Arbitrum.ALM_RATE_LIMITS),
-                Arbitrum.ALM_RELAYER,
-                Arbitrum.ALM_FREEZER
+                Arbitrum.ALM_RELAYER_MULTISIG,
+                Arbitrum.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Optimism()) {
             ctx = SparkLiquidityLayerContext(
@@ -4272,8 +4306,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Optimism.ALM_PROXY),
                 IRateLimits(Optimism.ALM_RATE_LIMITS),
-                Optimism.ALM_RELAYER,
-                Optimism.ALM_FREEZER
+                Optimism.ALM_RELAYER_MULTISIG,
+                Optimism.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Unichain()) {
             ctx = SparkLiquidityLayerContext(
@@ -4281,8 +4315,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Unichain.ALM_PROXY),
                 IRateLimits(Unichain.ALM_RATE_LIMITS),
-                Unichain.ALM_RELAYER,
-                Unichain.ALM_FREEZER
+                Unichain.ALM_RELAYER_MULTISIG,
+                Unichain.ALM_FREEZER_MULTISIG
             );
         } else if (chainId == ChainIdUtils.Avalanche()) {
             ctx = SparkLiquidityLayerContext(
@@ -4290,8 +4324,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 address(0),
                 IALMProxy(Avalanche.ALM_PROXY),
                 IRateLimits(Avalanche.ALM_RATE_LIMITS),
-                Avalanche.ALM_RELAYER,
-                Avalanche.ALM_FREEZER
+                Avalanche.ALM_RELAYER_MULTISIG,
+                Avalanche.ALM_FREEZER_MULTISIG
             );
         } else {
             revert("SLL/executing on unknown chain");
