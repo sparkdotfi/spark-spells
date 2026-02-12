@@ -180,6 +180,7 @@ library SLLHelpers {
      *      the withdraw limit set to unlimited.
      */
     function configureERC4626Vault(
+        address controller,
         address rateLimits,
         address vault,
         uint256 depositMax,
@@ -205,7 +206,7 @@ library SLLHelpers {
             )
         );
 
-        MainnetController(Ethereum.ALM_CONTROLLER).setMaxExchangeRate(
+        MainnetController(controller).setMaxExchangeRate(
             vault,
             1 * 10 ** IERC20Metadata(vault).decimals(),
             10 * 10 ** IERC20Metadata(address(asset)).decimals()
