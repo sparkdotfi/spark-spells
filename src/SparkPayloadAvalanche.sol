@@ -52,8 +52,9 @@ abstract contract SparkPayloadAvalanche {
         );
     }
 
-    function _configureERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
+    function _configureERC4626Vault(address controller, address vault, uint256 depositMax, uint256 depositSlope) internal {
         SLLHelpers.configureERC4626Vault(
+            controller,
             Avalanche.ALM_RATE_LIMITS,
             vault,
             depositMax,

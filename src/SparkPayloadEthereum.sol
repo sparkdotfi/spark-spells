@@ -196,8 +196,9 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         );
     }
 
-    function _configureERC4626Vault(address vault, uint256 depositMax, uint256 depositSlope) internal {
+    function _configureERC4626Vault(address controller, address vault, uint256 depositMax, uint256 depositSlope) internal {
         SLLHelpers.configureERC4626Vault(
+            controller,
             Ethereum.ALM_RATE_LIMITS,
             vault,
             depositMax,
@@ -336,6 +337,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _configureERC4626Vault(
+                Ethereum.ALM_CONTROLLER,
                 address(vault),
                 sllDepositMax,
                 sllDepositSlope
