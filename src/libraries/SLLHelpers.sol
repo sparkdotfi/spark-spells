@@ -213,6 +213,44 @@ library SLLHelpers {
         );
     }
 
+        /**
+     * @notice Configure an ERC4626 vault
+     * @dev This will set the deposit to the given numbers with
+     *      the withdraw limit set to unlimited.
+     */
+    function configureERC4626Vault(
+        address rateLimits,
+        address vault,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 withdrawMax,
+        uint256 withdrawSlope
+    ) internal {
+        IERC20 asset = IERC20(IERC4626(vault).asset());
+
+        setRateLimitData(
+            RateLimitHelpers.makeAddressKey(
+                LIMIT_4626_DEPOSIT,
+                vault
+            ),
+            rateLimits,
+            depositMax,
+            depositSlope,
+            IERC20Metadata(address(asset)).decimals()
+        );
+
+        setRateLimitData(
+            RateLimitHelpers.makeAddressKey(
+                LIMIT_4626_WITHDRAW,
+                vault
+            ),
+            rateLimits,
+            withdrawMax,
+            withdrawSlope,
+            IERC20Metadata(address(asset)).decimals()
+        );
+    }
+
     function setMaxExchangeRate(
         address almController,
         address vault, 

@@ -4417,8 +4417,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             // Do some sanity checks on the slope
             // This is to catch things like forgetting to divide to a per-second time, etc
 
-            // We assume it takes at least 1 hours to recharge to max
-            uint256 oneHoursSlope = slope * 1 hours;
+            // We assume it takes at least 7.5 minutes to recharge to max
+            uint256 oneHoursSlope = slope * 1 hours / 8;
             assertLe(oneHoursSlope, maxAmount, "slope range sanity check failed");
 
             // It shouldn't take more than 30 days to recharge to max

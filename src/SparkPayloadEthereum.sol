@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { IERC20 }    from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
@@ -35,7 +36,13 @@ import { OptimismForwarder }                       from "xchain-helpers/forwarde
 
 import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
-import { ITreasuryControllerLike, IArbitrumTokenBridge, IOptimismTokenBridge } from "./interfaces/Interfaces.sol";
+import {
+    ITreasuryControllerLike,
+    IArbitrumTokenBridge,
+    IOptimismTokenBridge,
+    IMorphoVaultV2FactoryLike,
+    IMorphoVaultV2Like
+} from "./interfaces/Interfaces.sol";
 
 import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 
@@ -46,6 +53,7 @@ import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENGINE) {
 
     using OptionsBuilder for bytes;
+    using SafeERC20 for IERC20;
 
     // These need to be immutable (delegatecall) and can only be set in constructor
     address public immutable PAYLOAD_ARBITRUM;
@@ -54,6 +62,8 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     address public immutable PAYLOAD_OPTIMISM;
     address public immutable PAYLOAD_UNICHAIN;
     address public immutable PAYLOAD_AVALANCHE;
+
+    address internal constant MORPHO_VAULT_V2_FACTORY = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
 
     function execute() public override {
         super.execute();
@@ -334,6 +344,39 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         // Submit timelock for vault (Increases are immediate)
         vault.submitTimelock(1 days);
+
+        if (sllDepositMax != 0 && sllDepositSlope != 0) {
+            _configureERC4626Vault(
+                Ethereum.ALM_CONTROLLER,
+                address(vault),
+                sllDepositMax,
+                sllDepositSlope
+            );
+        }
+    }
+
+    function _setUpNewMorphoVaultV2(
+        address asset,
+        bytes32 salt,
+        uint256 initialDeposit,
+        uint256 sllDepositMax,
+        uint256 sllDepositSlope
+    ) internal {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).createVaultV2(
+            Ethereum.SPARK_PROXY,
+            asset,
+            salt
+        ));
+
+        // Set Morpho Curator Multisig as curator.
+        vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);
+
+        // Set Morpho Guardian Multisig as sentinel.
+        vault.setIsSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG, true);
+
+        // Seed vault with initial deposit
+        IERC20(asset).safeIncreaseAllowance(address(vault), initialDeposit);
+        IERC4626(address(vault)).deposit(initialDeposit, address(1));
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _configureERC4626Vault(

@@ -515,3 +515,15 @@ interface IV4QuoterLike {
         external returns (uint256 amountOut, uint256 gasEstimate);
 
 }
+
+// Morpho v2 vault
+
+interface IMorphoVaultV2FactoryLike {
+    function createVaultV2(address owner, address asset, bytes32 salt) external returns (address newVaultV2);
+}
+
+interface IMorphoVaultV2Like {
+    function setCurator(address newCurator) external;
+    function setIsAllocator(address newAllocator, bool newIsAllocator) external;
+    function setIsSentinel(address newSentinel, bool newIsSentinel) external;
+}
