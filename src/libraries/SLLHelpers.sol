@@ -213,10 +213,8 @@ library SLLHelpers {
         );
     }
 
-        /**
-     * @notice Configure an ERC4626 vault
-     * @dev This will set the deposit to the given numbers with
-     *      the withdraw limit set to unlimited.
+    /**
+     * @notice Configure an ERC4626 vault rate limits
      */
     function configureERC4626Vault(
         address rateLimits,

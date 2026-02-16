@@ -106,6 +106,45 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _testAaveIntegration(E2ETestParams(ctx, Ethereum.ATOKEN_CORE_USDT, 10_000_000e6, depositKey, withdrawKey, 10));
     }
 
+    function test_ETHEREUM_sll_syrupUSDTRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        bytes32 depositKey = RateLimitHelpers.makeAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT(),
+            Ethereum.SYRUP_USDT
+        );
+        bytes32 redeemKey = RateLimitHelpers.makeAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_MAPLE_REDEEM(),
+            Ethereum.SYRUP_USDT
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_WITHDRAW(),
+            Ethereum.SYRUP_USDT
+        );
+
+        _assertRateLimit(depositKey, 50_000_000e6, 10_000_000e6 / uint256(1 days));
+
+        _assertUnlimitedRateLimit(redeemKey);
+        _assertUnlimitedRateLimit(withdrawKey);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey,  25_000_000e6, 100_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, 50_000_000e6, 500_000_000e6 / uint256(1 days));
+
+        _assertUnlimitedRateLimit(redeemKey);
+
+        _testMapleIntegration(MapleE2ETestParams({
+            ctx:           ctx,
+            vault:         Ethereum.SYRUP_USDT,
+            depositAmount: 1_000_000e6,
+            depositKey:    depositKey,
+            redeemKey:     redeemKey,
+            withdrawKey:   withdrawKey,
+            tolerance:     10
+        }));
+    }
+
     function test_ETHEREUM_onboardingPaxosUSDC_PYUSD() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),

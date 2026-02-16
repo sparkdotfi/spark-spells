@@ -59,12 +59,12 @@ contract SparkEthereum_20260226 is SparkPayloadEthereum {
 
         // Increase Rate Limit for Maple syrupUSDT
         SLLHelpers.configureERC4626Vault({
-            rateLimits:    Ethereum.ALM_RATE_LIMITS,
-            vault:         Ethereum.SYRUP_USDT,
-            depositMax:    25_000_000e6,
-            depositSlope:  100_000_000e6 / uint256(1 days),
-            withdrawMax:   50_000_000e6,
-            withdrawSlope: 500_000_000e6 / uint256(1 days)
+            rateLimits    : Ethereum.ALM_RATE_LIMITS,
+            vault         : Ethereum.SYRUP_USDT,
+            depositMax    : 25_000_000e6,
+            depositSlope  : 100_000_000e6 / uint256(1 days),
+            withdrawMax   : 50_000_000e6,
+            withdrawSlope : 500_000_000e6 / uint256(1 days)
         });
 
         // Onboard with Paxos
