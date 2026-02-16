@@ -31,9 +31,9 @@ contract SparkEthereum_20260226 is SparkPayloadEthereum {
     uint256 internal constant FOUNDATION_GRANT_AMOUNT = 1_100_000e18;
     uint256 internal constant SPK_BUYBACKS_AMOUNT     = 571_957e18;
 
-    address internal constant PAXOS_USDC_PYUSD = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
     address internal constant PAXOS_PYUSD_USDC = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
     address internal constant PAXOS_PYUSD_USDG = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
+    address internal constant PAXOS_USDC_PYUSD = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
     address internal constant PAXOS_USDG_PYUSD = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
 
     function _postExecute() internal override {
