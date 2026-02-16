@@ -526,4 +526,5 @@ interface IMorphoVaultV2Like {
     function setCurator(address newCurator) external;
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
     function setIsSentinel(address newSentinel, bool newIsSentinel) external;
+    function submit(bytes calldata data) external;
 }

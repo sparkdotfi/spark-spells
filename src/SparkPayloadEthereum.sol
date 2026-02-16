@@ -368,11 +368,22 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
             salt
         ));
 
-        // Set Morpho Curator Multisig as curator.
-        vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);
-
         // Set Morpho Guardian Multisig as sentinel.
         vault.setIsSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG, true);
+
+        // Set Spark Proxy as a temporary curator.
+        vault.setCurator(Ethereum.SPARK_PROXY);
+
+        // Set ALM Relayer as allocator.
+
+        vault.submit(
+            abi.encodeWithSelector(vault.setIsAllocator.selector, Ethereum.ALM_PROXY, true)
+        );
+
+        vault.setIsAllocator(Ethereum.ALM_PROXY, true);
+
+        // Set Morpho Curator Multisig as curator.
+        vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);
 
         // Seed vault with initial deposit
         IERC20(asset).safeIncreaseAllowance(address(vault), initialDeposit);
