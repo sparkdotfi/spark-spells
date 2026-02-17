@@ -2353,4 +2353,201 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
     }
 
+<<<<<<< Updated upstream
+=======
+    function _getAmountsForLiquidity(
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount0, uint256 amount1)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices");
+
+        if (sqrtPriceX96 <= sqrtPriceAX96) {
+            return (
+                _getAmount0ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity),
+                0
+            );
+        }
+
+        if (sqrtPriceX96 >= sqrtPriceBX96) {
+            return (
+                0,
+                _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity)
+            );
+        }
+
+        return (
+            _getAmount0ForLiquidity(sqrtPriceX96, sqrtPriceBX96, liquidity),
+            _getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceX96, liquidity)
+        );
+    }
+
+    function _getAmount0ForLiquidity(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount0)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-0");
+
+        return FullMath.mulDiv(
+            uint256(liquidity) << 96,
+            sqrtPriceBX96 - sqrtPriceAX96,
+            uint256(sqrtPriceBX96) * sqrtPriceAX96
+        );
+    }
+
+    function _getAmount1ForLiquidity(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint128 liquidity
+    )
+        internal pure returns (uint256 amount1)
+    {
+        require(sqrtPriceAX96 < sqrtPriceBX96, "invalid-sqrtPrices-1");
+
+        return FullMath.mulDiv(liquidity, sqrtPriceBX96 - sqrtPriceAX96, 1 << 96);
+    }
+
+    function _getSwapAmountOutMin(
+        bytes32 poolId,
+        address tokenIn,
+        uint128 amountIn,
+        uint256 maxSlippage
+    )
+        internal returns (uint128 amountOutMin)
+    {
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
+
+        IV4QuoterLike.QuoteExactSingleParams memory params = IV4QuoterLike.QuoteExactSingleParams({
+            poolKey     : poolKey,
+            zeroForOne  : tokenIn == Currency.unwrap(poolKey.currency0),
+            exactAmount : amountIn,
+            hookData    : bytes("")
+        });
+
+        ( uint256 amountOut, ) = IV4QuoterLike(UNISWAP_V4_QUOTER).quoteExactInputSingle(params);
+
+        return uint128((amountOut * maxSlippage) / 1e18);
+    }
+
+    function _fromNormalizedAmount(address token, uint256 normalizedAmount) internal view returns (uint256 amount) {
+        return normalizedAmount * (10 ** IERC20Metadata(token).decimals()) / 1e18;
+    }
+
+    function _toNormalizedAmount(address token, uint256 amount) internal view returns (uint256 normalizedAmount) {
+        return amount * 1e18 / (10 ** IERC20Metadata(token).decimals());
+    }
+
+    /**********************************************************************************************/
+    /*** Helper functions                                                                      ***/
+    /**********************************************************************************************/
+
+    function _printKeys(
+        SLLIntegration memory integration,
+        string memory entryLabel,
+        string memory exitLabel,
+        string memory entryId2Label,
+        string memory exitId2Label
+    ) internal view returns (string memory output) {
+        IRateLimits rateLimits = IRateLimits(_getSparkLiquidityLayerContext().rateLimits);
+        
+        if (bytes(entryLabel).length > 0) {
+            output = string.concat(
+                output,
+                integration.label, ",",
+                entryLabel, ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.entryId).maxAmount), ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.entryId).slope * 1 days), "\n"
+            );
+        }
+        
+        if (bytes(exitLabel).length > 0) {
+            output = string.concat(
+                output,
+                integration.label, ",",
+                exitLabel, ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.exitId).maxAmount), ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.exitId).slope * 1 days), "\n"
+            );
+        }
+        
+        if (bytes(entryId2Label).length > 0) {
+            output = string.concat(
+                output,
+                integration.label, ",",
+                entryId2Label, ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).maxAmount), ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.entryId2).slope * 1 days), "\n"
+            );
+        }
+        
+        if (bytes(exitId2Label).length > 0) {
+            output = string.concat(
+                output,
+                integration.label, ",",
+                exitId2Label, ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).maxAmount), ",",
+                _formattedAmount(rateLimits.getRateLimitData(integration.exitId2).slope * 1 days), "\n"
+            );
+        }
+    }
+
+    function _formattedAmount(uint256 maxAmount) internal pure returns (string memory) {
+        return maxAmount == type(uint256).max ? "unlimited" : vm.toString(maxAmount);
+    }
+
+    function _printAllRateLimitInfo(SLLIntegration memory integration) internal view returns (string memory output) {
+        if (integration.category == Category.AAVE)             output = string.concat(output, _printKeys(integration, "AAVE deposit",            "AAVE withdraw",           "",                ""));
+        if (integration.category == Category.BUIDL)            output = string.concat(output, _printKeys(integration, "BUIDL deposit",           "BUIDL withdraw",          "",                ""));
+        if (integration.category == Category.CCTP_GENERAL)     output = string.concat(output, _printKeys(integration, "CCTP general",            "",                        "",                ""));
+        if (integration.category == Category.CCTP)             output = string.concat(output, _printKeys(integration, "CCTP to domain",          "",                        "",                ""));
+        if (integration.category == Category.CENTRIFUGE)       output = string.concat(output, _printKeys(integration, "Centrifuge deposit",      "Centrifuge redeem",       "",                ""));
+        if (integration.category == Category.CORE)             output = string.concat(output, _printKeys(integration, "USDS mint",               "",                        "",                ""));
+        if (integration.category == Category.CURVE_LP)         output = string.concat(output, _printKeys(integration, "Curve LP deposit",        "Curve LP withdraw",       "",                ""));
+        if (integration.category == Category.CURVE_SWAP)       output = string.concat(output, _printKeys(integration, "Curve swap",              "",                        "",                ""));
+        if (integration.category == Category.ERC4626)          output = string.concat(output, _printKeys(integration, "ERC4626 deposit",         "ERC4626 withdraw",        "",                ""));
+        if (integration.category == Category.ETHENA)           output = string.concat(output, _printKeys(integration, "ETHENA mint",             "ETHENA deposit",          "ETHENA cooldown", "ETHENA burn"));
+        if (integration.category == Category.FARM)             output = string.concat(output, _printKeys(integration, "FARM deposit",            "FARM withdraw",           "",                ""));
+        if (integration.category == Category.MAPLE)            output = string.concat(output, _printKeys(integration, "Maple deposit",           "Maple request redeem",    "Maple withdraw",  ""));
+        if (integration.category == Category.PSM)              output = string.concat(output, _printKeys(integration, "PSM deposit",             "PSM withdraw",            "",                ""));
+        if (integration.category == Category.SUPERSTATE)       output = string.concat(output, _printKeys(integration, "Superstate subscribe",    "Superstate redeem",       "",                ""));
+        if (integration.category == Category.PSM3)             output = string.concat(output, _printKeys(integration, "PSM3 deposit",            "PSM3 withdraw",           "",                ""));
+        if (integration.category == Category.SUPERSTATE_USCC)  output = string.concat(output, _printKeys(integration, "Superstate USCC deposit", "Superstate USCC redeem",  "",                ""));
+        if (integration.category == Category.TREASURY)         output = string.concat(output, _printKeys(integration, "Treasury deposit",        "Treasury withdraw",       "",                ""));
+        if (integration.category == Category.TRANSFER_ASSET)   output = string.concat(output, _printKeys(integration, "Transfer asset",          "",                        "",                ""));
+        if (integration.category == Category.UNISWAP_V4_LP)    output = string.concat(output, _printKeys(integration, "Uniswap V4 LP deposit",   "Uniswap V4 LP withdraw",  "",                ""));
+        if (integration.category == Category.UNISWAP_V4_SWAP)  output = string.concat(output, _printKeys(integration, "Uniswap V4 swap",         "",                        "",                ""));
+        if (integration.category == Category.SPARK_VAULT_V2)   output = string.concat(output, _printKeys(integration, "Spark Vault V2 deposit",  "Spark Vault V2 withdraw", "",                ""));
+    }
+
+    function _printAllRateLimitInfo(SLLIntegration[] memory integrations) internal {
+        string memory output = "label,key,maxAmount,slope\n";
+        
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            output = string.concat(output, _printAllRateLimitInfo(integrations[i]));
+        }
+        
+        string memory filename = string.concat("rate-limit-info/", vm.toString(block.chainid), ".csv");
+        
+        // Delete the file first to ensure clean overwrite
+        try vm.removeFile(filename) {} catch {}
+        
+        vm.writeFile(filename, output);
+    }
+
+    function test_printAllRateLimitInfo() external {
+        SLLIntegration[] memory integrations = _getPreExecutionIntegrations();
+
+        vm.recordLogs();
+
+        _executeMainnetPayload();
+
+        integrations  = _getPostExecutionIntegrations(integrations);
+    }
+>>>>>>> Stashed changes
 }
