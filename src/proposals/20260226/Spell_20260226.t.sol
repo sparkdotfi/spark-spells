@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
@@ -15,8 +16,11 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
+import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
+
 import {
-    ISyrupLike
+    ISyrupLike,
+    IMorphoVaultV2Like
 } from "src/interfaces/Interfaces.sol";
 
 interface IPermissionManagerLike {
@@ -229,6 +233,41 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
             transferKey    : transferKey,
             transferAmount : 1_000_000e6
         }));
+    }
+
+    function test_ETHEREUM_sll_morphoVaultV2Creation() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 createVaultV2Sig = keccak256("CreateVaultV2(address,address,bytes32,address)");
+
+        // Start the recorder
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
+
+        address vault_addr;
+
+        for (uint256 i = 0; i < allLogs.length; ++i) {
+            if (allLogs[i].topics[0] == createVaultV2Sig) {
+                vault_addr = address(uint160(uint256(allLogs[i].topics[3])));
+                break;
+            }
+        }
+
+        require(vault_addr != address(0), "Vault not found");
+
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_addr);
+
+        assertEq(vault.asset(),                                       Ethereum.USDT);
+        assertEq(vault.isAllocator(Ethereum.ALM_PROXY),               true);
+        assertEq(vault.owner(),                                       Ethereum.SPARK_PROXY);
+        assertEq(vault.curator(),                                     Ethereum.MORPHO_CURATOR_MULTISIG);
+        assertEq(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), true);
+
+        assertEq(vault.totalAssets(),                          1e6);
+        assertEq(IERC20(address(vault)).balanceOf(address(1)), 1e18);
+
+        _testERC4626Onboarding(address(vault), 5_000_000e6, 50_000_000e6, 1_000_000_000e6 / uint256(1 days), 10, true);
     }
 
 }

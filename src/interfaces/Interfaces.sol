@@ -523,6 +523,13 @@ interface IMorphoVaultV2FactoryLike {
 }
 
 interface IMorphoVaultV2Like {
+    function asset() external view returns (address);
+    function balanceOf(address account) external view returns (uint256);
+    function curator() external view returns (address);
+    function isAllocator(address allocator) external view returns (bool);
+    function isSentinel(address sentinel) external view returns (bool);
+    function owner() external view returns (address);
+    function totalAssets() external view returns (uint256);
     function setCurator(address newCurator) external;
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
     function setIsSentinel(address newSentinel, bool newIsSentinel) external;
