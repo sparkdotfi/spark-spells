@@ -24,7 +24,8 @@ import { SLLHelpers, SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
  *         - Onboard with Paxos (Exec).
  *         - Onboard Morpho v2 USDT Vault.
  * Forum:  https://forum.sky.money/t/february-26-2026-proposed-changes-to-spark-for-upcoming-spell/27719
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x29be63afc3b7495581259401c68e6dd892e0a8870a45ad66b2d7b224f4b33dde
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0xdc1931c6f37149183ae2f15b61f56621d5091d1ce4469ad95cc6cdd33963db8c
  */
 contract SparkEthereum_20260226 is SparkPayloadEthereum {
 
