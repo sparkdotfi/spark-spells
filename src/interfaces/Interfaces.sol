@@ -529,9 +529,9 @@ interface IMorphoVaultV2Like {
     function isAllocator(address allocator) external view returns (bool);
     function isSentinel(address sentinel) external view returns (bool);
     function owner() external view returns (address);
-    function totalAssets() external view returns (uint256);
     function setCurator(address newCurator) external;
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
     function setIsSentinel(address newSentinel, bool newIsSentinel) external;
     function submit(bytes calldata data) external;
+    function totalAssets() external view returns (uint256);
 }
