@@ -235,7 +235,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         }));
     }
 
-    function test_ETHEREUM_sll_morphoVaultV2Creation() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_morphoVaultV2Creation() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 createVaultV2Sig = keccak256("CreateVaultV2(address,address,bytes32,address)");
 
         // Start the recorder
