@@ -356,17 +356,11 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     }
 
     function _setUpNewMorphoVaultV2(
-        address asset,
-        bytes32 salt,
-        uint256 initialDeposit,
+        address vault_,
         uint256 sllDepositMax,
         uint256 sllDepositSlope
     ) internal {
-        IMorphoVaultV2Like vault = IMorphoVaultV2Like(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).createVaultV2(
-            Ethereum.SPARK_PROXY,
-            asset,
-            salt
-        ));
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_);
 
         // Set Morpho Guardian Multisig as sentinel.
         vault.setIsSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG, true);
@@ -383,10 +377,6 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         // Set Morpho Curator Multisig as curator.
         vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);
-
-        // Seed vault with initial deposit
-        IERC20(asset).safeIncreaseAllowance(address(vault), initialDeposit);
-        IERC4626(address(vault)).deposit(initialDeposit, address(0xdead));
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _configureERC4626Vault(

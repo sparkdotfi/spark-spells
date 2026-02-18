@@ -37,14 +37,15 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
-    address internal constant PAXOS_PYUSD_USDC = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
-    address internal constant PAXOS_PYUSD_USDG = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
-    address internal constant PAXOS_USDC_PYUSD = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
-    address internal constant PAXOS_USDG_PYUSD = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
+    address internal constant MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
+    address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
+    address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
+    address internal constant PAXOS_USDC_PYUSD     = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
+    address internal constant PAXOS_USDG_PYUSD     = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771226481;  // 2026-02-16T07:21:21Z
+        _blockDate = 1771395565;  // 2026-02-18T06:19:25Z
     }
 
     function setUp() public override {
@@ -235,28 +236,19 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         }));
     }
 
-    function test_ETHEREUM_morphoVaultV2Creation() external onChain(ChainIdUtils.Ethereum()) {
-        bytes32 createVaultV2Sig = keccak256("CreateVaultV2(address,address,bytes32,address)");
+    function test_ETHEREUM_morphoVaultV2Onboarding() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
 
-        // Start the recorder
-        RecordedLogs.init();
+        assertEq(vault.asset(),                                       Ethereum.USDT);
+        assertEq(vault.isAllocator(Ethereum.ALM_PROXY),               false);
+        assertEq(vault.owner(),                                       Ethereum.SPARK_PROXY);
+        assertEq(vault.curator(),                                     address(0));
+        assertEq(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), false);
+
+        assertEq(vault.totalAssets(),                               1e6);
+        assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
 
         _executeAllPayloadsAndBridges();
-
-        VmSafe.Log[] memory allLogs = RecordedLogs.getLogs();
-
-        address vault_addr;
-
-        for (uint256 i = 0; i < allLogs.length; ++i) {
-            if (allLogs[i].topics[0] == createVaultV2Sig) {
-                vault_addr = address(uint160(uint256(allLogs[i].topics[3])));
-                break;
-            }
-        }
-
-        require(vault_addr != address(0), "Vault not found");
-
-        IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_addr);
 
         assertEq(vault.asset(),                                       Ethereum.USDT);
         assertEq(vault.isAllocator(Ethereum.ALM_PROXY),               true);
@@ -264,8 +256,8 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         assertEq(vault.curator(),                                     Ethereum.MORPHO_CURATOR_MULTISIG);
         assertEq(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), true);
 
-        assertEq(vault.totalAssets(),                          1e6);
-        assertEq(IERC20(address(vault)).balanceOf(address(1)), 1e18);
+        assertEq(vault.totalAssets(),                               1e6);
+        assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
 
         _testERC4626Onboarding(address(vault), 5_000_000e6, 50_000_000e6, 1_000_000_000e6 / uint256(1 days), 10, true);
     }
@@ -276,7 +268,7 @@ contract SparkEthereum_20260226_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771226481;  // 2026-02-16T07:21:21Z
+        _blockDate = 1771395565;  // 2026-02-18T06:19:25Z
     }
 
     function setUp() public override {
@@ -294,7 +286,7 @@ contract SparkEthereum_20260226_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771226481;  // 2026-02-16T07:21:21Z
+        _blockDate = 1771395565;  // 2026-02-18T06:19:25Z
     }
 
     function setUp() public override {
@@ -309,7 +301,7 @@ contract SparkEthereum_20260226_SpellTests is SpellTests {
         uint256 opsMultisigBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
         assertEq(sparkBalanceBefore,       36_282_433.445801365846236778e18);
-        assertEq(foundationBalanceBefore,  400_000e18);
+        assertEq(foundationBalanceBefore,  250_000e18);
         assertEq(opsMultisigBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
