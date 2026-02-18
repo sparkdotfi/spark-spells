@@ -370,10 +370,10 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         // Set ALM Proxy as allocator.
         vault.submit(
-            abi.encodeWithSelector(vault.setIsAllocator.selector, Ethereum.ALM_PROXY, true)
+            abi.encodeWithSelector(vault.setIsAllocator.selector, Ethereum.ALM_PROXY_FREEZABLE, true)
         );
 
-        vault.setIsAllocator(Ethereum.ALM_PROXY, true);
+        vault.setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, true);
 
         // Set Morpho Curator Multisig as curator.
         vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);

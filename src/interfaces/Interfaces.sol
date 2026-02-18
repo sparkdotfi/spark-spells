@@ -523,15 +523,24 @@ interface IMorphoVaultV2FactoryLike {
 }
 
 interface IMorphoVaultV2Like {
+    function allocate(address adapter, bytes memory data, uint256 assets) external;
     function asset() external view returns (address);
     function balanceOf(address account) external view returns (uint256);
     function curator() external view returns (address);
+    function deallocate(address adapter, bytes memory data, uint256 assets) external;
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function isAllocator(address allocator) external view returns (bool);
     function isSentinel(address sentinel) external view returns (bool);
+    function increaseAbsoluteCap(bytes memory idData, uint256 newAbsoluteCap) external;
+    function increaseRelativeCap(bytes memory idData, uint256 newRelativeCap) external;
     function owner() external view returns (address);
     function setCurator(address newCurator) external;
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
     function setIsSentinel(address newSentinel, bool newIsSentinel) external;
+    function setAdapterRegistry(address newAdapterRegistry) external;
+    function setLiquidityAdapterAndData(address newLiquidityAdapter, bytes memory newLiquidityData) external;
+    function addAdapter(address account) external;
     function submit(bytes calldata data) external;
     function totalAssets() external view returns (uint256);
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
 }

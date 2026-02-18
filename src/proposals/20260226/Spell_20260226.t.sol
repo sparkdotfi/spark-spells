@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { SafeERC20, IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { VmSafe } from "forge-std/Vm.sol";
+
+import { MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
+import { Id }           from "metamorpho/interfaces/IMetaMorpho.sol";
+import { IMorpho }      from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
@@ -20,8 +24,11 @@ import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import {
     ISyrupLike,
-    IMorphoVaultV2Like
+    IMorphoVaultV2Like,
+    IMorphoLike
 } from "src/interfaces/Interfaces.sol";
+
+import { console } from "forge-std/console.sol";
 
 interface IPermissionManagerLike {
     function admin() external view returns (address);
@@ -32,7 +39,13 @@ interface IPermissionManagerLike {
     ) external;
 }
 
+interface IMorphoMarketV1AdapterV2FactoryLike {
+    function createMorphoMarketV1AdapterV2(address vault) external returns (address);
+}
+
 contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
+
+    using SafeERC20 for IERC20;
 
     IPermissionManagerLike internal constant permissionManager
         = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
@@ -42,6 +55,10 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
     address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
     address internal constant PAXOS_USDC_PYUSD     = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
     address internal constant PAXOS_USDG_PYUSD     = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
+
+    address internal constant ADAPTER_REGISTRY                    = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
+    address internal constant MORPHO                              = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+    address internal constant MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0x32BB1c0D48D8b1B3363e86eeB9A0300BAd61ccc1;
 
     constructor() {
         _spellId   = 20260226;
@@ -240,7 +257,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         IMorphoVaultV2Like vault = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
 
         assertEq(vault.asset(),                                       Ethereum.USDT);
-        assertEq(vault.isAllocator(Ethereum.ALM_PROXY),               false);
+        assertEq(vault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     false);
         assertEq(vault.owner(),                                       Ethereum.SPARK_PROXY);
         assertEq(vault.curator(),                                     address(0));
         assertEq(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), false);
@@ -251,7 +268,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _executeAllPayloadsAndBridges();
 
         assertEq(vault.asset(),                                       Ethereum.USDT);
-        assertEq(vault.isAllocator(Ethereum.ALM_PROXY),               true);
+        assertEq(vault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     true);
         assertEq(vault.owner(),                                       Ethereum.SPARK_PROXY);
         assertEq(vault.curator(),                                     Ethereum.MORPHO_CURATOR_MULTISIG);
         assertEq(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), true);
@@ -260,6 +277,148 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
 
         _testERC4626Onboarding(address(vault), 5_000_000e6, 50_000_000e6, 1_000_000_000e6 / uint256(1 days), 10, true);
+    }
+
+    function test_ETHEREUM_morphoVaultV2Functionality() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
+
+        _executeAllPayloadsAndBridges();
+
+        // Step 1: Setup
+
+        bytes32 SUSDS_USDT_MARKET_ID = 0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b;
+        bytes32 CBBTC_USDT_MARKET_ID = 0x45671fb8d5dea1c4fbca0b8548ad742f6643300eeb8dbd34ad64a658b2b05bca;
+
+        address adapter = _setupVaultWithMarket(MORPHO_VAULT_V2_USDT, SUSDS_USDT_MARKET_ID, true);
+
+        // Setup the CBBTC/USDT market.
+
+        vm.startPrank(Ethereum.MORPHO_CURATOR_MULTISIG);
+
+        MarketParams memory marketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
+
+        // Configure collateral token caps.
+        bytes memory collateralTokenIdData = abi.encode("collateralToken", marketParams.collateralToken);
+        vault.submit(abi.encodeCall(vault.increaseAbsoluteCap, (collateralTokenIdData, type(uint128).max)));
+        vault.submit(abi.encodeCall(vault.increaseRelativeCap, (collateralTokenIdData, 1e18)));
+        vault.increaseAbsoluteCap(collateralTokenIdData, type(uint128).max);
+        vault.increaseRelativeCap(collateralTokenIdData, 1e18);
+
+        // Configure market caps.
+        bytes memory marketIdData = abi.encode("this/marketParams", adapter, marketParams);
+        vault.submit(abi.encodeCall(vault.increaseAbsoluteCap, (marketIdData, type(uint128).max)));
+        vault.submit(abi.encodeCall(vault.increaseRelativeCap, (marketIdData, 1e18)));
+        vault.increaseAbsoluteCap(marketIdData, type(uint128).max);
+        vault.increaseRelativeCap(marketIdData, 1e18);
+
+        vm.stopPrank();
+
+        // Step 2: Allocate to the vault ( deposit ).
+        vm.startPrank(Ethereum.ALM_PROXY);
+
+        uint256 depositAmount = 500_000_000e6;
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, depositAmount);
+
+        IERC20(Ethereum.USDT).safeIncreaseAllowance(address(vault), depositAmount);
+        vault.deposit(depositAmount, Ethereum.ALM_PROXY);
+
+        assertEq(vault.balanceOf(Ethereum.ALM_PROXY), depositAmount * 1e12);
+
+        IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(Id.wrap(SUSDS_USDT_MARKET_ID), adapter);
+
+        console.log("position.supplyShares", position.supplyShares);
+
+        console.log("vault.totalAssets()", IERC20(Ethereum.USDT).balanceOf(address(vault)));
+        console.log("adapter balance",     IERC20(Ethereum.USDT).balanceOf(adapter));
+
+        vm.stopPrank();
+
+        // Reallocate into cbbtc/usdt market.
+        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
+
+        MarketParams memory susdsMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
+
+        bytes memory data = abi.encode(susdsMarketParams);
+        vault.deallocate(adapter, data, depositAmount);
+
+        MarketParams memory cbbtcMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
+
+        data = abi.encode(cbbtcMarketParams);
+        vault.allocate(adapter, data, depositAmount);
+
+        vm.stopPrank();
+
+        // try to withdraw (assert that it fails)
+
+        // vm.prank(Ethereum.ALM_PROXY);
+        // vault.withdraw(depositAmount, Ethereum.ALM_PROXY, Ethereum.ALM_PROXY);
+
+        // reallocate back to sUSDS/USDT market
+        // try to withdraw (assert that it succeeds)
+    }
+
+    function _setupVaultWithMarket(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_);
+
+        // Deploy adapter
+        adapter = IMorphoMarketV1AdapterV2FactoryLike(MORPHO_MARKET_V1_ADAPTER_V2_FACTORY)
+            .createMorphoMarketV1AdapterV2(address(vault));
+
+        vm.startPrank(Ethereum.MORPHO_CURATOR_MULTISIG);
+
+        // Submit all timelocked changes (NO liquidityAdapterAndData yet)
+        bytes memory adapterIdData = abi.encode("this", adapter);
+        vault.submit(abi.encodeCall(vault.setAdapterRegistry, (ADAPTER_REGISTRY)));
+        vault.submit(abi.encodeCall(vault.addAdapter, (adapter)));
+        vault.submit(abi.encodeCall(vault.increaseAbsoluteCap, (adapterIdData, type(uint128).max)));
+        vault.submit(abi.encodeCall(vault.increaseRelativeCap, (adapterIdData, 1e18)));
+
+        // Execute all changes (NO liquidityAdapterAndData yet)
+        vault.setAdapterRegistry(ADAPTER_REGISTRY);
+        vault.addAdapter(adapter);
+        vault.increaseAbsoluteCap(adapterIdData, type(uint128).max);
+        vault.increaseRelativeCap(adapterIdData, 1e18);
+
+        vm.stopPrank();
+
+        // Configure market and liquidity adapter BEFORE dead deposit
+        _configureMarketAndLiquidityAdapter(address(vault), marketId, adapter, setLiquidityAdapter);
+    }
+
+    function _configureMarketAndLiquidityAdapter(address vault_, bytes32 marketId_, address adapter, bool setLiquidityAdapter) internal {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_);
+
+        // Look up MarketParams from Morpho
+        MarketParams memory marketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(marketId_));
+
+        // Set liquidityAdapterAndData with encoded MarketParams
+        if (setLiquidityAdapter) {
+            bytes memory liquidityData = abi.encode(marketParams);
+
+            vm.prank(Ethereum.MORPHO_CURATOR_MULTISIG);
+            vault.submit(abi.encodeCall(vault.setLiquidityAdapterAndData, (adapter, liquidityData)));
+
+            vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
+            vault.setLiquidityAdapterAndData(adapter, liquidityData);
+        }
+
+        vm.startPrank(Ethereum.MORPHO_CURATOR_MULTISIG);
+
+        // Configure collateral token caps
+        bytes memory collateralTokenIdData = abi.encode("collateralToken", marketParams.collateralToken);
+        vault.submit(abi.encodeCall(vault.increaseAbsoluteCap, (collateralTokenIdData, type(uint128).max)));
+        vault.submit(abi.encodeCall(vault.increaseRelativeCap, (collateralTokenIdData, 1e18)));
+        vault.increaseAbsoluteCap(collateralTokenIdData, type(uint128).max);
+        vault.increaseRelativeCap(collateralTokenIdData, 1e18);
+
+        // Configure market caps
+        bytes memory marketIdData = abi.encode("this/marketParams", adapter, marketParams);
+        vault.submit(abi.encodeCall(vault.increaseAbsoluteCap, (marketIdData, type(uint128).max)));
+        vault.submit(abi.encodeCall(vault.increaseRelativeCap, (marketIdData, 1e18)));
+        vault.increaseAbsoluteCap(marketIdData, type(uint128).max);
+        vault.increaseRelativeCap(marketIdData, 1e18);
+
+        vm.stopPrank();
     }
 
 }
