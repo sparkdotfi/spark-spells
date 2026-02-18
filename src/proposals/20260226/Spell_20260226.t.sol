@@ -326,11 +326,6 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(Id.wrap(SUSDS_USDT_MARKET_ID), adapter);
 
-        console.log("position.supplyShares", position.supplyShares);
-
-        console.log("vault.totalAssets()", IERC20(Ethereum.USDT).balanceOf(address(vault)));
-        console.log("adapter balance",     IERC20(Ethereum.USDT).balanceOf(adapter));
-
         vm.stopPrank();
 
         // Reallocate into cbbtc/usdt market.
@@ -339,22 +334,34 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         MarketParams memory susdsMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
 
         bytes memory data = abi.encode(susdsMarketParams);
-        vault.deallocate(adapter, data, depositAmount);
+        vault.deallocate(adapter, data, depositAmount - 10 * 10 ** 6);
 
         MarketParams memory cbbtcMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
 
         data = abi.encode(cbbtcMarketParams);
-        vault.allocate(adapter, data, depositAmount);
+        vault.allocate(adapter, data, depositAmount - 10 * 10 ** 6);
 
         vm.stopPrank();
 
-        // try to withdraw (assert that it fails)
+        // Try to withdraw (assert that it fails)
+        vm.expectRevert();
+        vm.prank(Ethereum.ALM_PROXY);
+        vault.withdraw(depositAmount - 10 * 10 ** 6, Ethereum.ALM_PROXY, Ethereum.ALM_PROXY);
 
-        // vm.prank(Ethereum.ALM_PROXY);
-        // vault.withdraw(depositAmount, Ethereum.ALM_PROXY, Ethereum.ALM_PROXY);
+        // Reallocate back to sUSDS/USDT market
+        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
 
-        // reallocate back to sUSDS/USDT market
-        // try to withdraw (assert that it succeeds)
+        data = abi.encode(cbbtcMarketParams);
+        vault.deallocate(adapter, data, depositAmount - 1000 * 10 ** 6);
+
+        data = abi.encode(susdsMarketParams);
+        vault.allocate(adapter, data, depositAmount - 1000 * 10 ** 6);
+
+        vm.stopPrank();
+
+        // Try to withdraw (assert that it succeeds)
+        vm.prank(Ethereum.ALM_PROXY);
+        vault.withdraw(depositAmount - 1000 * 10 ** 6, Ethereum.ALM_PROXY, Ethereum.ALM_PROXY);
     }
 
     function _setupVaultWithMarket(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
