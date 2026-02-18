@@ -38,83 +38,86 @@ contract SparkEthereum_20260226 is SparkPayloadEthereum {
     address internal constant PAXOS_USDG_PYUSD = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
 
     function _postExecute() internal override {
-        // Spark Foundation Grant for March (Exec)
+        // 1. Spark Foundation Grant for March (Exec)
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG, FOUNDATION_GRANT_AMOUNT);
 
-        // SPK Buybacks Transfer for February 2026 (Exec)
+        // 2. SPK Buybacks Transfer for February 2026 (Exec)
         IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, SPK_BUYBACKS_AMOUNT);
 
-        // Increase Rate Limit for SparkLend USDT
-        _configureAaveToken(
-            SparkLend.USDT_SPTOKEN,
-            250_000_000e6,
-            2_000_000_000e6 / uint256(1 days)
-        );
-
-        // Increase Rate Limit for Aave Core USDT
-        _configureAaveToken(
-            Ethereum.ATOKEN_CORE_USDT,
-            10_000_000e6,
-            1_000_000_000e6 / uint256(1 days)
-        );
-
-        // Increase Rate Limit for Maple syrupUSDT
-        SLLHelpers.configureERC4626Vault({
-            rateLimits    : Ethereum.ALM_RATE_LIMITS,
-            vault         : Ethereum.SYRUP_USDT,
-            depositMax    : 25_000_000e6,
-            depositSlope  : 100_000_000e6 / uint256(1 days),
-            withdrawMax   : 50_000_000e6,
-            withdrawSlope : 500_000_000e6 / uint256(1 days)
+        // 4. Increase Rate Limit for SparkLend USDT
+        _configureAaveToken({
+            token        : SparkLend.USDT_SPTOKEN,
+            depositMax   : 250_000_000e6,
+            depositSlope : 2_000_000_000e6 / uint256(1 days)
         });
 
-        // Onboard with Paxos
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDC,
-                PAXOS_USDC_PYUSD
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            50_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.PYUSD,
-                PAXOS_PYUSD_USDC
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            200_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.PYUSD,
-                PAXOS_PYUSD_USDG
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            50_000_000e6 / uint256(1 days),
-            6
-        );
-        SLLHelpers.setRateLimitData(
-            RateLimitHelpers.makeAddressAddressKey(
-                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-                Ethereum.USDG,
-                PAXOS_USDG_PYUSD
-            ),
-            Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
-            100_000_000e6 / uint256(1 days),
-            6
-        );
+        // 5. Increase Rate Limit for Aave Core USDT
+        _configureAaveToken({
+            token        : Ethereum.ATOKEN_CORE_USDT,
+            depositMax   : 10_000_000e6,
+            depositSlope : 1_000_000_000e6 / uint256(1 days)
+        });
 
-        // Onboard Morpho v2 USDT Vault
+        // 6. Increase Rate Limit for Maple syrupUSDT
+        bytes32 depositKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_4626_DEPOSIT();
+        bytes32 redeemKey  = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_MAPLE_REDEEM();
+
+        bytes32 SYRUP_USDT_DEPOSIT_KEY = RateLimitHelpers.makeAddressKey(depositKey, Ethereum.SYRUP_USDT);
+        bytes32 SYRUP_USDT_REDEEM_KEY  = RateLimitHelpers.makeAddressKey(redeemKey,  Ethereum.SYRUP_USDT);
+
+        SLLHelpers.setRateLimitData({
+            key        : SYRUP_USDT_DEPOSIT_KEY,
+            rateLimits : Ethereum.ALM_RATE_LIMITS,
+            maxAmount  : 25_000_000e6,
+            slope      : 100_000_000e6 / uint256(1 days),
+            decimals   : 6
+        });
+        SLLHelpers.setRateLimitData({
+            key        : SYRUP_USDT_REDEEM_KEY,
+            rateLimits : Ethereum.ALM_RATE_LIMITS,
+            maxAmount  : 50_000_000e6,
+            slope      : 500_000_000e6 / uint256(1 days),
+            decimals   : 6
+        });
+
+        // 7. Onboard with Paxos
+        bytes32 transferKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER();
+
+        bytes32 PAXOS_USDC_PYUSD_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDC,  PAXOS_USDC_PYUSD);
+        bytes32 PAXOS_PYUSD_USDC_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.PYUSD, PAXOS_PYUSD_USDC);
+        bytes32 PAXOS_PYUSD_USDG_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.PYUSD, PAXOS_PYUSD_USDG);
+        bytes32 PAXOS_USDG_PYUSD_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDG,  PAXOS_USDG_PYUSD);
+
+        SLLHelpers.setRateLimitData({
+            key        : PAXOS_USDC_PYUSD_KEY,
+            rateLimits : Ethereum.ALM_RATE_LIMITS,
+            maxAmount  : 5_000_000e6,
+            slope      : 50_000_000e6 / uint256(1 days),
+            decimals   : 6
+        });
+        SLLHelpers.setRateLimitData({
+            key        : PAXOS_PYUSD_USDC_KEY,
+            rateLimits : Ethereum.ALM_RATE_LIMITS,
+            maxAmount  : 5_000_000e6,
+            slope      : 200_000_000e6 / uint256(1 days),
+            decimals   : 6
+        });
+        SLLHelpers.setRateLimitData({
+            key        : PAXOS_PYUSD_USDG_KEY,
+            rateLimits : Ethereum.ALM_RATE_LIMITS,
+            maxAmount  : 5_000_000e6,
+            slope      : 50_000_000e6 / uint256(1 days),
+            decimals   : 6
+        });
+        SLLHelpers.setRateLimitData({
+            key        : PAXOS_USDG_PYUSD_KEY,
+            rateLimits : Ethereum.ALM_RATE_LIMITS,
+            maxAmount  : 5_000_000e6,
+            slope      : 100_000_000e6 / uint256(1 days),
+            decimals   : 6
+        });
+
+        // 8. Onboard Morpho v2 USDT Vault
         _setUpNewMorphoVaultV2({
             asset           : Ethereum.USDT,
             salt            : bytes32("SPARK_MORPHO_VAULT_V2_USDT"),

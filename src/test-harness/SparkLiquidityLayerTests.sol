@@ -775,8 +775,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.redeemLimit   = p.ctx.rateLimits.getCurrentRateLimit(p.redeemKey);
         v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
 
-        // Assert all redemption requests are unlimited
-        assertEq(v.redeemLimit, type(uint256).max);
+        // Assert all withdrawals requests are unlimited
+        assertEq(v.withdrawLimit, type(uint256).max);
 
         /********************************/
         /*** Step 1: Check rate limit ***/

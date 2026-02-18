@@ -53,7 +53,7 @@ import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENGINE) {
 
     using OptionsBuilder for bytes;
-    using SafeERC20 for IERC20;
+    using SafeERC20      for IERC20;
 
     // These need to be immutable (delegatecall) and can only be set in constructor
     address public immutable PAYLOAD_ARBITRUM;
@@ -374,8 +374,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         // Set Spark Proxy as a temporary curator.
         vault.setCurator(Ethereum.SPARK_PROXY);
 
-        // Set ALM Relayer as allocator.
-
+        // Set ALM Proxy as allocator.
         vault.submit(
             abi.encodeWithSelector(vault.setIsAllocator.selector, Ethereum.ALM_PROXY, true)
         );
@@ -387,7 +386,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         // Seed vault with initial deposit
         IERC20(asset).safeIncreaseAllowance(address(vault), initialDeposit);
-        IERC4626(address(vault)).deposit(initialDeposit, address(1));
+        IERC4626(address(vault)).deposit(initialDeposit, address(0xdead));
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
             _configureERC4626Vault(

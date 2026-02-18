@@ -186,30 +186,14 @@ library SLLHelpers {
         uint256 depositMax,
         uint256 depositSlope
     ) internal {
-        IERC20 asset = IERC20(IERC4626(vault).asset());
+        address asset = IERC4626(vault).asset();
 
-        setRateLimitData(
-            RateLimitHelpers.makeAddressKey(
-                LIMIT_4626_DEPOSIT,
-                vault
-            ),
-            rateLimits,
-            depositMax,
-            depositSlope,
-            IERC20Metadata(address(asset)).decimals()
-        );
-
-        IRateLimits(rateLimits).setUnlimitedRateLimitData(
-            RateLimitHelpers.makeAddressKey(
-                LIMIT_4626_WITHDRAW,
-                vault
-            )
-        );
+        configureERC4626Vault(rateLimits, vault, depositMax, depositSlope, type(uint256).max, 0);
 
         MainnetController(controller).setMaxExchangeRate(
             vault,
             1 * 10 ** IERC20Metadata(vault).decimals(),
-            10 * 10 ** IERC20Metadata(address(asset)).decimals()
+            10 * 10 ** IERC20Metadata(asset).decimals()
         );
     }
 
@@ -246,6 +230,55 @@ library SLLHelpers {
             withdrawMax,
             withdrawSlope,
             IERC20Metadata(address(asset)).decimals()
+        );
+    }
+
+    function onboardERC4626Vault(
+        address controller,
+        address rateLimits,
+        address vault,
+        uint256 depositMax,
+        uint256 depositSlope
+    )
+        internal
+    {
+        address asset = IERC4626(vault).asset();
+
+        configureERC4626Vault(rateLimits, vault, depositMax, depositSlope, type(uint256).max, 0);
+
+        MainnetController(controller).setMaxExchangeRate(
+            vault,
+            1 * 10 ** IERC20Metadata(vault).decimals(),
+            10 * 10 ** IERC20Metadata(address(asset)).decimals()
+        );
+    }
+
+    function onboardERC4626Vault(
+        address controller,
+        address rateLimits,
+        address vault,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 withdrawMax,
+        uint256 withdrawSlope
+    )
+        internal
+    {
+        address asset = IERC4626(vault).asset();
+
+        configureERC4626Vault(
+            rateLimits,
+            vault,
+            depositMax,
+            depositSlope,
+            withdrawMax,
+            withdrawSlope
+        );
+
+        MainnetController(controller).setMaxExchangeRate(
+            vault,
+            1 * 10 ** IERC20Metadata(vault).decimals(),
+            10 * 10 ** IERC20Metadata(address(asset)).decimals()
         );
     }
 

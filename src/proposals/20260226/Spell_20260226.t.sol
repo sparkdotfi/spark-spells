@@ -132,9 +132,9 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _executeAllPayloadsAndBridges();
 
         _assertRateLimit(depositKey,  25_000_000e6, 100_000_000e6 / uint256(1 days));
-        _assertRateLimit(withdrawKey, 50_000_000e6, 500_000_000e6 / uint256(1 days));
+        _assertRateLimit(redeemKey, 50_000_000e6, 500_000_000e6 / uint256(1 days));
 
-        _assertUnlimitedRateLimit(redeemKey);
+        _assertUnlimitedRateLimit(withdrawKey);
 
         _testMapleIntegration(MapleE2ETestParams({
             ctx:           ctx,
