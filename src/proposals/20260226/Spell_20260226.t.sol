@@ -37,12 +37,6 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
     using SafeERC20 for IERC20;
 
-    address internal constant MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
-    address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
-    address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
-    address internal constant PAXOS_USDC_PYUSD     = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
-    address internal constant PAXOS_USDG_PYUSD     = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
-
     address internal constant ADAPTER_REGISTRY                    = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
     address internal constant MORPHO                              = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
     address internal constant MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0x32BB1c0D48D8b1B3363e86eeB9A0300BAd61ccc1;
@@ -153,7 +147,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
             asset          : Ethereum.USDC,
             destination    : PAXOS_USDC_PYUSD,
             transferKey    : transferKey,
-            transferAmount : 1_000_000e6
+            transferAmount : 5_000_000e6
         }));
     }
 
@@ -175,7 +169,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
             asset          : Ethereum.PYUSD,
             destination    : PAXOS_PYUSD_USDC,
             transferKey    : transferKey,
-            transferAmount : 1_000_000e6
+            transferAmount : 5_000_000e6
         }));
     }
 
@@ -197,7 +191,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
             asset          : Ethereum.PYUSD,
             destination    : PAXOS_PYUSD_USDG,
             transferKey    : transferKey,
-            transferAmount : 1_000_000e6
+            transferAmount : 5_000_000e6
         }));
     }
 
@@ -219,7 +213,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
             asset          : Ethereum.USDG,
             destination    : PAXOS_USDG_PYUSD,
             transferKey    : transferKey,
-            transferAmount : 1_000_000e6
+            transferAmount : 5_000_000e6
         }));
     }
 

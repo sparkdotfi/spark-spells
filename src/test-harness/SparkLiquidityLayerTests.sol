@@ -395,6 +395,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant FLUID_SUSDS_ARBITRUM = 0x3459fcc94390C3372c0F7B4cD3F8795F0E5aFE96;
     address internal constant MORPHO_TOKEN         = 0x58D97B57BB95320F9a05dC918Aef65434969c2B2;
     address internal constant MORPHO_USDC_BC       = 0x56A76b428244a50513ec81e225a293d128fd581D;
+    address internal constant MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
     address internal constant SPARK_MULTISIG       = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
     address internal constant SYRUP                = 0x643C4E15d7d62Ad0aBeC4a9BD4b001aA3Ef52d66;
     address internal constant USCC_DEPOSIT         = 0xDB48AC0802F9A79145821A5430349cAff6d676f7;
@@ -404,6 +405,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
+
+    address internal constant PAXOS_PYUSD_USDC = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
+    address internal constant PAXOS_PYUSD_USDG = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
+    address internal constant PAXOS_USDC_PYUSD = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
+    address internal constant PAXOS_USDG_PYUSD = 0x035b322D0e79de7c8733CdDA5a7EF8b51a6cfcfa;
 
     address internal constant UNISWAP_V4_STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
     address internal constant UNISWAP_V4_QUOTER     = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
@@ -3906,11 +3912,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        newIntegrations = new SLLIntegration[](integrations.length + 5);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
+
+        newIntegrations[integrations.length]     = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", MORPHO_VAULT_V2_USDT);
+        newIntegrations[integrations.length + 1] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDC_PYUSD",  Ethereum.USDC,   PAXOS_USDC_PYUSD);
+        newIntegrations[integrations.length + 2] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDC",  Ethereum.PYUSD,  PAXOS_PYUSD_USDC);
+        newIntegrations[integrations.length + 3] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",  Ethereum.PYUSD,  PAXOS_PYUSD_USDG);
+        newIntegrations[integrations.length + 4] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",  Ethereum.USDG,   PAXOS_USDG_PYUSD);
     }
 
     /**********************************************************************************************/
