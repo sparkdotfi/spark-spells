@@ -206,13 +206,22 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         );
     }
 
-    function _configureERC4626Vault(address controller, address vault, uint256 depositMax, uint256 depositSlope) internal {
+    function _configureERC4626Vault(
+        address controller,
+        address vault,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 maxExchangeRate
+    )
+        internal
+    {
         SLLHelpers.configureERC4626Vault(
             controller,
             Ethereum.ALM_RATE_LIMITS,
             vault,
             depositMax,
-            depositSlope
+            depositSlope,
+            maxExchangeRate
         );
     }
 
@@ -346,12 +355,13 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         vault.submitTimelock(1 days);
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
-            _configureERC4626Vault(
-                Ethereum.ALM_CONTROLLER,
-                address(vault),
-                sllDepositMax,
-                sllDepositSlope
-            );
+            _configureERC4626Vault({
+                controller      : Ethereum.ALM_CONTROLLER,
+                vault           : address(vault),
+                depositMax      : sllDepositMax,
+                depositSlope    : sllDepositSlope,
+                maxExchangeRate : 10
+            });
         }
     }
 
@@ -379,12 +389,13 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
-            _configureERC4626Vault(
-                Ethereum.ALM_CONTROLLER,
-                address(vault),
-                sllDepositMax,
-                sllDepositSlope
-            );
+            _configureERC4626Vault({
+                controller      : Ethereum.ALM_CONTROLLER,
+                vault           : address(vault),
+                depositMax      : sllDepositMax,
+                depositSlope    : sllDepositSlope,
+                maxExchangeRate : 1_000_000
+            });
         }
     }
 

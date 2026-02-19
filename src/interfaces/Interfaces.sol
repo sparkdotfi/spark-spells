@@ -523,6 +523,13 @@ interface IMorphoVaultV2FactoryLike {
 }
 
 interface IMorphoVaultV2Like {
+    event Constructor(address indexed owner, address indexed asset);
+    event AccrueInterest(uint256 previousTotalAssets, uint256 newTotalAssets, uint256 performanceFeeShares, uint256 managementFeeShares);
+    event Transfer(address indexed from, address indexed to, uint256 shares);
+    event Deposit(address indexed sender, address indexed onBehalf, uint256 assets, uint256 shares);
+    event SetIsSentinel(address indexed account, bool newIsSentinel);
+    event SetIsAllocator(address indexed account, bool newIsAllocator);
+
     function allocate(address adapter, bytes memory data, uint256 assets) external;
     function asset() external view returns (address);
     function balanceOf(address account) external view returns (uint256);

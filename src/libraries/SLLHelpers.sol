@@ -184,7 +184,8 @@ library SLLHelpers {
         address rateLimits,
         address vault,
         uint256 depositMax,
-        uint256 depositSlope
+        uint256 depositSlope,
+        uint256 maxExchangeRate
     ) internal {
         address asset = IERC4626(vault).asset();
 
@@ -193,7 +194,7 @@ library SLLHelpers {
         MainnetController(controller).setMaxExchangeRate(
             vault,
             1 * 10 ** IERC20Metadata(vault).decimals(),
-            10 * 10 ** IERC20Metadata(asset).decimals()
+            maxExchangeRate * 10 ** IERC20Metadata(asset).decimals()
         );
     }
 

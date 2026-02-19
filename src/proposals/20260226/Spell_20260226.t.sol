@@ -23,21 +23,11 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import {
-    ISyrupLike,
     IMorphoVaultV2Like,
     IMorphoLike
 } from "src/interfaces/Interfaces.sol";
 
 import { console } from "forge-std/console.sol";
-
-interface IPermissionManagerLike {
-    function admin() external view returns (address);
-    function setLenderAllowlist(
-        address            poolManager_,
-        address[] calldata lenders_,
-        bool[]    calldata booleans_
-    ) external;
-}
 
 interface IMorphoMarketV1AdapterV2FactoryLike {
     function createMorphoMarketV1AdapterV2(address vault) external returns (address);
@@ -46,9 +36,6 @@ interface IMorphoMarketV1AdapterV2FactoryLike {
 contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
     using SafeERC20 for IERC20;
-
-    IPermissionManagerLike internal constant permissionManager
-        = IPermissionManagerLike(0xBe10aDcE8B6E3E02Db384E7FaDA5395DD113D8b3);
 
     address internal constant MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
     address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
@@ -69,23 +56,6 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
-
-        // Maple onboarding process
-        ISyrupLike syrup = ISyrupLike(Ethereum.SYRUP_USDT);
-
-        address[] memory lenders  = new address[](1);
-        bool[]    memory booleans = new bool[](1);
-
-        lenders[0]  = address(Ethereum.ALM_PROXY);
-        booleans[0] = true;
-
-        vm.startPrank(permissionManager.admin());
-        permissionManager.setLenderAllowlist(
-            syrup.manager(),
-            lenders,
-            booleans
-        );
-        vm.stopPrank();
     }
 
     function test_ETHEREUM_sll_sparkLendUsdtRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
@@ -104,7 +74,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  250_000_000e6,     2_000_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDT_SPTOKEN, 10_000_000e6, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDT_SPTOKEN, 250_000_000e6, depositKey, withdrawKey, 10));
     }
 
     function test_ETHEREUM_sll_aaveCoreUsdtRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
@@ -149,8 +119,8 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(depositKey,  25_000_000e6, 100_000_000e6 / uint256(1 days));
-        _assertRateLimit(redeemKey, 50_000_000e6, 500_000_000e6 / uint256(1 days));
+        _assertRateLimit(depositKey, 25_000_000e6, 100_000_000e6 / uint256(1 days));
+        _assertRateLimit(redeemKey,  50_000_000e6, 500_000_000e6 / uint256(1 days));
 
         _assertUnlimitedRateLimit(withdrawKey);
 
@@ -253,7 +223,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         }));
     }
 
-    function test_ETHEREUM_morphoVaultV2Onboarding() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_morphoVaultV2Config() external onChain(ChainIdUtils.Ethereum()) {
         IMorphoVaultV2Like vault = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
 
         assertEq(vault.asset(),                                       Ethereum.USDT);
@@ -265,7 +235,49 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         assertEq(vault.totalAssets(),                               1e6);
         assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
 
-        _executeAllPayloadsAndBridges();
+        VmSafe.EthGetLogs[] memory allLogs = _getEvents(block.chainid, MORPHO_VAULT_V2_USDT, bytes32(0));
+
+        assertEq(allLogs.length, 4);
+
+        assertEq32(allLogs[0].topics[0], IMorphoVaultV2Like.Constructor.selector);
+
+        assertEq(address(uint160(uint256(allLogs[0].topics[1]))), Ethereum.SPARK_PROXY);
+        assertEq(address(uint160(uint256(allLogs[0].topics[2]))), Ethereum.USDT);
+
+        assertEq32(allLogs[1].topics[0], IMorphoVaultV2Like.AccrueInterest.selector);
+        assertEq32(allLogs[2].topics[0], IMorphoVaultV2Like.Transfer.selector);
+        assertEq32(allLogs[3].topics[0], IMorphoVaultV2Like.Deposit.selector);
+
+        vm.recordLogs();
+
+        _executeMainnetPayload();
+
+        VmSafe.Log[] memory recordedLogs = vm.getRecordedLogs();  // This gets the logs of all payloads
+        VmSafe.Log[] memory newLogs      = new VmSafe.Log[](2);
+
+        uint256 j = 0;
+        for (uint256 i = 0; i < recordedLogs.length; ++i) {
+            if (recordedLogs[i].emitter != MORPHO_VAULT_V2_USDT) continue;
+            if (
+                recordedLogs[i].topics[0] != IMorphoVaultV2Like.SetIsAllocator.selector &&
+                recordedLogs[i].topics[0] != IMorphoVaultV2Like.SetIsSentinel.selector
+            ) continue;
+
+            newLogs[j] = recordedLogs[i];
+            j++;
+        }
+
+        assertEq(newLogs.length, 2);
+
+        assertEq32(newLogs[0].topics[0], IMorphoVaultV2Like.SetIsSentinel.selector);
+
+        assertEq(address(uint160(uint256(newLogs[0].topics[1]))), Ethereum.MORPHO_GUARDIAN_MULTISIG);
+        assertEq(bool(abi.decode(newLogs[0].data, (bool))),       true);
+
+        assertEq32(newLogs[1].topics[0], IMorphoVaultV2Like.SetIsAllocator.selector);
+
+        assertEq(address(uint160(uint256(newLogs[1].topics[1]))), Ethereum.ALM_PROXY_FREEZABLE);
+        assertEq(bool(abi.decode(newLogs[1].data, (bool))),       true);
 
         assertEq(vault.asset(),                                       Ethereum.USDT);
         assertEq(vault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     true);
@@ -275,12 +287,22 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(vault.totalAssets(),                               1e6);
         assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
-
-        _testERC4626Onboarding(address(vault), 5_000_000e6, 50_000_000e6, 1_000_000_000e6 / uint256(1 days), 10, true);
     }
 
-    function test_ETHEREUM_morphoVaultV2Functionality() external onChain(ChainIdUtils.Ethereum()) {
-        IMorphoVaultV2Like vault = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
+    function test_ETHEREUM_morphoVaultV2Ratelimits() external onChain(ChainIdUtils.Ethereum()) {
+        _testERC4626Onboarding({
+            vault                 : MORPHO_VAULT_V2_USDT,
+            expectedDepositAmount : 5_000_000e6,
+            depositMax            : 50_000_000e6,
+            depositSlope          : 1_000_000_000e6 / uint256(1 days),
+            tolerance             : 10,
+            skipInitialCheck      : false
+        });
+    }
+
+    function test_ETHEREUM_morphoVaultV2E2E() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like vault     = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
 
         _executeAllPayloadsAndBridges();
 
@@ -314,54 +336,55 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         vm.stopPrank();
 
         // Step 2: Allocate to the vault ( deposit ).
-        vm.startPrank(Ethereum.ALM_PROXY);
 
-        uint256 depositAmount = 500_000_000e6;
+        uint256 depositAmount = 50_000_000e6;
         deal(Ethereum.USDT, Ethereum.ALM_PROXY, depositAmount);
 
-        IERC20(Ethereum.USDT).safeIncreaseAllowance(address(vault), depositAmount);
-        vault.deposit(depositAmount, Ethereum.ALM_PROXY);
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        controller.depositERC4626(MORPHO_VAULT_V2_USDT, depositAmount);
 
         assertEq(vault.balanceOf(Ethereum.ALM_PROXY), depositAmount * 1e12);
 
         IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(Id.wrap(SUSDS_USDT_MARKET_ID), adapter);
 
-        vm.stopPrank();
+        assertGe(position.supplyShares, 45_000_000e12);
 
         // Reallocate into cbbtc/usdt market.
+        uint256 withdrawAmount = depositAmount - 1e6;
+
         vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
 
         MarketParams memory susdsMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
 
         bytes memory data = abi.encode(susdsMarketParams);
-        vault.deallocate(adapter, data, depositAmount - 10 * 10 ** 6);
+        vault.deallocate(adapter, data, withdrawAmount);
 
         MarketParams memory cbbtcMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
 
         data = abi.encode(cbbtcMarketParams);
-        vault.allocate(adapter, data, depositAmount - 10 * 10 ** 6);
+        vault.allocate(adapter, data, withdrawAmount);
 
         vm.stopPrank();
 
         // Try to withdraw (assert that it fails)
-        vm.expectRevert();
-        vm.prank(Ethereum.ALM_PROXY);
-        vault.withdraw(depositAmount - 10 * 10 ** 6, Ethereum.ALM_PROXY, Ethereum.ALM_PROXY);
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
 
         // Reallocate back to sUSDS/USDT market
         vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
 
         data = abi.encode(cbbtcMarketParams);
-        vault.deallocate(adapter, data, depositAmount - 1000 * 10 ** 6);
+        vault.deallocate(adapter, data, withdrawAmount - 1e6);
 
         data = abi.encode(susdsMarketParams);
-        vault.allocate(adapter, data, depositAmount - 1000 * 10 ** 6);
+        vault.allocate(adapter, data, withdrawAmount - 1e6);
 
         vm.stopPrank();
 
         // Try to withdraw (assert that it succeeds)
-        vm.prank(Ethereum.ALM_PROXY);
-        vault.withdraw(depositAmount - 1000 * 10 ** 6, Ethereum.ALM_PROXY, Ethereum.ALM_PROXY);
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount - 1e6);
     }
 
     function _setupVaultWithMarket(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
