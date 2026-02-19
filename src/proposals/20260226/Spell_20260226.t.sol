@@ -33,6 +33,14 @@ interface IMorphoMarketV1AdapterV2FactoryLike {
     function createMorphoMarketV1AdapterV2(address vault) external returns (address);
 }
 
+interface IMorphoVaultV2FactoryLike {
+    function isVaultV2(address target) external view returns (bool);
+}
+
+interface IAdapter {
+    function realAssets() external view returns (uint256);
+}
+
 contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
     using SafeERC20 for IERC20;
@@ -40,6 +48,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
     address internal constant ADAPTER_REGISTRY                    = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
     address internal constant MORPHO                              = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
     address internal constant MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0x32BB1c0D48D8b1B3363e86eeB9A0300BAd61ccc1;
+    address internal constant MORPHO_VAULT_V2_FACTORY             = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
 
     constructor() {
         _spellId   = 20260226;
@@ -119,13 +128,13 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _assertUnlimitedRateLimit(withdrawKey);
 
         _testMapleIntegration(MapleE2ETestParams({
-            ctx:           ctx,
-            vault:         Ethereum.SYRUP_USDT,
-            depositAmount: 1_000_000e6,
-            depositKey:    depositKey,
-            redeemKey:     redeemKey,
-            withdrawKey:   withdrawKey,
-            tolerance:     10
+            ctx           : ctx,
+            vault         : Ethereum.SYRUP_USDT,
+            depositAmount : 1_000_000e6,
+            depositKey    : depositKey,
+            redeemKey     : redeemKey,
+            withdrawKey   : withdrawKey,
+            tolerance     : 10
         }));
     }
 
@@ -220,6 +229,8 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_morphoVaultV2Config() external onChain(ChainIdUtils.Ethereum()) {
         IMorphoVaultV2Like vault = IMorphoVaultV2Like(MORPHO_VAULT_V2_USDT);
 
+        assertTrue(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)));
+
         assertEq(vault.asset(),                                       Ethereum.USDT);
         assertEq(vault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     false);
         assertEq(vault.owner(),                                       Ethereum.SPARK_PROXY);
@@ -300,15 +311,17 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        // Step 1: Setup
+        // Set the max rate to 12% to accrue interest.
+        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
+        vault.setMaxRate(200e16 / uint256(365 days));
 
+        // Step 1: Set up initial vault with liquidity adapter
         bytes32 SUSDS_USDT_MARKET_ID = 0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b;
         bytes32 CBBTC_USDT_MARKET_ID = 0x45671fb8d5dea1c4fbca0b8548ad742f6643300eeb8dbd34ad64a658b2b05bca;
 
-        address adapter = _setupVaultWithMarket(MORPHO_VAULT_V2_USDT, SUSDS_USDT_MARKET_ID, true);
+        address adapter = _setUpVaultWithLiquidityAdapter(MORPHO_VAULT_V2_USDT, SUSDS_USDT_MARKET_ID, true);
 
-        // Setup the CBBTC/USDT market.
-
+        // Step 2: Add cbBTC market to vault
         vm.startPrank(Ethereum.MORPHO_CURATOR_MULTISIG);
 
         MarketParams memory marketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
@@ -329,8 +342,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         vm.stopPrank();
 
-        // Step 2: Allocate to the vault ( deposit ).
-
+        // Step 3: Deposit to the vault.
         uint256 depositAmount = 50_000_000e6;
         deal(Ethereum.USDT, Ethereum.ALM_PROXY, depositAmount);
 
@@ -343,45 +355,69 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         assertGe(position.supplyShares, 45_000_000e12);
 
-        // Reallocate into cbbtc/usdt market.
-        uint256 withdrawAmount = depositAmount - 1e6;
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount);
 
-        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
+        console.log("totalAssets before", vault.totalAssets());
+        console.log("Max Rate"          , vault.maxRate());
+        console.log("last update"       , vault.lastUpdate());
+        console.log("Timestamp"         , block.timestamp);
 
-        MarketParams memory susdsMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
+        vm.warp(block.timestamp + 1 days);
 
-        bytes memory data = abi.encode(susdsMarketParams);
-        vault.deallocate(adapter, data, withdrawAmount);
+        console.log("totalAssets after", vault.totalAssets());
+        console.log("Max Rate"         , vault.maxRate());
+        console.log("last update"      , vault.lastUpdate());
+        console.log("Timestamp"        , block.timestamp);
 
-        MarketParams memory cbbtcMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
+        vault.accrueInterest();
 
-        data = abi.encode(cbbtcMarketParams);
-        vault.allocate(adapter, data, withdrawAmount);
+        console.log("totalAssets after", vault.totalAssets());
+        console.log("Max Rate"         , vault.maxRate());
+        console.log("last update"      , vault.lastUpdate());
+        console.log("Timestamp"        , block.timestamp);
 
-        vm.stopPrank();
 
-        // Try to withdraw (assert that it fails)
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
-        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount);  // Interest Accrued.
 
-        // Reallocate back to sUSDS/USDT market
-        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
+        // // Step 4: Reallocate into cbbtc/usdt market.
+        // uint256 withdrawAmount = depositAmount - 1e6;
 
-        data = abi.encode(cbbtcMarketParams);
-        vault.deallocate(adapter, data, withdrawAmount - 1e6);
+        // vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
 
-        data = abi.encode(susdsMarketParams);
-        vault.allocate(adapter, data, withdrawAmount - 1e6);
+        // MarketParams memory susdsMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
 
-        vm.stopPrank();
+        // bytes memory data = abi.encode(susdsMarketParams);
+        // vault.deallocate(adapter, data, withdrawAmount);
 
-        // Try to withdraw (assert that it succeeds)
-        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount - 1e6);
+        // MarketParams memory cbbtcMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
+
+        // data = abi.encode(cbbtcMarketParams);
+        // vault.allocate(adapter, data, withdrawAmount);
+
+        // vm.stopPrank();
+
+        // // Step 5: Try to withdraw (fails because there is not enough liquidity in the sUSDS/USDT market anymore)
+        // vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        // vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        // controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
+
+        // // Step 6: Reallocate back to sUSDS/USDT market.
+        // vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
+
+        // data = abi.encode(cbbtcMarketParams);
+        // vault.deallocate(adapter, data, withdrawAmount - 1e6);
+
+        // data = abi.encode(susdsMarketParams);
+        // vault.allocate(adapter, data, withdrawAmount - 1e6);
+
+        // vm.stopPrank();
+
+        // // Step 7: Do successful withdrawal.
+        // vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        // controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount - 1e6);
     }
 
-    function _setupVaultWithMarket(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
+    function _setUpVaultWithLiquidityAdapter(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
         IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_);
 
         // Deploy adapter

@@ -530,10 +530,12 @@ interface IMorphoVaultV2Like {
     event SetIsSentinel(address indexed account, bool newIsSentinel);
     event SetIsAllocator(address indexed account, bool newIsAllocator);
 
+    function accrueInterest() external;
     function allocate(address adapter, bytes memory data, uint256 assets) external;
     function asset() external view returns (address);
     function balanceOf(address account) external view returns (uint256);
     function curator() external view returns (address);
+    function convertToAssets(uint256 shares) external view returns (uint256);
     function deallocate(address adapter, bytes memory data, uint256 assets) external;
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function isAllocator(address allocator) external view returns (bool);
@@ -546,8 +548,12 @@ interface IMorphoVaultV2Like {
     function setIsSentinel(address newSentinel, bool newIsSentinel) external;
     function setAdapterRegistry(address newAdapterRegistry) external;
     function setLiquidityAdapterAndData(address newLiquidityAdapter, bytes memory newLiquidityData) external;
+    function setMaxRate(uint256 newMaxRate) external;
     function addAdapter(address account) external;
     function submit(bytes calldata data) external;
     function totalAssets() external view returns (uint256);
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
+
+    function maxRate() external view returns (uint256);
+    function lastUpdate() external view returns (uint256);
 }
