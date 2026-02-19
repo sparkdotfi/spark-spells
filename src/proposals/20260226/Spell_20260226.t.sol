@@ -27,8 +27,6 @@ import {
     IMorphoLike
 } from "src/interfaces/Interfaces.sol";
 
-import { console } from "forge-std/console.sol";
-
 interface IMorphoMarketV1AdapterV2FactoryLike {
     function createMorphoMarketV1AdapterV2(address vault) external returns (address);
 }
