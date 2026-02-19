@@ -280,8 +280,8 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         assertEq(address(uint160(uint256(newLogs[1].topics[1]))), Ethereum.ALM_PROXY_FREEZABLE);
         assertEq(bool(abi.decode(newLogs[1].data, (bool))),       true);
 
-        assertEq(vault.name(),                                        "Spark Blue-Chip USDT");
-        assertEq(vault.symbol(),                                      "spUSDTbc");
+        assertEq(vault.name(),                                        "Spark Blue Chip USDT Vault");
+        assertEq(vault.symbol(),                                      "sparkUSDTbc");
         assertEq(vault.asset(),                                       Ethereum.USDT);
         assertEq(vault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     true);
         assertEq(vault.owner(),                                       Ethereum.SPARK_PROXY);
@@ -354,13 +354,13 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         assertGe(position.supplyShares, 45_000_000e12);
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount - 1);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount - 1);  // Rounding.
 
         vm.warp(block.timestamp + 1 days);
 
         vault.accrueInterest();
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1491500816);  // Interest Accrued.
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1491.500816e6);  // Interest accrued.
 
         // Step 4: Reallocate into cbbtc/usdt market.
         uint256 withdrawAmount = depositAmount;
@@ -381,21 +381,23 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
 
+        vm.warp(block.timestamp + 1 days);
+
         // Step 6: Reallocate back to sUSDS/USDT market.
         vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
 
-        vault.deallocate(adapter, abi.encode(cbbtcMarketParams), withdrawAmount - 1e6);
+        vault.deallocate(adapter, abi.encode(cbbtcMarketParams), withdrawAmount);
 
-        vault.allocate(adapter, abi.encode(susdsMarketParams), withdrawAmount - 1e6);
+        vault.allocate(adapter, abi.encode(susdsMarketParams), withdrawAmount);
 
         vm.stopPrank();
 
         // Step 7: Do successful withdrawal.
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount - 1e6);
+        controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
 
         // Assert that Interest Remains after withdrawal.
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 1492500815);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 1646.49845e6);
     }
 
     function _setUpVaultWithLiquidityAdapter(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
