@@ -267,7 +267,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
             j++;
         }
 
-        assertEq(newLogs.length, 2);
+        assertEq(j, 2);
 
         assertEq32(newLogs[0].topics[0], IMorphoVaultV2Like.SetIsSentinel.selector);
 

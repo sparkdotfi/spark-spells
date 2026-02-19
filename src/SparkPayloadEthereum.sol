@@ -63,8 +63,6 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     address public immutable PAYLOAD_UNICHAIN;
     address public immutable PAYLOAD_AVALANCHE;
 
-    address internal constant MORPHO_VAULT_V2_FACTORY = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
-
     function execute() public override {
         super.execute();
 
