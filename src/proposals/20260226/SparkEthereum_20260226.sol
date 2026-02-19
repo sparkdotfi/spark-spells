@@ -121,6 +121,8 @@ contract SparkEthereum_20260226 is SparkPayloadEthereum {
         // 8. Onboard Morpho v2 USDT Vault
         _setUpNewMorphoVaultV2({
             vault_          : MORPHO_VAULT_V2_USDT,
+            name            : "Spark Blue-Chip USDT",
+            symbol          : "spUSDTbc",
             sllDepositMax   : 50_000_000e6,
             sllDepositSlope : 1_000_000_000e6 / uint256(1 days)
         });

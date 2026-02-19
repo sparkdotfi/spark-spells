@@ -542,8 +542,12 @@ interface IMorphoVaultV2Like {
     function isSentinel(address sentinel) external view returns (bool);
     function increaseAbsoluteCap(bytes memory idData, uint256 newAbsoluteCap) external;
     function increaseRelativeCap(bytes memory idData, uint256 newRelativeCap) external;
+    function name() external view returns (string memory);
     function owner() external view returns (address);
+    function symbol() external view returns (string memory);
     function setCurator(address newCurator) external;
+    function setName(string memory newName) external;
+    function setSymbol(string memory newSymbol) external;
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
     function setIsSentinel(address newSentinel, bool newIsSentinel) external;
     function setAdapterRegistry(address newAdapterRegistry) external;
@@ -553,7 +557,4 @@ interface IMorphoVaultV2Like {
     function submit(bytes calldata data) external;
     function totalAssets() external view returns (uint256);
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
-
-    function maxRate() external view returns (uint256);
-    function lastUpdate() external view returns (uint256);
 }

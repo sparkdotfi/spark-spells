@@ -364,11 +364,17 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     }
 
     function _setUpNewMorphoVaultV2(
-        address vault_,
-        uint256 sllDepositMax,
-        uint256 sllDepositSlope
+        address       vault_,
+        string memory name,
+        string memory symbol,
+        uint256       sllDepositMax,
+        uint256       sllDepositSlope
     ) internal {
         IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_);
+
+        vault.setName(name);
+
+        vault.setSymbol(symbol);
 
         // Set Morpho Guardian Multisig as sentinel.
         vault.setIsSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG, true);
