@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { IERC20 }    from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
@@ -35,7 +36,13 @@ import { OptimismForwarder }                       from "xchain-helpers/forwarde
 
 import { SLLHelpers } from "./libraries/SLLHelpers.sol";
 
-import { ITreasuryControllerLike, IArbitrumTokenBridge, IOptimismTokenBridge } from "./interfaces/Interfaces.sol";
+import {
+    ITreasuryControllerLike,
+    IArbitrumTokenBridge,
+    IOptimismTokenBridge,
+    IMorphoVaultV2FactoryLike,
+    IMorphoVaultV2Like
+} from "./interfaces/Interfaces.sol";
 
 import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 
@@ -46,6 +53,7 @@ import { AaveV3PayloadBase, IEngine } from "./AaveV3PayloadBase.sol";
 abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENGINE) {
 
     using OptionsBuilder for bytes;
+    using SafeERC20      for IERC20;
 
     // These need to be immutable (delegatecall) and can only be set in constructor
     address public immutable PAYLOAD_ARBITRUM;
@@ -196,13 +204,22 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         );
     }
 
-    function _configureERC4626Vault(address controller, address vault, uint256 depositMax, uint256 depositSlope) internal {
+    function _configureERC4626Vault(
+        address controller,
+        address vault,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 maxExchangeRate
+    )
+        internal
+    {
         SLLHelpers.configureERC4626Vault(
             controller,
             Ethereum.ALM_RATE_LIMITS,
             vault,
             depositMax,
-            depositSlope
+            depositSlope,
+            maxExchangeRate
         );
     }
 
@@ -336,12 +353,53 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         vault.submitTimelock(1 days);
 
         if (sllDepositMax != 0 && sllDepositSlope != 0) {
-            _configureERC4626Vault(
-                Ethereum.ALM_CONTROLLER,
-                address(vault),
-                sllDepositMax,
-                sllDepositSlope
-            );
+            _configureERC4626Vault({
+                controller      : Ethereum.ALM_CONTROLLER,
+                vault           : address(vault),
+                depositMax      : sllDepositMax,
+                depositSlope    : sllDepositSlope,
+                maxExchangeRate : 10
+            });
+        }
+    }
+
+    function _setUpNewMorphoVaultV2(
+        address       vault_,
+        string memory name,
+        string memory symbol,
+        uint256       sllDepositMax,
+        uint256       sllDepositSlope
+    ) internal {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(vault_);
+
+        vault.setName(name);
+
+        vault.setSymbol(symbol);
+
+        // Set Morpho Guardian Multisig as sentinel.
+        vault.setIsSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG, true);
+
+        // Set Spark Proxy as a temporary curator.
+        vault.setCurator(Ethereum.SPARK_PROXY);
+
+        // Set ALM Proxy as allocator.
+        vault.submit(
+            abi.encodeWithSelector(vault.setIsAllocator.selector, Ethereum.ALM_PROXY_FREEZABLE, true)
+        );
+
+        vault.setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, true);
+
+        // Set Morpho Curator Multisig as curator.
+        vault.setCurator(Ethereum.MORPHO_CURATOR_MULTISIG);
+
+        if (sllDepositMax != 0 && sllDepositSlope != 0) {
+            _configureERC4626Vault({
+                controller      : Ethereum.ALM_CONTROLLER,
+                vault           : address(vault),
+                depositMax      : sllDepositMax,
+                depositSlope    : sllDepositSlope,
+                maxExchangeRate : 1_000_000
+            });
         }
     }
 

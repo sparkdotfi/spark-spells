@@ -515,3 +515,46 @@ interface IV4QuoterLike {
         external returns (uint256 amountOut, uint256 gasEstimate);
 
 }
+
+// Morpho v2 vault
+
+interface IMorphoVaultV2FactoryLike {
+    function createVaultV2(address owner, address asset, bytes32 salt) external returns (address newVaultV2);
+}
+
+interface IMorphoVaultV2Like {
+    event Constructor(address indexed owner, address indexed asset);
+    event AccrueInterest(uint256 previousTotalAssets, uint256 newTotalAssets, uint256 performanceFeeShares, uint256 managementFeeShares);
+    event Transfer(address indexed from, address indexed to, uint256 shares);
+    event Deposit(address indexed sender, address indexed onBehalf, uint256 assets, uint256 shares);
+    event SetIsSentinel(address indexed account, bool newIsSentinel);
+    event SetIsAllocator(address indexed account, bool newIsAllocator);
+
+    function accrueInterest() external;
+    function allocate(address adapter, bytes memory data, uint256 assets) external;
+    function asset() external view returns (address);
+    function balanceOf(address account) external view returns (uint256);
+    function curator() external view returns (address);
+    function convertToAssets(uint256 shares) external view returns (uint256);
+    function deallocate(address adapter, bytes memory data, uint256 assets) external;
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+    function isAllocator(address allocator) external view returns (bool);
+    function isSentinel(address sentinel) external view returns (bool);
+    function increaseAbsoluteCap(bytes memory idData, uint256 newAbsoluteCap) external;
+    function increaseRelativeCap(bytes memory idData, uint256 newRelativeCap) external;
+    function name() external view returns (string memory);
+    function owner() external view returns (address);
+    function symbol() external view returns (string memory);
+    function setCurator(address newCurator) external;
+    function setName(string memory newName) external;
+    function setSymbol(string memory newSymbol) external;
+    function setIsAllocator(address newAllocator, bool newIsAllocator) external;
+    function setIsSentinel(address newSentinel, bool newIsSentinel) external;
+    function setAdapterRegistry(address newAdapterRegistry) external;
+    function setLiquidityAdapterAndData(address newLiquidityAdapter, bytes memory newLiquidityData) external;
+    function setMaxRate(uint256 newMaxRate) external;
+    function addAdapter(address account) external;
+    function submit(bytes calldata data) external;
+    function totalAssets() external view returns (uint256);
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
+}
