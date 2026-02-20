@@ -46,7 +46,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771596721;  // 2026-02-20T14:12:01Z
+        _blockDate = 1771599471;  // 2026-02-20T14:57:01Z
     }
 
     function setUp() public override {
@@ -124,7 +124,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _testMapleIntegration(MapleE2ETestParams({
             ctx           : ctx,
             vault         : Ethereum.SYRUP_USDT,
-            depositAmount : 500_000e6,
+            depositAmount : 1_000_000e6,
             depositKey    : depositKey,
             redeemKey     : redeemKey,
             withdrawKey   : withdrawKey,
@@ -360,7 +360,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         vault.accrueInterest();
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1_766.296261e6);  // Interest accrued.
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1_782.349562e6);  // Interest accrued.
 
         // Step 4: Reallocate into cbbtc/usdt market.
         uint256 withdrawAmount = depositAmount;
@@ -397,7 +397,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
 
         // Assert that Interest Remains after withdrawal.
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 1_932.265126e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 1_948.50897e6);
     }
 
     function _setUpVaultWithLiquidityAdapter(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
@@ -470,7 +470,7 @@ contract SparkEthereum_20260226_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771596721;  // 2026-02-20T14:12:01Z
+        _blockDate = 1771599471;  // 2026-02-20T14:57:01Z
     }
 
     function setUp() public override {
@@ -488,7 +488,7 @@ contract SparkEthereum_20260226_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771596721;  // 2026-02-20T14:12:01Z
+        _blockDate = 1771599471;  // 2026-02-20T14:57:01Z
     }
 
     function setUp() public override {
