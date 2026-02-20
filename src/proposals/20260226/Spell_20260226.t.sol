@@ -46,13 +46,13 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771395565;  // 2026-02-18T06:19:25Z
+        _blockDate = 1771596721;  // 2026-02-20T14:12:01Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
     }
 
     function test_ETHEREUM_sll_sparkLendUsdtRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
@@ -124,7 +124,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         _testMapleIntegration(MapleE2ETestParams({
             ctx           : ctx,
             vault         : Ethereum.SYRUP_USDT,
-            depositAmount : 1_000_000e6,
+            depositAmount : 500_000e6,
             depositKey    : depositKey,
             redeemKey     : redeemKey,
             withdrawKey   : withdrawKey,
@@ -360,7 +360,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
 
         vault.accrueInterest();
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1491.500816e6);  // Interest accrued.
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1_766.296261e6);  // Interest accrued.
 
         // Step 4: Reallocate into cbbtc/usdt market.
         uint256 withdrawAmount = depositAmount;
@@ -397,7 +397,7 @@ contract SparkEthereum_20260226_SLLTests is SparkLiquidityLayerTests {
         controller.withdrawERC4626(MORPHO_VAULT_V2_USDT, withdrawAmount);
 
         // Assert that Interest Remains after withdrawal.
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 1646.49845e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 1_932.265126e6);
     }
 
     function _setUpVaultWithLiquidityAdapter(address vault_, bytes32 marketId, bool setLiquidityAdapter) internal returns (address adapter) {
@@ -470,13 +470,13 @@ contract SparkEthereum_20260226_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771395565;  // 2026-02-18T06:19:25Z
+        _blockDate = 1771596721;  // 2026-02-20T14:12:01Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
     }
 
 }
@@ -488,22 +488,22 @@ contract SparkEthereum_20260226_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260226;
-        _blockDate = 1771395565;  // 2026-02-18T06:19:25Z
+        _blockDate = 1771596721;  // 2026-02-20T14:12:01Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x42dB2A32C5F99034C90DaC07BF790f738b127e93;
-    }
+        chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
+        }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
         uint256 sparkBalanceBefore       = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
         uint256 foundationBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
         uint256 opsMultisigBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
-        assertEq(sparkBalanceBefore,       36_282_433.445801365846236778e18);
-        assertEq(foundationBalanceBefore,  250_000e18);
+        assertEq(sparkBalanceBefore,       36_935_008.421300623179502473e18);
+        assertEq(foundationBalanceBefore,  0);
         assertEq(opsMultisigBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
