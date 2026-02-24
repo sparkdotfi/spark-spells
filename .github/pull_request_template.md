@@ -24,6 +24,8 @@
 - [ ] All newly deployed addresses have been added to the Immunefi bug bounty program.
 - [ ] There is complete test coverage of all changes in the spell, including any relevant edge cases.
 - [ ] At least three approvals have been given from reviewers.
+- [ ] CODE_RABBIT.md comment has been posted, AI review performed.
+- [ ] Octane review performed.
 
 ## Conditions for Spell Handoff to Sky
 - [ ] All spells payloads have been deployed and verified on Etherscan.

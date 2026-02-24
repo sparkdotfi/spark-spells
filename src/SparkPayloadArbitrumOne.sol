@@ -52,13 +52,22 @@ abstract contract SparkPayloadArbitrumOne {
         );
     }
 
-    function _configureERC4626Vault(address controller, address vault, uint256 depositMax, uint256 depositSlope) internal {
+    function _configureERC4626Vault(
+        address controller,
+        address vault,
+        uint256 depositMax,
+        uint256 depositSlope,
+        uint256 maxExchangeRate
+    )
+        internal
+    {
         SLLHelpers.configureERC4626Vault(
             controller,
             Arbitrum.ALM_RATE_LIMITS,
             vault,
             depositMax,
-            depositSlope
+            depositSlope,
+            maxExchangeRate
         );
     }
 
