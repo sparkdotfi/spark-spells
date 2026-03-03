@@ -24,22 +24,41 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 import { console } from "forge-std/console.sol";
 
 interface IPriceOracleLike {
+
     function latestAnswer() external view returns (int256);
+
 }
 
-contract MockAggregator {
+interface ICapAutomatorLike {
 
-    int256 public latestAnswer;
+    event SetSupplyCapConfig(
+        address indexed asset,
+        uint256         max,
+        uint256         gap,
+        uint256         increaseCooldown
+    );
 
-    constructor(int256 _latestAnswer) {
-        latestAnswer = _latestAnswer;
-    }
+    event SetBorrowCapConfig(
+        address indexed asset,
+        uint256         max,
+        uint256         gap,
+        uint256         increaseCooldown
+    );
+
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function poolConfigurator() external view returns (address);
+    function pool() external view returns (address);
+    function UPDATE_ROLE() external view returns (bytes32);
 
 }
 
 contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0x5c46Fc65855c0C7465a1EA85EEA0B24B601502D3;
+    address internal constant NEW_CAP_AUTOMATOR           = 0x4C1341636721b8B687647920B2E9481f3AB1F2eE;
+
+    mapping(address => VmSafe.EthGetLogs) internal lastLogsByAsset;
 
     constructor() {
         _spellId   = 20260312;
@@ -66,6 +85,118 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         });
     }
 
+    function test_ETHEREUM_capAutomatorUpgrade() external onChain(ChainIdUtils.Ethereum()) {
+        ICapAutomatorLike capAutomator = ICapAutomatorLike(NEW_CAP_AUTOMATOR);
+
+        // Check configuration.
+        assertEq(capAutomator.hasRole(capAutomator.DEFAULT_ADMIN_ROLE(), Ethereum.SPARK_PROXY),  true);
+        assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), Ethereum.ALM_PROXY_FREEZABLE), true);
+        assertEq(capAutomator.poolConfigurator(),                                                SparkLend.POOL_CONFIGURATOR);
+        assertEq(capAutomator.pool(),                                                            SparkLend.POOL);
+
+        // Get all events from old cap automator; keep only the last supply/borrow log per asset.
+        VmSafe.EthGetLogs[] memory allSupplyLogs = _getEvents(block.chainid, SparkLend.CAP_AUTOMATOR, ICapAutomatorLike.SetSupplyCapConfig.selector);
+        VmSafe.EthGetLogs[] memory allBorrowLogs = _getEvents(block.chainid, SparkLend.CAP_AUTOMATOR, ICapAutomatorLike.SetBorrowCapConfig.selector);
+
+        VmSafe.EthGetLogs[] memory supplyLogs = _lastLogPerAsset(allSupplyLogs);
+        VmSafe.EthGetLogs[] memory borrowLogs = _lastLogPerAsset(allBorrowLogs);
+
+        vm.recordLogs();
+
+        _executeMainnetPayload();
+
+        VmSafe.Log[] memory recordedLogs  = vm.getRecordedLogs();
+        VmSafe.Log[] memory newSupplyLogs = new VmSafe.Log[](10);
+        VmSafe.Log[] memory newBorrowLogs = new VmSafe.Log[](6);
+
+        uint256 j = 0;
+        uint256 k = 0;
+        for (uint256 i = 0; i < recordedLogs.length; ++i) {
+            if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetSupplyCapConfig.selector) {
+                if (j < supplyLogs.length) {
+                    newSupplyLogs[j] = recordedLogs[i];
+                }
+                j++;
+            } else if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetBorrowCapConfig.selector) {
+                if (k < borrowLogs.length) {
+                    newBorrowLogs[k] = recordedLogs[i];
+                }
+                k++;
+            }
+        }
+
+        for (uint256 i = 0; i < newSupplyLogs.length; ++i) {
+            bool found = false;
+
+            for (uint256 j = 0; j < supplyLogs.length; ++j) {
+                if (newSupplyLogs[i].topics[1] == supplyLogs[j].topics[1]) {
+                    assertEq(newSupplyLogs[i].topics[1], supplyLogs[j].topics[1]);
+                    assertEq(newSupplyLogs[i].data,      supplyLogs[j].data);
+
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                revert("Supply log not found in new logs");
+            }
+        }
+        
+        for (uint256 i = 0; i < newBorrowLogs.length; ++i) {
+            bool found = false;
+
+            for (uint256 j = 0; j < borrowLogs.length; ++j) {
+                if (newBorrowLogs[i].topics[1] == borrowLogs[j].topics[1]) {
+                    assertEq(newBorrowLogs[i].topics[1], borrowLogs[j].topics[1]);
+                    assertEq(newBorrowLogs[i].data,      borrowLogs[j].data);
+
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                revert("Borrow log not found in new logs");
+            }
+        }
+    }
+
+    function _lastLogPerAsset(VmSafe.EthGetLogs[] memory logs) internal returns (VmSafe.EthGetLogs[] memory) {
+        address[] memory seenAssets = new address[](logs.length);
+
+        uint256 count = 0;
+        for (uint256 i = 0; i < logs.length; ++i) {
+            address asset = address(uint160(uint256(logs[i].topics[1])));
+
+            // console.log("--------------------------------");
+
+            // console.log("asset", asset);
+            // console.log(lastLogsByAsset[asset].emitter);
+            // console.log("i", i);
+            // console.log("count", count);
+
+            // console.log("--------------------------------");
+
+            if (lastLogsByAsset[asset].emitter == address(0)) {
+                seenAssets[count] = asset;
+                count++;
+            }
+
+            lastLogsByAsset[asset] = logs[i];
+        }
+
+        VmSafe.EthGetLogs[] memory out = new VmSafe.EthGetLogs[](count);
+
+        for (uint256 i = 0; i < count; ++i) {
+            out[i] = lastLogsByAsset[seenAssets[i]];
+
+            delete lastLogsByAsset[seenAssets[i]];
+        }
+
+        return out;
+    }
+
 }
 
 contract SparkEthereum_20260312_SparklendTests is SparklendTests {
@@ -82,8 +213,6 @@ contract SparkEthereum_20260312_SparklendTests is SparklendTests {
     }
 
 }
-
-import { console } from "forge-std/console.sol";
 
 contract SparkEthereum_20260312_SpellTests is SpellTests {
 
@@ -124,6 +253,8 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_killSwitchActivationForCBBTC() external onChain(ChainIdUtils.Ethereum()) {
+        // Verify Configuration
+
         _test_killSwitchActivation({
             oracle       : CBBTC_BTC_ORACLE,
             threshold    : 0.95e18,

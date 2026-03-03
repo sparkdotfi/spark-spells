@@ -14,6 +14,8 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
 
+import { IPool } from "sparklend-v1-core/interfaces/IPool.sol";
+
 import { SLLHelpers, SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
 /**
@@ -92,12 +94,11 @@ contract SparkEthereum_20260312 is SparkPayloadEthereum {
 
         IACLManager(SparkLend.ACL_MANAGER).addRiskAdmin(NEW_CAP_AUTOMATOR);
 
-        _migrateCapConfig(Ethereum.RETH);
-        _migrateCapConfig(Ethereum.WBTC);
-        _migrateCapConfig(Ethereum.WETH);
-        _migrateCapConfig(Ethereum.WSTETH);
-        _migrateCapConfig(Ethereum.CBBTC);
-        _migrateCapConfig(Ethereum.LBTC);
+        address[] memory reserves = IPool(SparkLend.POOL).getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            _migrateCapConfig(reserves[i]);
+        }
 
         // 3. Add Assets to Killswitch Oracle Mechanism
         IKillSwitchOracle(SparkLend.KILL_SWITCH_ORACLE).setOracle(CBBTC_BTC_ORACLE, 0.95e18);
