@@ -374,6 +374,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         VmSafe.EthGetLogs[] oldLayerZeroLogs;
         VmSafe.EthGetLogs[] oldExchangeRatesLogs;
         VmSafe.EthGetLogs[] oldOTCBufferLogs;
+        VmSafe.EthGetLogs[] oldUniswapV4TickLimitsLogs;
     }
 
     using DomainHelpers for Domain;
@@ -2826,17 +2827,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         ControllerEvents memory vars;
 
-        vars.oldSlippageLogs      = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
-        vars.oldCctpLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
-        vars.oldLayerZeroLogs     = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
-        vars.oldExchangeRatesLogs = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
-        vars.oldOTCBufferLogs     = _getEvents(block.chainid, _oldController, MainnetController.OTCBufferSet.selector);
+        vars.oldSlippageLogs            = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
+        vars.oldCctpLogs                = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        vars.oldLayerZeroLogs           = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
+        vars.oldExchangeRatesLogs       = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
+        vars.oldOTCBufferLogs           = _getEvents(block.chainid, _oldController, MainnetController.OTCBufferSet.selector);
+        vars.oldUniswapV4TickLimitsLogs = _getEvents(block.chainid, _oldController, MainnetController.UniswapV4TickLimitsSet.selector);
 
-        assertEq(vars.oldSlippageLogs.length,      16);
-        assertEq(vars.oldCctpLogs.length,          5);
-        assertEq(vars.oldLayerZeroLogs.length,     0);
-        assertEq(vars.oldExchangeRatesLogs.length, 9);
-        assertEq(vars.oldOTCBufferLogs.length,     0);
+        assertEq(vars.oldSlippageLogs.length,            18);
+        assertEq(vars.oldCctpLogs.length,                5);
+        assertEq(vars.oldLayerZeroLogs.length,           0);
+        assertEq(vars.oldExchangeRatesLogs.length,       10);
+        assertEq(vars.oldOTCBufferLogs.length,           0);
+        assertEq(vars.oldUniswapV4TickLimitsLogs.length, 2);
 
         vm.recordLogs();  // Used to get events from rate limits after execution
 
@@ -2848,6 +2851,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 newMintRecipientLogsCount;
         uint256 newLayerZeroRecipientLogsCount;
         uint256 newExchangeRateLogsCount;
+        uint256 newUniswapV4TickLimitsLogsCount;
 
         for (uint256 i = 0; i < newLogs.length; ++i) {
             if (newLogs[i].emitter != address(newController)) continue;
@@ -2910,12 +2914,29 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
                 assertTrue(newController.maxExchangeRates(oldToken) != 0);
             }
+            else if (newLogs[i].topics[0] == MainnetController.UniswapV4TickLimitsSet.selector) {
+                newUniswapV4TickLimitsLogsCount++;
+
+                bytes32 oldPoolId = vars.oldUniswapV4TickLimitsLogs[newUniswapV4TickLimitsLogsCount - 1].topics[1];
+
+                ( int24 oldTickLower, int24 oldTickUpper, uint24 oldMaxTickSpacing ) 
+                    = abi.decode(vars.oldUniswapV4TickLimitsLogs[newUniswapV4TickLimitsLogsCount - 1].data, (int24, int24, uint24));
+
+                ( int24 newTickLower, int24 newTickUpper, uint24 newMaxTickSpacing ) 
+                    = abi.decode(newLogs[i].data, (int24, int24, uint24));
+
+                assertEq(bytes32(newLogs[i].topics[1]), oldPoolId);
+                assertEq(newTickLower,                  oldTickLower);
+                assertEq(newTickUpper,                  oldTickUpper);
+                assertEq(newMaxTickSpacing,             oldMaxTickSpacing);
+            }
         }
 
-        assertGe(newSlippageLogsCount,           vars.oldSlippageLogs.length);
-        assertGe(newMintRecipientLogsCount,      vars.oldCctpLogs.length);
-        assertGe(newLayerZeroRecipientLogsCount, vars.oldLayerZeroLogs.length);
-        assertGe(newExchangeRateLogsCount,       vars.oldExchangeRatesLogs.length);
+        assertGe(newSlippageLogsCount,            vars.oldSlippageLogs.length);
+        assertGe(newMintRecipientLogsCount,       vars.oldCctpLogs.length);
+        assertGe(newLayerZeroRecipientLogsCount,  vars.oldLayerZeroLogs.length);
+        assertGe(newExchangeRateLogsCount,        vars.oldExchangeRatesLogs.length);
+        assertGe(newUniswapV4TickLimitsLogsCount, vars.oldUniswapV4TickLimitsLogs.length);
     }
 
     function _toAddress(bytes32 b) internal pure returns (address) {
