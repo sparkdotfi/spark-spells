@@ -169,15 +169,6 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         for (uint256 i = 0; i < logs.length; ++i) {
             address asset = address(uint160(uint256(logs[i].topics[1])));
 
-            // console.log("--------------------------------");
-
-            // console.log("asset", asset);
-            // console.log(lastLogsByAsset[asset].emitter);
-            // console.log("i", i);
-            // console.log("count", count);
-
-            // console.log("--------------------------------");
-
             if (lastLogsByAsset[asset].emitter == address(0)) {
                 seenAssets[count] = asset;
                 count++;
