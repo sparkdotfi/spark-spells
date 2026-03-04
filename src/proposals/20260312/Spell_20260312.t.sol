@@ -94,7 +94,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260312;
-        _blockDate = 1772518283;  // 2026-03-03T06:11:23Z
+        _blockDate = 1772625026;  // 2026-03-04T11:50:26Z
     }
 
     function setUp() public override {
