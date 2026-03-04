@@ -657,7 +657,13 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         assertEq(_getBorrowEnabled(reserves[11]), false);
         assertEq(_getBorrowEnabled(reserves[12]), false);
         assertEq(_getBorrowEnabled(reserves[13]), false);
-        assertEq(_getBorrowEnabled(reserves[14]), true);
+        assertEq(_getBorrowEnabled(reserves[14]), true);  // Frozen/Paused reserves are skipped in the killswitch.
+
+        // Check that reserve[14] is frozen/paused.
+        DataTypes.ReserveConfigurationMap memory config = IPool(SparkLend.POOL).getConfiguration(reserves[14]);
+        assertEq(ReserveConfiguration.getPaused(config), false);
+        assertEq(ReserveConfiguration.getFrozen(config), true);
+
         assertEq(_getBorrowEnabled(reserves[15]), false);
         assertEq(_getBorrowEnabled(reserves[16]), false);
         assertEq(_getBorrowEnabled(reserves[17]), false);

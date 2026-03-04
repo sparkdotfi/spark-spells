@@ -2822,6 +2822,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), 0);
             assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))),  0);
+
+            _checkUniswapV4TickLimits(controller, PYUSD_USDS_POOL_ID, 0, 0, 0);
+            _checkUniswapV4TickLimits(controller, USDT_USDS_POOL_ID,  0, 0, 0);
         } else {
             assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM), SLLHelpers.addrToBytes32(address(0)));
 
@@ -2934,7 +2937,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), _oldController.maxSlippages(Ethereum.CURVE_WEETHWETHNG));
 
             assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), _oldController.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))));
-            assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))),   _oldController.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))));
+            assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))),  _oldController.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))));
+
+            _checkUniswapV4TickLimits(controller, PYUSD_USDS_POOL_ID, 276_314, 276_334, 10);
+            _checkUniswapV4TickLimits(controller, USDT_USDS_POOL_ID,  276_304, 276_344, 10);
+
+            _checkUniswapV4TickLimits(_oldController, controller, PYUSD_USDS_POOL_ID);
+            _checkUniswapV4TickLimits(_oldController, controller, USDT_USDS_POOL_ID);
         } else {
             VmSafe.EthGetLogs[] memory slippageLogs = _getEvents(block.chainid, oldController, ForeignController.MaxSlippageSet.selector);
             VmSafe.EthGetLogs[] memory cctpLogs     = _getEvents(block.chainid, oldController, ForeignController.MintRecipientSet.selector);
@@ -3091,15 +3100,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _assertOldControllerEvents(address _oldController) internal {
         MainnetController oldController = MainnetController(_oldController);
 
-        VmSafe.EthGetLogs[] memory slippageLogs      = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
-        VmSafe.EthGetLogs[] memory cctpLogs          = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
-        VmSafe.EthGetLogs[] memory layerZeroLogs     = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
-        VmSafe.EthGetLogs[] memory exchangeRatesLogs = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
+        VmSafe.EthGetLogs[] memory slippageLogs            = _getEvents(block.chainid, _oldController, MainnetController.MaxSlippageSet.selector);
+        VmSafe.EthGetLogs[] memory cctpLogs                = _getEvents(block.chainid, _oldController, MainnetController.MintRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory layerZeroLogs           = _getEvents(block.chainid, _oldController, MainnetController.LayerZeroRecipientSet.selector);
+        VmSafe.EthGetLogs[] memory exchangeRatesLogs       = _getEvents(block.chainid, _oldController, MainnetController.MaxExchangeRateSet.selector);
+        VmSafe.EthGetLogs[] memory uniswapV4TickLimitsLogs = _getEvents(block.chainid, _oldController, MainnetController.UniswapV4TickLimitsSet.selector);
 
-        assertEq(slippageLogs.length,      18);
-        assertEq(cctpLogs.length,          5);
-        assertEq(layerZeroLogs.length,     0);
-        assertEq(exchangeRatesLogs.length, 10);
+        assertEq(slippageLogs.length,            18);
+        assertEq(cctpLogs.length,                5);
+        assertEq(layerZeroLogs.length,           0);
+        assertEq(exchangeRatesLogs.length,       10);
+        assertEq(uniswapV4TickLimitsLogs.length, 2);
 
         assertEq(address(uint160(uint256(slippageLogs[0].topics[1]))),  Ethereum.CURVE_SUSDSUSDT);
         assertEq(address(uint160(uint256(slippageLogs[1].topics[1]))),  Ethereum.CURVE_PYUSDUSDC);
@@ -3172,6 +3183,29 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(oldController.maxExchangeRates(Ethereum.SYRUP_USDT),           1e37);
         assertEq(oldController.maxExchangeRates(Ethereum.ARKIS_VAULT),          1e37);
         assertEq(oldController.maxExchangeRates(MORPHO_VAULT_V2_USDT),          1e30);  // 1e30 is 1_000_000e6 * 1e36 / 1e18
+
+        assertEq(uniswapV4TickLimitsLogs[0].topics[1], PYUSD_USDS_POOL_ID);
+        assertEq(uniswapV4TickLimitsLogs[1].topics[1], USDT_USDS_POOL_ID);
+
+        _checkUniswapV4TickLimits(oldController, PYUSD_USDS_POOL_ID, 276_314, 276_334, 10);
+        _checkUniswapV4TickLimits(oldController, USDT_USDS_POOL_ID,  276_304, 276_344, 10);
+    }
+
+    function _checkUniswapV4TickLimits(MainnetController oldController, MainnetController newController, bytes32 poolId) internal {
+        ( int24 tickLower,    int24 tickUpper,    uint24 maxTickSpacing )    = oldController.uniswapV4TickLimits(poolId);
+        ( int24 newTickLower, int24 newTickUpper, uint24 newMaxTickSpacing ) = newController.uniswapV4TickLimits(poolId);
+
+        assertEq(tickLower,      newTickLower);
+        assertEq(tickUpper,      newTickUpper);
+        assertEq(maxTickSpacing, newMaxTickSpacing);
+    }
+
+    function _checkUniswapV4TickLimits(MainnetController controller, bytes32 poolId, int24 expectedTickLower, int24 expectedTickUpper, uint24 expectedMaxTickSpacing) internal {
+        ( int24 tickLower, int24 tickUpper, uint24 maxTickSpacing ) = controller.uniswapV4TickLimits(poolId);
+
+        assertEq(tickLower,      expectedTickLower);
+        assertEq(tickUpper,      expectedTickUpper);
+        assertEq(maxTickSpacing, expectedMaxTickSpacing);
     }
 
     function _testE2ESLLCrossChainForDomain(
