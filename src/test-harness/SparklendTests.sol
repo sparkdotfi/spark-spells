@@ -284,7 +284,7 @@ abstract contract SparklendTests is SpellRunner {
         _assertRewardsConfigurations();
     }
 
-    function test_ETHEREUM_CapAutomator() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_CapAutomator() external virtual onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
         _runCapAutomatorTests();
