@@ -100,6 +100,9 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
     function setUp() public override {
         super.setUp();
 
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
+
         // chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
     }
 
@@ -156,7 +159,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         _assertSupplyCapLogs(allSupplyLogs[21], Ethereum.USDT,   false);  // Removed
         _assertSupplyCapLogs(allSupplyLogs[22], Ethereum.EZETH,  true);
         _assertSupplyCapLogs(allSupplyLogs[23], Ethereum.PYUSD,  false);  // Removed
-        _assertSupplyCapLogs(allSupplyLogs[24], Ethereum.USDT,   true);
+        _assertSupplyCapLogs(allSupplyLogs[24], Ethereum.USDT,   false);  // Removed
         _assertSupplyCapLogs(allSupplyLogs[25], Ethereum.LBTC,   true);
         _assertSupplyCapLogs(allSupplyLogs[26], Ethereum.CBBTC,  true);
         _assertSupplyCapLogs(allSupplyLogs[27], Ethereum.TBTC,   true);
@@ -164,8 +167,8 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         assertEq(allBorrowLogs.length, 20);
 
         _assertBorrowCapLogs(allBorrowLogs[0],  Ethereum.RETH,   true);
-        _assertBorrowCapLogs(allBorrowLogs[1],  Ethereum.USDC,   true);
-        _assertBorrowCapLogs(allBorrowLogs[2],  Ethereum.USDT,   true);
+        _assertBorrowCapLogs(allBorrowLogs[1],  Ethereum.USDC,   false);  // Removed
+        _assertBorrowCapLogs(allBorrowLogs[2],  Ethereum.USDT,   false);  // Removed
         _assertBorrowCapLogs(allBorrowLogs[3],  Ethereum.WBTC,   true);
         _assertBorrowCapLogs(allBorrowLogs[4],  Ethereum.WETH,   true);
         _assertBorrowCapLogs(allBorrowLogs[5],  Ethereum.WSTETH, true);
@@ -180,7 +183,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         _assertBorrowCapLogs(allBorrowLogs[14], Ethereum.PYUSD,  false);  // Removed
         _assertBorrowCapLogs(allBorrowLogs[15], Ethereum.WSTETH, true);
         _assertBorrowCapLogs(allBorrowLogs[16], Ethereum.RETH,   true);
-        _assertBorrowCapLogs(allBorrowLogs[17], Ethereum.USDT,   true);
+        _assertBorrowCapLogs(allBorrowLogs[17], Ethereum.USDT,   false);  // Removed
         _assertBorrowCapLogs(allBorrowLogs[18], Ethereum.CBBTC,  true);
         _assertBorrowCapLogs(allBorrowLogs[19], Ethereum.TBTC,   true);
 
@@ -324,6 +327,8 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
 contract SparkEthereum_20260312_SparklendTests is SparklendTests {
 
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0x5c46Fc65855c0C7465a1EA85EEA0B24B601502D3;
+
     constructor() {
         _spellId   = 20260312;
         _blockDate = 1772518283;  // 2026-03-03T06:11:23Z
@@ -332,12 +337,17 @@ contract SparkEthereum_20260312_SparklendTests is SparklendTests {
     function setUp() public override {
         super.setUp();
 
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
+
         // chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
     }
 
 }
 
 contract SparkEthereum_20260312_SpellTests is SpellTests {
+
+    address internal constant ETHEREUM_NEW_ALM_CONTROLLER = 0x5c46Fc65855c0C7465a1EA85EEA0B24B601502D3;
 
     address internal constant CBBTC_BTC_RATIO_ORACLE    = 0x64B157212C21097002920D57322B671b88DFcCBC;
     address internal constant WBTC_BTC_CHAINLINK_ORACLE = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
@@ -351,6 +361,9 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
     }
@@ -510,7 +523,6 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         assertEq(_getBorrowEnabled(reserves[11]), false);
         assertEq(_getBorrowEnabled(reserves[12]), false);
         assertEq(_getBorrowEnabled(reserves[13]), false);
-        assertEq(_getBorrowEnabled(reserves[14]), false);
         assertEq(_getBorrowEnabled(reserves[14]), true);
         assertEq(_getBorrowEnabled(reserves[15]), false);
         assertEq(_getBorrowEnabled(reserves[16]), false);
