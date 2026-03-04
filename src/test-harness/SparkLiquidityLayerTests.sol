@@ -70,6 +70,11 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+interface IMainnetControllerLike {
+    function depositERC4626(address vault, uint256 amount, uint256 minSharesOut) external returns (uint256 shares);
+    function withdrawERC4626(address vault, uint256 amount, uint256 maxSharesIn) external returns (uint256 shares);
+}
+
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
@@ -530,7 +535,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             vm.prank(ctx.relayer);
             vm.expectRevert("RateLimits/zero-maxAmount");
-            MainnetController(ctx.prevController).depositERC4626(vault, expectedDepositAmount);
+            _depositERC4626(ctx.prevController, vault, expectedDepositAmount);
 
             _executeAllPayloadsAndBridges();
         }
@@ -549,7 +554,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             address asset = IERC4626(p.vault).asset();
             deal(asset, address(p.ctx.proxy), 100);
             vm.prank(p.ctx.relayer);
-            MainnetController(p.ctx.controller).depositERC4626(p.vault, 100);
+            _depositERC4626(p.ctx.controller, p.vault, 100);
         } catch {
             // Do nothing
         }
@@ -583,7 +588,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (!unlimitedDeposit) {
             vm.prank(p.ctx.relayer);
             vm.expectRevert("RateLimits/rate-limit-exceeded");
-            MainnetController(p.ctx.controller).depositERC4626(p.vault, depositLimit + 1);
+            _depositERC4626(p.ctx.controller, p.vault, depositLimit + 1);
         }
 
         /****************************************************/
@@ -596,7 +601,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 startingAssets = vault.convertToAssets(startingShares);
 
         vm.prank(p.ctx.relayer);
-        uint256 shares = MainnetController(p.ctx.controller).depositERC4626(p.vault, p.depositAmount);
+        uint256 shares = _depositERC4626(p.ctx.controller, p.vault, p.depositAmount);
 
         if (!unlimitedDeposit) {
             assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), depositLimit - p.depositAmount);
@@ -631,7 +636,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /********************************************************************************************************/
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).withdrawERC4626(p.vault, p.depositAmount);
+        _withdrawERC4626(p.ctx.controller, p.vault, p.depositAmount);
 
         assertEq(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount);
 
@@ -645,6 +650,22 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             assertGe(vault.convertToAssets(vault.balanceOf(address(p.ctx.proxy))), startingAssets);
             assertGe(vault.balanceOf(address(p.ctx.proxy)),                        startingShares);
+        }
+    }
+
+    function _depositERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
+        if (controller == Ethereum.ALM_CONTROLLER) {
+            shares = MainnetController(controller).depositERC4626(vault, amount);
+        } else {
+            shares = IMainnetControllerLike(controller).depositERC4626(vault, amount, 0);
+        }
+    }
+
+    function _withdrawERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
+        if (controller == Ethereum.ALM_CONTROLLER) {
+            shares = MainnetController(controller).withdrawERC4626(vault, amount);
+        } else {
+            shares = IMainnetControllerLike(controller).withdrawERC4626(vault, amount, type(uint256).max);
         }
     }
 
@@ -797,7 +818,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
-        controller.depositERC4626(p.vault, v.depositLimit + 1);
+        _depositERC4626(p.ctx.controller, p.vault, v.depositLimit + 1);
 
         /****************************************************/
         /*** Step 2: Deposit and check resulting position ***/
@@ -809,7 +830,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.startingAssets = syrup.convertToAssets(v.startingShares);
 
         vm.prank(p.ctx.relayer);
-        v.shares = controller.depositERC4626(p.vault, p.depositAmount);
+        v.shares = _depositERC4626(p.ctx.controller, p.vault, p.depositAmount);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
 
@@ -1332,8 +1353,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             tickLower  : v.tickLower,
             tickUpper  : v.tickUpper,
             liquidity  : v.liquidityAmount,
-            amount0Max : v.depositAmount0,
-            amount1Max : v.depositAmount1
+            amount0Max : uint128(v.depositAmount0),
+            amount1Max : uint128(v.depositAmount1)
         });
 
         v.tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
@@ -1363,8 +1384,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             poolId            : p.poolId,
             tokenId           : v.tokenId,
             liquidityIncrease : v.liquidityAmount,
-            amount0Max        : v.depositAmount0,
-            amount1Max        : v.depositAmount1
+            amount0Max        : uint128(v.depositAmount0),
+            amount1Max        : uint128(v.depositAmount1)
         });
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount * 2);
@@ -1449,8 +1470,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             tickLower  : tickLower,
             tickUpper  : tickUpper,
             liquidity  : liquidityAmount,
-            amount0Max : amount0 + 1,
-            amount1Max : amount1 + 1
+            amount0Max : uint128(amount0 + 1),
+            amount1Max : uint128(amount1 + 1)
         });
     }
 
@@ -1827,7 +1848,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.prank(p.ctx.relayer);
         vm.expectRevert("RateLimits/rate-limit-exceeded");
-        MainnetController(p.ctx.controller).depositERC4626(Ethereum.SUSDE, v.depositLimit + 1);
+        _depositERC4626(p.ctx.controller, Ethereum.SUSDE, v.depositLimit + 1);
 
         /****************************************************/
         /*** Step 5: Deposit and check resulting position ***/
@@ -1839,7 +1860,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.startingAssets = susde.convertToAssets(v.startingShares);
 
         vm.prank(p.ctx.relayer);
-        v.shares = MainnetController(p.ctx.controller).depositERC4626(address(susde), v.usdeAmount);
+        v.shares = _depositERC4626(p.ctx.controller, address(susde), v.usdeAmount);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.usdeAmount);
 
