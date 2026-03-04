@@ -229,6 +229,44 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
         _executeMainnetPayload();
 
+        address[] memory reserves = IPool(SparkLend.POOL).getReservesList();
+
+        assertEq(reserves.length, 18);
+
+        for (uint256 i = 0; i < reserves.length; ++i) {
+            if (
+               reserves[i] != Ethereum.DAI   &&
+               reserves[i] != Ethereum.GNO   &&
+               reserves[i] != Ethereum.SDAI  &&
+               reserves[i] != Ethereum.SUSDS &&
+               reserves[i] != Ethereum.USDS  &&
+               reserves[i] != Ethereum.USDC  &&
+               reserves[i] != Ethereum.USDT  &&
+               reserves[i] != Ethereum.PYUSD
+            ) {
+                ( uint256 max, , , , ) = ICapAutomatorLike(NEW_CAP_AUTOMATOR).supplyCapConfigs(reserves[i]);
+                assertTrue(max > 0);
+            }
+
+            if (
+                reserves[i] != Ethereum.DAI   &&
+                reserves[i] != Ethereum.WEETH &&
+                reserves[i] != Ethereum.GNO   &&
+                reserves[i] != Ethereum.SDAI  &&
+                reserves[i] != Ethereum.USDC  &&
+                reserves[i] != Ethereum.SUSDS &&
+                reserves[i] != Ethereum.USDS  &&
+                reserves[i] != Ethereum.USDT  &&
+                reserves[i] != Ethereum.LBTC  &&
+                reserves[i] != Ethereum.EZETH &&
+                reserves[i] != Ethereum.RSETH &&
+                reserves[i] != Ethereum.PYUSD
+            ) {
+                ( uint256 max, , , , ) = ICapAutomatorLike(NEW_CAP_AUTOMATOR).borrowCapConfigs(reserves[i]);
+                assertTrue(max > 0);
+            }
+        }
+
         VmSafe.Log[] memory recordedLogs  = vm.getRecordedLogs();
         VmSafe.Log[] memory newSupplyLogs = new VmSafe.Log[](10);
         VmSafe.Log[] memory newBorrowLogs = new VmSafe.Log[](6);
