@@ -46,10 +46,42 @@ interface ICapAutomatorLike {
     );
 
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
     function hasRole(bytes32 role, address account) external view returns (bool);
+
     function poolConfigurator() external view returns (address);
+
     function pool() external view returns (address);
+
+    function supplyCapConfigs(address asset) external view returns (uint256 max, uint256 gap, uint256 increaseCooldown, uint256 lastUpdateBlock, uint256 lastIncreaseTime);
+
+    function borrowCapConfigs(address asset) external view returns (uint256 max, uint256 gap, uint256 increaseCooldown, uint256 lastUpdateBlock, uint256 lastIncreaseTime);
+
     function UPDATE_ROLE() external view returns (bytes32);
+
+}
+
+interface ICBBTCRatioOracleLike {
+
+    function btcUSDFeed() external view returns (address);
+
+    function cbbtcUSDFeed() external view returns (address);
+
+}
+
+interface IWEETHRatioOracleLike {
+
+    function weeth() external view returns (address);
+
+    function weethETHFeed() external view returns (address);
+
+}
+
+interface IRETHRatioOracleLike {
+
+    function reth() external view returns (address);
+
+    function rethETHFeed() external view returns (address);
 
 }
 
@@ -98,8 +130,92 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         VmSafe.EthGetLogs[] memory allSupplyLogs = _getEvents(block.chainid, SparkLend.CAP_AUTOMATOR, ICapAutomatorLike.SetSupplyCapConfig.selector);
         VmSafe.EthGetLogs[] memory allBorrowLogs = _getEvents(block.chainid, SparkLend.CAP_AUTOMATOR, ICapAutomatorLike.SetBorrowCapConfig.selector);
 
+        assertEq(allSupplyLogs.length, 28);
+
+        _assertSupplyCapLogs(allSupplyLogs[0],  Ethereum.RETH,   true);
+        _assertSupplyCapLogs(allSupplyLogs[1],  Ethereum.SDAI,   false);  // Removed
+        _assertSupplyCapLogs(allSupplyLogs[2],  Ethereum.WBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[3],  Ethereum.WETH,   true);
+        _assertSupplyCapLogs(allSupplyLogs[4],  Ethereum.WSTETH, true);
+        _assertSupplyCapLogs(allSupplyLogs[5],  Ethereum.WBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[6],  Ethereum.WBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[7],  Ethereum.WEETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[8],  Ethereum.WEETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[9],  Ethereum.CBBTC,  true);
+        _assertSupplyCapLogs(allSupplyLogs[10], Ethereum.SUSDS,  false);  // Removed
+        _assertSupplyCapLogs(allSupplyLogs[11], Ethereum.WBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[12], Ethereum.CBBTC,  true);
+        _assertSupplyCapLogs(allSupplyLogs[13], Ethereum.WSTETH, true);
+        _assertSupplyCapLogs(allSupplyLogs[14], Ethereum.WEETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[15], Ethereum.LBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[16], Ethereum.TBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[17], Ethereum.EZETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[18], Ethereum.RSETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[19], Ethereum.USDC,   false);  // Removed
+        _assertSupplyCapLogs(allSupplyLogs[20], Ethereum.RSETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[21], Ethereum.USDT,   false);  // Removed
+        _assertSupplyCapLogs(allSupplyLogs[22], Ethereum.EZETH,  true);
+        _assertSupplyCapLogs(allSupplyLogs[23], Ethereum.PYUSD,  false);  // Removed
+        _assertSupplyCapLogs(allSupplyLogs[24], Ethereum.USDT,   true);
+        _assertSupplyCapLogs(allSupplyLogs[25], Ethereum.LBTC,   true);
+        _assertSupplyCapLogs(allSupplyLogs[26], Ethereum.CBBTC,  true);
+        _assertSupplyCapLogs(allSupplyLogs[27], Ethereum.TBTC,   true);
+
+        assertEq(allBorrowLogs.length, 20);
+
+        _assertBorrowCapLogs(allBorrowLogs[0],  Ethereum.RETH,   true);
+        _assertBorrowCapLogs(allBorrowLogs[1],  Ethereum.USDC,   true);
+        _assertBorrowCapLogs(allBorrowLogs[2],  Ethereum.USDT,   true);
+        _assertBorrowCapLogs(allBorrowLogs[3],  Ethereum.WBTC,   true);
+        _assertBorrowCapLogs(allBorrowLogs[4],  Ethereum.WETH,   true);
+        _assertBorrowCapLogs(allBorrowLogs[5],  Ethereum.WSTETH, true);
+        _assertBorrowCapLogs(allBorrowLogs[6],  Ethereum.WETH,   true);
+        _assertBorrowCapLogs(allBorrowLogs[7],  Ethereum.CBBTC,  true);
+        _assertBorrowCapLogs(allBorrowLogs[8],  Ethereum.WBTC,   true);
+        _assertBorrowCapLogs(allBorrowLogs[9],  Ethereum.WSTETH, true);
+        _assertBorrowCapLogs(allBorrowLogs[10], Ethereum.WSTETH, true);
+        _assertBorrowCapLogs(allBorrowLogs[11], Ethereum.TBTC,   true);
+        _assertBorrowCapLogs(allBorrowLogs[12], Ethereum.USDC,   false);  // Removed
+        _assertBorrowCapLogs(allBorrowLogs[13], Ethereum.USDT,   false);  // Removed
+        _assertBorrowCapLogs(allBorrowLogs[14], Ethereum.PYUSD,  false);  // Removed
+        _assertBorrowCapLogs(allBorrowLogs[15], Ethereum.WSTETH, true);
+        _assertBorrowCapLogs(allBorrowLogs[16], Ethereum.RETH,   true);
+        _assertBorrowCapLogs(allBorrowLogs[17], Ethereum.USDT,   true);
+        _assertBorrowCapLogs(allBorrowLogs[18], Ethereum.CBBTC,  true);
+        _assertBorrowCapLogs(allBorrowLogs[19], Ethereum.TBTC,   true);
+
         VmSafe.EthGetLogs[] memory supplyLogs = _lastLogPerAsset(allSupplyLogs);
         VmSafe.EthGetLogs[] memory borrowLogs = _lastLogPerAsset(allBorrowLogs);
+
+        assertEq(supplyLogs.length, 15);
+
+        _assertSupplyCapLogs(supplyLogs[0],  Ethereum.RETH,   true);
+        _assertSupplyCapLogs(supplyLogs[1],  Ethereum.SDAI,   false);  // Removed
+        _assertSupplyCapLogs(supplyLogs[2],  Ethereum.WBTC,   true);
+        _assertSupplyCapLogs(supplyLogs[3],  Ethereum.WETH,   true);
+        _assertSupplyCapLogs(supplyLogs[4],  Ethereum.WSTETH, true);
+        _assertSupplyCapLogs(supplyLogs[5],  Ethereum.WEETH,  true);
+        _assertSupplyCapLogs(supplyLogs[6],  Ethereum.CBBTC,  true);
+        _assertSupplyCapLogs(supplyLogs[7],  Ethereum.SUSDS,  false);  // Removed
+        _assertSupplyCapLogs(supplyLogs[8],  Ethereum.LBTC,   true);
+        _assertSupplyCapLogs(supplyLogs[9],  Ethereum.TBTC,   true);
+        _assertSupplyCapLogs(supplyLogs[10], Ethereum.EZETH,  true);
+        _assertSupplyCapLogs(supplyLogs[11], Ethereum.RSETH,  true);
+        _assertSupplyCapLogs(supplyLogs[12], Ethereum.USDC,   false);  // Removed
+        _assertSupplyCapLogs(supplyLogs[13], Ethereum.USDT,   false);  // Removed
+        _assertSupplyCapLogs(supplyLogs[14], Ethereum.PYUSD,  false);  // Removed
+
+        assertEq(borrowLogs.length, 9);
+
+        _assertBorrowCapLogs(borrowLogs[0], Ethereum.RETH,   true);
+        _assertBorrowCapLogs(borrowLogs[1], Ethereum.USDC,   false);  // Removed
+        _assertBorrowCapLogs(borrowLogs[2], Ethereum.USDT,   false);  // Removed
+        _assertBorrowCapLogs(borrowLogs[3], Ethereum.WBTC,   true);
+        _assertBorrowCapLogs(borrowLogs[4], Ethereum.WETH,   true);
+        _assertBorrowCapLogs(borrowLogs[5], Ethereum.WSTETH, true);
+        _assertBorrowCapLogs(borrowLogs[6], Ethereum.CBBTC,  true);
+        _assertBorrowCapLogs(borrowLogs[7], Ethereum.TBTC,   true);
+        _assertBorrowCapLogs(borrowLogs[8], Ethereum.PYUSD,  false);  // Removed
 
         vm.recordLogs();
 
@@ -188,6 +304,22 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         return out;
     }
 
+    function _assertSupplyCapLogs(VmSafe.EthGetLogs memory log, address asset, bool isLive) internal {
+        assertEq(address(uint160(uint256(log.topics[1]))), asset);
+
+        ( uint256 max, , , , ) = ICapAutomatorLike(SparkLend.CAP_AUTOMATOR).supplyCapConfigs(asset);
+
+        assertTrue(isLive ? max > 0 : max == 0);  // Check against current status to see if removed
+    }
+
+    function _assertBorrowCapLogs(VmSafe.EthGetLogs memory log, address asset, bool isLive) internal {
+        assertEq(address(uint160(uint256(log.topics[1]))), asset);
+
+        ( uint256 max, , , , ) = ICapAutomatorLike(SparkLend.CAP_AUTOMATOR).borrowCapConfigs(asset);
+
+        assertTrue(isLive ? max > 0 : max == 0);  // Check against current status to see if removed
+    }
+
 }
 
 contract SparkEthereum_20260312_SparklendTests is SparklendTests {
@@ -207,10 +339,10 @@ contract SparkEthereum_20260312_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20260312_SpellTests is SpellTests {
 
-    address internal constant CBBTC_BTC_ORACLE = 0x64B157212C21097002920D57322B671b88DFcCBC;
-    address internal constant WBTC_BTC_ORACLE  = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
-    address internal constant WEETH_ETH_ORACLE = 0x4C805FD3c64B79840d36813Fc90c165bf77bb7E4;
-    address internal constant RETH_ETH_ORACLE  = 0xd0B378dA552D06B6D3497e4b5ba2A83418f78d06;
+    address internal constant CBBTC_BTC_RATIO_ORACLE    = 0x64B157212C21097002920D57322B671b88DFcCBC;
+    address internal constant WBTC_BTC_CHAINLINK_ORACLE = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
+    address internal constant WEETH_ETH_RATIO_ORACLE    = 0x4C805FD3c64B79840d36813Fc90c165bf77bb7E4;
+    address internal constant RETH_ETH_RATIO_ORACLE     = 0xd0B378dA552D06B6D3497e4b5ba2A83418f78d06;
 
     constructor() {
         _spellId   = 20260312;
@@ -229,10 +361,10 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         uint256 sparkProxyDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY);
         uint256 sparkProxyUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY);
 
-        assertEq(almProxyDaiBalanceBefore,    245_340_056.481731623797634139e18);
-        assertEq(almProxyUsdsBalanceBefore,   274_287_371.217193777464340217e18);
-        assertEq(sparkProxyDaiBalanceBefore,  583_959.969837929750240401e18);
-        assertEq(sparkProxyUsdsBalanceBefore, 632_545.148685998716448730e18);
+        assertEq(almProxyDaiBalanceBefore,    245_773_710.119278275590329888e18);
+        assertEq(almProxyUsdsBalanceBefore,   300_695_703.402821738042873558e18);
+        assertEq(sparkProxyDaiBalanceBefore,  584_001.629718614928654638e18);
+        assertEq(sparkProxyUsdsBalanceBefore, 632_588.259872078775965574e18);
 
         _executeAllPayloadsAndBridges();
 
@@ -245,9 +377,13 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
 
     function test_ETHEREUM_killSwitchActivationForCBBTC() external onChain(ChainIdUtils.Ethereum()) {
         // Verify Configuration
+        ICBBTCRatioOracleLike cbbtcRatioOracle = ICBBTCRatioOracleLike(CBBTC_BTC_RATIO_ORACLE);
+
+        assertEq(cbbtcRatioOracle.btcUSDFeed(),   0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
+        assertEq(cbbtcRatioOracle.cbbtcUSDFeed(), 0x2665701293fCbEB223D11A08D826563EDcCE423A);
 
         _test_killSwitchActivation({
-            oracle       : CBBTC_BTC_ORACLE,
+            oracle       : CBBTC_BTC_RATIO_ORACLE,
             threshold    : 0.95e18,
             latestAnswer : 1.009694948823013023e18
         });
@@ -255,23 +391,35 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
 
     function test_ETHEREUM_killSwitchActivationForWBTC() external onChain(ChainIdUtils.Ethereum()) {
         _test_killSwitchActivation({
-            oracle       : WBTC_BTC_ORACLE,
+            oracle       : WBTC_BTC_CHAINLINK_ORACLE,
             threshold    : 0.95e8,
             latestAnswer : 0.99747000e8
         });
     }
 
     function test_ETHEREUM_killSwitchActivationForWEETH() external onChain(ChainIdUtils.Ethereum()) {
+        // Verify Configuration
+        IWEETHRatioOracleLike weethRatioOracle = IWEETHRatioOracleLike(WEETH_ETH_RATIO_ORACLE);
+
+        assertEq(weethRatioOracle.weeth(),        Ethereum.WEETH);
+        assertEq(weethRatioOracle.weethETHFeed(), 0x5c9C449BbC9a6075A2c061dF312a35fd1E05fF22);
+
         _test_killSwitchActivation({
-            oracle       : WEETH_ETH_ORACLE,
+            oracle       : WEETH_ETH_RATIO_ORACLE,
             threshold    : 0.95e18,
             latestAnswer : 0.998920714542678451e18
         });
     }
 
     function test_ETHEREUM_killSwitchActivationForRETH() external onChain(ChainIdUtils.Ethereum()) {
+        // Verify Configuration
+        IRETHRatioOracleLike rethRatioOracle = IRETHRatioOracleLike(RETH_ETH_RATIO_ORACLE);
+
+        assertEq(rethRatioOracle.reth(),        Ethereum.RETH);
+        assertEq(rethRatioOracle.rethETHFeed(), 0x536218f9E9Eb48863970252233c8F271f554C2d0);
+
         _test_killSwitchActivation({
-            oracle       : RETH_ETH_ORACLE,
+            oracle       : RETH_ETH_RATIO_ORACLE,
             threshold    : 0.95e18,
             latestAnswer : 1.000044024386056921e18
         });
@@ -348,41 +496,24 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
 
         assertEq(kso.triggered(), true);
 
-        console.log("reserves[0]", reserves[0]);
         assertEq(_getBorrowEnabled(reserves[0]),  false);
-        console.log("reserves[1]", reserves[1]);
         assertEq(_getBorrowEnabled(reserves[1]),  false);
-        console.log("reserves[2]", reserves[2]);
         assertEq(_getBorrowEnabled(reserves[2]),  false);
-        console.log("reserves[3]", reserves[3]);
         assertEq(_getBorrowEnabled(reserves[3]),  false);
-        console.log("reserves[4]", reserves[4]);
         assertEq(_getBorrowEnabled(reserves[4]),  false);
-        console.log("reserves[5]", reserves[5]);
         assertEq(_getBorrowEnabled(reserves[5]),  false);
-        console.log("reserves[6]", reserves[6]);
         assertEq(_getBorrowEnabled(reserves[6]),  false);
-        console.log("reserves[7]", reserves[7]);
         assertEq(_getBorrowEnabled(reserves[7]),  false);
-        console.log("reserves[8]", reserves[8]);
         assertEq(_getBorrowEnabled(reserves[8]),  false);
-        console.log("reserves[9]", reserves[9]);
         assertEq(_getBorrowEnabled(reserves[9]),  false);
-        console.log("reserves[10]", reserves[10]);
         assertEq(_getBorrowEnabled(reserves[10]), false);
-        console.log("reserves[11]", reserves[11]);
         assertEq(_getBorrowEnabled(reserves[11]), false);
-        console.log("reserves[12]", reserves[12]);
         assertEq(_getBorrowEnabled(reserves[12]), false);
-        console.log("reserves[13]", reserves[13]);
         assertEq(_getBorrowEnabled(reserves[13]), false);
-        console.log("reserves[14]", reserves[14]);
+        assertEq(_getBorrowEnabled(reserves[14]), false);
         assertEq(_getBorrowEnabled(reserves[14]), true);
-        console.log("reserves[15]", reserves[15]);
         assertEq(_getBorrowEnabled(reserves[15]), false);
-        console.log("reserves[16]", reserves[16]);
         assertEq(_getBorrowEnabled(reserves[16]), false);
-        console.log("reserves[17]", reserves[17]);
         assertEq(_getBorrowEnabled(reserves[17]), false);
     }
 
