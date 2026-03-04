@@ -71,8 +71,36 @@ import {
 import { SpellRunner } from "./SpellRunner.sol";
 
 interface IMainnetControllerLike {
+
     function depositERC4626(address vault, uint256 amount, uint256 minSharesOut) external returns (uint256 shares);
+
     function withdrawERC4626(address vault, uint256 amount, uint256 maxSharesIn) external returns (uint256 shares);
+
+    function mintPositionUniswapV4(
+        bytes32 poolId,
+        int24   tickLower,
+        int24   tickUpper,
+        uint128 liquidity,
+        uint128 amount0Max,
+        uint128 amount1Max
+    ) external;
+
+    function increaseLiquidityUniswapV4(
+        bytes32 poolId,
+        uint256 tokenId,
+        uint128 liquidityIncrease,
+        uint128 amount0Max,
+        uint128 amount1Max
+    ) external;
+
+    function decreaseLiquidityUniswapV4(
+        bytes32 poolId,
+        uint256 tokenId,
+        uint128 liquidityDecrease,
+        uint128 amount0Min,
+        uint128 amount1Min
+    ) external;
+
 }
 
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
@@ -654,7 +682,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _depositERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
-        if (controller == Ethereum.ALM_CONTROLLER) {
+        if (controller == Ethereum.ALM_CONTROLLER || controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
             shares = MainnetController(controller).depositERC4626(vault, amount);
         } else {
             shares = IMainnetControllerLike(controller).depositERC4626(vault, amount, 0);
@@ -662,7 +690,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _withdrawERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
-        if (controller == Ethereum.ALM_CONTROLLER) {
+        if (controller == Ethereum.ALM_CONTROLLER || controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
             shares = MainnetController(controller).withdrawERC4626(vault, amount);
         } else {
             shares = IMainnetControllerLike(controller).withdrawERC4626(vault, amount, type(uint256).max);
@@ -1348,13 +1376,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).mintPositionUniswapV4({
-            poolId     : p.poolId,
-            tickLower  : v.tickLower,
-            tickUpper  : v.tickUpper,
-            liquidity  : v.liquidityAmount,
-            amount0Max : uint128(v.depositAmount0),
-            amount1Max : uint128(v.depositAmount1)
+        _mintUniswapV4Position({
+             controller : p.ctx.controller,
+             poolId     : p.poolId,
+             tickLower  : v.tickLower,
+             tickUpper  : v.tickUpper,
+             liquidity  : v.liquidityAmount,
+             amount0Max : v.depositAmount0,
+             amount1Max : v.depositAmount1
         });
 
         v.tokenId = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).nextTokenId() - 1;
@@ -1380,12 +1409,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), v.depositAmount1);
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).increaseLiquidityUniswapV4({
+        _increaseLiquidityUniswapV4({
+            controller        : p.ctx.controller,
             poolId            : p.poolId,
             tokenId           : v.tokenId,
             liquidityIncrease : v.liquidityAmount,
-            amount0Max        : uint128(v.depositAmount0),
-            amount1Max        : uint128(v.depositAmount1)
+            amount0Max        : v.depositAmount0,
+            amount1Max        : v.depositAmount1
         });
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount * 2);
@@ -1404,7 +1434,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.withdrawAmount1 = v.depositAmount1 * 2;
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).decreaseLiquidityUniswapV4({
+        _decreaseLiquidityUniswapV4({
+            controller        : p.ctx.controller,
             poolId            : p.poolId,
             tokenId           : v.tokenId,
             liquidityDecrease : v.liquidityAmount * 2,
@@ -1439,6 +1470,90 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
     }
 
+    function _mintUniswapV4Position(
+        address controller,
+        bytes32 poolId,
+        int24   tickLower,
+        int24   tickUpper,
+        uint128 liquidity,
+        uint256 amount0Max,
+        uint256 amount1Max
+    ) internal {
+        if (controller == Ethereum.ALM_CONTROLLER) {
+            MainnetController(controller).mintPositionUniswapV4({
+                poolId     : poolId,
+                tickLower  : tickLower,
+                tickUpper  : tickUpper,
+                liquidity  : liquidity,
+                amount0Max : amount0Max,
+                amount1Max : amount1Max
+            });
+        } else {
+            IMainnetControllerLike(controller).mintPositionUniswapV4({
+                poolId     : poolId,
+                tickLower  : tickLower,
+                tickUpper  : tickUpper,
+                liquidity  : liquidity,
+                amount0Max : uint128(amount0Max),
+                amount1Max : uint128(amount1Max)
+            });
+        }
+    }
+
+    function _increaseLiquidityUniswapV4(
+        address controller,
+        bytes32 poolId,
+        uint256 tokenId,
+        uint128 liquidityIncrease,
+        uint256 amount0Max,
+        uint256 amount1Max
+    ) internal {
+        if (controller == Ethereum.ALM_CONTROLLER) {
+            MainnetController(controller).increaseLiquidityUniswapV4({
+                poolId            : poolId,
+                tokenId           : tokenId,
+                liquidityIncrease : liquidityIncrease,
+                amount0Max        : amount0Max,
+                amount1Max        : amount1Max
+            });
+        } else {
+            IMainnetControllerLike(controller).increaseLiquidityUniswapV4({
+                poolId            : poolId,
+                tokenId           : tokenId,
+                liquidityIncrease : liquidityIncrease,
+                amount0Max        : uint128(amount0Max),
+                amount1Max        : uint128(amount1Max)
+            });
+        }
+    }
+
+    function _decreaseLiquidityUniswapV4(
+        address controller,
+        bytes32 poolId,
+        uint256 tokenId,
+        uint128 liquidityDecrease,
+        uint256 amount0Min,
+        uint256 amount1Min
+    ) internal {
+        if (controller == Ethereum.ALM_CONTROLLER) {
+            MainnetController(controller).decreaseLiquidityUniswapV4({
+                poolId            : poolId,
+                tokenId           : tokenId,
+                liquidityDecrease : liquidityDecrease,
+                amount0Min        : amount0Min,
+                amount1Min        : amount1Min
+            });
+        } else {
+            IMainnetControllerLike(controller).decreaseLiquidityUniswapV4({
+                poolId            : poolId,
+                tokenId           : tokenId,
+                liquidityDecrease : liquidityDecrease,
+                amount0Min        : uint128(amount0Min),
+                amount1Min        : uint128(amount1Min)
+            });
+        }
+    }
+
     function _seedUniswapV4Liquidity(UniswapV4SwapE2ETestParams memory p) internal {
         (
             int24  tickLowerMin,
@@ -1465,7 +1580,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         deal(address(p.asset1), address(p.ctx.proxy), amount1 + 1);
 
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).mintPositionUniswapV4({
+        _mintUniswapV4Position({
+            controller : p.ctx.controller,
             poolId     : p.poolId,
             tickLower  : tickLower,
             tickUpper  : tickUpper,
