@@ -24,7 +24,7 @@ import { SLLHelpers, SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
  * @notice Spark Liquidity Layer:
  *         - Upgrade Mainnet Controller to v1.10
  *         SparkLend:
- *         - Upgrade Cap Automators to v1.1
+ *         - Upgrade Cap Automator to v1.1
  *         - Add Assets to Killswitch Oracle Mechanism
  *         Spark Treasury:
  *         - Transfer SparkLend DAI and SparkLend USDS from SubDAO Proxy to ALM Proxy

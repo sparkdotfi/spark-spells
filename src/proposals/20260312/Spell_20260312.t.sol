@@ -243,32 +243,32 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
         for (uint256 i = 0; i < reserves.length; ++i) {
             if (
-               reserves[i] != Ethereum.DAI   &&
-               reserves[i] != Ethereum.GNO   &&
-               reserves[i] != Ethereum.SDAI  &&
-               reserves[i] != Ethereum.SUSDS &&
-               reserves[i] != Ethereum.USDS  &&
-               reserves[i] != Ethereum.USDC  &&
-               reserves[i] != Ethereum.USDT  &&
-               reserves[i] != Ethereum.PYUSD
+               reserves[i] != Ethereum.DAI   &&  // Supply cap NA
+               reserves[i] != Ethereum.GNO   &&  // Supply cap NA
+               reserves[i] != Ethereum.SDAI  &&  // Supply cap 1
+               reserves[i] != Ethereum.SUSDS &&  // Supply cap 1
+               reserves[i] != Ethereum.USDS  &&  // Supply cap NA
+               reserves[i] != Ethereum.USDC  &&  // Supply cap 68b
+               reserves[i] != Ethereum.USDT  &&  // Supply cap 68b
+               reserves[i] != Ethereum.PYUSD     // Supply cap 68b
             ) {
                 ( uint256 max, , , , ) = ICapAutomatorLike(NEW_CAP_AUTOMATOR).supplyCapConfigs(reserves[i]);
                 assertTrue(max > 0);
             }
 
             if (
-                reserves[i] != Ethereum.DAI   &&
-                reserves[i] != Ethereum.WEETH &&
-                reserves[i] != Ethereum.GNO   &&
-                reserves[i] != Ethereum.SDAI  &&
-                reserves[i] != Ethereum.USDC  &&
-                reserves[i] != Ethereum.SUSDS &&
-                reserves[i] != Ethereum.USDS  &&
-                reserves[i] != Ethereum.USDT  &&
-                reserves[i] != Ethereum.LBTC  &&
-                reserves[i] != Ethereum.EZETH &&
-                reserves[i] != Ethereum.RSETH &&
-                reserves[i] != Ethereum.PYUSD
+                reserves[i] != Ethereum.DAI   &&  // Borrow cap NA
+                reserves[i] != Ethereum.WEETH &&  // Borrow cap NA (not borrowable)
+                reserves[i] != Ethereum.GNO   &&  // Borrow cap NA (frozen)
+                reserves[i] != Ethereum.SDAI  &&  // Borrow cap NA (not borrowable)
+                reserves[i] != Ethereum.USDC  &&  // Borrow cap 68b
+                reserves[i] != Ethereum.SUSDS &&  // Borrow cap NA (not borrowable)
+                reserves[i] != Ethereum.USDS  &&  // Borrow cap NA
+                reserves[i] != Ethereum.USDT  &&  // Supply cap 68b
+                reserves[i] != Ethereum.LBTC  &&  // Borrow cap NA (not borrowable)
+                reserves[i] != Ethereum.EZETH &&  // Borrow cap NA (not borrowable, frozen)
+                reserves[i] != Ethereum.RSETH &&  // Borrow cap NA (not borrowable, frozen)
+                reserves[i] != Ethereum.PYUSD     // Borrow cap 68b
             ) {
                 ( uint256 max, , , , ) = ICapAutomatorLike(NEW_CAP_AUTOMATOR).borrowCapConfigs(reserves[i]);
                 assertTrue(max > 0);
@@ -282,17 +282,8 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         uint256 j = 0;
         uint256 k = 0;
         for (uint256 i = 0; i < recordedLogs.length; ++i) {
-            if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetSupplyCapConfig.selector) {
-                if (j < newSupplyLogs.length) {
-                    newSupplyLogs[j] = recordedLogs[i];
-                }
-                j++;
-            } else if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetBorrowCapConfig.selector) {
-                if (k < newBorrowLogs.length) {
-                    newBorrowLogs[k] = recordedLogs[i];
-                }
-                k++;
-            }
+            if      (recordedLogs[i].topics[0] == ICapAutomatorLike.SetSupplyCapConfig.selector) newSupplyLogs[j++] = recordedLogs[i];
+            else if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetBorrowCapConfig.selector) newBorrowLogs[k++] = recordedLogs[i];
         }
 
         assertEq(j, newSupplyLogs.length, "Unexpected number of new supply cap logs");
@@ -303,8 +294,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
             for (uint256 j = 0; j < supplyLogs.length; ++j) {
                 if (newSupplyLogs[i].topics[1] == supplyLogs[j].topics[1]) {
-                    assertEq(newSupplyLogs[i].topics[1], supplyLogs[j].topics[1]);
-                    assertEq(newSupplyLogs[i].data,      supplyLogs[j].data);
+                    assertEq(newSupplyLogs[i].data, supplyLogs[j].data);
 
                     found = true;
                     break;
@@ -321,8 +311,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
             for (uint256 j = 0; j < borrowLogs.length; ++j) {
                 if (newBorrowLogs[i].topics[1] == borrowLogs[j].topics[1]) {
-                    assertEq(newBorrowLogs[i].topics[1], borrowLogs[j].topics[1]);
-                    assertEq(newBorrowLogs[i].data,      borrowLogs[j].data);
+                    assertEq(newBorrowLogs[i].data, borrowLogs[j].data);
 
                     found = true;
                     break;
@@ -333,6 +322,60 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
                 revert("Borrow log not found in new logs");
             }
         }
+
+        _checkSupplyCapSet(Ethereum.DAI,    false);
+        _checkSupplyCapSet(Ethereum.SDAI,   false);
+        _checkSupplyCapSet(Ethereum.USDC,   false);
+        _checkSupplyCapSet(Ethereum.WETH,   true);
+        _checkSupplyCapSet(Ethereum.WSTETH, true);
+        _checkSupplyCapSet(Ethereum.WBTC,   true);
+        _checkSupplyCapSet(Ethereum.GNO,    false);
+        _checkSupplyCapSet(Ethereum.RETH,   true);
+        _checkSupplyCapSet(Ethereum.USDT,   false);
+        _checkSupplyCapSet(Ethereum.WEETH,  true);
+        _checkSupplyCapSet(Ethereum.CBBTC,  true);
+        _checkSupplyCapSet(Ethereum.SUSDS,  false);
+        _checkSupplyCapSet(Ethereum.USDS,   false);
+        _checkSupplyCapSet(Ethereum.LBTC,   true);
+        _checkSupplyCapSet(Ethereum.TBTC,   true);
+        _checkSupplyCapSet(Ethereum.EZETH,  true);
+        _checkSupplyCapSet(Ethereum.RSETH,  true);
+        _checkSupplyCapSet(Ethereum.PYUSD,  false);
+
+        _checkBorrowCapSet(Ethereum.DAI,    false);
+        _checkBorrowCapSet(Ethereum.SDAI,   false);
+        _checkBorrowCapSet(Ethereum.USDC,   false);
+        _checkBorrowCapSet(Ethereum.WETH,   true);
+        _checkBorrowCapSet(Ethereum.WSTETH, true);
+        _checkBorrowCapSet(Ethereum.WBTC,   true);
+        _checkBorrowCapSet(Ethereum.GNO,    false);
+        _checkBorrowCapSet(Ethereum.RETH,   true);
+        _checkBorrowCapSet(Ethereum.USDT,   false);
+        _checkBorrowCapSet(Ethereum.WEETH,  false);
+        _checkBorrowCapSet(Ethereum.CBBTC,  true);
+        _checkBorrowCapSet(Ethereum.SUSDS,  false);
+        _checkBorrowCapSet(Ethereum.USDS,   false);
+        _checkBorrowCapSet(Ethereum.LBTC,   false);
+        _checkBorrowCapSet(Ethereum.TBTC,   true);
+        _checkBorrowCapSet(Ethereum.EZETH,  false);
+        _checkBorrowCapSet(Ethereum.RSETH,  false);
+        _checkBorrowCapSet(Ethereum.PYUSD,  false);
+    }
+
+    function _checkSupplyCapSet(address asset, bool isLive) internal {
+        ( uint256 oldMax, , , , ) = ICapAutomatorLike(SparkLend.CAP_AUTOMATOR).supplyCapConfigs(asset);
+        ( uint256 newMax, , , , ) = ICapAutomatorLike(NEW_CAP_AUTOMATOR).supplyCapConfigs(asset);
+
+        assertTrue(isLive ? newMax > 0 : newMax == 0);  // Check against current status to see if removed
+        assertTrue(oldMax == newMax);
+    }
+
+    function _checkBorrowCapSet(address asset, bool isLive) internal {
+        ( uint256 oldMax, , , , ) = ICapAutomatorLike(SparkLend.CAP_AUTOMATOR).borrowCapConfigs(asset);
+        ( uint256 newMax, , , , ) = ICapAutomatorLike(NEW_CAP_AUTOMATOR).borrowCapConfigs(asset);
+
+        assertTrue(isLive ? newMax > 0 : newMax == 0);  // Check against current status to see if removed
+        assertTrue(oldMax == newMax);
     }
 
     function _lastLogPerAsset(VmSafe.EthGetLogs[] memory logs) internal returns (VmSafe.EthGetLogs[] memory) {
