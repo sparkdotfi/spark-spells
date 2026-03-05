@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { IACLManager } from 'aave-v3-core/contracts/interfaces/IACLManager.sol';
+
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
@@ -134,6 +136,9 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         assertEq(capAutomator.poolConfigurator(),                                                SparkLend.POOL_CONFIGURATOR);
         assertEq(capAutomator.pool(),                                                            SparkLend.POOL);
 
+        assertEq(IACLManager(SparkLend.ACL_MANAGER).isRiskAdmin(SparkLend.CAP_AUTOMATOR), true);
+        assertEq(IACLManager(SparkLend.ACL_MANAGER).isRiskAdmin(NEW_CAP_AUTOMATOR),       false);
+
         // Get all events from old cap automator; keep only the last supply/borrow log per asset.
         VmSafe.EthGetLogs[] memory allSupplyLogs = _getEvents(block.chainid, SparkLend.CAP_AUTOMATOR, ICapAutomatorLike.SetSupplyCapConfig.selector);
         VmSafe.EthGetLogs[] memory allBorrowLogs = _getEvents(block.chainid, SparkLend.CAP_AUTOMATOR, ICapAutomatorLike.SetBorrowCapConfig.selector);
@@ -229,6 +234,9 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
         _executeMainnetPayload();
 
+        assertEq(IACLManager(SparkLend.ACL_MANAGER).isRiskAdmin(SparkLend.CAP_AUTOMATOR), false);
+        assertEq(IACLManager(SparkLend.ACL_MANAGER).isRiskAdmin(NEW_CAP_AUTOMATOR),       true);
+
         address[] memory reserves = IPool(SparkLend.POOL).getReservesList();
 
         assertEq(reserves.length, 18);
@@ -275,17 +283,20 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         uint256 k = 0;
         for (uint256 i = 0; i < recordedLogs.length; ++i) {
             if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetSupplyCapConfig.selector) {
-                if (j < supplyLogs.length) {
+                if (j < newSupplyLogs.length) {
                     newSupplyLogs[j] = recordedLogs[i];
                 }
                 j++;
             } else if (recordedLogs[i].topics[0] == ICapAutomatorLike.SetBorrowCapConfig.selector) {
-                if (k < borrowLogs.length) {
+                if (k < newBorrowLogs.length) {
                     newBorrowLogs[k] = recordedLogs[i];
                 }
                 k++;
             }
         }
+
+        assertEq(j, newSupplyLogs.length, "Unexpected number of new supply cap logs");
+        assertEq(k, newBorrowLogs.length, "Unexpected number of new borrow cap logs");
 
         for (uint256 i = 0; i < newSupplyLogs.length; ++i) {
             bool found = false;
@@ -575,13 +586,16 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
     function _test_killSwitchActivation(address oracle, uint256 threshold, int256 latestAnswer) internal {
         IKillSwitchOracle kso = IKillSwitchOracle(SparkLend.KILL_SWITCH_ORACLE);
 
-        assertEq(kso.numOracles(),               2);
+        assertEq(kso.numOracles(),             2);
         assertEq(kso.oracleThresholds(oracle), 0);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(kso.numOracles(),               6);
+        assertEq(kso.numOracles(),             6);
         assertEq(kso.oracleThresholds(oracle), threshold);
+
+        assertLt(threshold / uint256(latestAnswer), 10);  // Same order of magnitude
+        assertLt(uint256(latestAnswer) / threshold, 10);  // Same order of magnitude
 
         // Sanity check the latest answers
         assertEq(IPriceOracleLike(oracle).latestAnswer(), latestAnswer);
