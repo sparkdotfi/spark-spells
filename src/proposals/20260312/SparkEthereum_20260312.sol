@@ -29,7 +29,10 @@ import { SLLHelpers, SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
  *         Spark Treasury:
  *         - Transfer SparkLend DAI and SparkLend USDS from SubDAO Proxy to ALM Proxy
  * Forum:  https://forum.sky.money/t/march-12-2026-proposed-changes-to-spark-for-upcoming-spell/27741
- * Vote:   
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xeb2f5f08ec6ab8a2ff5302453ac7383f7519a09cf7e1e56cbb7fc8244f15cfa2
+           https://snapshot.org/#/s:sparkfi.eth/proposal/0xdc686a9bc77b44cb323c23dce2cc091ebd34d7876d6e1f4413786f17e0739726
+           https://snapshot.org/#/s:sparkfi.eth/proposal/0x9aebbe69e8555d03dc97b55475dac08225e157b3fd475d7a29848b8631627367
+           https://snapshot.org/#/s:sparkfi.eth/proposal/0xf8c2f98cb39912a22457522c445c453b5f796f24c1886d1687dc96648ffa4c16
  */
 contract SparkEthereum_20260312 is SparkPayloadEthereum {
 
