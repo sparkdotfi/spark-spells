@@ -101,7 +101,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260312;
-        _blockDate = 1772625026;  // 2026-03-04T11:50:26Z
+        _blockDate = 1772785277;  // 2026-03-06T08:21:17Z
     }
 
     function setUp() public override {
@@ -110,7 +110,7 @@ contract SparkEthereum_20260312_SLLTests is SparkLiquidityLayerTests {
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
     }
 
     function test_ETHEREUM_controllerUpgrade() external onChain(ChainIdUtils.Ethereum()) {
@@ -432,7 +432,7 @@ contract SparkEthereum_20260312_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260312;
-        _blockDate = 1772518283;  // 2026-03-03T06:11:23Z
+        _blockDate = 1772785277;  // 2026-03-06T08:21:17Z
     }
 
     function setUp() public override {
@@ -441,7 +441,7 @@ contract SparkEthereum_20260312_SparklendTests is SparklendTests {
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
     }
 
     function test_ETHEREUM_CapAutomator() external override onChain(ChainIdUtils.Ethereum()) {
@@ -544,7 +544,7 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260312;
-        _blockDate = 1772518283;  // 2026-03-03T06:11:23Z
+        _blockDate = 1772785277;  // 2026-03-06T08:21:17Z
     }
 
     function setUp() public override {
@@ -553,7 +553,7 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_NEW_ALM_CONTROLLER;
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xf655F6E7843685BfD8cfA4523d43F2b9922BBd77;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
     }
 
     function test_ETHEREUM_sparkTreasury_transfersSparklendDAIAndUSDS() external onChain(ChainIdUtils.Ethereum()) {
@@ -562,10 +562,10 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         uint256 sparkProxyDaiBalanceBefore  = IERC20(SparkLend.DAI_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY);
         uint256 sparkProxyUsdsBalanceBefore = IERC20(SparkLend.USDS_SPTOKEN).balanceOf(Ethereum.SPARK_PROXY);
 
-        assertEq(almProxyDaiBalanceBefore,    245_773_710.119278275590329888e18);
-        assertEq(almProxyUsdsBalanceBefore,   300_695_703.402821738042873558e18);
-        assertEq(sparkProxyDaiBalanceBefore,  584_001.629718614928654638e18);
-        assertEq(sparkProxyUsdsBalanceBefore, 632_588.259872078775965574e18);
+        assertEq(almProxyDaiBalanceBefore,    245_531_514.384201562795143844e18);
+        assertEq(almProxyUsdsBalanceBefore,   99_354_825.194645187484186885e18);
+        assertEq(sparkProxyDaiBalanceBefore,  584_142.478111589321521540e18);
+        assertEq(sparkProxyUsdsBalanceBefore, 632_732.341636574112694088e18);
 
         _executeAllPayloadsAndBridges();
 
@@ -586,7 +586,7 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         _test_killSwitchActivation({
             oracle       : CBBTC_BTC_RATIO_ORACLE,
             threshold    : 0.95e18,
-            latestAnswer : 1.009694948823013023e18
+            latestAnswer : 1.007763761671557448e18
         });
     }
 
@@ -594,7 +594,7 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         _test_killSwitchActivation({
             oracle       : WBTC_BTC_CHAINLINK_ORACLE,
             threshold    : 0.95e8,
-            latestAnswer : 0.99747000e8
+            latestAnswer : 0.99761e8
         });
     }
 
@@ -608,7 +608,7 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         _test_killSwitchActivation({
             oracle       : WEETH_ETH_RATIO_ORACLE,
             threshold    : 0.95e18,
-            latestAnswer : 0.998920714542678451e18
+            latestAnswer : 0.999593486146659469e18
         });
     }
 
@@ -622,7 +622,7 @@ contract SparkEthereum_20260312_SpellTests is SpellTests {
         _test_killSwitchActivation({
             oracle       : RETH_ETH_RATIO_ORACLE,
             threshold    : 0.95e18,
-            latestAnswer : 1.000044024386056921e18
+            latestAnswer : 0.999857924990777832e18
         });
     }
 
