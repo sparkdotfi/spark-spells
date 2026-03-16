@@ -32,6 +32,9 @@ import { console } from "forge-std/console.sol";
 
 contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
+    address internal constant ANCHORAGE_USAT_USDT = 0x49506C3Aa028693458d6eE816b2EC28522946872;
+    address internal constant USAT                = 0x07041776f5007ACa2A54844F50503a18A72A8b68;
+
     constructor() {
         _spellId   = 20260326;
         _blockDate = 1773645479;  // 2026-03-16T07:17:59Z
@@ -41,6 +44,50 @@ contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
+    }
+
+    function test_ETHEREUM_sll_anchorageUSAT_transferAssetRateLimit() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            USAT,
+            ANCHORAGE_USAT_USDT
+        );
+
+        _assertRateLimit(transferKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(transferKey, 5_000_000e6, 250_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : USAT,
+            destination    : ANCHORAGE_USAT_USDT,
+            transferKey    : transferKey,
+            transferAmount : 5_000_000e6
+        }));
+    }
+
+    function test_ETHEREUM_sll_anchorageUSDT_transferAssetRateLimit() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDT,
+            ANCHORAGE_USAT_USDT
+        );
+
+        _assertRateLimit(transferKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(transferKey, 5_000_000e6, 250_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : Ethereum.USDT,
+            destination    : ANCHORAGE_USAT_USDT,
+            transferKey    : transferKey,
+            transferAmount : 5_000_000e6
+        }));
     }
 
 }

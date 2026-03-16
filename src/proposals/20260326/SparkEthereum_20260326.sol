@@ -36,8 +36,7 @@ import { EngineFlags } from "src/AaveV3PayloadBase.sol";
  */
 contract SparkEthereum_20260326 is SparkPayloadEthereum {
 
-    address internal constant ANCHORAGE_USAT                         = 0x49506C3Aa028693458d6eE816b2EC28522946872;
-    address internal constant ANCHORAGE_USDT                         = 0x49506C3Aa028693458d6eE816b2EC28522946872;
+    address internal constant ANCHORAGE_USAT_USDT                    = 0x49506C3Aa028693458d6eE816b2EC28522946872;
     address internal constant USAT                                   = 0x07041776f5007ACa2A54844F50503a18A72A8b68;
     address internal constant SPARK_ASSET_FOUNDATION_GRANT_RECIPIENT = 0xEabCb8C0346Ac072437362f1692706BA5768A911;
 
@@ -74,8 +73,8 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
         // 4. Add USDT transferAsset Rate Limit to Anchorage.
         bytes32 transferKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER();
 
-        bytes32 USAT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, USAT,          ANCHORAGE_USAT);
-        bytes32 USDT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDT, ANCHORAGE_USDT);
+        bytes32 USAT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, USAT,          ANCHORAGE_USAT_USDT);
+        bytes32 USDT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDT, ANCHORAGE_USAT_USDT);
 
         SLLHelpers.setRateLimitData({
             key        : USAT_KEY,
