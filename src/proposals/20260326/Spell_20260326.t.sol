@@ -1,34 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IACLManager } from 'aave-v3-core/contracts/interfaces/IACLManager.sol';
-
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
-import { VmSafe } from "forge-std/Vm.sol";
 
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
-import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-
-import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
-
-import { IKillSwitchOracle } from 'sparklend-kill-switch/interfaces/IKillSwitchOracle.sol';
-
-import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
-import { IPool }                from "sparklend-v1-core/interfaces/IPool.sol";
-import { IScaledBalanceToken }  from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
-import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
-import { WadRayMath }           from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
-
-import { console } from "forge-std/console.sol";
 
 contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
@@ -103,6 +87,47 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
+    }
+
+    function test_ETHEREUM_activateWBTC() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot('', ctx.pool);
+
+        ReserveConfig memory wbtcConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'WBTC');
+
+        assertEq(wbtcConfigBefore.ltv,                  0);
+        assertEq(wbtcConfigBefore.liquidationThreshold, 35_00);
+
+        _assertSupplyCapConfig(Ethereum.WBTC, 5_000, 200, 12 hours);
+        _assertBorrowCapConfig(Ethereum.WBTC, 1,     1,   12 hours);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.WBTC, 3_000, 500, 12 hours);
+        _assertBorrowCapConfig(Ethereum.WBTC, 1,     1,   12 hours);
+
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot('', ctx.pool);
+
+        ReserveConfig memory wbtcConfigAfter = wbtcConfigBefore;
+
+        wbtcConfigAfter.ltv                  = 77_00;
+        wbtcConfigAfter.liquidationThreshold = 78_00;
+
+        _validateReserveConfig(wbtcConfigAfter, allConfigsAfter);
+    }
+
+    function test_ETHEREUM_activateWBTC_e2e() external onChain(ChainIdUtils.Ethereum()) {
+        _executeAllPayloadsAndBridges();
+
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigs = _createConfigurationSnapshot('', ctx.pool);
+
+        ReserveConfig memory wbtcConfig = _findReserveConfigBySymbol(allConfigs, 'WBTC');
+        ReserveConfig memory usdcConfig = _findReserveConfigBySymbol(allConfigs, 'USDC');
+
+        _e2eTestAsset(ctx.pool, wbtcConfig, usdcConfig);
     }
 
 }
