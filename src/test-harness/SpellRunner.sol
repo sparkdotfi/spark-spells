@@ -404,7 +404,7 @@ abstract contract SpellRunner is Test {
 
         for (uint256 i; i < allChains.length; ++i) {
             // TODO: Remove this once Avalanche is working
-            if (allChains[i] == ChainIdUtils.Avalanche()) {
+            if (allChains[i] == ChainIdUtils.Avalanche() || allChains[i] == ChainIdUtils.Gnosis()) {
                 blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
                 continue;
             }
