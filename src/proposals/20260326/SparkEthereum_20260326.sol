@@ -45,13 +45,13 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
         IEngine.CollateralUpdate[] memory collateralUpdates = new IEngine.CollateralUpdate[](1);
 
         collateralUpdates[0] = IEngine.CollateralUpdate({
-            asset:          Ethereum.WBTC,
-            ltv:            77_00,
-            liqThreshold:   78_00,
-            liqBonus:       EngineFlags.KEEP_CURRENT,
-            debtCeiling:    EngineFlags.KEEP_CURRENT,
-            liqProtocolFee: EngineFlags.KEEP_CURRENT,
-            eModeCategory:  EngineFlags.KEEP_CURRENT
+            asset          : Ethereum.WBTC,
+            ltv            : 77_00,
+            liqThreshold   : 78_00,
+            liqBonus       : EngineFlags.KEEP_CURRENT,
+            debtCeiling    : EngineFlags.KEEP_CURRENT,
+            liqProtocolFee : EngineFlags.KEEP_CURRENT,
+            eModeCategory  : EngineFlags.KEEP_CURRENT
         });
 
         return collateralUpdates;
@@ -64,10 +64,10 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
 
         // 2. Reactivate WBTC.
         ICapAutomator(SparkLend.CAP_AUTOMATOR).setSupplyCapConfig({
-            asset:            Ethereum.WBTC,
-            max:              3_000,
-            gap:              500,
-            increaseCooldown: 12 hours
+            asset            : Ethereum.WBTC,
+            max              : 3_000,
+            gap              : 500,
+            increaseCooldown : 12 hours
         });
 
         // 3. Add USAT transferAsset Rate Limit to Anchorage.
