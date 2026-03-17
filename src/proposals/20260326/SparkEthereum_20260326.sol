@@ -70,13 +70,6 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
             increaseCooldown: 12 hours
         });
 
-        ICapAutomator(SparkLend.CAP_AUTOMATOR).setBorrowCapConfig({
-            asset:            Ethereum.WBTC,
-            max:              1,
-            gap:              1,
-            increaseCooldown: 12 hours
-        });
-
         // 3. Add USAT transferAsset Rate Limit to Anchorage.
         // 4. Add USDT transferAsset Rate Limit to Anchorage.
         bytes32 transferKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER();
