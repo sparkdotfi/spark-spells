@@ -17,7 +17,6 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant ANCHORAGE_USAT_USDT = 0x49506C3Aa028693458d6eE816b2EC28522946872;
-    address internal constant USAT                = 0x07041776f5007ACa2A54844F50503a18A72A8b68;
 
     constructor() {
         _spellId   = 20260326;
@@ -33,7 +32,7 @@ contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_sll_anchorageUSAT_transferAssetRateLimit() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            USAT,
+            Ethereum.USAT,
             ANCHORAGE_USAT_USDT
         );
 
@@ -45,7 +44,7 @@ contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
-            asset          : USAT,
+            asset          : Ethereum.USAT,
             destination    : ANCHORAGE_USAT_USDT,
             transferKey    : transferKey,
             transferAmount : 5_000_000e6
@@ -127,14 +126,15 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
         ReserveConfig memory wbtcConfig = _findReserveConfigBySymbol(allConfigs, 'WBTC');
         ReserveConfig memory usdcConfig = _findReserveConfigBySymbol(allConfigs, 'USDC');
 
+        // Check that borrowing is disabled for WBTC.
+        assertEq(wbtcConfig.borrowingEnabled, false);
+
         _e2eTestAsset(ctx.pool, wbtcConfig, usdcConfig);
     }
 
 }
 
 contract SparkEthereum_20260326_SpellTests is SpellTests {
-
-    address internal constant SPARK_ASSET_FOUNDATION_GRANT_RECIPIENT = 0xEabCb8C0346Ac072437362f1692706BA5768A911;
 
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
@@ -152,10 +152,12 @@ contract SparkEthereum_20260326_SpellTests is SpellTests {
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
-        uint256 sparkProxyBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY);
-        uint256 foundationBalanceBefore      = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
-        uint256 opsMultisigBalanceBefore     = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_OPS_MULTISIG);
-        uint256 assetFoundationBalanceBefore = IERC20(Ethereum.USDS).balanceOf(SPARK_ASSET_FOUNDATION_GRANT_RECIPIENT);
+        IERC20 usds = IERC20(Ethereum.USDS);
+
+        uint256 sparkProxyBalanceBefore      = usds.balanceOf(Ethereum.SPARK_PROXY);
+        uint256 foundationBalanceBefore      = usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
+        uint256 opsMultisigBalanceBefore     = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
+        uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      36_722_470.91397762025440102e18);
         assertEq(foundationBalanceBefore,      0);
@@ -164,14 +166,11 @@ contract SparkEthereum_20260326_SpellTests is SpellTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(
-            IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_PROXY),
-            sparkProxyBalanceBefore - FOUNDATION_GRANT_AMOUNT - ASSET_FOUNDATION_GRANT_AMOUNT - USDS_SPK_BUYBACK_AMOUNT
-        );
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY), sparkProxyBalanceBefore - FOUNDATION_GRANT_AMOUNT - ASSET_FOUNDATION_GRANT_AMOUNT - USDS_SPK_BUYBACK_AMOUNT);
 
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG),     foundationBalanceBefore + FOUNDATION_GRANT_AMOUNT);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_OPS_MULTISIG),              opsMultisigBalanceBefore + USDS_SPK_BUYBACK_AMOUNT);
-        assertEq(IERC20(Ethereum.USDS).balanceOf(SPARK_ASSET_FOUNDATION_GRANT_RECIPIENT), assetFoundationBalanceBefore + ASSET_FOUNDATION_GRANT_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG),       foundationBalanceBefore + FOUNDATION_GRANT_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.ALM_OPS_MULTISIG),                opsMultisigBalanceBefore + USDS_SPK_BUYBACK_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG), assetFoundationBalanceBefore + ASSET_FOUNDATION_GRANT_AMOUNT);
     }
 
 }

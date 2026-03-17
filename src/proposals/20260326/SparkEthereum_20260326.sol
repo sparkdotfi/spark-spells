@@ -31,9 +31,7 @@ import { EngineFlags } from "src/AaveV3PayloadBase.sol";
  */
 contract SparkEthereum_20260326 is SparkPayloadEthereum {
 
-    address internal constant ANCHORAGE_USAT_USDT                    = 0x49506C3Aa028693458d6eE816b2EC28522946872;
-    address internal constant USAT                                   = 0x07041776f5007ACa2A54844F50503a18A72A8b68;
-    address internal constant SPARK_ASSET_FOUNDATION_GRANT_RECIPIENT = 0xEabCb8C0346Ac072437362f1692706BA5768A911;
+    address internal constant ANCHORAGE_USAT_USDT = 0x49506C3Aa028693458d6eE816b2EC28522946872;
 
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
@@ -58,9 +56,9 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
     }
 
     function _postExecute() internal override {
-        // 1. Spark Foundation and Spark Assets Foundation Grants for Q2 2026
-        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG,     FOUNDATION_GRANT_AMOUNT);
-        IERC20(Ethereum.USDS).transfer(SPARK_ASSET_FOUNDATION_GRANT_RECIPIENT, ASSET_FOUNDATION_GRANT_AMOUNT);
+        // 1. Spark Foundation and Spark Assets Foundation Grants for Q2 2026.
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG,       FOUNDATION_GRANT_AMOUNT);
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG, ASSET_FOUNDATION_GRANT_AMOUNT);
 
         // 2. Reactivate WBTC.
         ICapAutomator(SparkLend.CAP_AUTOMATOR).setSupplyCapConfig({
@@ -74,7 +72,7 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
         // 4. Add USDT transferAsset Rate Limit to Anchorage.
         bytes32 transferKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER();
 
-        bytes32 USAT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, USAT,          ANCHORAGE_USAT_USDT);
+        bytes32 USAT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USAT, ANCHORAGE_USAT_USDT);
         bytes32 USDT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDT, ANCHORAGE_USAT_USDT);
 
         SLLHelpers.setRateLimitData({
@@ -92,7 +90,7 @@ contract SparkEthereum_20260326 is SparkPayloadEthereum {
             decimals   : 6
         });
 
-        // 7. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks
+        // 7. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
         IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, USDS_SPK_BUYBACK_AMOUNT);
     }
 
