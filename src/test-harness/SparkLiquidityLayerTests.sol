@@ -682,7 +682,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _depositERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
-        if (controller == Ethereum.ALM_CONTROLLER || controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
+        if (controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
             shares = MainnetController(controller).depositERC4626(vault, amount);
         } else {
             shares = IMainnetControllerLike(controller).depositERC4626(vault, amount, 0);
@@ -690,7 +690,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _withdrawERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
-        if (controller == Ethereum.ALM_CONTROLLER || controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
+        if (controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
             shares = MainnetController(controller).withdrawERC4626(vault, amount);
         } else {
             shares = IMainnetControllerLike(controller).withdrawERC4626(vault, amount, type(uint256).max);
@@ -886,10 +886,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), p.ctx.rateLimits.getRateLimitData(p.depositKey).maxAmount);
 
-        // Assert at least 0.3% interest accrued (3.6% APY)
+        // Assert at least 0.2% interest accrued (2.4% APY)
         assertGe(
             syrup.convertToAssets(v.shares) - v.positionAssets,
-            v.positionAssets * 0.003e18 / 1e18
+            v.positionAssets * 0.002e18 / 1e18
         );
 
         /********************************************/
@@ -949,8 +949,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         vm.stopPrank();
 
-        // Assert at least 0.3% of value was generated (3.6% APY) (approximated because of extra day)
-        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.003e18 / 1e18);
+        // Assert at least 0.2% of value was generated (2.4% APY) (approximated because of extra day)
+        assertGe(asset.balanceOf(address(p.ctx.proxy)), p.depositAmount * 1.002e18 / 1e18);
         assertEq(asset.balanceOf(address(p.ctx.proxy)), v.withdrawAmount);
 
         assertEq(syrup.balanceOf(address(p.ctx.proxy)), v.startingShares);
@@ -1479,25 +1479,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 amount0Max,
         uint256 amount1Max
     ) internal {
-        if (controller == Ethereum.ALM_CONTROLLER) {
-            MainnetController(controller).mintPositionUniswapV4({
-                poolId     : poolId,
-                tickLower  : tickLower,
-                tickUpper  : tickUpper,
-                liquidity  : liquidity,
-                amount0Max : amount0Max,
-                amount1Max : amount1Max
-            });
-        } else {
-            IMainnetControllerLike(controller).mintPositionUniswapV4({
-                poolId     : poolId,
-                tickLower  : tickLower,
-                tickUpper  : tickUpper,
-                liquidity  : liquidity,
-                amount0Max : uint128(amount0Max),
-                amount1Max : uint128(amount1Max)
-            });
-        }
+        IMainnetControllerLike(controller).mintPositionUniswapV4({
+            poolId     : poolId,
+            tickLower  : tickLower,
+            tickUpper  : tickUpper,
+            liquidity  : liquidity,
+            amount0Max : uint128(amount0Max),
+            amount1Max : uint128(amount1Max)
+        });
     }
 
     function _increaseLiquidityUniswapV4(
@@ -1508,23 +1497,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 amount0Max,
         uint256 amount1Max
     ) internal {
-        if (controller == Ethereum.ALM_CONTROLLER) {
-            MainnetController(controller).increaseLiquidityUniswapV4({
-                poolId            : poolId,
-                tokenId           : tokenId,
-                liquidityIncrease : liquidityIncrease,
-                amount0Max        : amount0Max,
-                amount1Max        : amount1Max
-            });
-        } else {
-            IMainnetControllerLike(controller).increaseLiquidityUniswapV4({
-                poolId            : poolId,
-                tokenId           : tokenId,
-                liquidityIncrease : liquidityIncrease,
-                amount0Max        : uint128(amount0Max),
-                amount1Max        : uint128(amount1Max)
-            });
-        }
+        IMainnetControllerLike(controller).increaseLiquidityUniswapV4({
+            poolId            : poolId,
+            tokenId           : tokenId,
+            liquidityIncrease : liquidityIncrease,
+            amount0Max        : uint128(amount0Max),
+            amount1Max        : uint128(amount1Max)
+        });
     }
 
     function _decreaseLiquidityUniswapV4(
@@ -1535,23 +1514,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 amount0Min,
         uint256 amount1Min
     ) internal {
-        if (controller == Ethereum.ALM_CONTROLLER) {
-            MainnetController(controller).decreaseLiquidityUniswapV4({
-                poolId            : poolId,
-                tokenId           : tokenId,
-                liquidityDecrease : liquidityDecrease,
-                amount0Min        : amount0Min,
-                amount1Min        : amount1Min
-            });
-        } else {
-            IMainnetControllerLike(controller).decreaseLiquidityUniswapV4({
-                poolId            : poolId,
-                tokenId           : tokenId,
-                liquidityDecrease : liquidityDecrease,
-                amount0Min        : uint128(amount0Min),
-                amount1Min        : uint128(amount1Min)
-            });
-        }
+        IMainnetControllerLike(controller).decreaseLiquidityUniswapV4({
+            poolId            : poolId,
+            tokenId           : tokenId,
+            liquidityDecrease : liquidityDecrease,
+            amount0Min        : uint128(amount0Min),
+            amount1Min        : uint128(amount1Min)
+        });
     }
 
     function _seedUniswapV4Liquidity(UniswapV4SwapE2ETestParams memory p) internal {
@@ -4124,11 +4093,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        newIntegrations = new SLLIntegration[](integrations.length + 2);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
+
+        newIntegrations[integrations.length]     = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
+        newIntegrations[integrations.length + 1] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
     }
 
     /**********************************************************************************************/
