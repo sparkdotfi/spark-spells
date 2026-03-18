@@ -159,9 +159,13 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
      * @return result The result of the check (true = executable, false = not)
      */
     function isExecutable() external view returns (bool result) {
-        uint256 day  = (block.timestamp / 1 days + 3) % 7;
-        uint256 hour = block.timestamp / 1 hours % 24;
-        result = day < 5 && hour >= 14 && hour < 21;
+        result = officeHours(block.timestamp);
+    }
+
+    function officeHours(uint256 timestamp) public pure returns (bool) {
+        uint256 day  = (timestamp / 1 days + 3) % 7;
+        uint256 hour = timestamp / 1 hours % 24;
+        return day < 5 && hour >= 14 && hour < 21;
     }
 
     function getPoolContext() public pure override returns (IEngine.PoolContext memory) {

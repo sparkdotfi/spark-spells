@@ -1590,6 +1590,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount);
         } else if (startWithOneForZero) {
             _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount);
+        } else {
+            revert("No swap possible");
         }
 
         /**************************************************************/
