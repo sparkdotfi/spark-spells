@@ -20,7 +20,7 @@ contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773645479;  // 2026-03-16T07:17:59Z
+        _blockDate = 1773856373;  // 2026-03-18T17:52:53Z
     }
 
     function setUp() public override {
@@ -79,7 +79,7 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773645479;  // 2026-03-16T07:17:59Z
+        _blockDate = 1773856373;  // 2026-03-18T17:52:53Z
     }
 
     function setUp() public override {
@@ -97,6 +97,7 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
 
         assertEq(wbtcConfigBefore.ltv,                  0);
         assertEq(wbtcConfigBefore.liquidationThreshold, 35_00);
+        assertEq(wbtcConfigBefore.liquidationBonus,     107_00);
 
         _assertSupplyCapConfig(Ethereum.WBTC, 5_000, 200, 12 hours);
         _assertBorrowCapConfig(Ethereum.WBTC, 1,     1,   12 hours);
@@ -112,6 +113,7 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
 
         wbtcConfigAfter.ltv                  = 77_00;
         wbtcConfigAfter.liquidationThreshold = 78_00;
+        wbtcConfigAfter.liquidationBonus     = 107_00;
 
         _validateReserveConfig(wbtcConfigAfter, allConfigsAfter);
     }
@@ -142,13 +144,56 @@ contract SparkEthereum_20260326_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773645479;  // 2026-03-16T07:17:59Z
+        _blockDate = 1773856373;  // 2026-03-18T17:52:53Z
     }
 
     function setUp() public override {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
+    }
+
+    function officeHours(uint256 timestamp) public pure returns (bool) {
+        uint256 day  = (timestamp / 1 days + 3) % 7;
+        uint256 hour = timestamp / 1 hours % 24;
+        return day < 5 && hour >= 14 && hour < 21;
+    }
+
+    function test_officeHours() external {
+        assertEq(officeHours(1773669599), false);  // Monday 16th March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1773669600), true);   // Monday 16th March 2026, 14:00:00 UTC is during office hours
+        assertEq(officeHours(1773694799), true);   // Monday 16th March 2026, 20:59:59 UTC is during office hours
+        assertEq(officeHours(1773694800), false);  // Monday 16th March 2026, 21:00:00 UTC is not during office hours
+
+        assertEq(officeHours(1773755999), false);  // Tuesday 17th March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1773756000), true);   // Tuesday 17th March 2026, 14:00:00 UTC is during office hours
+        assertEq(officeHours(1773781199), true);   // Tuesday 17th March 2026, 20:59:59 UTC is during office hours
+        assertEq(officeHours(1773781200), false);  // Tuesday 17th March 2026, 21:00:00 UTC is not during office hours
+
+        assertEq(officeHours(1773842399), false);  // Wednesday 18th March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1773842400), true);   // Wednesday 18th March 2026, 14:00:00 UTC is during office hours
+        assertEq(officeHours(1773867599), true);   // Wednesday 18th March 2026, 20:59:59 UTC is during office hours
+        assertEq(officeHours(1773867600), false);  // Wednesday 18th March 2026, 21:00:00 UTC is not during office hours
+
+        assertEq(officeHours(1773928799), false);  // Thursday 19th March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1773928800), true);   // Thursday 19th March 2026, 14:00:00 UTC is during office hours
+        assertEq(officeHours(1773953999), true);   // Thursday 19th March 2026, 20:59:59 UTC is during office hours
+        assertEq(officeHours(1773954000), false);  // Thursday 19th March 2026, 21:00:00 UTC is not during office hours
+
+        assertEq(officeHours(1774015199), false);  // Friday 20th March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1774015200), true);   // Friday 20th March 2026, 14:00:00 UTC is during office hours
+        assertEq(officeHours(1774040399), true);   // Friday 20th March 2026, 20:59:59 UTC is during office hours
+        assertEq(officeHours(1774040400), false);  // Friday 20th March 2026, 21:00:00 UTC is not during office hours
+
+        assertEq(officeHours(1774101599), false);  // Saturday 21st March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1774101600), false);  // Saturday 21st March 2026, 14:00:00 UTC is not during office hours
+        assertEq(officeHours(1774126799), false);  // Saturday 21st March 2026, 20:59:59 UTC is not during office hours
+        assertEq(officeHours(1774126800), false);  // Saturday 21st March 2026, 21:00:00 UTC is not during office hours
+
+        assertEq(officeHours(1774187999), false);  // Sunday 22nd March 2026, 13:59:59 UTC is not during office hours
+        assertEq(officeHours(1774188000), false);  // Sunday 22nd March 2026, 14:00:00 UTC is not during office hours
+        assertEq(officeHours(1774213199), false);  // Sunday 22nd March 2026, 20:59:59 UTC is not during office hours
+        assertEq(officeHours(1774213200), false);  // Sunday 22nd March 2026, 21:00:00 UTC is not during office hours
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {

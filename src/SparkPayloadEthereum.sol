@@ -153,13 +153,15 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         _transferFromSparkLendTreasury(remainingATokens, Ethereum.ALM_OPS_MULTISIG);
     }
 
-    /**
+/**
      * @notice Checks if the star payload is executable in the current block
      * @dev Required, useful for implementing "earliest launch date" or "office hours" strategy
      * @return result The result of the check (true = executable, false = not)
      */
     function isExecutable() external view returns (bool result) {
-        result = true;  // TODO Change this
+        uint256 day  = (block.timestamp / 1 days + 3) % 7;
+        uint256 hour = block.timestamp / 1 hours % 24;
+        result = day < 5 && hour >= 14 && hour < 21;
     }
 
     function getPoolContext() public pure override returns (IEngine.PoolContext memory) {
