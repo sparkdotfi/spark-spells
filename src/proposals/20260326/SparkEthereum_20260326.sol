@@ -27,7 +27,8 @@ import { EngineFlags } from "src/AaveV3PayloadBase.sol";
  *         - Spark Foundation and Spark Assets Foundation Grants for Q2 2026.
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
  * Forum:  https://forum.skyeco.com/t/march-26-2026-proposed-changes-to-spark-for-upcoming-spell/27770
- * Vote:   
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x2ca62cbabf82254f8df685e73a4a7751cf6cf26a8ce8ccfd706c9063f27061c7
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x71d2b7802b54a579655ca9c1aca12e6256d2ea3dd8951fdfa39cd7da4524c75e
  */
 contract SparkEthereum_20260326 is SparkPayloadEthereum {
 
