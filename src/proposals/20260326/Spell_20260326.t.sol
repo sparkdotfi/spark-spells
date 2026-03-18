@@ -155,7 +155,7 @@ contract SparkEthereum_20260326_SpellTests is SpellTests {
         // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
     }
 
-    function test_officeHours() external {
+    function test_officeHours() external onChain(ChainIdUtils.Ethereum()) {
         SparkPayloadEthereum payload = SparkPayloadEthereum(chainData[ChainIdUtils.Ethereum()].payload);
 
         assertEq(payload.officeHours(1773669599), false);  // Monday 16th March 2026, 13:59:59 UTC is not during office hours
