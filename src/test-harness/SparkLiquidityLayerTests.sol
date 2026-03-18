@@ -1577,16 +1577,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _checkRateLimitValue(p.ctx, p.swapKey, 18);
 
-        bool startWithZeroForOne = _isZeroForOneUniswapV4SwapPossible(p, 0.99999e18);
-
         /********************************************/
         /*** Step 3: Test a swap in one direction ***/
         /********************************************/
 
+        bool startWithZeroForOne = _isUniswapV4SwapPossible(p, p.asset0, p.asset1, p.swapAmount);
+
+        // If the swap is not possible in the zero for one direction, try the one for zero direction.
+        bool startWithOneForZero = !startWithZeroForOne && _isUniswapV4SwapPossible(p, p.asset1, p.asset0, p.swapAmount);
+
         if (startWithZeroForOne) {
-            _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount, 0.99999e18);
-        } else {
-            _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount, 0.99999e18);
+            _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount);
+        } else if (startWithOneForZero) {
+            _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount);
         }
 
         /**************************************************************/
@@ -1601,10 +1604,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 5: Test a swap in the other direction ***/
         /**************************************************/
 
-        if (startWithZeroForOne) {
-            _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount, 0.99999e18);
-        } else {
-            _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount, 0.99999e18);
+        // If the first swap was in the zero for one direction, try the one for zero direction.
+        bool endWithOneForZero = startWithZeroForOne && _isUniswapV4SwapPossible(p, p.asset1, p.asset0, p.swapAmount);
+
+        // If the first swap was in the one for zero direction, try the zero for one direction.
+        bool endWithZeroForOne = startWithOneForZero && !endWithOneForZero && _isUniswapV4SwapPossible(p, p.asset0, p.asset1, p.swapAmount);
+
+        if (endWithOneForZero) {
+            _testUniswapV4Swap(p, p.asset1, p.asset0, p.swapAmount);
+        } else if (endWithZeroForOne) {
+            _testUniswapV4Swap(p, p.asset0, p.asset1, p.swapAmount);
         }
 
         /**************************************************************/
@@ -1616,27 +1625,30 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
     }
 
-    function _isZeroForOneUniswapV4SwapPossible(
+    function _isUniswapV4SwapPossible(
         UniswapV4SwapE2ETestParams memory p,
-        uint256                           maxSlippage
-    ) internal returns (bool zeroForOne) {
-        // Get quote for a zeroForOne swap.
-        uint256 amountIn     = _fromNormalizedAmount(p.asset0, p.swapAmount);
-        uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, p.asset0, uint128(amountIn), maxSlippage);
+        address                           tokenIn,
+        address                           tokenOut,
+        uint256                           swapAmount
+    ) internal returns (bool possible) {
+        uint256 maxSlippage = MainnetController(p.ctx.controller).maxSlippages(address(uint160(uint256(p.poolId))));
 
-        // If the amount out min is greater than the amount in, then the zeroForOne swap is fine.
-        return uint256(amountOutMin) * 1e18 > p.swapAmount * maxSlippage;
+        // Get quote for a swap.
+        uint256 amountIn  = _fromNormalizedAmount(tokenIn, swapAmount);
+        uint128 amountOut = _getSwapAmountOut(p.poolId, tokenIn, uint128(amountIn));
+
+        // If the price in this direction is greater than the "max slippage", then the swap is possible.
+        return _toNormalizedAmount(tokenOut, uint256(amountOut)) * 1e18 > swapAmount * maxSlippage;
     }
 
     function _testUniswapV4Swap(
         UniswapV4SwapE2ETestParams memory p,
         address                           tokenIn,
         address                           tokenOut,
-        uint256                           swapAmount,
-        uint256                           maxSlippage
+        uint256                           swapAmount
     ) internal returns (uint256 amountOut) {
-        uint256 amountIn     = _fromNormalizedAmount(tokenIn, swapAmount);
-        uint128 amountOutMin = _getSwapAmountOutMin(p.poolId, tokenIn, uint128(amountIn), maxSlippage);
+        uint256 amountIn          = _fromNormalizedAmount(tokenIn, swapAmount);
+        uint128 expectedAmountOut = _getSwapAmountOut(p.poolId, tokenIn, uint128(amountIn));
 
         deal(tokenIn,  address(p.ctx.proxy), amountIn);
         deal(tokenOut, address(p.ctx.proxy), 0);  // Make easier assertions
@@ -1648,13 +1660,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             poolId       : p.poolId,
             tokenIn      : tokenIn,
             amountIn     : uint128(amountIn),
-            amountOutMin : uint128(amountOutMin)
+            amountOutMin : uint128(expectedAmountOut)
         });
 
         amountOut = IERC20(tokenOut).balanceOf(address(p.ctx.proxy));
 
         assertEq(IERC20(tokenIn).balanceOf(address(p.ctx.proxy)), 0);
-        assertGe(amountOut,                                       amountOutMin);
+        assertGe(amountOut,                                       expectedAmountOut);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapAmount);
     }
@@ -3042,10 +3054,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
                 bytes32 oldPoolId = vars.oldUniswapV4TickLimitsLogs[newUniswapV4TickLimitsLogsCount - 1].topics[1];
 
-                ( int24 oldTickLower, int24 oldTickUpper, uint24 oldMaxTickSpacing ) 
+                ( int24 oldTickLower, int24 oldTickUpper, uint24 oldMaxTickSpacing )
                     = abi.decode(vars.oldUniswapV4TickLimitsLogs[newUniswapV4TickLimitsLogsCount - 1].data, (int24, int24, uint24));
 
-                ( int24 newTickLower, int24 newTickUpper, uint24 newMaxTickSpacing ) 
+                ( int24 newTickLower, int24 newTickUpper, uint24 newMaxTickSpacing )
                     = abi.decode(newLogs[i].data, (int24, int24, uint24));
 
                 assertEq(bytes32(newLogs[i].topics[1]), oldPoolId);
@@ -4793,13 +4805,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return FullMath.mulDiv(liquidity, sqrtPriceBX96 - sqrtPriceAX96, 1 << 96);
     }
 
-    function _getSwapAmountOutMin(
-        bytes32 poolId,
-        address tokenIn,
-        uint128 amountIn,
-        uint256 maxSlippage
-    )
-        internal returns (uint128 amountOutMin)
+    function _getSwapAmountOut(bytes32 poolId, address tokenIn, uint128 amountIn)
+        internal returns (uint128 expectedAmountOut)
     {
         PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(poolId));
 
@@ -4812,7 +4819,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         ( uint256 amountOut, ) = IV4QuoterLike(UNISWAP_V4_QUOTER).quoteExactInputSingle(params);
 
-        return uint128((amountOut * maxSlippage) / 1e18);
+        return uint128(amountOut);
     }
 
     function _fromNormalizedAmount(address token, uint256 normalizedAmount) internal view returns (uint256 amount) {
