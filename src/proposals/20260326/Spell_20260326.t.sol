@@ -22,7 +22,7 @@ contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773922493;  // 2026-03-19T12:14:53Z
+        _blockDate = 1773932817;  // 2026-03-19T15:06:57Z
     }
 
     function setUp() public override {
@@ -81,7 +81,7 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773922493;  // 2026-03-19T12:14:53Z
+        _blockDate = 1773932817;  // 2026-03-19T15:06:57Z
     }
 
     function setUp() public override {
@@ -146,7 +146,7 @@ contract SparkEthereum_20260326_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773922493;  // 2026-03-19T12:14:53Z
+        _blockDate = 1773932817;  // 2026-03-19T15:06:57Z
     }
 
     function setUp() public override {
