@@ -22,13 +22,13 @@ contract SparkEthereum_20260326_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773856373;  // 2026-03-18T17:52:53Z
+        _blockDate = 1773922493;  // 2026-03-19T12:14:53Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xe854CE4A58eC1BAf997ccA483de26B0935Ae0f45;
     }
 
     function test_ETHEREUM_sll_anchorageUSAT_transferAssetRateLimit() external onChain(ChainIdUtils.Ethereum()) {
@@ -81,13 +81,13 @@ contract SparkEthereum_20260326_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773856373;  // 2026-03-18T17:52:53Z
+        _blockDate = 1773922493;  // 2026-03-19T12:14:53Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xe854CE4A58eC1BAf997ccA483de26B0935Ae0f45;
     }
 
     function test_ETHEREUM_activateWBTC() external onChain(ChainIdUtils.Ethereum()) {
@@ -146,13 +146,13 @@ contract SparkEthereum_20260326_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260326;
-        _blockDate = 1773856373;  // 2026-03-18T17:52:53Z
+        _blockDate = 1773922493;  // 2026-03-19T12:14:53Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x9fFadcf3aFb43c1Af4Ec1D9B6B0405f1FBCf94D6;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xe854CE4A58eC1BAf997ccA483de26B0935Ae0f45;
     }
 
     function test_officeHours() external onChain(ChainIdUtils.Ethereum()) {
