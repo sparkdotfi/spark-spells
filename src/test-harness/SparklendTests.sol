@@ -603,6 +603,7 @@ abstract contract SparklendTests is SpellRunner {
         ( , , , , uint48 supplyCapLastIncreaseTime ) = capAutomator.supplyCapConfigs(asset);
         ( , , , , uint48 borrowCapLastIncreaseTime ) = capAutomator.borrowCapConfigs(asset);
 
+        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
         capAutomator.exec(asset);
 
         DataTypes.ReserveData memory reserveDataAfter = ctx.pool.getReserveData(asset);
