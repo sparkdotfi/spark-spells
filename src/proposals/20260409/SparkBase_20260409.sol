@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IAToken } from "aave-v3-origin/src/core/contracts/interfaces/IAToken.sol";
-
-import { IERC20Metadata } from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
-
 import { Base } from "spark-address-registry/Base.sol";
 
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
@@ -14,8 +8,6 @@ import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimi
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadBase } from "src/SparkPayloadBase.sol";
-
-import { SLLHelpers } from "src/libraries/SLLHelpers.sol";
 
 /**
  * @title  April 09, 2026 Spark Base Proposal

@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IAToken } from "aave-v3-origin/src/core/contracts/interfaces/IAToken.sol";
-
-import { IERC20Metadata } from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
-
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
@@ -47,8 +41,8 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
     IRateLimits rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
 
     constructor() {
-        // PAYLOAD_ARBITRUM = ; // @TODO
-        // PAYLOAD_BASE     = ; // @TODO
+        // PAYLOAD_ARBITRUM = ;
+        // PAYLOAD_BASE     = ;
     }
 
     function _postExecute() internal override {
@@ -83,7 +77,6 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDS_WITHDRAW_KEY, 0, 0);
 
         // 4. Deactivate Aave Core USDC
-
         bytes32 ATOKEN_CORE_USDC_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDC);
         bytes32 ATOKEN_CORE_USDC_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDC);
 
