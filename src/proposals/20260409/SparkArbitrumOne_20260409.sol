@@ -22,8 +22,7 @@ contract SparkArbitrumOne_20260409 is SparkPayloadArbitrumOne {
 
     function execute() external {
         ForeignController almController = ForeignController(Arbitrum.ALM_CONTROLLER);
-
-        IRateLimits rateLimits = IRateLimits(Arbitrum.ALM_RATE_LIMITS);
+        IRateLimits       rateLimits    = IRateLimits(Arbitrum.ALM_RATE_LIMITS);
 
         // 1. Deactivate Aave USDC
         bytes32 ATOKEN_USDC_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(almController.LIMIT_AAVE_DEPOSIT(),  Arbitrum.ATOKEN_USDC);

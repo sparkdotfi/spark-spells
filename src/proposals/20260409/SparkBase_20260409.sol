@@ -22,8 +22,7 @@ contract SparkBase_20260409 is SparkPayloadBase {
 
     function execute() external {
         ForeignController almController = ForeignController(Base.ALM_CONTROLLER);
-
-        IRateLimits rateLimits = IRateLimits(Base.ALM_RATE_LIMITS);
+        IRateLimits       rateLimits    = IRateLimits(Base.ALM_RATE_LIMITS);
 
         // 1. Deactivate Aave USDC
         bytes32 ATOKEN_USDC_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(almController.LIMIT_AAVE_DEPOSIT(),  Base.ATOKEN_USDC);

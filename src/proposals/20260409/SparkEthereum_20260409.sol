@@ -36,16 +36,15 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
     ISparkVaultV2Like internal constant spUsdc = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
     ISparkVaultV2Like internal constant spUsdt = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
-    MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
-
-    IRateLimits rateLimits = IRateLimits(Ethereum.ALM_RATE_LIMITS);
-
     constructor() {
         // PAYLOAD_ARBITRUM = ;
         // PAYLOAD_BASE     = ;
     }
 
     function _postExecute() internal override {
+        MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
+        IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+
         // Spark Liquidity Layer - Update Rate Limits
 
         bytes32 aaveDepositKey     = almController.LIMIT_AAVE_DEPOSIT();
