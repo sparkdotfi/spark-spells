@@ -25,6 +25,7 @@ contract SparkArbitrumOne_20260409 is SparkPayloadArbitrumOne {
         IRateLimits       rateLimits    = IRateLimits(Arbitrum.ALM_RATE_LIMITS);
 
         // 1. Deactivate Aave USDC
+
         bytes32 ATOKEN_USDC_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(almController.LIMIT_AAVE_DEPOSIT(),  Arbitrum.ATOKEN_USDC);
         bytes32 ATOKEN_USDC_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(almController.LIMIT_AAVE_WITHDRAW(), Arbitrum.ATOKEN_USDC);
 
@@ -32,6 +33,7 @@ contract SparkArbitrumOne_20260409 is SparkPayloadArbitrumOne {
         IRateLimits(rateLimits).setRateLimitData(ATOKEN_USDC_WITHDRAW_KEY, 0, 0);
 
         // 2. Deactivate Fluid sUSDS
+
         bytes32 FLUID_SUSDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(almController.LIMIT_4626_DEPOSIT(),  Arbitrum.FLUID_SUSDS);
         bytes32 FLUID_SUSDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(almController.LIMIT_4626_WITHDRAW(), Arbitrum.FLUID_SUSDS);
 
