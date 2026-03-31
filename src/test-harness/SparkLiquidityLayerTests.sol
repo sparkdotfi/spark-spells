@@ -4129,10 +4129,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        newIntegrations = new SLLIntegration[](integrations.length - 4);
+
+        uint256 index = 0;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
+            if (
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-FLUID_SUSDS")) ||
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ETH_LIDO_USDS"))  ||
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ETH_USDS"))       ||
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ETH_USDC"))
+            ) continue;
+
+            newIntegrations[index] = integrations[i];
+
+            index++;
         }
     }
 
