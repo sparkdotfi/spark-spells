@@ -13,9 +13,6 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
-import { SpellTests }               from "src/test-harness/SpellTests.sol";
-
-import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
 import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
 

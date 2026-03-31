@@ -10,6 +10,8 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 import { IPool }   from "sparklend-v1-core/interfaces/IPool.sol";
 
+import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
+
 import { ChainIdUtils } from "../libraries/ChainIdUtils.sol";
 
 import { ISparkProxyLike } from "../interfaces/Interfaces.sol";
