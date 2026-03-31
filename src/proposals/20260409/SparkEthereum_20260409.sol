@@ -55,6 +55,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         bytes32 transferKey        = almController.LIMIT_ASSET_TRANSFER();
 
         // 1. Deactivate Fluid sUSDS
+
         bytes32 FLUID_SUSDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(erc4626DepositKey,  Ethereum.FLUID_SUSDS);
         bytes32 FLUID_SUSDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(erc4626WithdrawKey, Ethereum.FLUID_SUSDS);
 
@@ -62,6 +63,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         IRateLimits(rateLimits).setRateLimitData(FLUID_SUSDS_WITHDRAW_KEY, 0, 0);
 
         // 2. Deactivate Aave Prime USDS
+
         bytes32 ATOKEN_PRIME_USDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_PRIME_USDS);
         bytes32 ATOKEN_PRIME_USDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_PRIME_USDS);
 
@@ -69,6 +71,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         IRateLimits(rateLimits).setRateLimitData(ATOKEN_PRIME_USDS_WITHDRAW_KEY, 0, 0);
 
         // 3. Deactivate Aave Core USDS
+
         bytes32 ATOKEN_CORE_USDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDS);
         bytes32 ATOKEN_CORE_USDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDS);
 
@@ -76,6 +79,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDS_WITHDRAW_KEY, 0, 0);
 
         // 4. Deactivate Aave Core USDC
+
         bytes32 ATOKEN_CORE_USDC_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDC);
         bytes32 ATOKEN_CORE_USDC_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDC);
 
@@ -83,6 +87,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDC_WITHDRAW_KEY, 0, 0);
 
         // 5. Increase Rate Limit for Aave Core USDT
+
         _configureAaveToken({
             token        : Ethereum.ATOKEN_CORE_USDT,
             depositMax   : 100_000_000e6,
@@ -90,6 +95,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 6. Increase Rate Limit for SparkLend USDT
+
         _configureAaveToken({
             token        : SparkLend.USDT_SPTOKEN,
             depositMax   : 500_000_000e6,
@@ -97,6 +103,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 7. Increase Rate Limit for Maple syrupUSDT
+
         bytes32 SYRUP_USDT_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(erc4626DepositKey,  Ethereum.SYRUP_USDT);
         bytes32 SYRUP_USDT_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(erc4626WithdrawKey, Ethereum.SYRUP_USDT);
         bytes32 SYRUP_USDT_REDEEM_KEY   = RateLimitHelpers.makeAddressKey(mapleRedeemKey,     Ethereum.SYRUP_USDT);
@@ -126,6 +133,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 8. Increase Rate Limit for Spark Blue Chip USDT Morpho Vault
+
         SLLHelpers.configureERC4626Vault({
             rateLimits    : Ethereum.ALM_RATE_LIMITS,
             vault         : Ethereum.MORPHO_VAULT_V2_USDT,
@@ -136,6 +144,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 9. Increase Rate Limit for SparkLend ETH
+
         _configureAaveToken({
             token        : SparkLend.WETH_SPTOKEN,
             depositMax   : 50_000e18,
@@ -143,6 +152,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 10. Increase Rate Limits for Curve weETH/WETH-ng
+
         _configureCurvePool({
             controller    : Ethereum.ALM_CONTROLLER,
             pool          : Ethereum.CURVE_WEETHWETHNG,
@@ -156,6 +166,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 11. Increase Rate Limits for Curve sUSDS/USDT
+
         _configureCurvePool({
             controller    : Ethereum.ALM_CONTROLLER,
             pool          : Ethereum.CURVE_SUSDSUSDT,
@@ -169,6 +180,7 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         });
 
         // 12. Update Anchorage USDT transfer asset limit
+
         bytes32 USDT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDT, ANCHORAGE_USAT_USDT);
         bytes32 USAT_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USAT, ANCHORAGE_USAT_USDT);
 
@@ -193,12 +205,15 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         // Spark Savings - Raise Deposit Caps for spUSDC, spUSDT and spETH
 
         // 1. Increase spUSDC vault deposit cap
+
         spUsdc.setDepositCap(10_000_000_000e6);
 
         // 2. Increase spUSDT vault deposit cap
+
         spUsdt.setDepositCap(10_000_000_000e6);
 
         // 3. Increase spETH vault deposit cap
+
         spEth.setDepositCap(1_000_000e18);
     }
 

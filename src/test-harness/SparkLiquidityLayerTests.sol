@@ -3891,7 +3891,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](57);
+        integrations = new SLLIntegration[](59);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
@@ -3968,6 +3968,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[54] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDC",  Ethereum.PYUSD, PAXOS_PYUSD_USDC);
         integrations[55] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",  Ethereum.PYUSD, PAXOS_PYUSD_USDG);
         integrations[56] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",  Ethereum.USDG,  PAXOS_USDG_PYUSD);
+
+        integrations[57] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
+        integrations[58] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -4090,11 +4093,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             return _getPostExecutionIntegrationsMainnet(integrations);
         }
 
+        if (block.chainid == ChainIdUtils.ArbitrumOne()) {
+            return _getPostExecutionIntegrationsArbitrumOne(integrations);
+        }
+
+        if (block.chainid == ChainIdUtils.Base()) {
+            return _getPostExecutionIntegrationsBase(integrations);
+        }
+
         // TODO: Use a function selector getter here to dynamically call the correct helper function based on chainId.
         if (
-            block.chainid == ChainIdUtils.ArbitrumOne() ||
             block.chainid == ChainIdUtils.Avalanche() ||
-            block.chainid == ChainIdUtils.Base() ||
             block.chainid == ChainIdUtils.Optimism() ||
             block.chainid == ChainIdUtils.Unichain()
         ) {
@@ -4107,14 +4116,51 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 2);
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
+    }
 
-        newIntegrations[integrations.length]     = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
-        newIntegrations[integrations.length + 1] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
+    function _getPostExecutionIntegrationsBase(
+        SLLIntegration[] memory integrations
+    ) internal view returns (SLLIntegration[] memory newIntegrations) {
+        // Remove "ERC4626-FLUID_SUSDS" and "AAVE-ATOKEN_USDC" integrations which are expected to be offboarded after execution
+        newIntegrations = new SLLIntegration[](integrations.length - 2);
+
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            if (
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-FLUID_SUSDS")) ||
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC"))
+            ) continue;
+               
+            newIntegrations[index] = integrations[i];
+
+            index++;
+        }
+    }
+
+    function _getPostExecutionIntegrationsArbitrumOne(
+        SLLIntegration[] memory integrations
+    ) internal view returns (SLLIntegration[] memory newIntegrations) {
+        // Remove "ERC4626-FLUID_SUSDS" and "AAVE-ATOKEN_USDC" integrations which are expected to be offboarded after execution
+        newIntegrations = new SLLIntegration[](integrations.length - 2);
+
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            if (
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-FLUID_SUSDS")) ||
+                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC"))
+            ) continue;
+               
+            newIntegrations[index] = integrations[i];
+
+            index++;
+        }
     }
 
     /**********************************************************************************************/

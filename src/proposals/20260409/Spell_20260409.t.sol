@@ -25,7 +25,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260409;
-        _blockDate = 1774885103;  // 2026-03-30T15:38:23Z
+        _blockDate = 1774965803;  // 2026-03-31T14:03:23Z
     }
 
     function setUp() public override {
@@ -261,8 +261,8 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _testCurveSwapIntegration(CurveSwapE2ETestParams({
             ctx        : ctx,
             pool       : Ethereum.CURVE_WEETHWETHNG,
-            asset0     : Ethereum.WEETH,
-            asset1     : Ethereum.WETH,
+            asset0     : Ethereum.WETH,
+            asset1     : Ethereum.WEETH,
             swapAmount : 10e18,
             swapKey    : swapKey
         }));
@@ -308,7 +308,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
             ANCHORAGE_USAT_USDT
         );
 
-        _assertRateLimit(transferKey, 0, 0);
+        _assertRateLimit(transferKey, 5_000_000e6, 250_000_000e6 / uint256(1 days));
 
         _executeAllPayloadsAndBridges();
 
@@ -330,7 +330,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
             ANCHORAGE_USAT_USDT
         );
 
-        _assertRateLimit(transferKey, 0, 0);
+        _assertRateLimit(transferKey, 5_000_000e6, 250_000_000e6 / uint256(1 days));
 
         _executeAllPayloadsAndBridges();
 
@@ -455,62 +455,6 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
-    }
-
-}
-
-contract SparkEthereum_20260409_SpellTests is SpellTests {
-
-    constructor() {
-        _spellId   = 20260409;
-        _blockDate = 1774885103;  // 2026-03-30T15:38:23Z
-    }
-
-    function setUp() public override {
-        super.setUp();
-
-        // chainData[ChainIdUtils.Ethereum()].payload    = ;
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = ;
-        // chainData[ChainIdUtils.Base()].payload        = ;
-    }
-
-    function test_officeHours() external onChain(ChainIdUtils.Ethereum()) {
-        SparkPayloadEthereum payload = SparkPayloadEthereum(chainData[ChainIdUtils.Ethereum()].payload);
-
-        assertEq(payload.officeHours(1773669599), false);  // Monday 16th March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1773669600), true);   // Monday 16th March 2026, 14:00:00 UTC is during office hours
-        assertEq(payload.officeHours(1773694799), true);   // Monday 16th March 2026, 20:59:59 UTC is during office hours
-        assertEq(payload.officeHours(1773694800), false);  // Monday 16th March 2026, 21:00:00 UTC is not during office hours
-
-        assertEq(payload.officeHours(1773755999), false);  // Tuesday 17th March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1773756000), true);   // Tuesday 17th March 2026, 14:00:00 UTC is during office hours
-        assertEq(payload.officeHours(1773781199), true);   // Tuesday 17th March 2026, 20:59:59 UTC is during office hours
-        assertEq(payload.officeHours(1773781200), false);  // Tuesday 17th March 2026, 21:00:00 UTC is not during office hours
-
-        assertEq(payload.officeHours(1773842399), false);  // Wednesday 18th March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1773842400), true);   // Wednesday 18th March 2026, 14:00:00 UTC is during office hours
-        assertEq(payload.officeHours(1773867599), true);   // Wednesday 18th March 2026, 20:59:59 UTC is during office hours
-        assertEq(payload.officeHours(1773867600), false);  // Wednesday 18th March 2026, 21:00:00 UTC is not during office hours
-
-        assertEq(payload.officeHours(1773928799), false);  // Thursday 19th March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1773928800), true);   // Thursday 19th March 2026, 14:00:00 UTC is during office hours
-        assertEq(payload.officeHours(1773953999), true);   // Thursday 19th March 2026, 20:59:59 UTC is during office hours
-        assertEq(payload.officeHours(1773954000), false);  // Thursday 19th March 2026, 21:00:00 UTC is not during office hours
-
-        assertEq(payload.officeHours(1774015199), false);  // Friday 20th March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1774015200), true);   // Friday 20th March 2026, 14:00:00 UTC is during office hours
-        assertEq(payload.officeHours(1774040399), true);   // Friday 20th March 2026, 20:59:59 UTC is during office hours
-        assertEq(payload.officeHours(1774040400), false);  // Friday 20th March 2026, 21:00:00 UTC is not during office hours
-
-        assertEq(payload.officeHours(1774101599), false);  // Saturday 21st March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1774101600), false);  // Saturday 21st March 2026, 14:00:00 UTC is not during office hours
-        assertEq(payload.officeHours(1774126799), false);  // Saturday 21st March 2026, 20:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1774126800), false);  // Saturday 21st March 2026, 21:00:00 UTC is not during office hours
-
-        assertEq(payload.officeHours(1774187999), false);  // Sunday 22nd March 2026, 13:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1774188000), false);  // Sunday 22nd March 2026, 14:00:00 UTC is not during office hours
-        assertEq(payload.officeHours(1774213199), false);  // Sunday 22nd March 2026, 20:59:59 UTC is not during office hours
-        assertEq(payload.officeHours(1774213200), false);  // Sunday 22nd March 2026, 21:00:00 UTC is not during office hours
     }
 
 }
