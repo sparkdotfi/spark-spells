@@ -55,6 +55,7 @@ import {
     IERC20Like,
     IFarmLike,
     IMapleStrategyLike,
+    IMorphoVaultV2Like,
     IPoolManagerLike,
     IPositionManagerLike,
     IPSMLike,
@@ -575,16 +576,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _handleMorphoFees(E2ETestParams memory p) internal {
-        // If the feeRecipient is set, the vault will accrue fees into the ALMProxy during e2e test
+        // If the vault accrues performance/management fees into the ALMProxy during e2e test
         // deposit, causing unexpected behavior. This is a workaround to avoid this.
         // Using 100 instead of 1 to avoid share validation issue.
+        // Checks both feeRecipient() (MetaMorpho V1) and performanceFee() (V2) interfaces.
+
+        bool hasFees;
+
         try IMetaMorpho(p.vault).feeRecipient() {
+            hasFees = true;
+        } catch {
+            try IMorphoVaultV2Like(p.vault).performanceFee() returns (uint96 fee) {
+                hasFees = fee > 0;
+            } catch {
+                // DO NOTHING
+            }
+        }
+
+        if (hasFees) {
             address asset = IERC4626(p.vault).asset();
             deal(asset, address(p.ctx.proxy), 100);
             vm.prank(p.ctx.relayer);
             _depositERC4626(p.ctx.controller, p.vault, 100);
-        } catch {
-            // Do nothing
         }
     }
 
