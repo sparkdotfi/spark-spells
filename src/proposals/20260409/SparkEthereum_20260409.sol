@@ -59,32 +59,32 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
         bytes32 FLUID_SUSDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(erc4626DepositKey,  Ethereum.FLUID_SUSDS);
         bytes32 FLUID_SUSDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(erc4626WithdrawKey, Ethereum.FLUID_SUSDS);
 
-        IRateLimits(rateLimits).setRateLimitData(FLUID_SUSDS_DEPOSIT_KEY,  0, 0);
-        IRateLimits(rateLimits).setRateLimitData(FLUID_SUSDS_WITHDRAW_KEY, 0, 0);
+        rateLimits.setRateLimitData(FLUID_SUSDS_DEPOSIT_KEY,  0, 0);
+        rateLimits.setRateLimitData(FLUID_SUSDS_WITHDRAW_KEY, 0, 0);
 
         // 2. Deactivate Aave Prime USDS
 
         bytes32 ATOKEN_PRIME_USDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_PRIME_USDS);
         bytes32 ATOKEN_PRIME_USDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_PRIME_USDS);
 
-        IRateLimits(rateLimits).setRateLimitData(ATOKEN_PRIME_USDS_DEPOSIT_KEY,  0, 0);
-        IRateLimits(rateLimits).setRateLimitData(ATOKEN_PRIME_USDS_WITHDRAW_KEY, 0, 0);
+        rateLimits.setRateLimitData(ATOKEN_PRIME_USDS_DEPOSIT_KEY,  0, 0);
+        rateLimits.setRateLimitData(ATOKEN_PRIME_USDS_WITHDRAW_KEY, 0, 0);
 
         // 3. Deactivate Aave Core USDS
 
         bytes32 ATOKEN_CORE_USDS_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDS);
         bytes32 ATOKEN_CORE_USDS_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDS);
 
-        IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDS_DEPOSIT_KEY,  0, 0);
-        IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDS_WITHDRAW_KEY, 0, 0);
+        rateLimits.setRateLimitData(ATOKEN_CORE_USDS_DEPOSIT_KEY,  0, 0);
+        rateLimits.setRateLimitData(ATOKEN_CORE_USDS_WITHDRAW_KEY, 0, 0);
 
         // 4. Deactivate Aave Core USDC
 
         bytes32 ATOKEN_CORE_USDC_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDC);
         bytes32 ATOKEN_CORE_USDC_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDC);
 
-        IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDC_DEPOSIT_KEY,  0, 0);
-        IRateLimits(rateLimits).setRateLimitData(ATOKEN_CORE_USDC_WITHDRAW_KEY, 0, 0);
+        rateLimits.setRateLimitData(ATOKEN_CORE_USDC_DEPOSIT_KEY,  0, 0);
+        rateLimits.setRateLimitData(ATOKEN_CORE_USDC_WITHDRAW_KEY, 0, 0);
 
         // 5. Increase Rate Limit for Aave Core USDT
 

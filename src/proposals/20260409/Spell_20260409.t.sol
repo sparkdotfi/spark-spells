@@ -269,18 +269,32 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
         MainnetController controller = MainnetController(ctx.controller);
 
+        bytes32 depositKey = RateLimitHelpers.makeAddressKey(
+            controller.LIMIT_CURVE_DEPOSIT(),
+            Ethereum.CURVE_SUSDSUSDT
+        );
+
         bytes32 swapKey = RateLimitHelpers.makeAddressKey(
             controller.LIMIT_CURVE_SWAP(),
             Ethereum.CURVE_SUSDSUSDT
         );
 
-        _assertRateLimit(swapKey, 5_000_000e18, 100_000_000e18 / uint256(1 days));
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(
+            controller.LIMIT_CURVE_WITHDRAW(),
+            Ethereum.CURVE_SUSDSUSDT
+        );
+
+        _assertRateLimit(swapKey,     5_000_000e18,  100_000_000e18 / uint256(1 days));
+        _assertRateLimit(depositKey,  5_000_000e18,  20_000_000e18 / uint256(1 days));
+        _assertRateLimit(withdrawKey, 25_000_000e18, 100_000_000e18 / uint256(1 days));
 
         assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(swapKey, 10_000_000e18, 200_000_000e18 / uint256(1 days));
+        _assertRateLimit(swapKey,     10_000_000e18, 200_000_000e18 / uint256(1 days));
+        _assertRateLimit(depositKey,  5_000_000e18,  20_000_000e18 / uint256(1 days));
+        _assertRateLimit(withdrawKey, 25_000_000e18, 100_000_000e18 / uint256(1 days));
 
         assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT), 0.9975e18);
 
@@ -364,17 +378,17 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault:              usdcVault,
             depositCap:         10_000_000_000e6,
-            expectedMaxDeposit: 9_602_265_536.080336e6
+            expectedMaxDeposit: 9_588_692_932.754565e6
         });
         _testSparkVaultDepositCapBoundary({
             vault:              usdtVault,
             depositCap:         10_000_000_000e6,
-            expectedMaxDeposit: 9_197_122_157.036242e6
+            expectedMaxDeposit: 9_189_811_901.398293e6
         });
         _testSparkVaultDepositCapBoundary({
             vault:              ethVault,
             depositCap:         1_000_000e18,
-            expectedMaxDeposit: 983_626.032155209711645513e18
+            expectedMaxDeposit: 983_634.985416955036945334e18
         });
     }
 
