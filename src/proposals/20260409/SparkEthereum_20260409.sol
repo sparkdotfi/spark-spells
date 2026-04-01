@@ -25,8 +25,8 @@ import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
  *         Spark Savings:
  *         - Increase spUSDT, spUSDC, spETH deposit caps
  * Forum:  https://forum.skyeco.com/t/april-9-2026-proposed-changes-to-spark-for-upcoming-spell/27804
- * Vote:
- *
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x6c889e7be8fba52d9cac4bd2e89c9bcb4ee1952afb40b555e87bf09062cb837f
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0x6a98246ef66c49c5c6c231536b75b155d05e9f14b18a6362caddc7e200d5e324
  */
 contract SparkEthereum_20260409 is SparkPayloadEthereum {
 

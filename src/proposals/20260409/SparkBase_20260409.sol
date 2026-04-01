@@ -15,8 +15,7 @@ import { SparkPayloadBase } from "src/SparkPayloadBase.sol";
  * @notice Spark Liquidity Layer:
  *         - Deactivate Aave USDC and Fluid sUSDS
  * Forum:  https://forum.skyeco.com/t/april-9-2026-proposed-changes-to-spark-for-upcoming-spell/27804
- * Vote:
- *
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x6c889e7be8fba52d9cac4bd2e89c9bcb4ee1952afb40b555e87bf09062cb837f
  */
 contract SparkBase_20260409 is SparkPayloadBase {
 

@@ -125,7 +125,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testAaveIntegration(E2ETestParams(ctx, Ethereum.ATOKEN_CORE_USDT, 1_000_000e6, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, Ethereum.ATOKEN_CORE_USDT, 100_000_000e6, depositKey, withdrawKey, 10));
     }
 
     function test_ETHEREUM_sll_sparkLendUsdtRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
@@ -144,7 +144,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  500_000_000e6,     2_000_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDT_SPTOKEN, 1_000_000e6, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, SparkLend.USDT_SPTOKEN, 500_000_000e6, depositKey, withdrawKey, 10));
     }
 
     function test_ETHEREUM_sll_sparkLendEthRateLimitIncrease() external onChain(ChainIdUtils.Ethereum()) {
@@ -163,7 +163,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  50_000e18,         250_000e18 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testAaveIntegration(E2ETestParams(ctx, SparkLend.WETH_SPTOKEN, 100e18, depositKey, withdrawKey, 10));
+        _testAaveIntegration(E2ETestParams(ctx, SparkLend.WETH_SPTOKEN, 50_000e18, depositKey, withdrawKey, 10));
     }
 
     /**********************************************************************************************/
@@ -201,7 +201,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _testMapleIntegration(MapleE2ETestParams({
             ctx           : ctx,
             vault         : Ethereum.SYRUP_USDT,
-            depositAmount : 1_000_000e6,
+            depositAmount : 50_000_000e6,
             depositKey    : depositKey,
             redeemKey     : redeemKey,
             withdrawKey   : withdrawKey,
@@ -238,20 +238,35 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
 
     function test_ETHEREUM_sll_curveWeethWethng() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
         MainnetController controller = MainnetController(ctx.controller);
+
+        bytes32 depositKey = RateLimitHelpers.makeAddressKey(
+            controller.LIMIT_CURVE_DEPOSIT(),
+            Ethereum.CURVE_WEETHWETHNG
+        );
 
         bytes32 swapKey = RateLimitHelpers.makeAddressKey(
             controller.LIMIT_CURVE_SWAP(),
             Ethereum.CURVE_WEETHWETHNG
         );
 
-        _assertRateLimit(swapKey, 100e18, 1_000e18 / uint256(1 days));
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(
+            controller.LIMIT_CURVE_WITHDRAW(),
+            Ethereum.CURVE_WEETHWETHNG
+        );
+
+        _assertRateLimit(swapKey,     100e18, 1_000e18 / uint256(1 days));
+        _assertRateLimit(depositKey,  0,      0);
+        _assertRateLimit(withdrawKey, 0,      0);
 
         assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0.9975e18);
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(swapKey, 1_000e18, 50_000e18 / uint256(1 days));
+        _assertRateLimit(swapKey,     1_000e18, 50_000e18 / uint256(1 days));
+        _assertRateLimit(depositKey,  0,        0);
+        _assertRateLimit(withdrawKey, 0,        0);
 
         assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), 0.9975e18);
 
@@ -260,13 +275,14 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
             pool       : Ethereum.CURVE_WEETHWETHNG,
             asset0     : Ethereum.WETH,
             asset1     : Ethereum.WEETH,
-            swapAmount : 10e18,
+            swapAmount : 1_000e18,
             swapKey    : swapKey
         }));
     }
 
     function test_ETHEREUM_sll_curveSusdsUsdt() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
         MainnetController controller = MainnetController(ctx.controller);
 
         bytes32 depositKey = RateLimitHelpers.makeAddressKey(
@@ -330,7 +346,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
             asset          : Ethereum.USDT,
             destination    : ANCHORAGE_USAT_USDT,
             transferKey    : transferKey,
-            transferAmount : 5_000_000e6
+            transferAmount : 50_000_000e6
         }));
     }
 
@@ -352,7 +368,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
             asset          : Ethereum.USAT,
             destination    : ANCHORAGE_USAT_USDT,
             transferKey    : transferKey,
-            transferAmount : 5_000_000e6
+            transferAmount : 50_000_000e6
         }));
     }
 
@@ -376,19 +392,21 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         assertEq(ethVault.depositCap(),  1_000_000e18);
 
         _testSparkVaultDepositCapBoundary({
-            vault:              usdcVault,
-            depositCap:         10_000_000_000e6,
-            expectedMaxDeposit: 9_588_692_932.754565e6
+            vault              : usdcVault,
+            depositCap         : 10_000_000_000e6,
+            expectedMaxDeposit : 9_588_692_932.754565e6
         });
+
         _testSparkVaultDepositCapBoundary({
-            vault:              usdtVault,
-            depositCap:         10_000_000_000e6,
-            expectedMaxDeposit: 9_189_811_901.398293e6
+            vault              : usdtVault,
+            depositCap         : 10_000_000_000e6,
+            expectedMaxDeposit : 9_189_811_901.398293e6
         });
+
         _testSparkVaultDepositCapBoundary({
-            vault:              ethVault,
-            depositCap:         1_000_000e18,
-            expectedMaxDeposit: 983_634.985416955036945334e18
+            vault              : ethVault,
+            depositCap         : 1_000_000e18,
+            expectedMaxDeposit : 983_634.985416955036945334e18
         });
     }
 
