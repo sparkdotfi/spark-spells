@@ -579,18 +579,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // If the vault accrues performance/management fees into the ALMProxy during e2e test
         // deposit, causing unexpected behavior. This is a workaround to avoid this.
         // Using 100 instead of 1 to avoid share validation issue.
-        // Checks both feeRecipient() (MetaMorpho V1) and performanceFee() (V2) interfaces.
+        // Checks both fee() (MetaMorpho V1), performanceFee() and managementFee() (V2) interfaces.
 
         bool hasFees;
 
-        try IMetaMorpho(p.vault).feeRecipient() {
-            hasFees = true;
+        try IMetaMorpho(p.vault).fee() returns (uint96 fee) {
+            hasFees = fee > 0;
         } catch {
-            try IMorphoVaultV2Like(p.vault).performanceFee() returns (uint96 fee) {
-                hasFees = fee > 0;
-            } catch {
-                // DO NOTHING
-            }
+            try IMorphoVaultV2Like(p.vault).performanceFee() returns (uint96 performanceFee) {
+                hasFees = performanceFee > 0;
+                if (!hasFees) {
+                    try IMorphoVaultV2Like(p.vault).managementFee() returns (uint96 managementFee) {
+                        hasFees = managementFee > 0;
+                    } catch {}
+                }
+            } catch {}
         }
 
         if (hasFees) {
