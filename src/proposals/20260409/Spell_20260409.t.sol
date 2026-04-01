@@ -229,7 +229,8 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
-        _testERC4626Integration(E2ETestParams(ctx, Ethereum.MORPHO_VAULT_V2_USDT, 1_000_000e6, depositKey, withdrawKey, 10));
+        // deposit amount = 100_000_000e6 - 100 (100 units consumed by _handleMorphoFees())
+        _testERC4626Integration(E2ETestParams(ctx, Ethereum.MORPHO_VAULT_V2_USDT, 100_000_000e6 - 100, depositKey, withdrawKey, 10));
     }
 
     /**********************************************************************************************/
