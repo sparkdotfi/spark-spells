@@ -22,15 +22,15 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260409;
-        _blockDate = 1774965803;  // 2026-03-31T14:03:23Z
+        _blockDate = 1775148911;  // 2026-04-02T16:55:11Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload    = ;
-        // chainData[ChainIdUtils.ArbitrumOne()].payload = ;
-        // chainData[ChainIdUtils.Base()].payload        = ;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0x9a93f69f4D5867CB091eDD713f0e506B4e992299;
+        chainData[ChainIdUtils.Base()].payload        = 0xAA9Fe63350a62572efDDAC8D1c42e4d5eb95B603;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xFa5fc020311fCC1A467FEC5886640c7dD746deAa;
     }
 
     /**********************************************************************************************/

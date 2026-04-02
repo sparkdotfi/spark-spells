@@ -37,8 +37,8 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
     ISparkVaultV2Like internal constant spUsdt = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
     constructor() {
-        // PAYLOAD_ARBITRUM = ;
-        // PAYLOAD_BASE     = ;
+        PAYLOAD_ARBITRUM = 0x9a93f69f4D5867CB091eDD713f0e506B4e992299;
+        PAYLOAD_BASE     = 0xAA9Fe63350a62572efDDAC8D1c42e4d5eb95B603;
     }
 
     function _postExecute() internal override {
