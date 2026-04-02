@@ -388,26 +388,26 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(usdcVault.depositCap(), 10_000_000_000e6);
-        assertEq(usdtVault.depositCap(), 10_000_000_000e6);
-        assertEq(ethVault.depositCap(),  1_000_000e18);
+        assertEq(usdcVault.depositCap(), 2_000_000_000e6);
+        assertEq(usdtVault.depositCap(), 4_000_000_000e6);
+        assertEq(ethVault.depositCap(),  500_000e18);
 
         _testSparkVaultDepositCapBoundary({
             vault              : usdcVault,
-            depositCap         : 10_000_000_000e6,
-            expectedMaxDeposit : 9_588_692_932.754565e6
+            depositCap         : 2_000_000_000e6,
+            expectedMaxDeposit : 1_588_692_932.754565e6
         });
 
         _testSparkVaultDepositCapBoundary({
             vault              : usdtVault,
-            depositCap         : 10_000_000_000e6,
-            expectedMaxDeposit : 9_189_811_901.398293e6
+            depositCap         : 4_000_000_000e6,
+            expectedMaxDeposit : 3_189_811_901.398293e6
         });
 
         _testSparkVaultDepositCapBoundary({
             vault              : ethVault,
-            depositCap         : 1_000_000e18,
-            expectedMaxDeposit : 983_634.985416955036945334e18
+            depositCap         : 500_000e18,
+            expectedMaxDeposit : 483_634.985416955036945334e18
         });
     }
 

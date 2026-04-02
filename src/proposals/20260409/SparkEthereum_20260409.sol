@@ -206,15 +206,15 @@ contract SparkEthereum_20260409 is SparkPayloadEthereum {
 
         // 1. Increase spUSDC vault deposit cap
 
-        spUsdc.setDepositCap(10_000_000_000e6);
+        spUsdc.setDepositCap(2_000_000_000e6);
 
         // 2. Increase spUSDT vault deposit cap
 
-        spUsdt.setDepositCap(10_000_000_000e6);
+        spUsdt.setDepositCap(4_000_000_000e6);
 
         // 3. Increase spETH vault deposit cap
 
-        spEth.setDepositCap(1_000_000e18);
+        spEth.setDepositCap(500_000e18);
     }
 
 }
