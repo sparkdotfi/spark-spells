@@ -542,8 +542,10 @@ interface IMorphoVaultV2Like {
     function isSentinel(address sentinel) external view returns (bool);
     function increaseAbsoluteCap(bytes memory idData, uint256 newAbsoluteCap) external;
     function increaseRelativeCap(bytes memory idData, uint256 newRelativeCap) external;
+    function managementFee() external view returns (uint96);
     function name() external view returns (string memory);
     function owner() external view returns (address);
+    function performanceFee() external view returns (uint96);
     function symbol() external view returns (string memory);
     function setCurator(address newCurator) external;
     function setName(string memory newName) external;
