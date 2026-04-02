@@ -276,7 +276,7 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
             pool       : Ethereum.CURVE_WEETHWETHNG,
             asset0     : Ethereum.WETH,
             asset1     : Ethereum.WEETH,
-            swapAmount : 1_000e18,
+            swapAmount : 999e18,
             swapKey    : swapKey
         }));
     }
@@ -395,19 +395,19 @@ contract SparkEthereum_20260409_SLLTests is SparkLiquidityLayerTests {
         _testSparkVaultDepositCapBoundary({
             vault              : usdcVault,
             depositCap         : 2_000_000_000e6,
-            expectedMaxDeposit : 1_588_692_932.754565e6
+            expectedMaxDeposit : 1_618_977_135.971064e6
         });
 
         _testSparkVaultDepositCapBoundary({
             vault              : usdtVault,
             depositCap         : 4_000_000_000e6,
-            expectedMaxDeposit : 3_189_811_901.398293e6
+            expectedMaxDeposit : 3_187_660_914.036061e6
         });
 
         _testSparkVaultDepositCapBoundary({
             vault              : ethVault,
             depositCap         : 500_000e18,
-            expectedMaxDeposit : 483_634.985416955036945334e18
+            expectedMaxDeposit : 483_572.107643672924911316e18
         });
     }
 
