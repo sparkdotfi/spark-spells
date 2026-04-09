@@ -90,7 +90,7 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
 
         ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot('', ctx.pool);
 
-        ReserveConfig memory rethConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'RETH');
+        ReserveConfig memory rethConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'rETH');
 
         assertEq(rethConfigBefore.isFrozen, false);
 
@@ -100,7 +100,8 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
 
         ReserveConfig memory rethConfigAfter = rethConfigBefore;
 
-        rethConfigAfter.ltv = 0;
+        rethConfigAfter.ltv      = 0;
+        rethConfigAfter.isFrozen = true;
 
         _validateReserveConfig(rethConfigAfter, allConfigsAfter);
 
