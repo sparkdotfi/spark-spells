@@ -18,7 +18,7 @@ import { EngineFlags } from "src/AaveV3PayloadBase.sol";
  *         - Deprecate rETH
  *         Spark Treasury:
  *         - Monthly Grants for Spark Foundation and Spark Assets Foundation.
- * Forum:  
+ * Forum:  https://forum.skyeco.com/t/april-23-2026-proposed-changes-to-spark-for-upcoming-spell/27831
  * Vote:   
  */
 contract SparkEthereum_20260423 is SparkPayloadEthereum {
