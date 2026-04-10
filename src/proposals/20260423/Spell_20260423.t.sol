@@ -92,6 +92,7 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
 
         ReserveConfig memory rethConfigBefore = _findReserveConfigBySymbol(allConfigsBefore, 'rETH');
 
+        assertEq(rethConfigBefore.ltv,      79_00);
         assertEq(rethConfigBefore.isFrozen, false);
 
         _executeAllPayloadsAndBridges();
@@ -104,8 +105,6 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
         rethConfigAfter.isFrozen = true;
 
         _validateReserveConfig(rethConfigAfter, allConfigsAfter);
-
-        assertEq(rethConfigAfter.isFrozen, true);
     }
 
     function test_ETHEREUM_sparkLend_deprecateRETH_e2e() external onChain(ChainIdUtils.Ethereum()) {
