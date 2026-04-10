@@ -5,9 +5,9 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEthereum.sol";
-
 import { EngineFlags } from "src/AaveV3PayloadBase.sol";
+
+import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEthereum.sol";
 
 /**
  * @title  April 23, 2026 Spark Ethereum Proposal
