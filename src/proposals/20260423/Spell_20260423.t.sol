@@ -127,109 +127,91 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
         _validateReserveConfig(rethConfigAfter, allConfigsAfter);
     }
 
-    function test_ETHEREUM_sparkLend_deprecateRETH_e2e() external onChain(ChainIdUtils.Ethereum()) {
-        address testUser      = makeAddr("testUser");
-        address reserveAsset  = Ethereum.RETH;
-        address debtAsset     = Ethereum.USDC;
-        uint256 reserveAmount = 100 * 10 ** IERC20Metadata(reserveAsset).decimals();
-        uint256 debtAmount    = 10 * 10 ** IERC20Metadata(debtAsset).decimals();
-
+    function test_ETHEREUM_sparkLend_deprecateRETHUserActions() external onChain(ChainIdUtils.Ethereum()) {
         IPool pool = IPool(SparkLend.POOL);
 
-        _setupUserSparkLendPosition(reserveAsset, debtAsset, testUser, 2 * reserveAmount, 2 * debtAmount);
+        IERC20 reth = IERC20(Ethereum.RETH);
+        IERC20 usdc = IERC20(Ethereum.USDC);
+
+        // Step 1: Set up an existing position
+
+        address testUser = makeAddr("testUser");
+
+        uint256 rethAmount = 100 * 10 ** IERC20Metadata(address(reth)).decimals();
+        uint256 usdcAmount = 10  * 10 ** IERC20Metadata(address(usdc)).decimals();
+
+        deal(address(reth), testUser, 2 * rethAmount);
+
+        vm.prank(testUser);
+        reth.approve(address(pool), type(uint256).max);
+
+        vm.startPrank(testUser);
+
+        pool.supply(address(reth), 2 * rethAmount, testUser, 0);
+        pool.borrow(address(usdc), 2 * usdcAmount, 2,        0, testUser);
+
+        vm.stopPrank();
+
+        // Step 2: Execute spell
 
         _executeAllPayloadsAndBridges();
 
-        // --- Step 1: Check reserve freeze conditions (can't supply/borrow, can withdraw/repay)
+        // Step 3: Ensure user can't supply or borrow.
 
-        deal(reserveAsset, testUser, reserveAmount);
+        deal(address(reth), testUser, rethAmount);
 
         vm.startPrank(testUser);
 
-        IERC20(reserveAsset).approve(address(pool), type(uint256).max);
+        reth.approve(address(pool), type(uint256).max);
 
         // User can't supply.
-        vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
-        pool.supply(reserveAsset, reserveAmount, testUser, 0);
+        vm.expectRevert(abi.encode("28"));  // RESERVE_FROZEN
+        pool.supply(address(reth), rethAmount, testUser, 0);
 
         // User can't borrow.
-        vm.expectRevert(bytes("28"));  // RESERVE_FROZEN
-        pool.borrow(reserveAsset, debtAmount, 2, 0, testUser);
+        vm.expectRevert(abi.encode("57"));  // As LTV is 0, user can't borrow.
+        pool.borrow(address(usdc), usdcAmount, 2, 0, testUser);
 
         vm.stopPrank();
 
-        // --- Step 2: Check collateral behaviour when borrowing another borrowable asset
-        //             (should be able to withdraw collateral, repay borrowAsset, and get liquidated)
+        // Step 4: User can repay the debt.
 
-        // Increase the supply cap
-
-        IPoolConfigurator poolConfigurator = IPoolConfigurator(SparkLend.POOL_CONFIGURATOR);
-
-        uint256 currentSupplyCap = pool.getConfiguration(reserveAsset).getSupplyCap();
-
-        vm.prank(Ethereum.SPARK_PROXY);
-        poolConfigurator.setSupplyCap(reserveAsset, currentSupplyCap + 1_000_000);
-
-        // User can repay the debt
-
-        deal(debtAsset, testUser, debtAmount);
+        deal(address(usdc), testUser, usdcAmount);
 
         vm.startPrank(testUser);
 
-        IERC20(debtAsset).safeIncreaseAllowance(address(pool), type(uint256).max);
+        usdc.safeIncreaseAllowance(address(pool), type(uint256).max);
 
-        pool.repay(debtAsset, debtAmount, 2, testUser);
+        pool.repay(address(usdc), usdcAmount, 2, testUser);
 
         vm.stopPrank();
 
-        // User can withdraw the collateral
+        // Step 5: User can withdraw the collateral.
 
         vm.startPrank(testUser);
 
-        pool.withdraw(reserveAsset, 1 * 10 ** IERC20Metadata(reserveAsset).decimals(), testUser);
+        pool.withdraw(address(reth), 1 * 10 ** IERC20Metadata(address(reth)).decimals(), testUser);
 
         vm.stopPrank();
 
-        // User can be liquidated.
+        // Step 6: User can be liquidated.
 
         address mockOracle = address(new MockAggregator(1));
 
         address[] memory assets  = new address[](1);
         address[] memory sources = new address[](1);
 
-        assets[0]  = reserveAsset;
+        assets[0]  = address(reth);
         sources[0] = mockOracle;
 
         vm.prank(Ethereum.SPARK_PROXY);
         AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
 
-        deal(debtAsset,    testUser, debtAmount);
-        deal(reserveAsset, testUser, reserveAmount);
+        deal(address(usdc), testUser, usdcAmount);
+        deal(address(reth), testUser, rethAmount);
 
         vm.prank(testUser);
-        pool.liquidationCall(reserveAsset, debtAsset, testUser, debtAmount, false);
-    }
-
-    function _setupUserSparkLendPosition(
-        address collateralAsset,
-        address debtAsset,
-        address testUser,
-        uint256 collateralAmount,
-        uint256 debtAmount
-    ) internal {
-        IPool pool = IPool(SparkLend.POOL);
-
-        deal(collateralAsset, testUser, collateralAmount);
-
-        vm.prank(testUser);
-        IERC20(collateralAsset).approve(address(pool), type(uint256).max);
-
-        vm.startPrank(testUser);
-
-        pool.supply(collateralAsset, collateralAmount, testUser, 0);
-        pool.borrow(debtAsset,       debtAmount,       2,          0, testUser);
-
-        vm.stopPrank();
+        pool.liquidationCall(address(reth), address(usdc), testUser, usdcAmount, false);
     }
 
 }
