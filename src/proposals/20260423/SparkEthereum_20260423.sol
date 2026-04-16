@@ -57,7 +57,7 @@ contract SparkEthereum_20260423 is SparkPayloadEthereum {
         // 3. Deprecate rETH.
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFreeze(Ethereum.RETH, true);
 
-        // 5. Monthly Grants for Spark Foundation and Spark Assets Foundation
+        // 4. Monthly Grants for Spark Foundation and Spark Assets Foundation
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG,       FOUNDATION_GRANT_AMOUNT);
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG, ASSET_FOUNDATION_GRANT_AMOUNT);
     }
