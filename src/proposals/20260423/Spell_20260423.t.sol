@@ -35,13 +35,13 @@ contract SparkEthereum_20260423_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260423;
-        _blockDate = 1775757306;  // 2026-04-09T17:55:06Z
+        _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0xFa5fc020311fCC1A467FEC5886640c7dD746deAa;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
     }
 
 }
@@ -60,13 +60,13 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260423;
-        _blockDate = 1775757306;  // 2026-04-09T17:55:06Z
+        _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xe854CE4A58eC1BAf997ccA483de26B0935Ae0f45;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
     }
 
     function test_ETHEREUM_sparkLend_wethIrmUpdate() external onChain(ChainIdUtils.Ethereum()) {
@@ -142,10 +142,9 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
 
         deal(address(reth), testUser, 2 * rethAmount);
 
-        vm.prank(testUser);
-        reth.approve(address(pool), type(uint256).max);
-
         vm.startPrank(testUser);
+
+        reth.approve(address(pool), type(uint256).max);
 
         pool.supply(address(reth), 2 * rethAmount, testUser, 0);
         pool.borrow(address(usdc), 2 * usdcAmount, 2,        0, testUser);
@@ -157,8 +156,6 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
         _executeAllPayloadsAndBridges();
 
         // Step 3: Ensure user can't supply or borrow.
-
-        deal(address(reth), testUser, rethAmount);
 
         vm.startPrank(testUser);
 
@@ -172,23 +169,13 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
         vm.expectRevert(abi.encode("57"));  // As LTV is 0, user can't borrow.
         pool.borrow(address(usdc), usdcAmount, 2, 0, testUser);
 
-        vm.stopPrank();
-
         // Step 4: User can repay the debt.
-
-        deal(address(usdc), testUser, usdcAmount);
-
-        vm.startPrank(testUser);
 
         usdc.safeIncreaseAllowance(address(pool), type(uint256).max);
 
         pool.repay(address(usdc), usdcAmount, 2, testUser);
 
-        vm.stopPrank();
-
         // Step 5: User can withdraw the collateral.
-
-        vm.startPrank(testUser);
 
         pool.withdraw(address(reth), 1 * 10 ** IERC20Metadata(address(reth)).decimals(), testUser);
 
@@ -208,7 +195,6 @@ contract SparkEthereum_20260423_SparklendTests is SparklendTests {
         AaveOracle(SparkLend.AAVE_ORACLE).setAssetSources(assets, sources);
 
         deal(address(usdc), testUser, usdcAmount);
-        deal(address(reth), testUser, rethAmount);
 
         vm.prank(testUser);
         pool.liquidationCall(address(reth), address(usdc), testUser, usdcAmount, false);
@@ -223,13 +209,13 @@ contract SparkEthereum_20260423_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260423;
-        _blockDate = 1775757306;  // 2026-04-09T17:55:06Z
+        _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xe854CE4A58eC1BAf997ccA483de26B0935Ae0f45;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
@@ -240,7 +226,7 @@ contract SparkEthereum_20260423_SpellTests is SpellTests {
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      36_373_387.913977620254401020e18);
-        assertEq(foundationBalanceBefore,      400_000.0095e18);
+        assertEq(foundationBalanceBefore,      0.0095e18);
         assertEq(assetFoundationBalanceBefore, 142_000e18);
 
         _executeAllPayloadsAndBridges();
