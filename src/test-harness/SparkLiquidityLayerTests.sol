@@ -3907,86 +3907,82 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](59);
+        integrations = new SLLIntegration[](55);
 
         integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
         integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
-        integrations[2]  = _createAaveIntegration("AAVE-ETH_LIDO_USDS", AAVE_ETH_LIDO_USDS);
-        integrations[3]  = _createAaveIntegration("AAVE-ETH_USDC",      AAVE_ETH_USDC);
-        integrations[4]  = _createAaveIntegration("AAVE-ETH_USDS",      AAVE_ETH_USDS);
-        integrations[5]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
-        integrations[6]  = _createAaveIntegration("AAVE-SPETH",         SparkLend.WETH_SPTOKEN);
-        integrations[7]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  SparkLend.USDC_SPTOKEN); // SparkLend
-        integrations[8]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
-        integrations[9]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
-        integrations[10] = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
+        integrations[2]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
+        integrations[3]  = _createAaveIntegration("AAVE-SPETH",         SparkLend.WETH_SPTOKEN);
+        integrations[4]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  SparkLend.USDC_SPTOKEN); // SparkLend
+        integrations[5]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
+        integrations[6]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
+        integrations[7]  = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
 
-        integrations[11] = _createCctpGeneralIntegration("CCTP_GENERAL");
+        integrations[8] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
-        integrations[12] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[13] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
-        integrations[14] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[15] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[16] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[9] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[10] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+        integrations[11] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        integrations[12] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        integrations[13] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
 
-        integrations[17] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
+        integrations[14] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
 
-        integrations[18] = _createCurveLpIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
-        integrations[19] = _createCurveLpIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
+        integrations[15] = _createCurveLpIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
+        integrations[16] = _createCurveLpIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
 
-        integrations[20] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDC",   Ethereum.CURVE_PYUSDUSDC);
-        integrations[21] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS",   Ethereum.CURVE_PYUSDUSDS);
-        integrations[22] = _createCurveSwapIntegration("CURVE_SWAP-SUSDSUSDT",   Ethereum.CURVE_SUSDSUSDT);
-        integrations[23] = _createCurveSwapIntegration("CURVE_SWAP-USDCUSDT",    Ethereum.CURVE_USDCUSDT);
-        integrations[24] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", Ethereum.CURVE_WEETHWETHNG);
+        integrations[17] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDC",   Ethereum.CURVE_PYUSDUSDC);
+        integrations[18] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS",   Ethereum.CURVE_PYUSDUSDS);
+        integrations[19] = _createCurveSwapIntegration("CURVE_SWAP-SUSDSUSDT",   Ethereum.CURVE_SUSDSUSDT);
+        integrations[20] = _createCurveSwapIntegration("CURVE_SWAP-USDCUSDT",    Ethereum.CURVE_USDCUSDT);
+        integrations[21] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", Ethereum.CURVE_WEETHWETHNG);
 
-        integrations[25] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",       MORPHO_USDC_BC);
-        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1",   Ethereum.MORPHO_VAULT_DAI_1);
-        integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",    Ethereum.MORPHO_VAULT_USDS);
-        integrations[28] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
-        integrations[29] = _createERC4626Integration("ERC4626-FLUID_SUSDS",          Ethereum.FLUID_SUSDS);  // TODO: Fix FluidLiquidityError
-        integrations[30] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
-        integrations[31] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", MORPHO_VAULT_V2_USDT);
+        integrations[22] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",       MORPHO_USDC_BC);
+        integrations[23] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1",   Ethereum.MORPHO_VAULT_DAI_1);
+        integrations[24] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",    Ethereum.MORPHO_VAULT_USDS);
+        integrations[25] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
+        integrations[26] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
+        integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", MORPHO_VAULT_V2_USDT);
 
-        integrations[32] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
+        integrations[28] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 
-        integrations[33] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
+        integrations[29] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
-        integrations[34] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
-        integrations[35] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
+        integrations[30] = _createMapleIntegration("MAPLE-SYRUP_USDC", Ethereum.SYRUP_USDC);
+        integrations[31] = _createMapleIntegration("MAPLE-SYRUP_USDT", Ethereum.SYRUP_USDT);
 
-        integrations[36] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[32] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[37] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
-        integrations[38] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
-        integrations[39] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
+        integrations[33] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
+        integrations[34] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
+        integrations[35] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
 
-        integrations[40] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[41] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[42] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
-        integrations[43] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
+        integrations[36] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[37] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[38] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[39] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
 
-        integrations[44] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
+        integrations[40] = _createSuperstateIntegration("SUPERSTATE-USTB", Ethereum.USDC, Ethereum.USTB, Ethereum.USTB);
 
-        integrations[45] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
+        integrations[41] = _createSuperstateUsccIntegration("SUPERSTATE_TRANSFER-USCC", Ethereum.USDC, Ethereum.USCC, USCC_DEPOSIT, Ethereum.USCC);
 
-        integrations[46] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
-        integrations[47] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
-        integrations[48] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
+        integrations[42] = _createTransferAssetIntegration("B2C2_TRANSFER-USDC",  Ethereum.USDC,  B2C2);
+        integrations[43] = _createTransferAssetIntegration("B2C2_TRANSFER-USDT",  Ethereum.USDT,  B2C2);
+        integrations[44] = _createTransferAssetIntegration("B2C2_TRANSFER-PYUSD", Ethereum.PYUSD, B2C2);
 
-        integrations[49] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        integrations[50] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
+        integrations[45] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
+        integrations[46] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
 
-        integrations[51] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 2_000_000e18);
-        integrations[52] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  2_000_000e18);
+        integrations[47] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 2_000_000e18);
+        integrations[48] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  2_000_000e18);
 
-        integrations[53] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDC_PYUSD",  Ethereum.USDC,  PAXOS_USDC_PYUSD);
-        integrations[54] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDC",  Ethereum.PYUSD, PAXOS_PYUSD_USDC);
-        integrations[55] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",  Ethereum.PYUSD, PAXOS_PYUSD_USDG);
-        integrations[56] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",  Ethereum.USDG,  PAXOS_USDG_PYUSD);
+        integrations[49] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDC_PYUSD",  Ethereum.USDC,  PAXOS_USDC_PYUSD);
+        integrations[50] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDC",  Ethereum.PYUSD, PAXOS_PYUSD_USDC);
+        integrations[51] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",  Ethereum.PYUSD, PAXOS_PYUSD_USDG);
+        integrations[52] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",  Ethereum.USDG,  PAXOS_USDG_PYUSD);
 
-        integrations[57] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
-        integrations[58] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
+        integrations[53] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
+        integrations[54] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -4013,15 +4009,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsArbitrumOne() internal view returns (SLLIntegration[] memory integrations) {
         SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(Arbitrum.PSM3, Arbitrum.USDC, Arbitrum.USDS, Arbitrum.SUSDS);
 
-        integrations = new SLLIntegration[](basicIntegrations.length + 2);
+        integrations = new SLLIntegration[](basicIntegrations.length);
 
         for (uint256 i = 0; i < basicIntegrations.length; ++i) {
             integrations[i] = basicIntegrations[i];
         }
-
-        integrations[5] = _createERC4626Integration("ERC4626-FLUID_SUSDS", FLUID_SUSDS_ARBITRUM);
-
-        integrations[6] = _createAaveIntegration("AAVE-ATOKEN_USDC", Arbitrum.ATOKEN_USDC);
 
         return integrations;
     }
@@ -4029,18 +4021,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsBase() internal view returns (SLLIntegration[] memory integrations) {
         SLLIntegration[] memory basicIntegrations = _getPreExecutionIntegrationsBasicPsm3(Base.PSM3, Base.USDC, Base.USDS, Base.SUSDS);
 
-        integrations = new SLLIntegration[](basicIntegrations.length + 4);
+        integrations = new SLLIntegration[](basicIntegrations.length + 2);
 
         for (uint256 i = 0; i < basicIntegrations.length; ++i) {
             integrations[i] = basicIntegrations[i];
         }
 
         integrations[5] = _createERC4626Integration("ERC4626-MORPHO_VAULT_SUSDC", Base.MORPHO_VAULT_SUSDC);
-        integrations[6] = _createERC4626Integration("ERC4626-FLUID_SUSDS",        Base.FLUID_SUSDS);
 
-        integrations[7] = _createAaveIntegration("AAVE-ATOKEN_USDC", Base.ATOKEN_USDC);
-
-        integrations[8] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
+        integrations[6] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", BASE_MORPHO_TOKEN, BASE_SPARK_MULTISIG);
 
         return integrations;
     }
@@ -4132,61 +4121,30 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length - 4);
-
-        uint256 index = 0;
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            if (
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-FLUID_SUSDS")) ||
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ETH_LIDO_USDS"))  ||
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ETH_USDS"))       ||
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ETH_USDC"))
-            ) continue;
-
-            newIntegrations[index] = integrations[i];
-
-            index++;
+            newIntegrations[i] = integrations[i];
         }
     }
 
     function _getPostExecutionIntegrationsBase(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Remove "ERC4626-FLUID_SUSDS" and "AAVE-ATOKEN_USDC" integrations which are expected to be offboarded after execution
-        newIntegrations = new SLLIntegration[](integrations.length - 2);
+        newIntegrations = new SLLIntegration[](integrations.length);
 
-        uint256 index = 0;
-
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            if (
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-FLUID_SUSDS")) ||
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC"))
-            ) continue;
-               
-            newIntegrations[index] = integrations[i];
-
-            index++;
+        for (uint256 i = 0; i < integrations.length; ++i) {               
+            newIntegrations[i] = integrations[i];
         }
     }
 
     function _getPostExecutionIntegrationsArbitrumOne(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Remove "ERC4626-FLUID_SUSDS" and "AAVE-ATOKEN_USDC" integrations which are expected to be offboarded after execution
-        newIntegrations = new SLLIntegration[](integrations.length - 2);
-
-        uint256 index = 0;
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            if (
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-FLUID_SUSDS")) ||
-                keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC"))
-            ) continue;
-               
-            newIntegrations[index] = integrations[i];
-
-            index++;
+            newIntegrations[i] = integrations[i];
         }
     }
 
