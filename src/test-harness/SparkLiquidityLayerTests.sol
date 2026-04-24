@@ -4102,13 +4102,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             return _getPostExecutionIntegrationsArbitrumOne(integrations);
         }
 
+        if (block.chainid == ChainIdUtils.Avalanche()) {
+            return _getPostExecutionIntegrationsAvalanche(integrations);
+        }
+
         if (block.chainid == ChainIdUtils.Base()) {
             return _getPostExecutionIntegrationsBase(integrations);
         }
 
         // TODO: Use a function selector getter here to dynamically call the correct helper function based on chainId.
         if (
-            block.chainid == ChainIdUtils.Avalanche() ||
             block.chainid == ChainIdUtils.Optimism() ||
             block.chainid == ChainIdUtils.Unichain()
         ) {
@@ -4121,10 +4124,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        // Remove "AAVE-CORE_AUSDT" integration which is expected to be offboarded after execution.
+        newIntegrations = new SLLIntegration[](integrations.length - 1);
+
+        uint256 index = 0;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
+            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-CORE_AUSDT")) ) continue;
+
+            newIntegrations[index] = integrations[i];
+
+            index++;
         }
     }
 
@@ -4145,6 +4155,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
+        }
+    }
+
+    function _getPostExecutionIntegrationsAvalanche(
+        SLLIntegration[] memory integrations
+    ) internal view returns (SLLIntegration[] memory newIntegrations) {
+        // Remove "AAVE-ATOKEN_USDC" integration which is expected to be offboarded after execution.
+        newIntegrations = new SLLIntegration[](integrations.length - 1);
+
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC")) ) continue;
+
+            newIntegrations[index] = integrations[i];
+
+            index++;
         }
     }
 
