@@ -49,15 +49,32 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
         // chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
     }
 
+    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
+        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.LBTC, 5_000, 200, 12 hours);
+    }
+
+    function test_ETHEREUM_sparkLend_wbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
+        _assertSupplyCapConfig(Ethereum.WBTC, 3_000, 500, 12 hours);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertSupplyCapConfig(Ethereum.WBTC, 30_000, 500, 12 hours);
+    }
+
 }
 
 contract SparkEthereum_20260507_SpellTests is SpellTests {
 
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
+    uint256 internal constant SPK_BUYBACKS_AMOUNT           = 326_945e18;
 
     constructor() {
-        _spellId   = 20260423;
+        _spellId   = 20260507;
         _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
     }
 
@@ -73,16 +90,19 @@ contract SparkEthereum_20260507_SpellTests is SpellTests {
         uint256 sparkProxyBalanceBefore      = usds.balanceOf(Ethereum.SPARK_PROXY);
         uint256 foundationBalanceBefore      = usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
+        uint256 almOpsBalanceBefore          = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      36_373_387.913977620254401020e18);
         assertEq(foundationBalanceBefore,      0.0095e18);
         assertEq(assetFoundationBalanceBefore, 142_000e18);
+        assertEq(almOpsBalanceBefore,          0);
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),                     sparkProxyBalanceBefore - FOUNDATION_GRANT_AMOUNT - ASSET_FOUNDATION_GRANT_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),                     sparkProxyBalanceBefore - FOUNDATION_GRANT_AMOUNT - ASSET_FOUNDATION_GRANT_AMOUNT - SPK_BUYBACKS_AMOUNT);
         assertEq(usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG),       foundationBalanceBefore + FOUNDATION_GRANT_AMOUNT);
         assertEq(usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG), assetFoundationBalanceBefore + ASSET_FOUNDATION_GRANT_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.ALM_OPS_MULTISIG),                almOpsBalanceBefore + SPK_BUYBACKS_AMOUNT);
     }
 
 }

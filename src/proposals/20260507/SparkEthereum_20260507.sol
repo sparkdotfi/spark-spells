@@ -27,8 +27,8 @@ import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEther
 contract SparkEthereum_20260507 is SparkPayloadEthereum {
 
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
-    uint256 internal constant EXCESS_USDS_AMOUNT            = 326_945e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
+    uint256 internal constant SPK_BUYBACKS_AMOUNT           = 326_945e18;
 
     function _postExecute() internal override {
         // 7. Update LBTC Parameters.
@@ -38,7 +38,6 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
             gap              : 200,
             increaseCooldown : 12 hours
         });
-        
 
         // 8. Update WBTC Parameters.
         ICapAutomator(SparkLend.CAP_AUTOMATOR).setSupplyCapConfig({
@@ -53,7 +52,7 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
         IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG, ASSET_FOUNDATION_GRANT_AMOUNT);
 
         // 11. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks
-        IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, EXCESS_USDS_AMOUNT);
+        IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, SPK_BUYBACKS_AMOUNT);
     }
 
 }
