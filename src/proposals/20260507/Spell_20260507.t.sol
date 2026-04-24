@@ -26,7 +26,24 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
+interface IEndpointV2 {
+    function getConfig(address receiver, address uln, uint32 eid, uint32 configType) external view returns (bytes memory);
+}
+
 contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
+
+    // the formal properties are documented in the setter functions
+    struct UlnConfig {
+        uint64    confirmations;
+        // we store the length of required DVNs and optional DVNs instead of using DVN.length directly to save gas
+        uint8     requiredDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
+        uint8     optionalDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
+        uint8     optionalDVNThreshold; // (0, optionalDVNCount]
+        address[] requiredDVNs; // no duplicates. sorted an an ascending order. allowed overlap with optionalDVNs
+        address[] optionalDVNs; // no duplicates. sorted an an ascending order. allowed overlap with requiredDVNs
+    }
+
+    address internal constant LAYERZERO_ENDPOINT_V2 = 0x1a44076050125825900e736c501f859c50fE728c;
 
     constructor() {
         _spellId   = 20260507;
@@ -80,6 +97,59 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
+    }
+    
+    /**********************************************************************************************/
+    /*** Avalanche - Update Bridge DVN Configuration                                            ***/
+    /**********************************************************************************************/
+
+    function test_AVALANCHE_sll_updateBridgeDvnConfiguration() external onChain(ChainIdUtils.Avalanche()) {
+        IEndpointV2 endpoint = IEndpointV2(LAYERZERO_ENDPOINT_V2);
+
+        address receiveUln302 = 0xbf3521d309642FA9B1c91A08609505BA09752c61;
+
+        bytes memory configBytes = endpoint.getConfig(
+            Avalanche.SPARK_RECEIVER,
+            receiveUln302,
+            30101,  // eid 30101 is for Ethereum Mainnet
+            2       // configType 2 is for UlnConfig
+        );
+        UlnConfig memory config = abi.decode(configBytes, (UlnConfig));
+
+        // Verify the old config
+        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
+        assertEq(config.requiredDVNCount,     2,                                          "requiredDVNCount should be 2");
+        assertEq(config.optionalDVNCount,     0,                                          "optionalDVNCount should be 0");
+        assertEq(config.optionalDVNThreshold, 0,                                          "optionalDVNThreshold should be 0");
+        assertEq(config.requiredDVNs.length,  2,                                          "requiredDVNs length should be 2");
+        assertEq(config.requiredDVNs[0],      0x962F502A63F5FBeB44DC9ab932122648E8352959, "first DVN should be LayerZero Labs");
+        assertEq(config.requiredDVNs[1],      0xD56e4eAb23cb81f43168F9F45211Eb027b9aC7cc, "second DVN should be Google");
+        assertEq(config.optionalDVNs.length,  0,                                          "optionalDVNs length should be 0");
+
+        _executeAllPayloadsAndBridges();
+
+        configBytes = endpoint.getConfig(
+            Avalanche.SPARK_RECEIVER,
+            receiveUln302,
+            30101,  // eid 30101 is for Ethereum Mainnet
+            2       // configType 2 is for UlnConfig
+        );
+        config = abi.decode(configBytes, (UlnConfig));
+
+        // Verify the new config
+        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
+        assertEq(config.requiredDVNCount,     0,                                          "requiredDVNCount should be 255");
+        assertEq(config.optionalDVNCount,     7,                                          "optionalDVNCount should be 7");
+        assertEq(config.optionalDVNThreshold, 4,                                          "optionalDVNThreshold should be 4");
+        assertEq(config.requiredDVNs.length,  0,                                          "requiredDVNs length should be 0");
+        assertEq(config.optionalDVNs.length,  7,                                          "optionalDVNs length should be 7");
+        assertEq(config.optionalDVNs[0],      0x07C05EaB7716AcB6f83ebF6268F8EECDA8892Ba1, "first DVN should be Horizen");
+        assertEq(config.optionalDVNs[1],      0x962F502A63F5FBeB44DC9ab932122648E8352959, "second DVN should be LayerZero Labs");
+        assertEq(config.optionalDVNs[2],      0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5, "third DVN should be Nethermind");
+        assertEq(config.optionalDVNs[3],      0xbe57e9E7d9eB16B92C6383792aBe28D64a18c0F1, "fourth DVN should be Deutsche Telekom");
+        assertEq(config.optionalDVNs[4],      0xcC49E6fca014c77E1Eb604351cc1E08C84511760, "fifth DVN should be Canary");
+        assertEq(config.optionalDVNs[5],      0xE4193136B92bA91402313e95347c8e9FAD8d27d0, "sixth DVN should be Luganodes");
+        assertEq(config.optionalDVNs[6],      0xE94aE34DfCC87A61836938641444080B98402c75, "seventh DVN should be P2P");
     }
 
 }
