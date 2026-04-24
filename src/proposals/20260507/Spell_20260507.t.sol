@@ -4,8 +4,13 @@ pragma solidity ^0.8.25;
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
+
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 import { UserConfiguration }    from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
@@ -31,7 +36,50 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
+        // chainData[ChainIdUtils.Avalanche()].payload = ;
+    }
+
+    /**********************************************************************************************/
+    /*** Ethereum - Offboard Aave Core USDT                                                     ***/
+    /**********************************************************************************************/
+
+    function test_ETHEREUM_sll_deactivateAaveCoreUsdt() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController controller = MainnetController(ctx.controller);
+
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  Ethereum.ATOKEN_CORE_USDT);
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), Ethereum.ATOKEN_CORE_USDT);
+
+        _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey,  0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+    }
+
+    /**********************************************************************************************/
+    /*** Avalanche - Offboard Aave USDC                                                         ***/
+    /**********************************************************************************************/
+
+    function test_AVALANCHE_sll_deactivateAaveCoreUsdc() external onChain(ChainIdUtils.Avalanche()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        ForeignController controller = ForeignController(ctx.controller);
+
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  Avalanche.ATOKEN_CORE_USDC);
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), Avalanche.ATOKEN_CORE_USDC);
+
+        _assertRateLimit(depositKey,  20_000_000e6,     10_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey,  0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
     }
 
 }
@@ -48,6 +96,10 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
     }
+
+    /**********************************************************************************************/
+    /*** Ethereum - Update LBTC and WBTC CapAutomator Supply Caps                               ***/
+    /**********************************************************************************************/
 
     function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);

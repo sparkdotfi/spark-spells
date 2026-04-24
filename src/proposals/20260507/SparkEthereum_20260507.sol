@@ -6,6 +6,10 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+
 import { EngineFlags } from "src/AaveV3PayloadBase.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
@@ -18,6 +22,8 @@ import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEther
  * @notice SparkLend:
  *         - Update LBTC Parameters.
  *         - Update WBTC Parameters.
+ *         Spark Liquidity Layer:
+ *         - Offboard Aave Core USDT.
  *         Spark Treasury:
  *         - Monthly Grants for Spark Foundation and Spark Assets Foundation.
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
@@ -30,7 +36,24 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
     uint256 internal constant SPK_BUYBACKS_AMOUNT           = 326_945e18;
 
+    constructor() {
+        // PAYLOAD_AVALANCHE = ;
+    }
+
     function _postExecute() internal override {
+        MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
+        IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+
+        bytes32 aaveDepositKey  = almController.LIMIT_AAVE_DEPOSIT();
+        bytes32 aaveWithdrawKey = almController.LIMIT_AAVE_WITHDRAW();
+
+        // 6. Offboard Aave Core USDT.
+        bytes32 ATOKEN_CORE_USDT_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDT);
+        bytes32 ATOKEN_CORE_USDT_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDT);
+
+        rateLimits.setRateLimitData(ATOKEN_CORE_USDT_DEPOSIT_KEY,  0, 0);
+        rateLimits.setRateLimitData(ATOKEN_CORE_USDT_WITHDRAW_KEY, 0, 0);
+
         // 7. Update LBTC Parameters.
         ICapAutomator(SparkLend.CAP_AUTOMATOR).setSupplyCapConfig({
             asset            : Ethereum.LBTC,
