@@ -36,6 +36,9 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
     uint256 internal constant SPK_BUYBACKS_AMOUNT           = 326_945e18;
 
+    address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
+    address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
+
     constructor() {
         // PAYLOAD_AVALANCHE = ;
     }
@@ -44,10 +47,29 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
         MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
 
+        // 5a. Deactivate old Morpho Vault V2 USDT integration.
+        bytes32 erc4626DepositKey  = almController.LIMIT_4626_DEPOSIT();
+
+        bytes32 OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY = RateLimitHelpers.makeAddressKey(erc4626DepositKey, OLD_MORPHO_VAULT_V2_USDT);
+
+        rateLimits.setRateLimitData(OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY,  0, 0);
+
+        // 5b. Onboard new Morpho Vault V2 USDT integration with same configuration as old one.
+        // NOTE: New Morpho Vault V2 USDT is already configured with the same parameters as old one outside spell.
+        //       So onboarding only configures the rate limit.
+
+        _configureERC4626Vault({
+            controller      : Ethereum.ALM_CONTROLLER,
+            vault           : NEW_MORPHO_VAULT_V2_USDT,
+            depositMax      : 100_000_000e6,
+            depositSlope    : 1_000_000_000e6 / uint256(1 days),
+            maxExchangeRate : 1_000_000
+        });
+
+        // 6. Offboard Aave Core USDT.
         bytes32 aaveDepositKey  = almController.LIMIT_AAVE_DEPOSIT();
         bytes32 aaveWithdrawKey = almController.LIMIT_AAVE_WITHDRAW();
 
-        // 6. Offboard Aave Core USDT.
         bytes32 ATOKEN_CORE_USDT_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(aaveDepositKey,  Ethereum.ATOKEN_CORE_USDT);
         bytes32 ATOKEN_CORE_USDT_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(aaveWithdrawKey, Ethereum.ATOKEN_CORE_USDT);
 

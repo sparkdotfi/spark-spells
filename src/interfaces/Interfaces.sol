@@ -531,12 +531,16 @@ interface IMorphoVaultV2Like {
     event SetIsAllocator(address indexed account, bool newIsAllocator);
 
     function accrueInterest() external;
+    function adapters(uint256 index) external view returns (address);
+    function adaptersLength() external view returns (uint256);
+    function adapterRegistry() external view returns (address);
     function allocate(address adapter, bytes memory data, uint256 assets) external;
     function asset() external view returns (address);
     function balanceOf(address account) external view returns (uint256);
     function curator() external view returns (address);
     function convertToAssets(uint256 shares) external view returns (uint256);
     function deallocate(address adapter, bytes memory data, uint256 assets) external;
+    function decimals() external view returns (uint8);
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function isAllocator(address allocator) external view returns (bool);
     function isSentinel(address sentinel) external view returns (bool);

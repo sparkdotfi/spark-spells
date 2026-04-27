@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { VmSafe } from "forge-std/Vm.sol";
+
+import { MarketParams } from "metamorpho/interfaces/IMetaMorpho.sol";
+import { Id }           from "metamorpho/interfaces/IMetaMorpho.sol";
+import { IMorpho }      from "metamorpho/interfaces/IMetaMorpho.sol";
+
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -26,8 +32,19 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
+import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
+
+import {
+    IMorphoVaultV2Like,
+    IMorphoLike
+} from "src/interfaces/Interfaces.sol";
+
 interface IEndpointV2 {
     function getConfig(address receiver, address uln, uint32 eid, uint32 configType) external view returns (bytes memory);
+}
+
+interface IMorphoVaultV2FactoryLike {
+    function isVaultV2(address target) external view returns (bool);
 }
 
 contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
@@ -43,7 +60,14 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         address[] optionalDVNs; // no duplicates. sorted an an ascending order. allowed overlap with requiredDVNs
     }
 
-    address internal constant LAYERZERO_ENDPOINT_V2 = 0x1a44076050125825900e736c501f859c50fE728c;
+    address internal constant LAYERZERO_ENDPOINT_V2   = 0x1a44076050125825900e736c501f859c50fE728c;
+
+    address internal constant ADAPTER_REGISTRY        = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
+    address internal constant MORPHO                  = Ethereum.MORPHO;
+    address internal constant MORPHO_VAULT_V2_FACTORY = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
+
+    address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
+    address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
     constructor() {
         _spellId   = 20260507;
@@ -150,6 +174,139 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(config.optionalDVNs[4],      0xcC49E6fca014c77E1Eb604351cc1E08C84511760, "fifth DVN should be Canary");
         assertEq(config.optionalDVNs[5],      0xE4193136B92bA91402313e95347c8e9FAD8d27d0, "sixth DVN should be Luganodes");
         assertEq(config.optionalDVNs[6],      0xE94aE34DfCC87A61836938641444080B98402c75, "seventh DVN should be P2P");
+    }
+
+    /**********************************************************************************************/
+    /*** Ethereum - Onboard new Morpho Vault V2 USDT                                              ***/
+    /**********************************************************************************************/
+
+    function test_ETHEREUM_sll_deactivateMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        MainnetController controller = MainnetController(ctx.controller);
+
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_DEPOSIT(),  OLD_MORPHO_VAULT_V2_USDT);
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_WITHDRAW(), OLD_MORPHO_VAULT_V2_USDT);
+
+        _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(depositKey,  0,                 0);
+        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+    }
+
+    function test_ETHEREUM_sll_onboardNewMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
+        _testERC4626Onboarding({
+            vault                 : NEW_MORPHO_VAULT_V2_USDT,
+            expectedDepositAmount : 10_000_000e6,
+            depositMax            : 100_000_000e6,
+            depositSlope          : 1_000_000_000e6 / uint256(1 days),
+            tolerance             : 10,
+            skipInitialCheck      : false
+        });
+    }
+
+    function test_ETHEREUM_sll_switchMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like oldVault = IMorphoVaultV2Like(OLD_MORPHO_VAULT_V2_USDT);
+        IMorphoVaultV2Like newVault = IMorphoVaultV2Like(NEW_MORPHO_VAULT_V2_USDT);
+
+        assertEq(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).isVaultV2(address(oldVault)), true);
+        assertEq(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).isVaultV2(address(newVault)), true);
+
+        // Old vault adapter registry is not set, new vault adapter registry is set to the ADAPTER_REGISTRY.
+        assertEq(oldVault.adapterRegistry(), address(0));
+        assertEq(newVault.adapterRegistry(), ADAPTER_REGISTRY);
+
+        assertEq(oldVault.adaptersLength(), newVault.adaptersLength());
+        assertEq(oldVault.asset(),          newVault.asset());
+        assertEq(oldVault.curator(),        newVault.curator());
+        assertEq(oldVault.decimals(),       newVault.decimals());
+        assertEq(oldVault.managementFee(),  newVault.managementFee());
+        assertEq(oldVault.name(),           newVault.name());
+        assertEq(oldVault.owner(),          newVault.owner());
+        assertEq(oldVault.performanceFee(), newVault.performanceFee());
+        assertEq(oldVault.symbol(),         newVault.symbol());
+
+        assertEq(oldVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     newVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
+        assertEq(oldVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), newVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG));
+
+        // Verify `SetIsSentinel` event emitted only once for new vault.
+        VmSafe.EthGetLogs[] memory sentinelLogs = _getEvents(block.chainid, address(newVault), IMorphoVaultV2Like.SetIsSentinel.selector);
+
+        assertEq(sentinelLogs.length,                                  1);
+        assertEq(address(uint160(uint256(sentinelLogs[0].topics[1]))), Ethereum.MORPHO_GUARDIAN_MULTISIG);
+        assertEq(bool(abi.decode(sentinelLogs[0].data, (bool))),       true);
+    }
+
+    /// forge-config: default.isolate = true
+    function test_ETHEREUM_sll_morphoVaultV2UsdtE2E() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 SUSDS_USDT_MARKET_ID = 0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b;
+        bytes32 CBBTC_USDT_MARKET_ID = 0x45671fb8d5dea1c4fbca0b8548ad742f6643300eeb8dbd34ad64a658b2b05bca;
+
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(NEW_MORPHO_VAULT_V2_USDT);
+
+        address adapter = vault.adapters(0);
+
+        _executeAllPayloadsAndBridges();
+
+        // Step 1: Deposit to the vault.
+        uint256 depositAmount = 50_000_000e6;
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, depositAmount);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        _depositERC4626(Ethereum.ALM_CONTROLLER, address(vault), depositAmount);
+
+        assertEq(vault.balanceOf(Ethereum.ALM_PROXY), 49_947_255.750788416740306559e18);
+
+        IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(Id.wrap(SUSDS_USDT_MARKET_ID), adapter);
+
+        assertGe(position.supplyShares, 45_000_000e12);
+
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 116);
+
+        vm.warp(block.timestamp + 1 days);
+
+        vault.accrueInterest();
+
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 3040.859011e6);
+
+        // Step 2: Reallocate into cbbtc/usdt market.
+        uint256 withdrawAmount = depositAmount;
+
+        MarketParams memory susdsMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
+        MarketParams memory cbbtcMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
+
+        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
+
+        vault.deallocate(adapter, abi.encode(susdsMarketParams), withdrawAmount);
+        vault.allocate(adapter,   abi.encode(cbbtcMarketParams), withdrawAmount);
+
+        vm.stopPrank();
+
+        // Step 3: Try to withdraw (fails because there is not enough liquidity in the sUSDS/USDT market anymore)
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        _withdrawERC4626(Ethereum.ALM_CONTROLLER, address(vault), withdrawAmount);
+
+        vm.warp(block.timestamp + 1 days);
+
+        // Step 4: Reallocate back to sUSDS/USDT market.
+        vm.startPrank(Ethereum.ALM_PROXY_FREEZABLE);
+
+        vault.deallocate(adapter, abi.encode(cbbtcMarketParams), withdrawAmount);
+
+        vault.allocate(adapter, abi.encode(susdsMarketParams), withdrawAmount);
+
+        vm.stopPrank();
+
+        // Step 5: Do successful withdrawal.
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        _withdrawERC4626(Ethereum.ALM_CONTROLLER, address(vault), withdrawAmount);
+
+        // Assert that Interest Remains after withdrawal.
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 3294.233473e6);
     }
 
 }
