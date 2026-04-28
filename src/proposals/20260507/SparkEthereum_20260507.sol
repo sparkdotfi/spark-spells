@@ -23,12 +23,14 @@ import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEther
  *         - Update LBTC Parameters.
  *         - Update WBTC Parameters.
  *         Spark Liquidity Layer:
+ *         - Update Spark Blue Chip USDT Morpho Vault.
  *         - Offboard Aave Core USDT.
  *         Spark Treasury:
  *         - Monthly Grants for Spark Foundation and Spark Assets Foundation.
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
- * Forum:  
- * Vote:   
+ * Forum:  https://forum.skyeco.com/t/may-7-2026-proposed-changes-to-spark-for-upcoming-spell/27870
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x7909f554a2f33155e234788382927f9af0d4dd5a4808349bc0ff57c2ab8b5ce0
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0xa72495fc832baced4d2285928e2ca6ff906d7ff88c4dceaaa2d8c4aa6bdfdbdc
  */
 contract SparkEthereum_20260507 is SparkPayloadEthereum {
 

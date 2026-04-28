@@ -25,8 +25,9 @@ struct SetConfigParam {
  * @notice Spark Liquidity Layer:
  *         - Offboard Aave USDC.
  *         - Update Bridge DVN Configuration.
- * Forum:  
- * Vote:   
+ * Forum:  https://forum.skyeco.com/t/may-7-2026-proposed-changes-to-spark-for-upcoming-spell/27870
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x2912831b683f5461d7bb4a5702c63ff8d2a4ff93d4422ce0cca0ef29f4a3509c
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x710eb6996204b3df1eedd19d2f8bea9d0d69cdfa85a31c514527d9c212686348
  */
 contract SparkAvalanche_20260507 is SparkPayloadAvalanche {
 

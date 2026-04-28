@@ -18,14 +18,6 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
-import { UserConfiguration }    from "sparklend-v1-core/protocol/libraries/configuration/UserConfiguration.sol";
-
-import { AaveOracle }        from "sparklend-v1-core/misc/AaveOracle.sol";
-import { DataTypes }         from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
-import { IPool }             from "sparklend-v1-core/interfaces/IPool.sol";
-import { IPoolConfigurator } from "sparklend-v1-core/interfaces/IPoolConfigurator.sol";
-
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
@@ -71,7 +63,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260507;
-        _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
+        _blockDate = 1777302000;  // 2026-04-27T15:00:00Z
     }
 
     function setUp() public override {
@@ -258,19 +250,19 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         _depositERC4626(Ethereum.ALM_CONTROLLER, address(vault), depositAmount);
 
-        assertEq(vault.balanceOf(Ethereum.ALM_PROXY), 49_947_255.750788416740306559e18);
+        assertEq(vault.balanceOf(Ethereum.ALM_PROXY), 49_891_038.082032758623196585e18);
 
         IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(Id.wrap(SUSDS_USDT_MARKET_ID), adapter);
 
         assertGe(position.supplyShares, 45_000_000e12);
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 116);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 241);
 
         vm.warp(block.timestamp + 1 days);
 
         vault.accrueInterest();
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 3040.859011e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 2_389.182391e6);
 
         // Step 2: Reallocate into cbbtc/usdt market.
         uint256 withdrawAmount = depositAmount;
@@ -306,7 +298,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         _withdrawERC4626(Ethereum.ALM_CONTROLLER, address(vault), withdrawAmount);
 
         // Assert that Interest Remains after withdrawal.
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 3294.233473e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 2_602.279771e6);
     }
 
 }
@@ -315,13 +307,14 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260507;
-        _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
+        _blockDate = 1777302000;  // 2026-04-27T15:00:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
+        // chainData[ChainIdUtils.Avalanche()].payload = ;
     }
 
     /**********************************************************************************************/
@@ -354,13 +347,14 @@ contract SparkEthereum_20260507_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260507;
-        _blockDate = 1776434632;  // 2026-04-17T14:03:52Z
+        _blockDate = 1777302000;  // 2026-04-27T15:00:00Z
     }
 
     function setUp() public override {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0x160158d029697FEa486dF8968f3Be17a706dF0F0;
+        // chainData[ChainIdUtils.Avalanche()].payload = ;
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
@@ -371,9 +365,9 @@ contract SparkEthereum_20260507_SpellTests is SpellTests {
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
         uint256 almOpsBalanceBefore          = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
-        assertEq(sparkProxyBalanceBefore,      36_373_387.913977620254401020e18);
-        assertEq(foundationBalanceBefore,      0.0095e18);
-        assertEq(assetFoundationBalanceBefore, 142_000e18);
+        assertEq(sparkProxyBalanceBefore,      36_899_113.913977620254401020e18);
+        assertEq(foundationBalanceBefore,      1_100_000.0095e18);
+        assertEq(assetFoundationBalanceBefore, 242_000e18);
         assertEq(almOpsBalanceBefore,          0);
 
         _executeAllPayloadsAndBridges();
