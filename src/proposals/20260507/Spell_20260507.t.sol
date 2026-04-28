@@ -154,7 +154,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         // Verify the new config
         assertEq(config.confirmations,        15,                                         "confirmations should be 15");
-        assertEq(config.requiredDVNCount,     0,                                          "requiredDVNCount should be 255");
+        assertEq(config.requiredDVNCount,     0,                                          "requiredDVNCount should be 0");
         assertEq(config.optionalDVNCount,     7,                                          "optionalDVNCount should be 7");
         assertEq(config.optionalDVNThreshold, 4,                                          "optionalDVNThreshold should be 4");
         assertEq(config.requiredDVNs.length,  0,                                          "requiredDVNs length should be 0");
