@@ -168,6 +168,55 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(config.optionalDVNs[6],      0xE94aE34DfCC87A61836938641444080B98402c75, "seventh DVN should be P2P");
     }
 
+    function test_ETHEREUM_sll_updateBridgeDvnConfiguration() external onChain(ChainIdUtils.Ethereum()) {
+        IEndpointV2 endpoint = IEndpointV2(LAYERZERO_ENDPOINT_V2);
+
+        address sendUln302 = 0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1;
+
+        bytes memory configBytes = endpoint.getConfig(
+            Ethereum.SPARK_PROXY,
+            sendUln302,
+            30106,  // eid 30106 is for Avalanche
+            2       // configType 2 is for UlnConfig
+        );
+        UlnConfig memory config = abi.decode(configBytes, (UlnConfig));
+
+        // Verify the old config
+        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
+        assertEq(config.requiredDVNCount,     2,                                          "requiredDVNCount should be 2");
+        assertEq(config.optionalDVNCount,     0,                                          "optionalDVNCount should be 0");
+        assertEq(config.optionalDVNThreshold, 0,                                          "optionalDVNThreshold should be 0");
+        assertEq(config.requiredDVNs.length,  2,                                          "requiredDVNs length should be 2");
+        assertEq(config.requiredDVNs[0],      0x589dEDbD617e0CBcB916A9223F4d1300c294236b, "first DVN should be LayerZero Labs");
+        assertEq(config.requiredDVNs[1],      0xD56e4eAb23cb81f43168F9F45211Eb027b9aC7cc, "second DVN should be Google");
+        assertEq(config.optionalDVNs.length,  0,                                          "optionalDVNs length should be 0");
+
+        _executeAllPayloadsAndBridges();
+
+        configBytes = endpoint.getConfig(
+            Ethereum.SPARK_PROXY,
+            sendUln302,
+            30106,  // eid 30106 is for Avalanche
+            2       // configType 2 is for UlnConfig
+        );
+        config = abi.decode(configBytes, (UlnConfig));
+
+        // Verify the new config
+        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
+        assertEq(config.requiredDVNCount,     0,                                          "requiredDVNCount should be 0");
+        assertEq(config.optionalDVNCount,     7,                                          "optionalDVNCount should be 7");
+        assertEq(config.optionalDVNThreshold, 4,                                          "optionalDVNThreshold should be 4");
+        assertEq(config.requiredDVNs.length,  0,                                          "requiredDVNs length should be 0");
+        assertEq(config.optionalDVNs.length,  7,                                          "optionalDVNs length should be 7");
+        assertEq(config.optionalDVNs[0],      0x06559EE34D85a88317Bf0bfE307444116c631b67, "first DVN should be P2P");
+        assertEq(config.optionalDVNs[1],      0x373a6E5c0C4E89E24819f00AA37ea370917AAfF4, "second DVN should be Deutsche Telekom");
+        assertEq(config.optionalDVNs[2],      0x380275805876Ff19055EA900CDb2B46a94ecF20D, "third DVN should be Horizen");
+        assertEq(config.optionalDVNs[3],      0x58249a2Ec05c1978bF21DF1f5eC1847e42455CF4, "fourth DVN should be Luganodes");
+        assertEq(config.optionalDVNs[4],      0x589dEDbD617e0CBcB916A9223F4d1300c294236b, "fifth DVN should be LayerZero Labs");
+        assertEq(config.optionalDVNs[5],      0xa4fE5A5B9A846458a70Cd0748228aED3bF65c2cd, "sixth DVN should be Canary");
+        assertEq(config.optionalDVNs[6],      0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5, "seventh DVN should be Nethermind");
+    }
+
     /**********************************************************************************************/
     /*** Ethereum - Onboard new Morpho Vault V2 USDT                                              ***/
     /**********************************************************************************************/

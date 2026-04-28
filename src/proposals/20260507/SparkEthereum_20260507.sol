@@ -16,6 +16,16 @@ import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.
 
 import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEthereum.sol";
 
+interface IEndpointV2 {
+    function setConfig(address receiver, address uln, SetConfigParam[] memory configParams) external;
+}
+
+struct SetConfigParam {
+    uint32 eid;
+    uint32 configType;
+    bytes  config;
+}
+
 /**
  * @title  May 7, 2026 Spark Ethereum Proposal
  * @author Phoenix Labs
@@ -34,6 +44,19 @@ import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEther
  */
 contract SparkEthereum_20260507 is SparkPayloadEthereum {
 
+    // the formal properties are documented in the setter functions
+    struct UlnConfig {
+        uint64    confirmations;
+        // we store the length of required DVNs and optional DVNs instead of using DVN.length directly to save gas
+        uint8     requiredDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
+        uint8     optionalDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
+        uint8     optionalDVNThreshold; // (0, optionalDVNCount]
+        address[] requiredDVNs; // no duplicates. sorted an an ascending order. allowed overlap with optionalDVNs
+        address[] optionalDVNs; // no duplicates. sorted an an ascending order. allowed overlap with requiredDVNs
+    }
+
+    uint32 internal constant AVALANCHE_EID = 30106;
+
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
     uint256 internal constant SPK_BUYBACKS_AMOUNT           = 326_945e18;
@@ -41,11 +64,45 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
     address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
     address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
+    address internal constant LAYERZERO_ENDPOINT_V2 = 0x1a44076050125825900e736c501f859c50fE728c;
+    address internal constant SEND_ULN_302          = 0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1;
+
     constructor() {
         // PAYLOAD_AVALANCHE = ;
     }
 
     function _postExecute() internal override {
+        // 1. Update Bridge DVN Configuration
+
+        address[] memory requiredDVNs = new address[](0);
+
+        address[] memory optionalDVNs = new address[](7);
+        optionalDVNs[0] = 0x06559EE34D85a88317Bf0bfE307444116c631b67;  // P2P
+        optionalDVNs[1] = 0x373a6E5c0C4E89E24819f00AA37ea370917AAfF4;  // Deutsche Telekom
+        optionalDVNs[2] = 0x380275805876Ff19055EA900CDb2B46a94ecF20D;  // Horizen
+        optionalDVNs[3] = 0x58249a2Ec05c1978bF21DF1f5eC1847e42455CF4;  // Luganodes
+        optionalDVNs[4] = 0x589dEDbD617e0CBcB916A9223F4d1300c294236b;  // LayerZero Labs
+        optionalDVNs[5] = 0xa4fE5A5B9A846458a70Cd0748228aED3bF65c2cd;  // Canary
+        optionalDVNs[6] = 0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5;  // Nethermind
+
+        UlnConfig memory ulnConfig = UlnConfig({
+            confirmations        : 15,
+            requiredDVNCount     : 255,
+            optionalDVNCount     : 7,
+            optionalDVNThreshold : 4,
+            requiredDVNs         : requiredDVNs,
+            optionalDVNs         : optionalDVNs
+        });
+
+        SetConfigParam[] memory configParams = new SetConfigParam[](1);
+        configParams[0] = SetConfigParam({
+            eid        : AVALANCHE_EID,
+            configType : 2,
+            config     : abi.encode(ulnConfig)
+        });
+
+        IEndpointV2(LAYERZERO_ENDPOINT_V2).setConfig(Ethereum.SPARK_PROXY, SEND_ULN_302, configParams);
+
         MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
 
