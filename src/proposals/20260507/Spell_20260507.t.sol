@@ -59,7 +59,6 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
     address internal constant MORPHO_VAULT_V2_FACTORY = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
 
     address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
-    address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
     constructor() {
         _spellId   = 20260507;

@@ -449,6 +449,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant UNISWAP_V4_STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
     address internal constant UNISWAP_V4_QUOTER     = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
 
+    address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
+
     uint256 internal constant START_BLOCK = 21029247;
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
@@ -1292,7 +1294,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
 
         /**************************************************/
-        /*** Step 3: Test a swap in the other direction ***/
+        /*** Step 3: Test swap in the other direction   ***/
         /**************************************************/
 
         // If the first swap was in the zero for one direction, try the one for zero direction.
@@ -3584,6 +3586,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             uint256 decimals = IERC20Metadata(IERC4626(integration.integration).asset()).decimals();
 
+            if ( integration.entryId == bytes32(0) ) return;
+
             _testERC4626Integration(E2ETestParams({
                 ctx:           ctx,
                 vault:         integration.integration,
@@ -4159,18 +4163,36 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Remove "AAVE-CORE_AUSDT" integration which is expected to be offboarded after execution.
-        newIntegrations = new SLLIntegration[](integrations.length - 1);
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         uint256 index = 0;
 
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
         for (uint256 i = 0; i < integrations.length; ++i) {
             if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-CORE_AUSDT")) ) continue;
+
+            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-MORPHO_VAULT_V2_USDT")) ) {
+                newIntegrations[index] = SLLIntegration({
+                    label:       "ERC4626-MORPHO_VAULT_V2_USDT",
+                    category:    Category.ERC4626,
+                    integration: MORPHO_VAULT_V2_USDT,
+                    entryId:     bytes32(0),
+                    entryId2:    bytes32(0),
+                    exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_WITHDRAW(), MORPHO_VAULT_V2_USDT),
+                    exitId2:     bytes32(0),
+                    extraData:   ""
+                });
+                index++;
+                continue;
+            }
 
             newIntegrations[index] = integrations[i];
 
             index++;
         }
+
+        newIntegrations[newIntegrations.length - 1] = _createERC4626Integration("ERC4626-NEW_MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
     }
 
     function _getPostExecutionIntegrationsBase(
