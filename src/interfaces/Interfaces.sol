@@ -295,6 +295,12 @@ interface ICurvePoolLike is IERC20 {
 
     function fee() external view returns (uint256);
 
+    function get_dy(
+        int128  inputIndex,
+        int128  outputIndex,
+        uint256 amountIn
+    ) external view returns (uint256 tokensOut);
+
     function get_virtual_price() external view returns (uint256);
 
     function N_COINS() external view returns (uint256);
