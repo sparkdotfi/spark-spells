@@ -1336,7 +1336,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 swapLimit    = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
         uint256 swapValue    = swapAmount * rates[inputIndex] / 1e18;
 
-        deal(address(tokenIn), address(p.ctx.proxy),  swapAmount);
+        deal(address(tokenIn),  address(p.ctx.proxy), swapAmount);
         deal(address(tokenOut), address(p.ctx.proxy), 0); // Make easier assertions
 
         vm.prank(p.ctx.relayer);
