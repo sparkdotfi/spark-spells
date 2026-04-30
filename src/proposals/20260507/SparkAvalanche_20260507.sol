@@ -10,7 +10,7 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 import { SparkPayloadAvalanche } from "src/SparkPayloadAvalanche.sol";
 
 interface IEndpointV2 {
-    function setConfig(address receiver, address uln, SetConfigParam[] memory configParams) external;
+    function setConfig(address _oapp, address _lib, SetConfigParam[] calldata _params) external;
 }
 
 struct SetConfigParam {
@@ -77,7 +77,11 @@ contract SparkAvalanche_20260507 is SparkPayloadAvalanche {
             config     : abi.encode(ulnConfig)
         });
 
-        IEndpointV2(LAYERZERO_ENDPOINT_V2).setConfig(Avalanche.SPARK_RECEIVER, RECEIVE_ULN_302, configParams);
+        IEndpointV2(LAYERZERO_ENDPOINT_V2).setConfig({
+            _oapp   : Avalanche.SPARK_RECEIVER,
+            _lib    : RECEIVE_ULN_302,
+            _params : configParams
+        });
 
         // 2. Offboard Aave USDC.
 

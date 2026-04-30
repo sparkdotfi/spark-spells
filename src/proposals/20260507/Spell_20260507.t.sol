@@ -105,7 +105,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  Avalanche.ATOKEN_CORE_USDC);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), Avalanche.ATOKEN_CORE_USDC);
 
-        _assertRateLimit(depositKey,  20_000_000e6,     10_000_000e6 / uint256(1 days));
+        _assertRateLimit(depositKey,  20_000_000e6,      10_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
         _executeAllPayloadsAndBridges();
@@ -370,19 +370,39 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
     /**********************************************************************************************/
 
     function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
-        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 500, 12 hours);
+        _assertSupplyCapConfig({
+            asset:            Ethereum.LBTC,
+            max:              10_000,
+            gap:              500,
+            increaseCooldown: 12 hours
+        });
 
         _executeAllPayloadsAndBridges();
 
-        _assertSupplyCapConfig(Ethereum.LBTC, 5_000, 200, 12 hours);
+        _assertSupplyCapConfig({
+            asset:            Ethereum.LBTC,
+            max:              5_000,
+            gap:              200,
+            increaseCooldown: 12 hours
+        });
     }
 
     function test_ETHEREUM_sparkLend_wbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
-        _assertSupplyCapConfig(Ethereum.WBTC, 3_000, 500, 12 hours);
+        _assertSupplyCapConfig({
+            asset:            Ethereum.WBTC,
+            max:              3_000,
+            gap:              500,
+            increaseCooldown: 12 hours
+        });
 
         _executeAllPayloadsAndBridges();
 
-        _assertSupplyCapConfig(Ethereum.WBTC, 30_000, 500, 12 hours);
+        _assertSupplyCapConfig({
+            asset:            Ethereum.WBTC,
+            max:              30_000,
+            gap:              500,
+            increaseCooldown: 12 hours
+        });
     }
 
 }

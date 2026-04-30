@@ -10,14 +10,12 @@ import { MainnetController } from "spark-alm-controller/src/MainnetController.so
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { EngineFlags } from "src/AaveV3PayloadBase.sol";
-
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
-import { SLLHelpers, SparkPayloadEthereum, IEngine } from "src/SparkPayloadEthereum.sol";
+import { SLLHelpers, SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
 interface IEndpointV2 {
-    function setConfig(address receiver, address uln, SetConfigParam[] memory configParams) external;
+    function setConfig(address _oapp, address _lib, SetConfigParam[] calldata _params) external;
 }
 
 struct SetConfigParam {
@@ -35,6 +33,7 @@ struct SetConfigParam {
  *         Spark Liquidity Layer:
  *         - Update Spark Blue Chip USDT Morpho Vault.
  *         - Offboard Aave Core USDT.
+ *         - Update Bridge DVN Configuration.
  *         Spark Treasury:
  *         - Monthly Grants for Spark Foundation and Spark Assets Foundation.
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
@@ -101,17 +100,21 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
             config     : abi.encode(ulnConfig)
         });
 
-        IEndpointV2(LAYERZERO_ENDPOINT_V2).setConfig(Ethereum.SPARK_PROXY, SEND_ULN_302, configParams);
+        IEndpointV2(LAYERZERO_ENDPOINT_V2).setConfig({
+            _oapp   : Ethereum.SPARK_PROXY,
+            _lib    : SEND_ULN_302,
+            _params : configParams
+        });
 
         MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
 
         // 5a. Deactivate old Morpho Vault V2 USDT integration.
-        bytes32 erc4626DepositKey  = almController.LIMIT_4626_DEPOSIT();
+        bytes32 erc4626DepositKey = almController.LIMIT_4626_DEPOSIT();
 
         bytes32 OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY = RateLimitHelpers.makeAddressKey(erc4626DepositKey, OLD_MORPHO_VAULT_V2_USDT);
 
-        rateLimits.setRateLimitData(OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY,  0, 0);
+        rateLimits.setRateLimitData(OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY, 0, 0);
 
         // 5b. Onboard new Morpho Vault V2 USDT integration with same configuration as old one.
         // NOTE: New Morpho Vault V2 USDT is already configured with the same parameters as old one outside spell.
