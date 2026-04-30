@@ -288,32 +288,32 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(oldVault.adapterRegistry(), address(0));
         assertEq(newVault.adapterRegistry(), ADAPTER_REGISTRY);
 
-        assertEq(oldVault.adaptersLength(), 1);
-        assertEq(oldVault.adaptersLength(), newVault.adaptersLength());
+        assertEq(newVault.adaptersLength(), 1);
+        assertEq(newVault.adaptersLength(), oldVault.adaptersLength());
 
-        assertEq(oldVault.asset(), Ethereum.USDT);
-        assertEq(oldVault.asset(), newVault.asset());
+        assertEq(newVault.asset(), Ethereum.USDT);
+        assertEq(newVault.asset(), oldVault.asset());
 
-        assertEq(oldVault.curator(), Ethereum.MORPHO_CURATOR_MULTISIG);
-        assertEq(oldVault.curator(), newVault.curator());
+        assertEq(newVault.curator(), Ethereum.MORPHO_CURATOR_MULTISIG);
+        assertEq(newVault.curator(), oldVault.curator());
 
-        assertEq(oldVault.decimals(), 18);
-        assertEq(oldVault.decimals(), newVault.decimals());
+        assertEq(newVault.decimals(), 18);
+        assertEq(newVault.decimals(), oldVault.decimals());
 
-        assertEq(oldVault.managementFee(), 0);
-        assertEq(oldVault.managementFee(), newVault.managementFee());
+        assertEq(newVault.managementFee(), 0);
+        assertEq(newVault.managementFee(), oldVault.managementFee());
 
-        assertEq(oldVault.name(), "Spark Blue Chip USDT Vault");
-        assertEq(oldVault.name(), newVault.name());
+        assertEq(newVault.name(), "Spark Blue Chip USDT Vault");
+        assertEq(newVault.name(), oldVault.name());
 
-        assertEq(oldVault.owner(), Ethereum.SPARK_PROXY);
-        assertEq(oldVault.owner(), newVault.owner());
+        assertEq(newVault.owner(), Ethereum.SPARK_PROXY);
+        assertEq(newVault.owner(), oldVault.owner());
 
-        assertEq(oldVault.performanceFee(), 0.1e18);
-        assertEq(oldVault.performanceFee(), newVault.performanceFee());
+        assertEq(newVault.performanceFee(), 0.1e18);
+        assertEq(newVault.performanceFee(), oldVault.performanceFee());
 
-        assertEq(oldVault.symbol(), "sparkUSDTbc");
-        assertEq(oldVault.symbol(), newVault.symbol());
+        assertEq(newVault.symbol(), "sparkUSDTbc");
+        assertEq(newVault.symbol(), oldVault.symbol());
 
         // Recipient addresses must also match.
         assertEq(oldVault.managementFeeRecipient(), address(0));
@@ -322,8 +322,11 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(oldVault.performanceFeeRecipient(), Ethereum.ALM_PROXY);
         assertEq(oldVault.performanceFeeRecipient(), newVault.performanceFeeRecipient());
 
-        assertEq(oldVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     newVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
-        assertEq(oldVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), newVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG));
+        assertEq(newVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), true);
+        assertEq(newVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), oldVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
+
+        assertEq(newVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), true);
+        assertEq(newVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), oldVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG));
 
         // Verify `SetIsSentinel` event emitted only once for new vault.
         VmSafe.EthGetLogs[] memory sentinelLogs = _getEvents(block.chainid, address(newVault), IMorphoVaultV2Like.SetIsSentinel.selector);
@@ -349,7 +352,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(bool(abi.decode(allocatorLogs[2].data, (bool))),       false);
     }
 
-    function test_ETHEREUM_sll_newMoprhovaultUIListingRequirements() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_newMorphovaultUIListingRequirements() external onChain(ChainIdUtils.Ethereum()) {
         IMorphoVaultV2Like newVault = IMorphoVaultV2Like(NEW_MORPHO_VAULT_V2_USDT);
 
         IMorphoMarketV1AdapterV2FactoryLike adapterFactory = IMorphoMarketV1AdapterV2FactoryLike(MORPHO_MARKET_V1_ADAPTER_V2_FACTORY);
