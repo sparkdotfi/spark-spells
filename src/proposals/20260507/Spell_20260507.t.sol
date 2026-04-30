@@ -331,6 +331,22 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(sentinelLogs.length,                                  1);
         assertEq(address(uint160(uint256(sentinelLogs[0].topics[1]))), Ethereum.MORPHO_GUARDIAN_MULTISIG);
         assertEq(bool(abi.decode(sentinelLogs[0].data, (bool))),       true);
+
+        // Verify `SetIsAllocator` event emitted only once for new vault.
+        VmSafe.EthGetLogs[] memory allocatorLogs = _getEvents(block.chainid, address(newVault), IMorphoVaultV2Like.SetIsAllocator.selector);
+
+        assertEq(allocatorLogs.length, 3);
+
+        address deployer = 0x6CDC4bd1E7Ff90F97d1cDc410bFD41303fC0B8eD;
+
+        assertEq(address(uint160(uint256(allocatorLogs[0].topics[1]))), deployer);
+        assertEq(bool(abi.decode(allocatorLogs[0].data, (bool))),       true);
+
+        assertEq(address(uint160(uint256(allocatorLogs[1].topics[1]))), Ethereum.ALM_PROXY_FREEZABLE);
+        assertEq(bool(abi.decode(allocatorLogs[1].data, (bool))),       true);
+
+        assertEq(address(uint160(uint256(allocatorLogs[2].topics[1]))), deployer);
+        assertEq(bool(abi.decode(allocatorLogs[2].data, (bool))),       false);
     }
 
     function test_ETHEREUM_sll_newMoprhovaultUIListingRequirements() external onChain(ChainIdUtils.Ethereum()) {
