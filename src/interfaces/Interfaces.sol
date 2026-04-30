@@ -525,7 +525,22 @@ interface IV4QuoterLike {
 // Morpho v2 vault
 
 interface IMorphoVaultV2FactoryLike {
+
     function createVaultV2(address owner, address asset, bytes32 salt) external returns (address newVaultV2);
+
+}
+
+interface IMorphoMarketV1AdapterV2FactoryLike {
+
+    function isMorphoMarketV1AdapterV2(address account) external view returns (bool);
+
+}
+
+interface IMorphoMarketV1AdapterV2Like {
+
+  function burnShares(bytes32 marketId) external;
+  function timelock(bytes4 selector) external view returns (uint256);
+
 }
 
 interface IMorphoVaultV2Like {
@@ -536,6 +551,8 @@ interface IMorphoVaultV2Like {
     event SetIsSentinel(address indexed account, bool newIsSentinel);
     event SetIsAllocator(address indexed account, bool newIsAllocator);
 
+    function abdicate(bytes4 selector) external;
+    function abdicated(bytes4 selector) external view returns (bool);
     function accrueInterest() external;
     function adapters(uint256 index) external view returns (address);
     function adaptersLength() external view returns (uint256);
@@ -553,15 +570,20 @@ interface IMorphoVaultV2Like {
     function isSentinel(address sentinel) external view returns (bool);
     function increaseAbsoluteCap(bytes memory idData, uint256 newAbsoluteCap) external;
     function increaseRelativeCap(bytes memory idData, uint256 newRelativeCap) external;
+    function increaseTimelock(bytes4 selector, uint256 newDuration) external;
+    function liquidityAdapter() external view returns (address);
     function liquidityData() external view returns (bytes memory);
     function managementFee() external view returns (uint96);
     function managementFeeRecipient() external view returns (address);
+    function maxRate() external view returns (uint64);
     function name() external view returns (string memory);
     function owner() external view returns (address);
     function performanceFee() external view returns (uint96);
     function performanceFeeRecipient() external view returns (address);
+    function removeAdapter(address account) external;
     function symbol() external view returns (string memory);
     function setCurator(address newCurator) external;
+    function setForceDeallocatePenalty(address adapter, uint256 newForceDeallocatePenalty) external;
     function setName(string memory newName) external;
     function setSymbol(string memory newSymbol) external;
     function setIsAllocator(address newAllocator, bool newIsAllocator) external;
@@ -569,6 +591,10 @@ interface IMorphoVaultV2Like {
     function setAdapterRegistry(address newAdapterRegistry) external;
     function setLiquidityAdapterAndData(address newLiquidityAdapter, bytes memory newLiquidityData) external;
     function setMaxRate(uint256 newMaxRate) external;
+    function setReceiveSharesGate(address newReceiveSharesGate) external;
+    function setReceiveAssetsGate(address newReceiveAssetsGate) external;
+    function setSendSharesGate(address newSendSharesGate) external;
+    function timelock(bytes4 selector) external view returns (uint256);
     function addAdapter(address account) external;
     function submit(bytes calldata data) external;
     function totalAssets() external view returns (uint256);

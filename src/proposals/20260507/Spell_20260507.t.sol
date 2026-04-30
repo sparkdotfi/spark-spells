@@ -28,7 +28,9 @@ import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import {
     IMorphoVaultV2Like,
-    IMorphoLike
+    IMorphoLike,
+    IMorphoMarketV1AdapterV2Like,
+    IMorphoMarketV1AdapterV2FactoryLike
 } from "src/interfaces/Interfaces.sol";
 
 interface IEndpointV2 {
@@ -62,9 +64,10 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant LAYERZERO_ENDPOINT_V2   = 0x1a44076050125825900e736c501f859c50fE728c;
 
-    address internal constant ADAPTER_REGISTRY        = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
-    address internal constant MORPHO                  = Ethereum.MORPHO;
-    address internal constant MORPHO_VAULT_V2_FACTORY = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
+    address internal constant ADAPTER_REGISTRY                    = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
+    address internal constant MORPHO                              = Ethereum.MORPHO;
+    address internal constant MORPHO_VAULT_V2_FACTORY             = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
+    address internal constant MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0x32BB1c0D48D8b1B3363e86eeB9A0300BAd61ccc1;
 
     address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
 
@@ -330,6 +333,86 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(bool(abi.decode(sentinelLogs[0].data, (bool))),       true);
     }
 
+    function test_ETHEREUM_sll_newMoprhovaultUIListingRequirements() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like newVault = IMorphoVaultV2Like(NEW_MORPHO_VAULT_V2_USDT);
+
+        IMorphoMarketV1AdapterV2FactoryLike adapterFactory = IMorphoMarketV1AdapterV2FactoryLike(MORPHO_MARKET_V1_ADAPTER_V2_FACTORY);
+
+        // Verify min timelock requirements are met according to the Morpho documentation.
+        // https://docs.morpho.org/get-started/resources/app-ecosystem#vault-v2-timelock-requirements
+
+        assertGe(newVault.timelock(IMorphoVaultV2Like.increaseTimelock.selector),          7 days);
+        assertGe(newVault.timelock(IMorphoVaultV2Like.abdicate.selector),                  7 days);
+        assertGe(newVault.timelock(IMorphoVaultV2Like.removeAdapter.selector),             7 days);
+        assertGe(newVault.timelock(IMorphoVaultV2Like.addAdapter.selector),                7 days);
+        assertGe(newVault.timelock(IMorphoVaultV2Like.increaseRelativeCap.selector),       3 days);
+        assertGe(newVault.timelock(IMorphoVaultV2Like.setForceDeallocatePenalty.selector), 3 days);
+        assertGe(newVault.timelock(IMorphoVaultV2Like.increaseAbsoluteCap.selector),       3 days);
+
+        IMorphoMarketV1AdapterV2Like adapter = IMorphoMarketV1AdapterV2Like(newVault.adapters(0));
+
+        // NOTE: This will fail because it is not done yet.
+        // assertGe(adapter.timelock(IMorphoMarketV1AdapterV2Like.burnShares.selector), 3 days);
+
+        // Check critical gates are abdicated.
+        assertEq(newVault.abdicated(IMorphoVaultV2Like.setAdapterRegistry.selector),   true);
+        assertEq(newVault.abdicated(IMorphoVaultV2Like.setReceiveSharesGate.selector), true);
+        assertEq(newVault.abdicated(IMorphoVaultV2Like.setSendSharesGate.selector),    true);
+        assertEq(newVault.abdicated(IMorphoVaultV2Like.setReceiveAssetsGate.selector), true);
+
+        // Check adapter registry is set to the official registry.
+        assertEq(newVault.adapterRegistry(), ADAPTER_REGISTRY);
+
+        // Check dead deposit is completed.
+
+        VmSafe.EthGetLogs[] memory transferLogs = _getEvents(
+            block.chainid,
+            address(newVault),
+            IMorphoVaultV2Like.Transfer.selector
+        );
+
+        assertEq(transferLogs.length,                                  1);
+        assertEq(address(uint160(uint256(transferLogs[0].topics[1]))), address(0));
+        assertEq(address(uint160(uint256(transferLogs[0].topics[2]))), address(0xdead));
+
+        ( uint256 shares ) = abi.decode(transferLogs[0].data, (uint256));
+
+        assertEq(shares, 1e18);
+
+        VmSafe.EthGetLogs[] memory depositLogs = _getEvents(
+            block.chainid,
+            address(newVault),
+            IMorphoVaultV2Like.Deposit.selector
+        );
+
+        assertEq(depositLogs.length,                                  1);
+        assertEq(address(uint160(uint256(depositLogs[0].topics[2]))), address(0xdead));
+
+        ( uint256 assets, uint256 shares_ ) = abi.decode(depositLogs[0].data, (uint256, uint256));
+
+        assertEq(assets, 1e6);
+        assertEq(shares_, 1e18);
+
+        assertEq(IERC20(address(newVault)).balanceOf(address(0xdead)), 1e18);
+
+        // Check adapter is added for the official registry.
+
+        assertEq(adapterFactory.isMorphoMarketV1AdapterV2(newVault.adapters(0)), true);
+
+        // Check liquidityAdapter is for the official registry.
+        address liquidityAdapter = newVault.liquidityAdapter();
+
+        assertEq(liquidityAdapter,                                           newVault.adapters(0));
+        assertEq(adapterFactory.isMorphoMarketV1AdapterV2(liquidityAdapter), true);
+
+        // Vault name and symbol are set.
+        assertEq(newVault.name(),   "Spark Blue Chip USDT Vault");
+        assertEq(newVault.symbol(), "sparkUSDTbc");
+
+        // Check max rate is set. 
+        assertEq(newVault.maxRate() != 0, true);
+    }
+
     /// forge-config: default.isolate = true
     function test_ETHEREUM_sll_morphoVaultV2UsdtE2E() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 SUSDS_USDT_MARKET_ID = 0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b;
@@ -421,37 +504,37 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
 
     function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig({
-            asset:            Ethereum.LBTC,
-            max:              10_000,
-            gap:              500,
-            increaseCooldown: 12 hours
+            asset            : Ethereum.LBTC,
+            max              : 10_000,
+            gap              : 500,
+            increaseCooldown : 12 hours
         });
 
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig({
-            asset:            Ethereum.LBTC,
-            max:              5_000,
-            gap:              200,
-            increaseCooldown: 12 hours
+            asset            : Ethereum.LBTC,
+            max              : 5_000,
+            gap              : 200,
+            increaseCooldown : 12 hours
         });
     }
 
     function test_ETHEREUM_sparkLend_wbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig({
-            asset:            Ethereum.WBTC,
-            max:              3_000,
-            gap:              500,
-            increaseCooldown: 12 hours
+            asset            : Ethereum.WBTC,
+            max              : 3_000,
+            gap              : 500,
+            increaseCooldown : 12 hours
         });
 
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig({
-            asset:            Ethereum.WBTC,
-            max:              30_000,
-            gap:              500,
-            increaseCooldown: 12 hours
+            asset            : Ethereum.WBTC,
+            max              : 30_000,
+            gap              : 500,
+            increaseCooldown : 12 hours
         });
     }
 
