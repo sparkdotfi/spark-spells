@@ -1297,16 +1297,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /*** Step 3: Test swap in the other direction   ***/
         /**************************************************/
 
+        bool isZeroToOnePossible = _isCurveSwapPossible(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+        bool isOneToZeroPossible = _isCurveSwapPossible(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
+
         // If the first swap was in the zero for one direction, try the one for zero direction.
-        bool endWithOneForZero = startWithZeroForOne && _isCurveSwapPossible(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
+        bool endWithOneForZero = startWithZeroForOne && isOneToZeroPossible;
 
         // If the first swap was in the one for zero direction, try the zero for one direction.
-        bool endWithZeroForOne = startWithOneForZero && !endWithOneForZero && _isCurveSwapPossible(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+        bool endWithZeroForOne = startWithOneForZero && !endWithOneForZero && isZeroToOnePossible;
 
         if (endWithOneForZero) {
             _testCurveSwap(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
         } else if (endWithZeroForOne) {
             _testCurveSwap(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+        }
+        else {
+            if (isZeroToOnePossible) {
+                _testCurveSwap(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+            } else if (isOneToZeroPossible) {
+                _testCurveSwap(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
+            } else {
+                revert("No swap possible");
+            }
         }
 
         /********************************************/
