@@ -549,13 +549,17 @@ interface IMorphoVaultV2Like {
     function decimals() external view returns (uint8);
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function isAllocator(address allocator) external view returns (bool);
+    function isAdapter(address adapter) external view returns (bool);
     function isSentinel(address sentinel) external view returns (bool);
     function increaseAbsoluteCap(bytes memory idData, uint256 newAbsoluteCap) external;
     function increaseRelativeCap(bytes memory idData, uint256 newRelativeCap) external;
+    function liquidityData() external view returns (bytes memory);
     function managementFee() external view returns (uint96);
+    function managementFeeRecipient() external view returns (address);
     function name() external view returns (string memory);
     function owner() external view returns (address);
     function performanceFee() external view returns (uint96);
+    function performanceFeeRecipient() external view returns (address);
     function symbol() external view returns (string memory);
     function setCurator(address newCurator) external;
     function setName(string memory newName) external;

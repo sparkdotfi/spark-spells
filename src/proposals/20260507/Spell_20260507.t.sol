@@ -35,6 +35,14 @@ interface IEndpointV2 {
     function getConfig(address receiver, address uln, uint32 eid, uint32 configType) external view returns (bytes memory);
 }
 
+interface IMainnetControllerLike {
+
+    function depositERC4626(address vault, uint256 amount, uint256 minSharesOut) external returns (uint256 shares);
+
+    function withdrawERC4626(address vault, uint256 amount, uint256 maxSharesIn) external returns (uint256 shares);
+
+}
+
 interface IMorphoVaultV2FactoryLike {
     function isVaultV2(address target) external view returns (bool);
 }
@@ -217,7 +225,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
     }
 
     /**********************************************************************************************/
-    /*** Ethereum - Onboard new Morpho Vault V2 USDT                                              ***/
+    /*** Ethereum - Onboard new Morpho Vault V2 USDT                                            ***/
     /**********************************************************************************************/
 
     function test_ETHEREUM_sll_deactivateMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
@@ -231,10 +239,23 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
 
+        deal(Ethereum.USDT, address(ctx.proxy), 1_000_000e6);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IMainnetControllerLike(ctx.controller).depositERC4626(OLD_MORPHO_VAULT_V2_USDT, 1_000_000e6, 0);
+
         _executeAllPayloadsAndBridges();
 
         _assertRateLimit(depositKey,  0,                 0);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        IMainnetControllerLike(ctx.controller).depositERC4626(OLD_MORPHO_VAULT_V2_USDT, 1e6, 0);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        IMainnetControllerLike(ctx.controller).withdrawERC4626(OLD_MORPHO_VAULT_V2_USDT, 1_000_000e6, type(uint256).max);
     }
 
     function test_ETHEREUM_sll_onboardNewMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
@@ -255,19 +276,48 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).isVaultV2(address(oldVault)), true);
         assertEq(IMorphoVaultV2FactoryLike(MORPHO_VAULT_V2_FACTORY).isVaultV2(address(newVault)), true);
 
+        // Both vaults must be the same factory-deployed VaultV2 implementation.
+        // This single assertion collapses the entire "different implementation" risk surface
+        // (different storage layout, different fallback behaviour, etc.).
+        assertEq(address(oldVault).codehash, address(newVault).codehash);
+
         // Old vault adapter registry is not set, new vault adapter registry is set to the ADAPTER_REGISTRY.
         assertEq(oldVault.adapterRegistry(), address(0));
         assertEq(newVault.adapterRegistry(), ADAPTER_REGISTRY);
 
+        assertEq(oldVault.adaptersLength(), 1);
         assertEq(oldVault.adaptersLength(), newVault.adaptersLength());
-        assertEq(oldVault.asset(),          newVault.asset());
-        assertEq(oldVault.curator(),        newVault.curator());
-        assertEq(oldVault.decimals(),       newVault.decimals());
-        assertEq(oldVault.managementFee(),  newVault.managementFee());
-        assertEq(oldVault.name(),           newVault.name());
-        assertEq(oldVault.owner(),          newVault.owner());
+
+        assertEq(oldVault.asset(), Ethereum.USDT);
+        assertEq(oldVault.asset(), newVault.asset());
+
+        assertEq(oldVault.curator(), Ethereum.MORPHO_CURATOR_MULTISIG);
+        assertEq(oldVault.curator(), newVault.curator());
+
+        assertEq(oldVault.decimals(), 18);
+        assertEq(oldVault.decimals(), newVault.decimals());
+
+        assertEq(oldVault.managementFee(), 0);
+        assertEq(oldVault.managementFee(), newVault.managementFee());
+
+        assertEq(oldVault.name(), "Spark Blue Chip USDT Vault");
+        assertEq(oldVault.name(), newVault.name());
+
+        assertEq(oldVault.owner(), Ethereum.SPARK_PROXY);
+        assertEq(oldVault.owner(), newVault.owner());
+
+        assertEq(oldVault.performanceFee(), 0.1e18);
         assertEq(oldVault.performanceFee(), newVault.performanceFee());
-        assertEq(oldVault.symbol(),         newVault.symbol());
+
+        assertEq(oldVault.symbol(), "sparkUSDTbc");
+        assertEq(oldVault.symbol(), newVault.symbol());
+
+        // Recipient addresses must also match.
+        assertEq(oldVault.managementFeeRecipient(), address(0));
+        assertEq(newVault.managementFeeRecipient(), Ethereum.ALM_PROXY);
+
+        assertEq(oldVault.performanceFeeRecipient(), Ethereum.ALM_PROXY);
+        assertEq(oldVault.performanceFeeRecipient(), newVault.performanceFeeRecipient());
 
         assertEq(oldVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE),     newVault.isAllocator(Ethereum.ALM_PROXY_FREEZABLE));
         assertEq(oldVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), newVault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG));
