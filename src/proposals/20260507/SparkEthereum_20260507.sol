@@ -68,7 +68,7 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
     address internal constant SEND_ULN_302          = 0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1;
 
     constructor() {
-        // PAYLOAD_AVALANCHE = ;
+        PAYLOAD_AVALANCHE = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
     }
 
     function _postExecute() internal override {
