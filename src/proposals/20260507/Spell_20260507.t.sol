@@ -246,7 +246,31 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       SEND_ULN_302);
         assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), true);
 
+        uint256 snapshot = vm.snapshot();
+
+        // Step 1: Show that owner can change the default send library
+
+        // Set the new default send library.
+        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), SEND_ULN_302);
+
+        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
+        endpoint.setDefaultSendLibrary(AVALANCHE_EID, newDefaultSendLibrary);
+
+        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), newDefaultSendLibrary);
+
+        // Verify the send library of spark proxy is changed.
+        assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       newDefaultSendLibrary);
+        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), true);
+
+        // Step 2: Revert to original state
+
+        vm.revertTo(snapshot);
+
+        // Step 3: Execute the payload to set the new default send library
+
         _executeAllPayloadsAndBridges();
+
+        // Step 4: Show that owner can change the default send library and it doesn't change the bridge configuration
 
         address sendLibraryBefore = endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID);
 
@@ -271,11 +295,36 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
 
-        ( address receiveLibrary, bool _isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
-        assertEq(receiveLibrary, RECEIVE_ULN_302);
-        assertEq(_isDefault,     true);
+        uint256 snapshot = vm.snapshot();
+
+        // Step 1: Show that owner can change the default receive library
+
+        ( address _receiveLibraryBefore, bool _isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
+        assertEq(_receiveLibraryBefore, RECEIVE_ULN_302);
+        assertEq(_isDefault,            true);
+
+        // Set the new default receive library.
+        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), RECEIVE_ULN_302);
+
+        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
+        endpoint.setDefaultReceiveLibrary(ETHEREUM_MAINNET_EID, newDefaultReceiveLibrary, 0);
+
+        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), newDefaultReceiveLibrary);
+
+        // Verify the receive library of spark receiver is changed.
+        ( address _receiveLibraryAfter, bool _isDefaultAfter ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
+        assertEq(_receiveLibraryAfter, newDefaultReceiveLibrary);
+        assertEq(_isDefaultAfter,      true);
+
+        // Step 2: Revert to original state
+
+        vm.revertTo(snapshot);
+
+        // Step 3: Execute the payload to set the new default receive library
 
         _executeAllPayloadsAndBridges();
+
+        // Step 4: Show that owner can change the default receive library and it doesn't change the bridge configuration
 
         ( address receiveLibraryBefore, bool isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
         assertEq(receiveLibraryBefore, RECEIVE_ULN_302);
@@ -328,6 +377,8 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(newVault.adaptersLength(), 1);
         assertEq(newVault.adaptersLength(), oldVault.adaptersLength());
+
+        assertEq(newVault.adapters(0), newVault.liquidityAdapter());
 
         assertEq(newVault.asset(), Ethereum.USDT);
         assertEq(newVault.asset(), oldVault.asset());
@@ -500,6 +551,51 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
             }
             assertTrue(found, string.concat("market not found in new adapter: ", vm.toString(oldMarketId)));
         }
+    }
+
+    function test_ETHEREUM_sll_verifyLiquidityData() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like oldVault = IMorphoVaultV2Like(OLD_MORPHO_VAULT_V2_USDT);
+        IMorphoVaultV2Like newVault = IMorphoVaultV2Like(NEW_MORPHO_VAULT_V2_USDT);
+
+        // Verify liquidity data for old vault is set to cbbtc/usdt market.
+
+        bytes32 CBBTC_USDT_MARKET_ID = 0x45671fb8d5dea1c4fbca0b8548ad742f6643300eeb8dbd34ad64a658b2b05bca;
+
+        (
+            address _loanToken,
+            address _collateralToken,
+            address _oracle,
+            address _irm,
+            uint256 _lltv
+        ) = abi.decode(oldVault.liquidityData(), (address, address, address, address, uint256));
+
+        MarketParams memory cbbtcUsdtMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(CBBTC_USDT_MARKET_ID));
+
+        assertEq(_loanToken,       cbbtcUsdtMarketParams.loanToken);
+        assertEq(_collateralToken, cbbtcUsdtMarketParams.collateralToken);
+        assertEq(_oracle,          cbbtcUsdtMarketParams.oracle);
+        assertEq(_irm,             cbbtcUsdtMarketParams.irm);
+        assertEq(_lltv,            cbbtcUsdtMarketParams.lltv);    
+
+        // Verify liquidity data for new vault is set to susds/usdt market.
+
+        bytes32 SUSDS_USDT_MARKET_ID = 0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b;
+
+        (
+            address loanToken,
+            address collateralToken,
+            address oracle,
+            address irm,
+            uint256 lltv
+        ) = abi.decode(newVault.liquidityData(), (address, address, address, address, uint256));
+
+        MarketParams memory susdsUsdtMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(SUSDS_USDT_MARKET_ID));
+
+        assertEq(loanToken,       susdsUsdtMarketParams.loanToken);
+        assertEq(collateralToken, susdsUsdtMarketParams.collateralToken);
+        assertEq(oracle,          susdsUsdtMarketParams.oracle);
+        assertEq(irm,             susdsUsdtMarketParams.irm);
+        assertEq(lltv,            susdsUsdtMarketParams.lltv);    
     }
 
     /// forge-config: default.isolate = true
