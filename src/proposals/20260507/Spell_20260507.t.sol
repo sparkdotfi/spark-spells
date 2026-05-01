@@ -9,6 +9,9 @@ import { IMorpho }      from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Ownable }           from "openzeppelin-contracts/contracts/access/Ownable.sol";
+
+import { IMessageLibManager } from "spark-alm-controller/lib/layerzero-v2/packages/layerzero-v2/evm/protocol/contracts/interfaces/IMessageLibManager.sol";
 
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
@@ -32,6 +35,8 @@ import {
     IMorphoMarketV1AdapterV2Like,
     IMorphoMarketV1AdapterV2FactoryLike
 } from "src/interfaces/Interfaces.sol";
+
+import { console2 } from "forge-std/console2.sol";
 
 interface IEndpointV2 {
     function getConfig(address receiver, address uln, uint32 eid, uint32 configType) external view returns (bytes memory);
@@ -70,6 +75,12 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
     address internal constant MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0x32BB1c0D48D8b1B3363e86eeB9A0300BAd61ccc1;
 
     address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
+
+    address internal constant RECEIVE_ULN_302 = 0xbf3521d309642FA9B1c91A08609505BA09752c61;
+    address internal constant SEND_ULN_302    = 0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1;
+
+    uint32 internal constant ETHEREUM_MAINNET_EID = 30101;
+    uint32 internal constant AVALANCHE_EID        = 30106;
 
     constructor() {
         _spellId   = 20260507;
@@ -225,6 +236,56 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(config.optionalDVNs[4],      0x589dEDbD617e0CBcB916A9223F4d1300c294236b, "fifth DVN should be LayerZero Labs");
         assertEq(config.optionalDVNs[5],      0xa4fE5A5B9A846458a70Cd0748228aED3bF65c2cd, "sixth DVN should be Canary");
         assertEq(config.optionalDVNs[6],      0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5, "seventh DVN should be Nethermind");
+    }
+
+    function test_ETHEREUM_attack_sendLibraryUnchanged() external onChain(ChainIdUtils.Ethereum()) {
+        address newDefaultSendLibrary = 0x1ccBf0db9C192d969de57E25B3fF09A25bb1D862;
+
+        IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
+
+        _executeAllPayloadsAndBridges();
+
+        address sendLibraryBefore = endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID);
+
+        assertEq(sendLibraryBefore,                                                      SEND_ULN_302);
+        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), false);
+
+        // Set the new default send library.
+        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), SEND_ULN_302);
+
+        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
+        endpoint.setDefaultSendLibrary(AVALANCHE_EID, newDefaultSendLibrary);
+
+        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), newDefaultSendLibrary);
+
+        // Verify the send library of spark proxy is unchanged.
+        assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       sendLibraryBefore);
+        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), false);
+    }
+
+    function test_AVALANCHE_attack_receiveLibraryUnchanged() external onChain(ChainIdUtils.Avalanche()) {
+        address newDefaultReceiveLibrary = 0x1ccBf0db9C192d969de57E25B3fF09A25bb1D862;
+
+        IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
+
+        _executeAllPayloadsAndBridges();
+
+        ( address receiveLibraryBefore, bool isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
+        assertEq(receiveLibraryBefore, RECEIVE_ULN_302);
+        assertEq(isDefault,            false);
+
+        // Set the new default receive library.
+        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), RECEIVE_ULN_302);
+
+        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
+        endpoint.setDefaultReceiveLibrary(ETHEREUM_MAINNET_EID, newDefaultReceiveLibrary, 0);
+
+        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), newDefaultReceiveLibrary);
+
+        // Verify the receive library of spark receiver is unchanged.
+        ( address recvLibAfter, bool isDefaultAfter ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
+        assertEq(recvLibAfter,   receiveLibraryBefore);
+        assertEq(isDefaultAfter, false);
     }
 
     /**********************************************************************************************/

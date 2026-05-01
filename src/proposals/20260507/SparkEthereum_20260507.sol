@@ -74,6 +74,12 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
     function _postExecute() internal override {
         // 1. Update Bridge DVN Configuration
 
+        IEndpointV2(LAYERZERO_ENDPOINT_V2).setSendLibrary({
+            _oapp   : Ethereum.SPARK_PROXY,
+            _eid    : AVALANCHE_EID,
+            _newLib : SEND_ULN_302
+        });
+
         address[] memory requiredDVNs = new address[](0);
 
         address[] memory optionalDVNs = new address[](7);

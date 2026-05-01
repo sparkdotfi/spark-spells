@@ -51,6 +51,13 @@ contract SparkAvalanche_20260507 is SparkPayloadAvalanche {
     function execute() external {
         // 1. Update Bridge DVN Configuration
 
+        IEndpointV2(LAYERZERO_ENDPOINT_V2).setReceiveLibrary({
+            _oapp        : Avalanche.SPARK_RECEIVER,
+            _eid         : ETHEREUM_MAINNET_EID,
+            _newLib      : RECEIVE_ULN_302,
+            _gracePeriod : 0
+        });
+
         address[] memory requiredDVNs = new address[](0);
 
         address[] memory optionalDVNs = new address[](7);
