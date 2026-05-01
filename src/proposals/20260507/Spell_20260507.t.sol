@@ -243,11 +243,14 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
 
+        assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       SEND_ULN_302);
+        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), true);
+
         _executeAllPayloadsAndBridges();
 
         address sendLibraryBefore = endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID);
 
-        assertEq(sendLibraryBefore,                                                      SEND_ULN_302);
+        assertEq(sendLibraryBefore,                                                  SEND_ULN_302);
         assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), false);
 
         // Set the new default send library.
@@ -268,6 +271,10 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
 
+        ( address receiveLibrary, bool _isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
+        assertEq(receiveLibrary, RECEIVE_ULN_302);
+        assertEq(_isDefault,     true);
+
         _executeAllPayloadsAndBridges();
 
         ( address receiveLibraryBefore, bool isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
@@ -283,9 +290,9 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), newDefaultReceiveLibrary);
 
         // Verify the receive library of spark receiver is unchanged.
-        ( address recvLibAfter, bool isDefaultAfter ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
-        assertEq(recvLibAfter,   receiveLibraryBefore);
-        assertEq(isDefaultAfter, false);
+        ( address receiveLibraryAfter, bool isDefaultAfter ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
+        assertEq(receiveLibraryAfter, receiveLibraryBefore);
+        assertEq(isDefaultAfter,      false);
     }
 
     /**********************************************************************************************/
