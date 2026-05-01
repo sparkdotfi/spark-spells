@@ -470,6 +470,38 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         assertEq(newVault.maxRate() != 0, true);
     }
 
+    function test_ETHEREUM_sll_adapterConfigMatch() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like oldVault = IMorphoVaultV2Like(OLD_MORPHO_VAULT_V2_USDT);
+        IMorphoVaultV2Like newVault = IMorphoVaultV2Like(NEW_MORPHO_VAULT_V2_USDT);
+
+        IMorphoMarketV1AdapterV2Like oldAdapter = IMorphoMarketV1AdapterV2Like(oldVault.liquidityAdapter());
+        IMorphoMarketV1AdapterV2Like newAdapter = IMorphoMarketV1AdapterV2Like(newVault.liquidityAdapter());
+
+        assertEq(oldAdapter.asset(),            newAdapter.asset(),            "asset mismatch");
+        assertEq(oldAdapter.adaptiveCurveIrm(), newAdapter.adaptiveCurveIrm(), "adaptiveCurveIrm mismatch");
+        assertEq(oldAdapter.factory(),          newAdapter.factory(),          "factory mismatch");
+        assertEq(oldAdapter.morpho(),           newAdapter.morpho(),           "morpho mismatch");
+
+        assertEq(oldAdapter.parentVault(), address(oldVault), "old adapter parentVault");
+        assertEq(newAdapter.parentVault(), address(newVault), "new adapter parentVault");
+
+        uint256 oldLen = oldAdapter.marketIdsLength();
+        uint256 newLen = newAdapter.marketIdsLength();
+        assertEq(oldLen, newLen, "marketIds length mismatch");
+
+        for (uint256 i = 0; i < oldLen; i++) {
+            bytes32 oldMarketId = oldAdapter.marketIds(i);
+            bool found = false;
+            for (uint256 j = 0; j < newLen; j++) {
+                if (newAdapter.marketIds(j) == oldMarketId) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(found, string.concat("market not found in new adapter: ", vm.toString(oldMarketId)));
+        }
+    }
+
     /// forge-config: default.isolate = true
     function test_ETHEREUM_sll_morphoVaultV2UsdtE2E() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 SUSDS_USDT_MARKET_ID = 0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b;

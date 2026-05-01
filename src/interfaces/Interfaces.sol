@@ -538,8 +538,15 @@ interface IMorphoMarketV1AdapterV2FactoryLike {
 
 interface IMorphoMarketV1AdapterV2Like {
 
-  function burnShares(bytes32 marketId) external;
-  function timelock(bytes4 selector) external view returns (uint256);
+    function asset() external view returns (address);
+    function adaptiveCurveIrm() external view returns (address);
+    function burnShares(bytes32 marketId) external;
+    function factory() external view returns (address);
+    function morpho() external view returns (address);
+    function marketIds(uint256 index) external view returns (bytes32);
+    function marketIdsLength() external view returns (uint256);
+    function parentVault() external view returns (address);
+    function timelock(bytes4 selector) external view returns (uint256);
 
 }
 
