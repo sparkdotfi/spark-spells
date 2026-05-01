@@ -11,6 +11,7 @@ import { SparkPayloadAvalanche } from "src/SparkPayloadAvalanche.sol";
 
 interface IEndpointV2 {
     function setConfig(address _oapp, address _lib, SetConfigParam[] calldata _params) external;
+    function setReceiveLibrary(address _oapp, uint32 _eid, address _newLib, uint256 _gracePeriod) external;
 }
 
 struct SetConfigParam {

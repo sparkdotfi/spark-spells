@@ -16,6 +16,7 @@ import { SLLHelpers, SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
 interface IEndpointV2 {
     function setConfig(address _oapp, address _lib, SetConfigParam[] calldata _params) external;
+    function setSendLibrary(address _oapp, uint32 _eid, address _newLib) external;
 }
 
 struct SetConfigParam {
@@ -108,13 +109,6 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
 
         MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
-
-        // 5a. Deactivate old Morpho Vault V2 USDT integration.
-        bytes32 erc4626DepositKey = almController.LIMIT_4626_DEPOSIT();
-
-        bytes32 OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY = RateLimitHelpers.makeAddressKey(erc4626DepositKey, OLD_MORPHO_VAULT_V2_USDT);
-
-        rateLimits.setRateLimitData(OLD_MORPHO_VAULT_V2_USDT_DEPOSIT_KEY, 0, 0);
 
         // 5b. Onboard new Morpho Vault V2 USDT integration with same configuration as old one.
         // NOTE: New Morpho Vault V2 USDT is already configured with the same parameters as old one outside spell.

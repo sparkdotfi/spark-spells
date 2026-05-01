@@ -231,36 +231,6 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
     /*** Ethereum - Onboard new Morpho Vault V2 USDT                                            ***/
     /**********************************************************************************************/
 
-    function test_ETHEREUM_sll_deactivateMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        MainnetController controller = MainnetController(ctx.controller);
-
-        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_DEPOSIT(),  OLD_MORPHO_VAULT_V2_USDT);
-        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_WITHDRAW(), OLD_MORPHO_VAULT_V2_USDT);
-
-        _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        deal(Ethereum.USDT, address(ctx.proxy), 1_000_000e6);
-
-        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        IMainnetControllerLike(ctx.controller).depositERC4626(OLD_MORPHO_VAULT_V2_USDT, 1_000_000e6, 0);
-
-        _executeAllPayloadsAndBridges();
-
-        _assertRateLimit(depositKey,  0,                 0);
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        IMainnetControllerLike(ctx.controller).depositERC4626(OLD_MORPHO_VAULT_V2_USDT, 1e6, 0);
-
-        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        vm.expectRevert("RateLimits/zero-maxAmount");
-        IMainnetControllerLike(ctx.controller).withdrawERC4626(OLD_MORPHO_VAULT_V2_USDT, 1_000_000e6, type(uint256).max);
-    }
-
     function test_ETHEREUM_sll_onboardNewMorphoVaultV2Usdt() external onChain(ChainIdUtils.Ethereum()) {
         _testERC4626Onboarding({
             vault                 : NEW_MORPHO_VAULT_V2_USDT,

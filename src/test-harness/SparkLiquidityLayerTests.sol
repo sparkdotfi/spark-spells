@@ -3598,8 +3598,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             uint256 decimals = IERC20Metadata(IERC4626(integration.integration).asset()).decimals();
 
-            if ( integration.entryId == bytes32(0) ) return;
-
             _testERC4626Integration(E2ETestParams({
                 ctx:           ctx,
                 vault:         integration.integration,
@@ -4179,25 +4177,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 index = 0;
 
-        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
-
         for (uint256 i = 0; i < integrations.length; ++i) {
             if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-CORE_AUSDT")) ) continue;
-
-            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("ERC4626-MORPHO_VAULT_V2_USDT")) ) {
-                newIntegrations[index] = SLLIntegration({
-                    label:       "ERC4626-MORPHO_VAULT_V2_USDT",
-                    category:    Category.ERC4626,
-                    integration: MORPHO_VAULT_V2_USDT,
-                    entryId:     bytes32(0),
-                    entryId2:    bytes32(0),
-                    exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_WITHDRAW(), MORPHO_VAULT_V2_USDT),
-                    exitId2:     bytes32(0),
-                    extraData:   ""
-                });
-                index++;
-                continue;
-            }
 
             newIntegrations[index] = integrations[i];
 
