@@ -64,8 +64,6 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     address public immutable PAYLOAD_AVALANCHE;
 
     function execute() public override {
-        super.execute();
-
         if (PAYLOAD_ARBITRUM != address(0)) {
             ArbitrumForwarder.sendMessageL1toL2({
                 l1CrossDomain: ArbitrumForwarder.L1_CROSS_DOMAIN_ARBITRUM_ONE,
@@ -120,6 +118,8 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
                 _payInLzToken:  false
             });
         }
+
+        super.execute();
 
         // Claim Reserves for all Markets
         address[] memory stablecoinATokens = new address[](5);

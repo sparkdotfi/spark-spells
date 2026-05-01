@@ -449,6 +449,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant UNISWAP_V4_STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
     address internal constant UNISWAP_V4_QUOTER     = 0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203;
 
+    address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
+
     uint256 internal constant START_BLOCK = 21029247;
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
@@ -1267,42 +1269,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // Check RateLimit
         _checkRateLimitValue(p.ctx, p.swapKey, 18);
 
-        uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
-
-        uint256 swapAmount = p.swapAmount * 10 ** IERC20Metadata(p.asset0).decimals() / 1e18;
-        uint256 swapValue  = swapAmount * rates[0] / 1e18;
-
-        deal(address(p.asset0), address(p.ctx.proxy), swapAmount);
-        deal(address(p.asset1), address(p.ctx.proxy), 0);  // Make easier assertions
-
-        uint256 swapLimit = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
-
-        uint256 maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
-
         /******************************************************************/
-        /*** Step 1: Swap asset0 to asset1 and check resulting position ***/
+        /*** Step 1: Test swap in one direction                         ***/
         /******************************************************************/
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), swapAmount);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+        bool startWithZeroForOne = _isCurveSwapPossible(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
 
-        uint256 minAmountOut = swapAmount * rates[0] * maxSlippage / rates[1] / 1e18;
+        bool startWithOneForZero = !startWithZeroForOne &&  _isCurveSwapPossible(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
 
-        // Swap asset0 to asset1
-        vm.prank(p.ctx.relayer);
-        uint256 amountOut = MainnetController(p.ctx.controller).swapCurve(
-            p.pool,
-            0,
-            1,
-            swapAmount,
-            minAmountOut
-        );
-
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-        assertGe(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), minAmountOut);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), amountOut);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
+        if (startWithZeroForOne) {
+            _testCurveSwap(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+        } else if (startWithOneForZero) {
+            _testCurveSwap(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
+        } else {
+            revert("No swap possible");
+        }
 
         /********************************************/
         /*** Step 2: Warp to recharge rate limits ***/
@@ -1310,23 +1291,35 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(10 days);
 
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
 
-        /******************************************************************/
-        /*** Step 3: Swap asset1 to asset0 and check resulting position ***/
-        /******************************************************************/
+        /**************************************************/
+        /*** Step 3: Test swap in the other direction   ***/
+        /**************************************************/
 
-        swapAmount = amountOut;
-        swapValue  = swapAmount * rates[1] / 1e18;
+        bool isZeroToOnePossible = _isCurveSwapPossible(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+        bool isOneToZeroPossible = _isCurveSwapPossible(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
 
-        minAmountOut = swapAmount * rates[1] * maxSlippage / rates[0] / 1e18;
+        // If the first swap was in the zero for one direction, try the one for zero direction.
+        bool endWithOneForZero = startWithZeroForOne && isOneToZeroPossible;
 
-        vm.prank(p.ctx.relayer);
-        amountOut = MainnetController(p.ctx.controller).swapCurve(p.pool, 1, 0, swapAmount, minAmountOut);
+        // If the first swap was in the one for zero direction, try the zero for one direction.
+        bool endWithZeroForOne = startWithOneForZero && !endWithOneForZero && isZeroToOnePossible;
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), amountOut);
-        assertEq(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0);
+        if (endWithOneForZero) {
+            _testCurveSwap(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
+        } else if (endWithZeroForOne) {
+            _testCurveSwap(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+        }
+        else {
+            if (isZeroToOnePossible) {
+                _testCurveSwap(p, p.asset0, p.asset1, 0, 1, p.swapAmount);
+            } else if (isOneToZeroPossible) {
+                _testCurveSwap(p, p.asset1, p.asset0, 1, 0, p.swapAmount);
+            } else {
+                revert("No swap possible");
+            }
+        }
 
         /********************************************/
         /*** Step 4: Warp to recharge rate limits ***/
@@ -1334,8 +1327,64 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(10 days);
 
-        assertGt(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), p.ctx.rateLimits.getRateLimitData(p.swapKey).maxAmount);
+    }
+
+    function _testCurveSwap(
+        CurveSwapE2ETestParams memory p,
+        address                       tokenIn,
+        address                       tokenOut,
+        uint128                       inputIndex,
+        uint128                       outputIndex,
+        uint256                       swapAmount
+    ) internal {
+        uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
+
+        uint256 maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
+
+        swapAmount = _fromNormalizedAmount(tokenIn, swapAmount);
+
+        uint256 minAmountOut = swapAmount * rates[inputIndex] * maxSlippage / rates[outputIndex] / 1e18;        
+        uint256 swapLimit    = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
+        uint256 swapValue    = swapAmount * rates[inputIndex] / 1e18;
+
+        deal(address(tokenIn),  address(p.ctx.proxy), swapAmount);
+        deal(address(tokenOut), address(p.ctx.proxy), 0); // Make easier assertions
+
+        vm.prank(p.ctx.relayer);
+        uint256 amountOut = MainnetController(p.ctx.controller).swapCurve(p.pool, inputIndex, outputIndex, swapAmount, minAmountOut);
+
+        assertEq(IERC20(tokenIn).balanceOf(address(p.ctx.proxy)),  0);
+        assertGe(IERC20(tokenOut).balanceOf(address(p.ctx.proxy)), minAmountOut);
+        assertEq(IERC20(tokenOut).balanceOf(address(p.ctx.proxy)), amountOut);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.swapKey), swapLimit - swapValue);
+    }
+
+    function _isCurveSwapPossible(
+        CurveSwapE2ETestParams memory p,
+        address                       tokenIn,
+        address                       tokenOut,
+        uint128                       inputIndex,
+        uint128                       outputIndex,
+        uint256                       swapAmount
+    ) internal returns (bool) {
+        uint256[] memory rates = ICurvePoolLike(p.pool).stored_rates();
+
+        uint256 maxSlippage = MainnetController(p.ctx.controller).maxSlippages(p.pool);
+
+        // Get quote for a swap.
+        uint256 amountIn     = _fromNormalizedAmount(tokenIn, swapAmount);
+        uint256 amountOut    = _getCurveSwapAmountOut(p.pool, inputIndex, outputIndex, amountIn);
+        uint256 minAmountOut = amountIn * rates[inputIndex] * maxSlippage / rates[outputIndex] / 1e18;
+
+        return amountOut >= minAmountOut;
+    }
+
+    function _getCurveSwapAmountOut(address pool, uint128 inputIndex, uint128 outputIndex, uint256 amountIn)
+        internal returns (uint256)
+    {
+        return ICurvePoolLike(pool).get_dy(int128(inputIndex), int128(outputIndex), amountIn);
     }
 
     function _testUniswapV4LPIntegration(UniswapV4LPE2ETestParams memory p) internal {
@@ -4102,13 +4151,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             return _getPostExecutionIntegrationsArbitrumOne(integrations);
         }
 
+        if (block.chainid == ChainIdUtils.Avalanche()) {
+            return _getPostExecutionIntegrationsAvalanche(integrations);
+        }
+
         if (block.chainid == ChainIdUtils.Base()) {
             return _getPostExecutionIntegrationsBase(integrations);
         }
 
         // TODO: Use a function selector getter here to dynamically call the correct helper function based on chainId.
         if (
-            block.chainid == ChainIdUtils.Avalanche() ||
             block.chainid == ChainIdUtils.Optimism() ||
             block.chainid == ChainIdUtils.Unichain()
         ) {
@@ -4123,9 +4175,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
         newIntegrations = new SLLIntegration[](integrations.length);
 
+        uint256 index = 0;
+
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
+            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-CORE_AUSDT")) ) continue;
+
+            newIntegrations[index] = integrations[i];
+
+            index++;
         }
+
+        newIntegrations[newIntegrations.length - 1] = _createERC4626Integration("ERC4626-NEW_MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
     }
 
     function _getPostExecutionIntegrationsBase(
@@ -4145,6 +4205,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
+        }
+    }
+
+    function _getPostExecutionIntegrationsAvalanche(
+        SLLIntegration[] memory integrations
+    ) internal view returns (SLLIntegration[] memory newIntegrations) {
+        // Remove "AAVE-ATOKEN_USDC" integration which is expected to be offboarded after execution.
+        newIntegrations = new SLLIntegration[](integrations.length - 1);
+
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC")) ) continue;
+
+            newIntegrations[index] = integrations[i];
+
+            index++;
         }
     }
 
