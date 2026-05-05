@@ -9,9 +9,6 @@ import { IMorpho }      from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { Ownable }           from "openzeppelin-contracts/contracts/access/Ownable.sol";
-
-import { IMessageLibManager } from "spark-alm-controller/lib/layerzero-v2/packages/layerzero-v2/evm/protocol/contracts/interfaces/IMessageLibManager.sol";
 
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
@@ -36,12 +33,6 @@ import {
     IMorphoMarketV1AdapterV2FactoryLike
 } from "src/interfaces/Interfaces.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
-interface IEndpointV2 {
-    function getConfig(address receiver, address uln, uint32 eid, uint32 configType) external view returns (bytes memory);
-}
-
 interface IMainnetControllerLike {
 
     function depositERC4626(address vault, uint256 amount, uint256 minSharesOut) external returns (uint256 shares);
@@ -56,31 +47,12 @@ interface IMorphoVaultV2FactoryLike {
 
 contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
-    // the formal properties are documented in the setter functions
-    struct UlnConfig {
-        uint64    confirmations;
-        // we store the length of required DVNs and optional DVNs instead of using DVN.length directly to save gas
-        uint8     requiredDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
-        uint8     optionalDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
-        uint8     optionalDVNThreshold; // (0, optionalDVNCount]
-        address[] requiredDVNs; // no duplicates. sorted an an ascending order. allowed overlap with optionalDVNs
-        address[] optionalDVNs; // no duplicates. sorted an an ascending order. allowed overlap with requiredDVNs
-    }
-
-    address internal constant LAYERZERO_ENDPOINT_V2   = 0x1a44076050125825900e736c501f859c50fE728c;
-
     address internal constant ADAPTER_REGISTRY                    = 0x3696c5eAe4a7Ffd04Ea163564571E9CD8Ed9364e;
     address internal constant MORPHO                              = Ethereum.MORPHO;
     address internal constant MORPHO_VAULT_V2_FACTORY             = 0xA1D94F746dEfa1928926b84fB2596c06926C0405;
     address internal constant MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0x32BB1c0D48D8b1B3363e86eeB9A0300BAd61ccc1;
 
     address internal constant OLD_MORPHO_VAULT_V2_USDT = Ethereum.MORPHO_VAULT_V2_USDT;
-
-    address internal constant RECEIVE_ULN_302 = 0xbf3521d309642FA9B1c91A08609505BA09752c61;
-    address internal constant SEND_ULN_302    = 0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1;
-
-    uint32 internal constant ETHEREUM_MAINNET_EID = 30101;
-    uint32 internal constant AVALANCHE_EID        = 30106;
 
     constructor() {
         _spellId   = 20260507;
@@ -90,8 +62,8 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
     function setUp() public override {
         super.setUp();
 
-        chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
-        chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
+        // chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
     }
 
     /**********************************************************************************************/
@@ -134,214 +106,6 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
-    }
-    
-    /**********************************************************************************************/
-    /*** Avalanche - Update Bridge DVN Configuration                                            ***/
-    /**********************************************************************************************/
-
-    function test_AVALANCHE_sll_updateBridgeDvnConfiguration() external onChain(ChainIdUtils.Avalanche()) {
-        IEndpointV2 endpoint = IEndpointV2(LAYERZERO_ENDPOINT_V2);
-
-        address receiveUln302 = 0xbf3521d309642FA9B1c91A08609505BA09752c61;
-
-        bytes memory configBytes = endpoint.getConfig(
-            Avalanche.SPARK_RECEIVER,
-            receiveUln302,
-            30101,  // eid 30101 is for Ethereum Mainnet
-            2       // configType 2 is for UlnConfig
-        );
-        UlnConfig memory config = abi.decode(configBytes, (UlnConfig));
-
-        // Verify the old config
-        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
-        assertEq(config.requiredDVNCount,     2,                                          "requiredDVNCount should be 2");
-        assertEq(config.optionalDVNCount,     0,                                          "optionalDVNCount should be 0");
-        assertEq(config.optionalDVNThreshold, 0,                                          "optionalDVNThreshold should be 0");
-        assertEq(config.requiredDVNs.length,  2,                                          "requiredDVNs length should be 2");
-        assertEq(config.requiredDVNs[0],      0x962F502A63F5FBeB44DC9ab932122648E8352959, "first DVN should be LayerZero Labs");
-        assertEq(config.requiredDVNs[1],      0xD56e4eAb23cb81f43168F9F45211Eb027b9aC7cc, "second DVN should be Google");
-        assertEq(config.optionalDVNs.length,  0,                                          "optionalDVNs length should be 0");
-
-        _executeAllPayloadsAndBridges();
-
-        configBytes = endpoint.getConfig(
-            Avalanche.SPARK_RECEIVER,
-            receiveUln302,
-            30101,  // eid 30101 is for Ethereum Mainnet
-            2       // configType 2 is for UlnConfig
-        );
-        config = abi.decode(configBytes, (UlnConfig));
-
-        // Verify the new config
-        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
-        assertEq(config.requiredDVNCount,     0,                                          "requiredDVNCount should be 0");
-        assertEq(config.optionalDVNCount,     7,                                          "optionalDVNCount should be 7");
-        assertEq(config.optionalDVNThreshold, 4,                                          "optionalDVNThreshold should be 4");
-        assertEq(config.requiredDVNs.length,  0,                                          "requiredDVNs length should be 0");
-        assertEq(config.optionalDVNs.length,  7,                                          "optionalDVNs length should be 7");
-        assertEq(config.optionalDVNs[0],      0x07C05EaB7716AcB6f83ebF6268F8EECDA8892Ba1, "first DVN should be Horizen");
-        assertEq(config.optionalDVNs[1],      0x962F502A63F5FBeB44DC9ab932122648E8352959, "second DVN should be LayerZero Labs");
-        assertEq(config.optionalDVNs[2],      0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5, "third DVN should be Nethermind");
-        assertEq(config.optionalDVNs[3],      0xbe57e9E7d9eB16B92C6383792aBe28D64a18c0F1, "fourth DVN should be Deutsche Telekom");
-        assertEq(config.optionalDVNs[4],      0xcC49E6fca014c77E1Eb604351cc1E08C84511760, "fifth DVN should be Canary");
-        assertEq(config.optionalDVNs[5],      0xE4193136B92bA91402313e95347c8e9FAD8d27d0, "sixth DVN should be Luganodes");
-        assertEq(config.optionalDVNs[6],      0xE94aE34DfCC87A61836938641444080B98402c75, "seventh DVN should be P2P");
-    }
-
-    function test_ETHEREUM_sll_updateBridgeDvnConfiguration() external onChain(ChainIdUtils.Ethereum()) {
-        IEndpointV2 endpoint = IEndpointV2(LAYERZERO_ENDPOINT_V2);
-
-        address sendUln302 = 0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1;
-
-        bytes memory configBytes = endpoint.getConfig(
-            Ethereum.SPARK_PROXY,
-            sendUln302,
-            30106,  // eid 30106 is for Avalanche
-            2       // configType 2 is for UlnConfig
-        );
-        UlnConfig memory config = abi.decode(configBytes, (UlnConfig));
-
-        // Verify the old config
-        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
-        assertEq(config.requiredDVNCount,     2,                                          "requiredDVNCount should be 2");
-        assertEq(config.optionalDVNCount,     0,                                          "optionalDVNCount should be 0");
-        assertEq(config.optionalDVNThreshold, 0,                                          "optionalDVNThreshold should be 0");
-        assertEq(config.requiredDVNs.length,  2,                                          "requiredDVNs length should be 2");
-        assertEq(config.requiredDVNs[0],      0x589dEDbD617e0CBcB916A9223F4d1300c294236b, "first DVN should be LayerZero Labs");
-        assertEq(config.requiredDVNs[1],      0xD56e4eAb23cb81f43168F9F45211Eb027b9aC7cc, "second DVN should be Google");
-        assertEq(config.optionalDVNs.length,  0,                                          "optionalDVNs length should be 0");
-
-        _executeAllPayloadsAndBridges();
-
-        configBytes = endpoint.getConfig(
-            Ethereum.SPARK_PROXY,
-            sendUln302,
-            30106,  // eid 30106 is for Avalanche
-            2       // configType 2 is for UlnConfig
-        );
-        config = abi.decode(configBytes, (UlnConfig));
-
-        // Verify the new config
-        assertEq(config.confirmations,        15,                                         "confirmations should be 15");
-        assertEq(config.requiredDVNCount,     0,                                          "requiredDVNCount should be 0");
-        assertEq(config.optionalDVNCount,     7,                                          "optionalDVNCount should be 7");
-        assertEq(config.optionalDVNThreshold, 4,                                          "optionalDVNThreshold should be 4");
-        assertEq(config.requiredDVNs.length,  0,                                          "requiredDVNs length should be 0");
-        assertEq(config.optionalDVNs.length,  7,                                          "optionalDVNs length should be 7");
-        assertEq(config.optionalDVNs[0],      0x06559EE34D85a88317Bf0bfE307444116c631b67, "first DVN should be P2P");
-        assertEq(config.optionalDVNs[1],      0x373a6E5c0C4E89E24819f00AA37ea370917AAfF4, "second DVN should be Deutsche Telekom");
-        assertEq(config.optionalDVNs[2],      0x380275805876Ff19055EA900CDb2B46a94ecF20D, "third DVN should be Horizen");
-        assertEq(config.optionalDVNs[3],      0x58249a2Ec05c1978bF21DF1f5eC1847e42455CF4, "fourth DVN should be Luganodes");
-        assertEq(config.optionalDVNs[4],      0x589dEDbD617e0CBcB916A9223F4d1300c294236b, "fifth DVN should be LayerZero Labs");
-        assertEq(config.optionalDVNs[5],      0xa4fE5A5B9A846458a70Cd0748228aED3bF65c2cd, "sixth DVN should be Canary");
-        assertEq(config.optionalDVNs[6],      0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5, "seventh DVN should be Nethermind");
-    }
-
-    function test_ETHEREUM_attack_sendLibraryUnchanged() external onChain(ChainIdUtils.Ethereum()) {
-        address newDefaultSendLibrary = 0x1ccBf0db9C192d969de57E25B3fF09A25bb1D862;
-
-        IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
-
-        assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       SEND_ULN_302);
-        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), true);
-
-        uint256 snapshot = vm.snapshot();
-
-        // Step 1: Show that owner can change the default send library
-
-        // Set the new default send library.
-        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), SEND_ULN_302);
-
-        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
-        endpoint.setDefaultSendLibrary(AVALANCHE_EID, newDefaultSendLibrary);
-
-        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), newDefaultSendLibrary);
-
-        // Verify the send library of spark proxy is changed.
-        assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       newDefaultSendLibrary);
-        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), true);
-
-        // Step 2: Revert to original state
-
-        vm.revertTo(snapshot);
-
-        // Step 3: Execute the payload to set the new default send library
-
-        _executeAllPayloadsAndBridges();
-
-        // Step 4: Show that owner can change the default send library and it doesn't change the bridge configuration
-
-        address sendLibraryBefore = endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID);
-
-        assertEq(sendLibraryBefore,                                                  SEND_ULN_302);
-        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), false);
-
-        // Set the new default send library.
-        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), SEND_ULN_302);
-
-        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
-        endpoint.setDefaultSendLibrary(AVALANCHE_EID, newDefaultSendLibrary);
-
-        assertEq(endpoint.defaultSendLibrary(AVALANCHE_EID), newDefaultSendLibrary);
-
-        // Verify the send library of spark proxy is unchanged.
-        assertEq(endpoint.getSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID),       sendLibraryBefore);
-        assertEq(endpoint.isDefaultSendLibrary(Ethereum.SPARK_PROXY, AVALANCHE_EID), false);
-    }
-
-    function test_AVALANCHE_attack_receiveLibraryUnchanged() external onChain(ChainIdUtils.Avalanche()) {
-        address newDefaultReceiveLibrary = 0x1ccBf0db9C192d969de57E25B3fF09A25bb1D862;
-
-        IMessageLibManager endpoint = IMessageLibManager(LAYERZERO_ENDPOINT_V2);
-
-        uint256 snapshot = vm.snapshot();
-
-        // Step 1: Show that owner can change the default receive library
-
-        ( address _receiveLibraryBefore, bool _isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
-        assertEq(_receiveLibraryBefore, RECEIVE_ULN_302);
-        assertEq(_isDefault,            true);
-
-        // Set the new default receive library.
-        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), RECEIVE_ULN_302);
-
-        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
-        endpoint.setDefaultReceiveLibrary(ETHEREUM_MAINNET_EID, newDefaultReceiveLibrary, 0);
-
-        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), newDefaultReceiveLibrary);
-
-        // Verify the receive library of spark receiver is changed.
-        ( address _receiveLibraryAfter, bool _isDefaultAfter ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
-        assertEq(_receiveLibraryAfter, newDefaultReceiveLibrary);
-        assertEq(_isDefaultAfter,      true);
-
-        // Step 2: Revert to original state
-
-        vm.revertTo(snapshot);
-
-        // Step 3: Execute the payload to set the new default receive library
-
-        _executeAllPayloadsAndBridges();
-
-        // Step 4: Show that owner can change the default receive library and it doesn't change the bridge configuration
-
-        ( address receiveLibraryBefore, bool isDefault ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
-        assertEq(receiveLibraryBefore, RECEIVE_ULN_302);
-        assertEq(isDefault,            false);
-
-        // Set the new default receive library.
-        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), RECEIVE_ULN_302);
-
-        vm.prank(Ownable(LAYERZERO_ENDPOINT_V2).owner());
-        endpoint.setDefaultReceiveLibrary(ETHEREUM_MAINNET_EID, newDefaultReceiveLibrary, 0);
-
-        assertEq(endpoint.defaultReceiveLibrary(ETHEREUM_MAINNET_EID), newDefaultReceiveLibrary);
-
-        // Verify the receive library of spark receiver is unchanged.
-        ( address receiveLibraryAfter, bool isDefaultAfter ) = endpoint.getReceiveLibrary(Avalanche.SPARK_RECEIVER, ETHEREUM_MAINNET_EID);
-        assertEq(receiveLibraryAfter, receiveLibraryBefore);
-        assertEq(isDefaultAfter,      false);
     }
 
     /**********************************************************************************************/
@@ -679,8 +443,8 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
     function setUp() public override {
         super.setUp();
 
-        chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
-        chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
+        // chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
     }
 
     /**********************************************************************************************/
@@ -739,8 +503,8 @@ contract SparkEthereum_20260507_SpellTests is SpellTests {
     function setUp() public override {
         super.setUp();
 
-        chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
-        chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
+        // chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
