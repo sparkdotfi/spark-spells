@@ -56,14 +56,14 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260507;
-        _blockDate = 1777649373;  // 2026-05-01T15:29:33Z
+        _blockDate = 1777989706;  // 2026-05-05T14:01:46Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
     }
 
     /**********************************************************************************************/
@@ -323,7 +323,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
 
         // Verify liquidity data for old vault is set to cbbtc/usdt market.
 
-        bytes32 WBTC_USDT_MARKET_ID = 0xa921ef34e2fc7a27ccc50ae7e4b154e16c9799d3387076c421423ef52ac4df99;
+        bytes32 WSTETH_USDT_MARKET_ID = 0xe7e9694b754c4d4f7e21faf7223f6fa71abaeb10296a4c43a54a7977149687d2;
 
         (
             address _loanToken,
@@ -333,13 +333,13 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
             uint256 _lltv
         ) = abi.decode(oldVault.liquidityData(), (address, address, address, address, uint256));
 
-        MarketParams memory wbtcUsdtMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(WBTC_USDT_MARKET_ID));
+        MarketParams memory wstethUsdtMarketParams = IMorpho(MORPHO).idToMarketParams(Id.wrap(WSTETH_USDT_MARKET_ID));
 
-        assertEq(_loanToken,       wbtcUsdtMarketParams.loanToken);
-        assertEq(_collateralToken, wbtcUsdtMarketParams.collateralToken);
-        assertEq(_oracle,          wbtcUsdtMarketParams.oracle);
-        assertEq(_irm,             wbtcUsdtMarketParams.irm);
-        assertEq(_lltv,            wbtcUsdtMarketParams.lltv);    
+        assertEq(_loanToken,       wstethUsdtMarketParams.loanToken);
+        assertEq(_collateralToken, wstethUsdtMarketParams.collateralToken);
+        assertEq(_oracle,          wstethUsdtMarketParams.oracle);
+        assertEq(_irm,             wstethUsdtMarketParams.irm);
+        assertEq(_lltv,            wstethUsdtMarketParams.lltv);    
 
         // Verify liquidity data for new vault is set to susds/usdt market.
 
@@ -380,19 +380,19 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         _depositERC4626(Ethereum.ALM_CONTROLLER, address(vault), depositAmount);
 
-        assertEq(vault.balanceOf(Ethereum.ALM_PROXY), 49_874_316.847506436551988386e18);
+        assertEq(vault.balanceOf(Ethereum.ALM_PROXY), 49_863_026.403747502151093335e18);
 
         IMorphoLike.Position memory position = IMorphoLike(Ethereum.MORPHO).position(Id.wrap(SUSDS_USDT_MARKET_ID), adapter);
 
         assertGe(position.supplyShares, 45_000_000e12);
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 278);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 304);
 
         vm.warp(block.timestamp + 1 days);
 
         vault.accrueInterest();
 
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1_857.252783e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), depositAmount + 1_995.742797e6);
 
         // Step 2: Reallocate into cbbtc/usdt market.
         uint256 withdrawAmount = depositAmount;
@@ -428,7 +428,7 @@ contract SparkEthereum_20260507_SLLTests is SparkLiquidityLayerTests {
         _withdrawERC4626(Ethereum.ALM_CONTROLLER, address(vault), withdrawAmount);
 
         // Assert that Interest Remains after withdrawal.
-        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 2_046.11876e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(Ethereum.ALM_PROXY)), 2_179.001997e6);
     }
 
 }
@@ -437,14 +437,14 @@ contract SparkEthereum_20260507_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260507;
-        _blockDate = 1777649373;  // 2026-05-01T15:29:33Z
+        _blockDate = 1777989706;  // 2026-05-05T14:01:46Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
     }
 
     /**********************************************************************************************/
@@ -497,14 +497,14 @@ contract SparkEthereum_20260507_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260507;
-        _blockDate = 1777649373;  // 2026-05-01T15:29:33Z
+        _blockDate = 1777989706;  // 2026-05-05T14:01:46Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0xEB98fEA67472F40a3dEDf9c6eEd70FB7b14A091d;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {

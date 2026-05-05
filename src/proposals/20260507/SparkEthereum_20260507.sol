@@ -39,7 +39,7 @@ contract SparkEthereum_20260507 is SparkPayloadEthereum {
     address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
     constructor() {
-        // PAYLOAD_AVALANCHE = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        PAYLOAD_AVALANCHE = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
     }
 
     function _postExecute() internal override {
