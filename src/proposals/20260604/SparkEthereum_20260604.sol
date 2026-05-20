@@ -47,8 +47,10 @@ interface ISparkVaultV2Like {
  * @notice SparkLend:
  *         - Update Cap Automator Parameters.
  *         - Update Parameters for Deprecated Assets.
+ *         - Increase USDC and USDT Reserve Factors.
  *         Spark Liquidity Layer:
  *         - Onboard with Binance.
+ *         - Update ALM Proxy Freezable.
  *         Spark Treasury:
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
  * Forum:  
@@ -56,23 +58,19 @@ interface ISparkVaultV2Like {
  */
 contract SparkEthereum_20260604 is SparkPayloadEthereum {
 
-    uint256 internal constant SPK_BUYBACKS_AMOUNT = 326_945e18;
+    uint256 internal constant SPK_BUYBACKS_AMOUNT = 663_354e18;
 
     address internal constant BINANCE_EXCHANGE   = 0x6666666666666666666666666666666666666666;
     address internal constant BINANCE_OTC_BUFFER = 0x1851c64BBfad132CBE75481f1690C381288ea492;
 
     address internal constant NEW_ALM_PROXY_FREEZABLE = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
 
-    // function _preExecute() internal override {
-    //     LISTING_ENGINE.POOL_CONFIGURATOR().setEModeCategory({
-    //         categoryId:           3,
-    //         ltv:                  1,
-    //         liquidationThreshold: 1,
-    //         liquidationBonus:     101_00,
-    //         oracle:               address(0),  // No oracle override
-    //         label:                'BTC'
-    //     });
-    // }
+    bytes32 internal constant USDT_USDS_POOL_ID = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
+
+    constructor() {
+        // PAYLOAD_AVALANCHE = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
+        // PAYLOAD_BASE      = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
+    }
 
     function collateralsUpdates()
         public view override returns (IEngine.CollateralUpdate[] memory)
@@ -131,7 +129,7 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         });
         capAutomator.setBorrowCapConfig({
             asset            : Ethereum.WETH,
-            max              : ReserveConfiguration.MAX_VALID_SUPPLY_CAP,
+            max              : ReserveConfiguration.MAX_VALID_BORROW_CAP,
             gap              : 10_000,
             increaseCooldown : 4 hours
         });
@@ -201,6 +199,34 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             increaseCooldown : 0
         });
 
+        // 5. Increase USDC and USDT Reserve Factors
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 10_00);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 10_00);
+
+        // 6. Update Rate Limits
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeAddressAddressKey(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+                Ethereum.USDC,
+                Ethereum.ANCHORAGE_USAT_USDT_DEPOSIT
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            5_000_000e6,
+            250_000_000e6 / uint256(1 days),
+            6
+        );
+
+        SLLHelpers.setRateLimitData(
+            RateLimitHelpers.makeBytes32Key(
+                MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_UNISWAP_V4_SWAP(),
+                USDT_USDS_POOL_ID
+            ),
+            Ethereum.ALM_RATE_LIMITS,
+            25_000_000e18,
+            250_000_000e18 / uint256(1 days),
+            18
+        );
+
         // 7. Onboard with Binance
         MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits        = IRateLimits(Ethereum.ALM_RATE_LIMITS);
@@ -215,17 +241,16 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             BINANCE_EXCHANGE
         );
 
-        rateLimits.setRateLimitData(key, 10_000_000e18, uint256(10_000_000e18) / 1 days);
+        rateLimits.setRateLimitData(key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
 
-        mainnetController.setMaxSlippage(BINANCE_EXCHANGE,     0.9995e18);
+        mainnetController.setMaxSlippage(BINANCE_EXCHANGE,     0.998e18);
         mainnetController.setOTCBuffer(BINANCE_EXCHANGE,       address(otcBuffer));
-        mainnetController.setOTCRechargeRate(BINANCE_EXCHANGE, uint256(1_000_000e18) / 1 days);
+        mainnetController.setOTCRechargeRate(BINANCE_EXCHANGE, uint256(50_000e18) / 1 days);
 
         mainnetController.setOTCWhitelistedAsset(BINANCE_EXCHANGE, Ethereum.USDT, true);
         mainnetController.setOTCWhitelistedAsset(BINANCE_EXCHANGE, Ethereum.USDC, true);
 
-        // 9. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks
-        IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, SPK_BUYBACKS_AMOUNT);
+        // 8. Update ALM Proxy Freezable
 
         // Grant ALLOCATOR_ROLE Role for Relayer 1 and 2 on NEW_ALM_PROXY_FREEZABLE and FREEZER_ROLE role to the ALM_FREEZER_MULTISIG
         IALMProxyLike proxy = IALMProxyLike(NEW_ALM_PROXY_FREEZABLE);
@@ -235,9 +260,10 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         proxy.grantRole(proxy.FREEZER_ROLE(),   Ethereum.ALM_FREEZER_MULTISIG);
 
         // Spark Savings - Update Setter Role to New ALM Proxy Freezable for spUSDC, spUSDT, spETH
-        ISparkVaultV2Like spUSDCvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
-        ISparkVaultV2Like spUSDTvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
-        ISparkVaultV2Like spETHvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
+        ISparkVaultV2Like spUSDCvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
+        ISparkVaultV2Like spUSDTvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
+        ISparkVaultV2Like spETHvault   = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);
+        ISparkVaultV2Like spPYUSDvault = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPPYUSD);
 
         spUSDCvault.revokeRole(spUSDCvault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
         spUSDCvault.grantRole(spUSDCvault.SETTER_ROLE(),  NEW_ALM_PROXY_FREEZABLE);
@@ -248,6 +274,9 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         spETHvault.revokeRole(spETHvault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
         spETHvault.grantRole(spETHvault.SETTER_ROLE(),  NEW_ALM_PROXY_FREEZABLE);
 
+        spPYUSDvault.revokeRole(spPYUSDvault.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
+        spPYUSDvault.grantRole(spPYUSDvault.SETTER_ROLE(),  NEW_ALM_PROXY_FREEZABLE);
+
         // Spark USDC Morpho Vault - Update Allocator Role to New ALM Proxy Freezable
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, false);
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC).setIsAllocator(NEW_ALM_PROXY_FREEZABLE,      true);
@@ -255,6 +284,9 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         // Spark USDS Morpho Vault - Update Allocator Role to New ALM Proxy Freezable
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, false);
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(NEW_ALM_PROXY_FREEZABLE,      true);
+
+        // 9. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks
+        IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, SPK_BUYBACKS_AMOUNT);
     }
 
 }
