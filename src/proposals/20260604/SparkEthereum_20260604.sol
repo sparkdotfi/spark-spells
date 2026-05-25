@@ -31,6 +31,16 @@ interface IALMProxyLike {
 
 }
 
+interface ICapAutomatorLike {
+
+    function UPDATE_ROLE() external view returns (bytes32);
+
+    function grantRole(bytes32 role, address account) external;
+
+    function revokeRole(bytes32 role, address account) external;
+
+}
+
 interface ISparkVaultV2Like {
 
     function SETTER_ROLE() external view returns (bytes32);
@@ -49,7 +59,6 @@ interface ISparkVaultV2Like {
  *         - Update Parameters for Deprecated Assets.
  *         - Increase USDC and USDT Reserve Factors.
  *         Spark Liquidity Layer:
- *         - Onboard with Binance.
  *         - Update ALM Proxy Freezable.
  *         Spark Treasury:
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
@@ -59,9 +68,6 @@ interface ISparkVaultV2Like {
 contract SparkEthereum_20260604 is SparkPayloadEthereum {
 
     uint256 internal constant SPK_BUYBACKS_AMOUNT = 663_354e18;
-
-    address internal constant BINANCE_EXCHANGE   = 0x6666666666666666666666666666666666666666;
-    address internal constant BINANCE_OTC_BUFFER = 0x1851c64BBfad132CBE75481f1690C381288ea492;
 
     address internal constant NEW_ALM_PROXY_FREEZABLE = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
 
@@ -227,29 +233,6 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             18
         );
 
-        // 7. Onboard with Binance
-        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
-        IRateLimits       rateLimits        = IRateLimits(Ethereum.ALM_RATE_LIMITS);
-
-        OTCBuffer otcBuffer = OTCBuffer(BINANCE_OTC_BUFFER);
-
-        otcBuffer.approve(Ethereum.USDT, type(uint256).max);
-        otcBuffer.approve(Ethereum.USDC, type(uint256).max);
-
-        bytes32 key = RateLimitHelpers.makeAddressKey(
-            mainnetController.LIMIT_OTC_SWAP(),
-            BINANCE_EXCHANGE
-        );
-
-        rateLimits.setRateLimitData(key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
-
-        mainnetController.setMaxSlippage(BINANCE_EXCHANGE,     0.998e18);
-        mainnetController.setOTCBuffer(BINANCE_EXCHANGE,       address(otcBuffer));
-        mainnetController.setOTCRechargeRate(BINANCE_EXCHANGE, uint256(50_000e18) / 1 days);
-
-        mainnetController.setOTCWhitelistedAsset(BINANCE_EXCHANGE, Ethereum.USDT, true);
-        mainnetController.setOTCWhitelistedAsset(BINANCE_EXCHANGE, Ethereum.USDC, true);
-
         // 8. Update ALM Proxy Freezable
 
         // Grant ALLOCATOR_ROLE Role for Relayer 1 and 2 on NEW_ALM_PROXY_FREEZABLE and FREEZER_ROLE role to the ALM_FREEZER_MULTISIG
@@ -258,6 +241,12 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         proxy.grantRole(proxy.ALLOCATOR_ROLE(), Ethereum.ALM_RELAYER_MULTISIG);
         proxy.grantRole(proxy.ALLOCATOR_ROLE(), Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG);
         proxy.grantRole(proxy.FREEZER_ROLE(),   Ethereum.ALM_FREEZER_MULTISIG);
+
+        // Cap Automator - Grant UPDATE_ROLE to NEW_ALM_PROXY_FREEZABLE
+        ICapAutomatorLike capAutomator_ = ICapAutomatorLike(SparkLend.CAP_AUTOMATOR);
+
+        capAutomator_.revokeRole(capAutomator_.UPDATE_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
+        capAutomator_.grantRole(capAutomator_.UPDATE_ROLE(),  NEW_ALM_PROXY_FREEZABLE);
 
         // Spark Savings - Update Setter Role to New ALM Proxy Freezable for spUSDC, spUSDT, spETH
         ISparkVaultV2Like spUSDCvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);

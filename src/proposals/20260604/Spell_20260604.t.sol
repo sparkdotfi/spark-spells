@@ -38,6 +38,14 @@ import {
     ISparkVaultV2Like 
 } from "../../interfaces/Interfaces.sol";
 
+interface ICapAutomatorLike {
+
+    function UPDATE_ROLE() external view returns (bytes32);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+}
+
 contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
 
     event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
@@ -146,9 +154,13 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
         assertEq(spPyusd.hasRole(SETTER_ROLE, NEW_ETHEREUM_ALM_PROXY_FREEZABLE), true);
     }
 
-    function test_ETHEREUM_morphoVaultAllocatorRoleChanges() external onChain(ChainIdUtils.Ethereum()) {
-        IMorphoVaultLike morphoUsdc = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC);
-        IMorphoVaultLike morphoUsds = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS);
+    function test_ETHEREUM_roleChanges() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultLike  morphoUsdc   = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDC_BC);
+        IMorphoVaultLike  morphoUsds   = IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS);
+        ICapAutomatorLike capAutomator = ICapAutomatorLike(SparkLend.CAP_AUTOMATOR);
+
+        assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), Ethereum.ALM_PROXY_FREEZABLE),     true);
+        assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), NEW_ETHEREUM_ALM_PROXY_FREEZABLE), false);
 
         assertEq(morphoUsdc.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), true);
         assertEq(morphoUsds.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), true);
@@ -157,6 +169,9 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
         assertEq(morphoUsds.isAllocator(NEW_ETHEREUM_ALM_PROXY_FREEZABLE), false);
 
         _executeAllPayloadsAndBridges();
+
+        assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), Ethereum.ALM_PROXY_FREEZABLE),     false);
+        assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), NEW_ETHEREUM_ALM_PROXY_FREEZABLE), true);
 
         assertEq(morphoUsdc.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), false);
         assertEq(morphoUsds.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), false);

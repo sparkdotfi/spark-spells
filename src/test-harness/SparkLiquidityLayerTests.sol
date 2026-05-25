@@ -120,7 +120,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ETHENA,
         FARM,
         MAPLE,
-        OTC,
         PSM,
         SPARK_VAULT_V2,
         SUPERSTATE,
@@ -2742,127 +2741,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     }
 
-    function _testOTCIntegration(OTCE2ETestParams memory p) internal {
-        uint48 startingTimestamp = uint48(block.timestamp);
-
-        IERC20 asset0 = IERC20(p.asset0);
-
-        ( address otcBuffer, uint256 rechargeRate,,, ) = MainnetController(p.ctx.controller).otcs(p.exchange);
-
-        uint256 amount18 = p.amount * 1e18 / 10 ** IERC20Metadata(p.asset0).decimals();
-
-        // Step 1: Send asset0 to exchange
-
-        deal(p.asset0, address(p.ctx.proxy), p.amount);
-
-        assertEq(asset0.balanceOf(address(p.ctx.proxy)), p.amount);
-        assertEq(asset0.balanceOf(address(p.exchange)),  0);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), amount18);
-
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : 0,
-            sentTimestamp : 0,
-            claimed18     : 0
-        });
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset0, p.amount);
-
-        assertEq(asset0.balanceOf(address(p.ctx.proxy)), 0);
-        assertEq(asset0.balanceOf(address(p.exchange)),  p.amount);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), 0);
-
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : amount18,
-            sentTimestamp : startingTimestamp,
-            claimed18     : 0
-        });
-
-        assertEq(MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange), 0);
-
-        skip(10 days);
-
-        // Recharge starts without any claim after send
-        assertEq(
-            MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange),
-            10 days * rechargeRate
-        );
-
-        // Step 2: Send asset1 to buffer from exchange under slippage
-
-        IERC20 asset1 = IERC20(p.asset1);
-
-        deal(p.asset1, address(p.ctx.proxy), 0);  // Deal zero asset1 to almProxy to ensure balance changes are from the test actions
-        deal(p.asset1, p.exchange,           p.amount - 1);
-
-        vm.prank(p.exchange);
-        asset1.transfer(otcBuffer, p.amount - 1);
-
-        assertEq(asset1.balanceOf(address(otcBuffer)),   p.amount - 1);
-        assertEq(asset1.balanceOf(address(p.ctx.proxy)), 0);
-
-        // Step 3: Claim OTC funds
-
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : amount18,
-            sentTimestamp : startingTimestamp,
-            claimed18     : 0
-        });
-
-        assertTrue(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange));
-
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).otcClaim(p.exchange, p.asset1);
-
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : amount18,
-            sentTimestamp : startingTimestamp,
-            claimed18     : (p.amount - 1) * 1e18 / 10 ** IERC20Metadata(p.asset1).decimals()
-        });
-
-        assertTrue(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange));
-
-        // Step 4: Swap another asset using the same rate limit
-
-        skip(10 days);  // Recharge rate limit
-
-        uint256 reverseSendAmount   = asset1.balanceOf(address(p.ctx.proxy));
-        uint256 reverseSendAmount18 = reverseSendAmount * 1e18 / 10 ** IERC20Metadata(p.asset1).decimals();
-
-        uint256 currentRateLimit = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
-
-        assertEq(asset1.balanceOf(address(p.ctx.proxy)), reverseSendAmount);
-        assertEq(asset1.balanceOf(p.exchange),           0);
-
-        // Able to do another swap
-        vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset1, reverseSendAmount);
-
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), currentRateLimit - reverseSendAmount18);
-
-        assertEq(asset1.balanceOf(address(p.ctx.proxy)), p.amount - 1 - reverseSendAmount);
-        assertEq(asset1.balanceOf(p.exchange),           reverseSendAmount);
-
-        // OTC state is reset
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : reverseSendAmount18,
-            sentTimestamp : block.timestamp,
-            claimed18     : 0
-        });
-    }
-
     function _assertOtcState(
         SparkLiquidityLayerContext memory ctx,
         address                           exchange,
@@ -4021,21 +3899,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }));
         }
 
-        else if (integration.category == Category.OTC) {
-            console2.log("Running SLL E2E test for", integration.label);
-
-            ( address asset0, address asset1 ) = abi.decode(integration.extraData, (address, address));
-
-            _testOTCIntegration(OTCE2ETestParams({
-                ctx:           ctx,
-                exchange:      integration.integration,
-                transferKey:   integration.entryId,
-                asset0:        asset0,
-                asset1:        asset1,
-                amount:        10_000_000e6  // Amount for each swap direction
-            }));
-        }
-
         else {
             console2.log("NOT running SLL E2E test for", integration.label);
         }
@@ -4337,13 +4200,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 1);
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
-
-        newIntegrations[newIntegrations.length - 1] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
     }
 
     function _getPostExecutionIntegrationsBase(
@@ -4582,26 +4443,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             exitId:      RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_MAPLE_REDEEM(),  integration),
             exitId2:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_4626_WITHDRAW(), integration),
             extraData:   ""
-        });
-    }
-
-    function _createOTCIntegration(
-        string  memory label,
-        address        integration,
-        address        asset0,
-        address        asset1
-    ) internal view returns (SLLIntegration memory) {
-        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
-
-        return SLLIntegration({
-            label:       label,
-            category:    Category.OTC,
-            integration: integration,
-            entryId:     RateLimitHelpers.makeAddressKey(mainnetController.LIMIT_OTC_SWAP(), integration),
-            entryId2:    bytes32(0),
-            exitId:      bytes32(0),
-            exitId2:     bytes32(0),
-            extraData:   abi.encode(asset0, asset1)
         });
     }
 
