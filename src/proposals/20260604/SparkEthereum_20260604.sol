@@ -54,6 +54,7 @@ interface ISparkVaultV2Like {
  * @title  June 4, 2026 Spark Ethereum Proposal
  * @author Phoenix Labs
  * @notice SparkLend:
+ *         - Deprecate BTC e-mode.
  *         - Update Cap Automator Parameters.
  *         - Update Parameters for Deprecated Assets.
  *         - Increase USDC and USDT Reserve Factors.
@@ -123,6 +124,10 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
     }
 
     function _postExecute() internal override {
+        // 1. Deprecate BTC e-mode
+        LISTING_ENGINE.POOL_CONFIGURATOR().setAssetEModeCategory(Ethereum.CBBTC, 0);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setAssetEModeCategory(Ethereum.LBTC,  0);
+
         // 3. Update Cap Automator Parameters
         ICapAutomator capAutomator = ICapAutomator(SparkLend.CAP_AUTOMATOR);
 

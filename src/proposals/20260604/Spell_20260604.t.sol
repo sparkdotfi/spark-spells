@@ -378,6 +378,28 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
         // chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
     }
 
+    function test_ETHEREUM_sparkLend_deprecateBTCeMode() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
+
+        ReserveConfig memory cbbtc = _findReserveConfigBySymbol(allConfigsBefore, "cbBTC");
+        assertEq(cbbtc.eModeCategory, 3);
+
+        ReserveConfig memory lbtc = _findReserveConfigBySymbol(allConfigsBefore, "LBTC");
+        assertEq(lbtc.eModeCategory, 3);
+
+        _executeAllPayloadsAndBridges();
+
+        ReserveConfig[] memory allConfigsAfter = _createConfigurationSnapshot("", ctx.pool);
+
+        cbbtc.eModeCategory = 0;
+        lbtc.eModeCategory  = 0;
+
+        _validateReserveConfig(cbbtc, allConfigsAfter);
+        _validateReserveConfig(lbtc,  allConfigsAfter);
+    }
+
     function test_ETHEREUM_sparkLend_wethCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.WETH, 2_000_000, 150_000, 12 hours);
         _assertBorrowCapConfig(Ethereum.WETH, 1_000_000, 20_000,  12 hours);
