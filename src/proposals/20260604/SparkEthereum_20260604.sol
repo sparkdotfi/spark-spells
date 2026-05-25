@@ -11,7 +11,6 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
-import { OTCBuffer }         from "spark-alm-controller/src/OTCBuffer.sol";
 
 import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
 
@@ -67,11 +66,11 @@ interface ISparkVaultV2Like {
  */
 contract SparkEthereum_20260604 is SparkPayloadEthereum {
 
-    uint256 internal constant SPK_BUYBACKS_AMOUNT = 663_354e18;
-
     address internal constant NEW_ALM_PROXY_FREEZABLE = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
 
     bytes32 internal constant USDT_USDS_POOL_ID = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
+
+    uint256 internal constant SPK_BUYBACKS_AMOUNT = 663_354e18;
 
     constructor() {
         // PAYLOAD_AVALANCHE = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
@@ -184,7 +183,7 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDC, 10_00);
         LISTING_ENGINE.POOL_CONFIGURATOR().setReserveFactor(Ethereum.USDT, 10_00);
 
-        // 6. Update Rate Limits
+        // 7. Update Rate Limits
         SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAddressAddressKey(
                 MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
@@ -206,6 +205,22 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             25_000_000e18,
             250_000_000e18 / uint256(1 days),
             18
+        );
+
+        SLLHelpers.setRateLimitData(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDS_MINT(),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000_000e18,
+            1_000_000_000e18 / uint256(1 days),
+            18
+        );
+
+        SLLHelpers.setRateLimitData(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDS_TO_USDC(),
+            Ethereum.ALM_RATE_LIMITS,
+            1_000_000_000e6,
+            1_000_000_000e6 / uint256(1 days),
+            6
         );
 
         // 8. Update ALM Proxy Freezable
@@ -249,7 +264,7 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(Ethereum.ALM_PROXY_FREEZABLE, false);
         IMorphoVaultLike(Ethereum.MORPHO_VAULT_USDS).setIsAllocator(NEW_ALM_PROXY_FREEZABLE,      true);
 
-        // 9. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks
+        // 12. Transfer Excess USDS from SubDAO Proxy for SPK Buybacks
         IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, SPK_BUYBACKS_AMOUNT);
     }
 

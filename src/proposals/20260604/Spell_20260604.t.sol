@@ -118,6 +118,26 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
         }));
     }
 
+    function test_ETHEREUM_increaseUSDSMintRateLimit() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 usdsMintKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDS_MINT();
+
+        _assertRateLimit(usdsMintKey, 500_000_000e18, 500_000_000e18 / uint256(1 days));
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(usdsMintKey, 1_000_000_000e18, 1_000_000_000e18 / uint256(1 days));
+    }
+
+    function test_ETHEREUM_increaseSwapUSDSToUSDCRateLimit() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 swapUSDSToUSDCKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDS_TO_USDC();
+
+        _assertRateLimit(swapUSDSToUSDCKey, 500_000_000e6, 300_000_000e6 / uint256(1 days));
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(swapUSDSToUSDCKey, 1_000_000_000e6, 1_000_000_000e6 / uint256(1 days));
+    }
+
     function test_ETHEREUM_sparkVaultSetterRoleChanges() external onChain(ChainIdUtils.Ethereum()) {
         ISparkVaultV2Like spUsdc  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
         ISparkVaultV2Like spUsdt  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
