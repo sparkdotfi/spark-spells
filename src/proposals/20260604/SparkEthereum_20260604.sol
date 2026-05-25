@@ -146,12 +146,6 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             gap              : 50_000,
             increaseCooldown : 4 hours
         });
-        capAutomator.setBorrowCapConfig({
-            asset            : Ethereum.WSTETH,
-            max              : 1,
-            gap              : 1,
-            increaseCooldown : 0
-        });
 
         capAutomator.setSupplyCapConfig({
             asset            : Ethereum.WEETH,
@@ -159,12 +153,6 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             gap              : 10_000,
             increaseCooldown : 4 hours
         });
-        capAutomator.setBorrowCapConfig({
-            asset            : Ethereum.WEETH,
-            max              : 1,
-            gap              : 1,
-            increaseCooldown : 0
-        });
 
         capAutomator.setSupplyCapConfig({
             asset            : Ethereum.WBTC,
@@ -190,19 +178,6 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
             max              : 50_000,
             gap              : 100,
             increaseCooldown : 4 hours
-        });
-
-        capAutomator.setSupplyCapConfig({
-            asset            : Ethereum.LBTC,
-            max              : 10_000,
-            gap              : 200,
-            increaseCooldown : 4 hours
-        });
-        capAutomator.setBorrowCapConfig({
-            asset            : Ethereum.LBTC,
-            max              : 1,
-            gap              : 1,
-            increaseCooldown : 0
         });
 
         // 5. Increase USDC and USDT Reserve Factors

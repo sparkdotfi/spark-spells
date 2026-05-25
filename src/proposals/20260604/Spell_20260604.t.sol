@@ -370,22 +370,18 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
 
     function test_ETHEREUM_sparkLend_wstethCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.WSTETH, 2_000_000, 50_000, 12 hours);
-        _assertBorrowCapConfig(Ethereum.WSTETH, 1,         1,      12 hours);
 
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.WSTETH, uint48(ReserveConfiguration.MAX_VALID_SUPPLY_CAP), 50_000, 4 hours);
-        _assertBorrowCapConfig(Ethereum.WSTETH, 1,                                                 1,      0);
     }
 
     function test_ETHEREUM_sparkLend_weethCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
         _assertSupplyCapConfig(Ethereum.WEETH, 500_000, 10_000, 12 hours);
-        _assertBorrowCapConfig(Ethereum.WEETH, 0,       0,      0);
 
         _executeAllPayloadsAndBridges();
 
         _assertSupplyCapConfig(Ethereum.WEETH, 500_000, 10_000, 4 hours);
-        _assertBorrowCapConfig(Ethereum.WEETH, 1,       1,      0);
     }
 
     function test_ETHEREUM_sparkLend_wbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
@@ -406,16 +402,6 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
 
         _assertSupplyCapConfig(Ethereum.CBBTC, 50_000, 500, 4 hours);
         _assertBorrowCapConfig(Ethereum.CBBTC, 50_000, 100, 4 hours);
-    }
-
-    function test_ETHEREUM_sparkLend_lbtcCapAutomatorUpdates() external onChain(ChainIdUtils.Ethereum()) {
-        _assertSupplyCapConfig(Ethereum.LBTC, 5_000, 200, 12 hours);
-        _assertBorrowCapConfig(Ethereum.LBTC, 0,     0,   0);
-
-        _executeAllPayloadsAndBridges();
-
-        _assertSupplyCapConfig(Ethereum.LBTC, 10_000, 200, 4 hours);
-        _assertBorrowCapConfig(Ethereum.LBTC, 1,      1,   0);
     }
 
     function test_ETHEREUM_sparkLend_reserveFactor() external onChain(ChainIdUtils.Ethereum()) {
