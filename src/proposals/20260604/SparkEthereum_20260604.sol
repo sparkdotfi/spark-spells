@@ -62,7 +62,7 @@ interface ISparkVaultV2Like {
  *         - Update ALM Proxy Freezable.
  *         Spark Treasury:
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
- * Forum:  
+ * Forum:  https://forum.skyeco.com/t/june-4-2026-proposed-changes-to-spark-for-upcoming-spell/27931
  * Vote:   
  */
 contract SparkEthereum_20260604 is SparkPayloadEthereum {

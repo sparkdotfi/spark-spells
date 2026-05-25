@@ -19,7 +19,7 @@ interface IALMProxyFreezableLike {
  * @title  June 4, 2026 Spark Avalanche Proposal
  * @notice Spark Liquidity Layer - Update ALM Proxy Freezable
  * @author Phoenix Labs
- * Forum:  
+ * Forum:  https://forum.skyeco.com/t/june-4-2026-proposed-changes-to-spark-for-upcoming-spell/27931
  * Vote:   
  */
 contract SparkAvalanche_20260604 is SparkPayloadAvalanche {
