@@ -461,6 +461,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
+    address internal constant NEW_AVALANCHE_ALM_PROXY_FREEZABLE = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
+    address internal constant NEW_BASE_ALM_PROXY_FREEZABLE      = 0x92d7B06e5844e67174AE9E86bdCb06428482DDF9;
+    address internal constant NEW_ETHEREUM_ALM_PROXY_FREEZABLE  = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
+
     uint256 internal constant START_BLOCK = 21029247;
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
@@ -2513,14 +2517,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
         // TODO: Update this once the spell is live
-        vm.prank(Ethereum.ALM_OPS_MULTISIG);
+        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
         try vault.setVsr(1.000000001547125957863212448e27) {
         } catch {
-            vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
+            vm.prank(NEW_ETHEREUM_ALM_PROXY_FREEZABLE);
             try vault.setVsr(1.000000001547125957863212448e27) {
             } catch {
                 vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
-                vault.setVsr(1.000000001547125957863212448e27);
+                try vault.setVsr(1.000000001547125957863212448e27) {
+                } catch {
+                    vm.prank(NEW_AVALANCHE_ALM_PROXY_FREEZABLE);
+                    vault.setVsr(1.000000001547125957863212448e27);
+                }
             }
         }
 
@@ -4111,15 +4119,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsAvalanche() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](4);
+        integrations = new SLLIntegration[](3);
 
         integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
         integrations[1] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
         integrations[2] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Avalanche.SPARK_VAULT_V2_SPUSDC);
-
-        integrations[3] = _createAaveIntegration("AAVE-ATOKEN_USDC", AAVE_ATOKEN_USDC);
 
         return integrations;
     }
@@ -4230,17 +4236,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsAvalanche(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Remove "AAVE-ATOKEN_USDC" integration which is expected to be offboarded after execution.
-        newIntegrations = new SLLIntegration[](integrations.length - 1);
-
-        uint256 index = 0;
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC")) ) continue;
-
-            newIntegrations[index] = integrations[i];
-
-            index++;
+            newIntegrations[i] = integrations[i];
         }
     }
 

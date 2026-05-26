@@ -18,10 +18,14 @@ import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4L
 import { Currency } from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
 import { PoolKey }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
 
-import { IPool } from "sparklend-v1-core/interfaces/IPool.sol";
+import { ICapAutomator } from "sparklend-cap-automator/interfaces/ICapAutomator.sol";
+
+import { IPool }               from "sparklend-v1-core/interfaces/IPool.sol";
+import { IScaledBalanceToken } from "sparklend-v1-core/interfaces/IScaledBalanceToken.sol";
 
 import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
+import { WadRayMath }           from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
@@ -50,13 +54,9 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
 
     event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
 
-    address internal constant NEW_AVALANCHE_ALM_PROXY_FREEZABLE = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
-    address internal constant NEW_BASE_ALM_PROXY_FREEZABLE      = 0x92d7B06e5844e67174AE9E86bdCb06428482DDF9;
-    address internal constant NEW_ETHEREUM_ALM_PROXY_FREEZABLE  = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
-
     constructor() {
         _spellId   = 20260604;
-        _blockDate = 1779171198;  // 2026-05-19T06:13:18Z
+        _blockDate = 1779776905;  // 2026-05-26T06:28:25Z
     }
 
     function setUp() public override {
@@ -365,9 +365,14 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
 
 contract SparkEthereum_20260604_SparklendTests is SparklendTests {
 
+    using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
+    using WadRayMath           for uint256;
+
+    address internal constant NEW_ETHEREUM_ALM_PROXY_FREEZABLE  = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
+
     constructor() {
         _spellId   = 20260604;
-        _blockDate = 1779171198;  // 2026-05-19T06:13:18Z
+        _blockDate = 1779776905;  // 2026-05-26T06:28:25Z
     }
 
     function setUp() public override {
@@ -376,6 +381,97 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
         // chainData[ChainIdUtils.Avalanche()].payload = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
         // chainData[ChainIdUtils.Base()].payload      = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
         // chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
+    }
+
+    function test_ETHEREUM_CapAutomator() external override onChain(ChainIdUtils.Ethereum()) {
+        uint256 snapshot = vm.snapshot();
+
+        runCapAutomatorTests();
+
+        vm.revertTo(snapshot);
+
+        _executeAllPayloadsAndBridges();
+        runCapAutomatorTests();
+    }
+
+    function runCapAutomatorTests() internal {
+        address[] memory reserves = _getSparkLendContext().pool.getReservesList();
+
+        for (uint256 i = 0; i < reserves.length; ++i) {
+            testAutomatedCapsUpdate(reserves[i]);
+        }
+    }
+
+    function testAutomatedCapsUpdate(address asset) internal {
+        SparkLendContext      memory ctx               = _getSparkLendContext();
+        DataTypes.ReserveData memory reserveDataBefore = ctx.pool.getReserveData(asset);
+
+        uint256 supplyCapBefore = reserveDataBefore.configuration.getSupplyCap();
+        uint256 borrowCapBefore = reserveDataBefore.configuration.getBorrowCap();
+
+        ICapAutomator capAutomator = ICapAutomator(SparkLend.CAP_AUTOMATOR);
+
+        ( , , , , uint48 supplyCapLastIncreaseTime ) = capAutomator.supplyCapConfigs(asset);
+        ( , , , , uint48 borrowCapLastIncreaseTime ) = capAutomator.borrowCapConfigs(asset);
+
+        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
+        try capAutomator.exec(asset) {
+        } catch {
+            vm.prank(NEW_ETHEREUM_ALM_PROXY_FREEZABLE);
+            capAutomator.exec(asset);
+        }
+
+        DataTypes.ReserveData memory reserveDataAfter = ctx.pool.getReserveData(asset);
+
+        uint256 supplyCapAfter = reserveDataAfter.configuration.getSupplyCap();
+        uint256 borrowCapAfter = reserveDataAfter.configuration.getBorrowCap();
+
+        uint48 max;
+        uint48 gap;
+        uint48 cooldown;
+
+        ( max, gap, cooldown, , ) = capAutomator.supplyCapConfigs(asset);
+
+        if (max > 0) {
+            uint256 currentSupply = (
+                    IScaledBalanceToken(reserveDataAfter.aTokenAddress).scaledTotalSupply() +
+                    uint256(reserveDataAfter.accruedToTreasury)
+                )
+                .rayMul(reserveDataAfter.liquidityIndex) /
+                10 ** IERC20Metadata(reserveDataAfter.aTokenAddress).decimals();
+
+            uint256 expectedSupplyCap = uint256(max) < currentSupply + uint256(gap)
+                ? uint256(max)
+                : currentSupply + uint256(gap);
+
+            if (supplyCapLastIncreaseTime + cooldown > block.timestamp && supplyCapBefore < expectedSupplyCap) {
+                assertEq(supplyCapAfter, supplyCapBefore);
+            } else {
+                assertEq(supplyCapAfter, expectedSupplyCap);
+            }
+        } else {
+            assertEq(supplyCapAfter, supplyCapBefore);
+        }
+
+        ( max, gap, cooldown, , ) = capAutomator.borrowCapConfigs(asset);
+
+        if (max > 0) {
+            uint256 currentBorrows =
+                IERC20(reserveDataAfter.variableDebtTokenAddress).totalSupply() /
+                10 ** IERC20Metadata(reserveDataAfter.variableDebtTokenAddress).decimals();
+
+            uint256 expectedBorrowCap = uint256(max) < currentBorrows + uint256(gap)
+                ? uint256(max)
+                : currentBorrows + uint256(gap);
+
+            if (borrowCapLastIncreaseTime + cooldown > block.timestamp && borrowCapBefore < expectedBorrowCap) {
+                assertEq(borrowCapAfter, borrowCapBefore);
+            } else {
+                assertEq(borrowCapAfter, expectedBorrowCap);
+            }
+        } else {
+            assertEq(borrowCapAfter, borrowCapBefore);
+        }
     }
 
     function test_ETHEREUM_btcEmodeBorrowDeprecationE2E() external onChain(ChainIdUtils.Ethereum()) {
@@ -625,7 +721,7 @@ contract SparkEthereum_20260604_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260604;
-        _blockDate = 1779171198;  // 2026-05-19T06:13:18Z
+        _blockDate = 1779776905;  // 2026-05-26T06:28:25Z
     }
 
     function setUp() public override {
