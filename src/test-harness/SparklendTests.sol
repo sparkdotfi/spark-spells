@@ -1488,12 +1488,12 @@ abstract contract SparklendTests is SpellRunner {
         string memory eModesKey = "emodes";
         string memory content   = "{}";
 
-        uint256[] memory usedCategories = new uint256[](configs.length);
+        bool[] memory writtenCategories = new bool[](256);
 
         for (uint256 i = 0; i < configs.length; ++i) {
-            if (_isInUint256Array(usedCategories, configs[i].eModeCategory)) continue;
+            if (writtenCategories[configs[i].eModeCategory]) continue;
 
-            usedCategories[i] = configs[i].eModeCategory;
+            writtenCategories[configs[i].eModeCategory] = true;
 
             DataTypes.EModeCategory memory category = pool.getEModeCategoryData(
                 uint8(configs[i].eModeCategory)
