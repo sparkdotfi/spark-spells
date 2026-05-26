@@ -378,6 +378,116 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
         // chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
     }
 
+    function test_ETHEREUM_btcEmodeBorrowDeprecationE2E() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigsBefore = _createConfigurationSnapshot("", ctx.pool);
+
+        ReserveConfig memory lbtcConfig  = _findReserveConfigBySymbol(allConfigsBefore, "LBTC");
+        ReserveConfig memory cbbtcConfig = _findReserveConfigBySymbol(allConfigsBefore, "cbBTC");
+
+        assertEq(lbtcConfig.eModeCategory,  3);
+        assertEq(cbbtcConfig.eModeCategory, 3);
+
+        address user = makeAddr("btcEmodeUser");
+
+        // Supply LBTC as collateral
+        _supply(lbtcConfig, ctx.pool, user, 1e8);
+
+        // Set user e-mode to 3
+        vm.prank(user);
+        ctx.pool.setUserEMode(3);
+
+        assertEq(ctx.pool.getUserEMode(user), 3);
+
+        // Borrow cbBTC (also in emode 3, borrowing enabled)
+        _borrow(cbbtcConfig, ctx.pool, user, 0.5e8, false);
+
+        uint256 debtBefore = IERC20(cbbtcConfig.variableDebtToken).balanceOf(user);
+
+        ( , , , , , uint256 healthFactorBefore ) = ctx.pool.getUserAccountData(user);
+
+        _executeAllPayloadsAndBridges();
+
+        // Debt persists after the spell
+        uint256 debtAfter = IERC20(cbbtcConfig.variableDebtToken).balanceOf(user);
+        assertApproxEqAbs(debtAfter, debtBefore, 1);
+
+        // User's emode setting is unchanged by the spell (only reserve configs change)
+        assertEq(ctx.pool.getUserEMode(user), 3);
+
+        // HF drops: LBTC collateral now uses normal LT instead of emode LT (category mismatch)
+        ( , , , , , uint256 healthFactorAfter ) = ctx.pool.getUserAccountData(user);
+        assertLt(healthFactorAfter, healthFactorBefore);
+        assertGt(healthFactorAfter, 1e18);
+
+        // Borrow again with normal LT fails when user emode is set to 3.
+        vm.expectRevert(abi.encode("58"));  // INCONSISTENT_EMODE_CATEGORY
+        ctx.pool.borrow(Ethereum.CBBTC, 0.1e8, 2, 0, user);
+
+        // Set user emode to 0
+        vm.prank(user);
+        ctx.pool.setUserEMode(0);
+
+        // Borrow again with normal LT succeeds
+        _borrow(cbbtcConfig, ctx.pool, user, 0.1e8, false);
+
+        ( , , , , , uint256 healthFactorAfter2 ) = ctx.pool.getUserAccountData(user);
+        assertGt(healthFactorAfter2, 1e18);
+
+        // Repay works as expected
+        _repay(cbbtcConfig, ctx.pool, user, 0.6e8, false);
+
+        ( , , , , , uint256 healthFactorAfter3 ) = ctx.pool.getUserAccountData(user);
+        assertGt(healthFactorAfter3, healthFactorAfter2);
+    }
+
+    function test_ETHEREUM_btcEmodeBorrowPositionLiquidatableAfterDeprecationE2E() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigs = _createConfigurationSnapshot("", ctx.pool);
+
+        ReserveConfig memory lbtcConfig  = _findReserveConfigBySymbol(allConfigs, "LBTC");
+        ReserveConfig memory cbbtcConfig = _findReserveConfigBySymbol(allConfigs, "cbBTC");
+
+        address user       = makeAddr("btcEmodeUser");
+        address liquidator = makeAddr("liquidator");
+
+        _supply(lbtcConfig, ctx.pool, user, 1e8);
+
+        vm.prank(user);
+        ctx.pool.setUserEMode(3);
+
+        DataTypes.EModeCategory memory emodeCategory = ctx.pool.getEModeCategoryData(3);
+
+        uint256 collateralBase = ctx.priceOracle.getAssetPrice(Ethereum.LBTC);  // collateral base value = 1e8 * lbtcPrice / 1e8 = lbtcPrice
+        uint256 debtBase       = collateralBase * ((emodeCategory.liquidationThreshold + lbtcConfig.liquidationThreshold) / 2) / 10000;
+        uint256 borrowAmount   = debtBase * 1e8 / ctx.priceOracle.getAssetPrice(Ethereum.CBBTC);
+
+        _borrow(cbbtcConfig, ctx.pool, user, borrowAmount, false);
+
+        ( , , , , , uint256 healthFactorBefore ) = ctx.pool.getUserAccountData(user);
+        assertGt(healthFactorBefore, 1e18);
+
+        _executeAllPayloadsAndBridges();
+
+        // LBTC no longer in eMode 3 → normal (lower) LT applies → position is under water
+        ( , , , , , uint256 healthFactorAfter ) = ctx.pool.getUserAccountData(user);
+        assertLt(healthFactorAfter, 1e18);
+
+        // Liquidate the position
+        uint256 debtToCover = IERC20(cbbtcConfig.variableDebtToken).balanceOf(user);
+        deal(Ethereum.CBBTC, liquidator, debtToCover);
+
+        vm.startPrank(liquidator);
+        IERC20(Ethereum.CBBTC).approve(address(ctx.pool), debtToCover);
+        ctx.pool.liquidationCall(Ethereum.LBTC, Ethereum.CBBTC, user, debtToCover, false);
+        vm.stopPrank();
+
+        assertLt(IERC20(cbbtcConfig.variableDebtToken).balanceOf(user), debtToCover);  // User debt is reduced.
+        assertGt(IERC20(Ethereum.LBTC).balanceOf(liquidator),           0);            // Liquidator receives collateral.
+    }
+
     function test_ETHEREUM_sparkLend_deprecateBTCeMode() external onChain(ChainIdUtils.Ethereum()) {
         SparkLendContext memory ctx = _getSparkLendContext();
 
