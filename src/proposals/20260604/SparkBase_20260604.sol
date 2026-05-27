@@ -30,7 +30,7 @@ contract SparkBase_20260604 is SparkPayloadBase {
     address internal constant NEW_ALM_PROXY_FREEZABLE = 0x92d7B06e5844e67174AE9E86bdCb06428482DDF9;
 
     function execute() external {
-        // Grant CONTROLLER Role for Relayer 1 and 2 on NEW_ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
+        // Grant ALLOCATOR Role for Relayer 1 and 2 on NEW_ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
         IALMProxyFreezableLike proxy = IALMProxyFreezableLike(NEW_ALM_PROXY_FREEZABLE);
 
         proxy.grantRole(proxy.ALLOCATOR_ROLE(), Base.ALM_RELAYER_MULTISIG);

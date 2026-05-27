@@ -59,6 +59,7 @@ interface ISparkVaultV2Like {
  *         - Update Parameters for Deprecated Assets.
  *         - Increase USDC and USDT Reserve Factors.
  *         Spark Liquidity Layer:
+ *         - Update RateLimits.
  *         - Update ALM Proxy Freezable.
  *         Spark Treasury:
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
@@ -196,7 +197,7 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
                 Ethereum.ANCHORAGE_USAT_USDT_DEPOSIT
             ),
             Ethereum.ALM_RATE_LIMITS,
-            5_000_000e6,
+            50_000_000e6,
             250_000_000e6 / uint256(1 days),
             6
         );
@@ -243,7 +244,7 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
         capAutomator_.revokeRole(capAutomator_.UPDATE_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
         capAutomator_.grantRole(capAutomator_.UPDATE_ROLE(),  NEW_ALM_PROXY_FREEZABLE);
 
-        // Spark Savings - Update Setter Role to New ALM Proxy Freezable for spUSDC, spUSDT, spETH
+        // Spark Savings - Update Setter Role to New ALM Proxy Freezable for spUSDC, spUSDT, spETH, spPYUSD
         ISparkVaultV2Like spUSDCvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDC);
         ISparkVaultV2Like spUSDTvault  = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPUSDT);
         ISparkVaultV2Like spETHvault   = ISparkVaultV2Like(Ethereum.SPARK_VAULT_V2_SPETH);

@@ -402,15 +402,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256                    takeAmount;
     }
 
-    struct OTCE2ETestParams {
-        SparkLiquidityLayerContext ctx;
-        address                    exchange;
-        bytes32                    transferKey;
-        address                    asset0;
-        address                    asset1;
-        uint256                    amount;
-    }
-
     struct ControllerEvents {
         VmSafe.EthGetLogs[] oldSlippageLogs;
         VmSafe.EthGetLogs[] oldCctpLogs;
@@ -431,7 +422,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant AAVE_ETH_USDS        = 0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259;
     address internal constant BASE_MORPHO_TOKEN    = 0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842;
     address internal constant BASE_SPARK_MULTISIG  = 0x2E1b01adABB8D4981863394bEa23a1263CBaeDfC;
-    address internal constant BINANCE_EXCHANGE     = 0x6666666666666666666666666666666666666666;
     address internal constant BUIDL_DEPOSIT        = 0xD1917664bE3FdAea377f6E8D5BF043ab5C3b1312;
     address internal constant BUIDL_REDEEM         = 0x8780Dd016171B91E4Df47075dA0a947959C34200;
     address internal constant B2C2                 = 0xa29E963992597B21bcDCaa969d571984869C4FF5;

@@ -78,14 +78,14 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(transferKey, 5_000_000e6, 250_000_000e6 / uint256(1 days));
+        _assertRateLimit(transferKey, 50_000_000e6, 250_000_000e6 / uint256(1 days));
 
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
             asset          : Ethereum.USDC,
             destination    : ANCHORAGE,
             transferKey    : transferKey,
-            transferAmount : 5_000_000e6
+            transferAmount : 50_000_000e6
         }));
     }
 

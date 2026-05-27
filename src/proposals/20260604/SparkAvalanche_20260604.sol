@@ -27,7 +27,7 @@ contract SparkAvalanche_20260604 is SparkPayloadAvalanche {
     address internal constant NEW_ALM_PROXY_FREEZABLE = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
 
     function execute() external {
-        // Grant CONTROLLER Role for Relayer 1 and 2 on NEW_ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
+        // Grant ALLOCATOR Role for Relayer 1 and 2 on NEW_ALM_PROXY_FREEZABLE and Freezer role to the ALM_FREEZER_MULTISIG
         IALMProxyFreezableLike proxy = IALMProxyFreezableLike(NEW_ALM_PROXY_FREEZABLE);
         ISparkVaultV2Like      vault = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
