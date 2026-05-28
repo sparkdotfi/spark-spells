@@ -44,9 +44,11 @@ import {
 
 interface ICapAutomatorLike {
 
-    function UPDATE_ROLE() external view returns (bytes32);
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
 
     function hasRole(bytes32 role, address account) external view returns (bool);
+
+    function UPDATE_ROLE() external view returns (bytes32);
 
 }
 
@@ -192,6 +194,8 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), Ethereum.ALM_PROXY_FREEZABLE),     false);
         assertEq(capAutomator.hasRole(capAutomator.UPDATE_ROLE(), NEW_ETHEREUM_ALM_PROXY_FREEZABLE), true);
+
+        assertEq(capAutomator.getRoleMemberCount(capAutomator.UPDATE_ROLE()), 1);
 
         assertEq(morphoUsdc.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), false);
         assertEq(morphoUsds.isAllocator(Ethereum.ALM_PROXY_FREEZABLE), false);
