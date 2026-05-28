@@ -2506,22 +2506,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
-        // TODO: Update this once the spell is live
-        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
-        try vault.setVsr(1.000000001547125957863212448e27) {
-        } catch {
-            vm.prank(NEW_ETHEREUM_ALM_PROXY_FREEZABLE);
-            try vault.setVsr(1.000000001547125957863212448e27) {
-            } catch {
-                vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
-                try vault.setVsr(1.000000001547125957863212448e27) {
-                } catch {
-                    vm.prank(NEW_AVALANCHE_ALM_PROXY_FREEZABLE);
-                    vault.setVsr(1.000000001547125957863212448e27);
-                }
-            }
-        }
-
         skip(1 days);
 
         assertEq(asset.balanceOf(user),           0);

@@ -386,23 +386,24 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
     function test_ETHEREUM_CapAutomator() external override onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
-        runCapAutomatorTests();
+        runCapAutomatorTests(Ethereum.ALM_PROXY_FREEZABLE);
 
         vm.revertTo(snapshot);
 
         _executeAllPayloadsAndBridges();
-        runCapAutomatorTests();
+
+        runCapAutomatorTests(NEW_ETHEREUM_ALM_PROXY_FREEZABLE);
     }
 
-    function runCapAutomatorTests() internal {
+    function runCapAutomatorTests(address almProxyFreezable) internal {
         address[] memory reserves = _getSparkLendContext().pool.getReservesList();
 
         for (uint256 i = 0; i < reserves.length; ++i) {
-            testAutomatedCapsUpdate(reserves[i]);
+            testAutomatedCapsUpdate(almProxyFreezable, reserves[i]);
         }
     }
 
-    function testAutomatedCapsUpdate(address asset) internal {
+    function testAutomatedCapsUpdate(address almProxyFreezable, address asset) internal {
         SparkLendContext      memory ctx               = _getSparkLendContext();
         DataTypes.ReserveData memory reserveDataBefore = ctx.pool.getReserveData(asset);
 
@@ -414,12 +415,8 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
         ( , , , , uint48 supplyCapLastIncreaseTime ) = capAutomator.supplyCapConfigs(asset);
         ( , , , , uint48 borrowCapLastIncreaseTime ) = capAutomator.borrowCapConfigs(asset);
 
-        vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
-        try capAutomator.exec(asset) {
-        } catch {
-            vm.prank(NEW_ETHEREUM_ALM_PROXY_FREEZABLE);
-            capAutomator.exec(asset);
-        }
+        vm.prank(almProxyFreezable);
+        capAutomator.exec(asset);
 
         DataTypes.ReserveData memory reserveDataAfter = ctx.pool.getReserveData(asset);
 
@@ -580,8 +577,8 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
         ctx.pool.liquidationCall(Ethereum.LBTC, Ethereum.CBBTC, user, debtToCover, false);
         vm.stopPrank();
 
-        assertLt(IERC20(cbbtcConfig.variableDebtToken).balanceOf(user), debtToCover);  // User debt is reduced.
-        assertGt(IERC20(Ethereum.LBTC).balanceOf(liquidator),           0);            // Liquidator receives collateral.
+        assertEq(IERC20(cbbtcConfig.variableDebtToken).balanceOf(user), 0);      // User debt is reduced.
+        assertGt(IERC20(Ethereum.LBTC).balanceOf(liquidator),           0.8e8); // Liquidator receives collateral.
     }
 
     function test_ETHEREUM_sparkLend_deprecateBTCeMode() external onChain(ChainIdUtils.Ethereum()) {
