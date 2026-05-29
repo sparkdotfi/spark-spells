@@ -58,15 +58,15 @@ contract SparkEthereum_20260604_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260604;
-        _blockDate = 1779776905;  // 2026-05-26T06:28:25Z
+        _blockDate = 1780063436;  // 2026-05-29T19:33:56Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
-        // chainData[ChainIdUtils.Base()].payload      = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x7ac96180C4d6b2A328D3a19ac059D0E7Fc3C6d41;
+        chainData[ChainIdUtils.Base()].payload      = 0x1566BFA55D95686a823751298533D42651183988;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
     }
 
     function test_ETHEREUM_updateAnchorageRateLimits() external onChain(ChainIdUtils.Ethereum()) {
@@ -376,15 +376,15 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260604;
-        _blockDate = 1779776905;  // 2026-05-26T06:28:25Z
+        _blockDate = 1780063436;  // 2026-05-29T19:33:56Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
-        // chainData[ChainIdUtils.Base()].payload      = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x7ac96180C4d6b2A328D3a19ac059D0E7Fc3C6d41;
+        chainData[ChainIdUtils.Base()].payload      = 0x1566BFA55D95686a823751298533D42651183988;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
     }
 
     function test_ETHEREUM_CapAutomator() external override onChain(ChainIdUtils.Ethereum()) {
@@ -533,7 +533,7 @@ contract SparkEthereum_20260604_SparklendTests is SparklendTests {
         assertGt(healthFactorAfter2, 1e18);
 
         // Repay works as expected
-        _repay(cbbtcConfig, ctx.pool, user, 0.6e8, false);
+        _repay(cbbtcConfig, ctx.pool, user, 0.5e8, false);
 
         ( , , , , , uint256 healthFactorAfter3 ) = ctx.pool.getUserAccountData(user);
         assertGt(healthFactorAfter3, healthFactorAfter2);
@@ -722,15 +722,15 @@ contract SparkEthereum_20260604_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260604;
-        _blockDate = 1779776905;  // 2026-05-26T06:28:25Z
+        _blockDate = 1780063436;  // 2026-05-29T19:33:56Z
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Avalanche()].payload = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
-        // chainData[ChainIdUtils.Base()].payload      = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
-        // chainData[ChainIdUtils.Ethereum()].payload  = 0x84c5E704F7918812BA878ea7Ddbb1365876697C2;
+        chainData[ChainIdUtils.Avalanche()].payload = 0x7ac96180C4d6b2A328D3a19ac059D0E7Fc3C6d41;
+        chainData[ChainIdUtils.Base()].payload      = 0x1566BFA55D95686a823751298533D42651183988;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {

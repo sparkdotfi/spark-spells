@@ -76,8 +76,8 @@ contract SparkEthereum_20260604 is SparkPayloadEthereum {
     uint256 internal constant SPK_BUYBACKS_AMOUNT = 663_354e18;
 
     constructor() {
-        // PAYLOAD_AVALANCHE = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
-        // PAYLOAD_BASE      = 0x4A71f81C6109230932978bAB7CA746f0be0C4580;
+        PAYLOAD_AVALANCHE = 0x7ac96180C4d6b2A328D3a19ac059D0E7Fc3C6d41;
+        PAYLOAD_BASE      = 0x1566BFA55D95686a823751298533D42651183988;
     }
 
     function collateralsUpdates()
