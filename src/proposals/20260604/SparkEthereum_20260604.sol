@@ -64,7 +64,8 @@ interface ISparkVaultV2Like {
  *         Spark Treasury:
  *         - Transfer Excess USDS from SubDAO Proxy for SPK Buybacks.
  * Forum:  https://forum.skyeco.com/t/june-4-2026-proposed-changes-to-spark-for-upcoming-spell/27931
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x75c80c3b462ab1efe3aa2cb919e97e487ae66d0c62265d204fe9499499cc7e6d
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0xe09e63d9eb11a7a89cb28801e060443b5a098a262f17171e77f5e33202f0ffdb
  */
 contract SparkEthereum_20260604 is SparkPayloadEthereum {
 
