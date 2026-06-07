@@ -451,6 +451,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
+    address internal constant NEW_AVALANCHE_ALM_PROXY_FREEZABLE = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
+    address internal constant NEW_BASE_ALM_PROXY_FREEZABLE      = 0x92d7B06e5844e67174AE9E86bdCb06428482DDF9;
+    address internal constant NEW_ETHEREUM_ALM_PROXY_FREEZABLE  = 0xe5c6318456a7Cb6f74f93B4eee4616dB5fcef699;
+
     uint256 internal constant START_BLOCK = 21029247;
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
@@ -2502,18 +2506,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
-        // TODO: Update this once the spell is live
-        vm.prank(Ethereum.ALM_OPS_MULTISIG);
-        try vault.setVsr(1.000000001547125957863212448e27) {
-        } catch {
-            vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
-            try vault.setVsr(1.000000001547125957863212448e27) {
-            } catch {
-                vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
-                vault.setVsr(1.000000001547125957863212448e27);
-            }
-        }
-
         skip(1 days);
 
         assertEq(asset.balanceOf(user),           0);
@@ -2729,6 +2721,23 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), p.ctx.rateLimits.getRateLimitData(p.transferKey).maxAmount);
 
+    }
+
+    function _assertOtcState(
+        SparkLiquidityLayerContext memory ctx,
+        address                           exchange,
+        uint256                           sent18,
+        uint256                           sentTimestamp,
+        uint256                           claimed18
+    )
+        internal view
+    {
+        ( ,, uint256 sent18_, uint256 sentTimestamp_, uint256 claimed18_ )
+            = MainnetController(ctx.controller).otcs(exchange);
+
+        assertEq(sent18_,        sent18);
+        assertEq(sentTimestamp_, sentTimestamp);
+        assertEq(claimed18_,     claimed18);
     }
 
     function _getEvents(uint256 chainId, address target, bytes32 topic0) internal returns (VmSafe.EthGetLogs[] memory logs) {
@@ -3958,40 +3967,40 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
         integrations = new SLLIntegration[](55);
 
-        integrations[0]  = _createAaveIntegration("AAVE-CORE_AUSDT",    AAVE_CORE_AUSDT);
-        integrations[1]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
-        integrations[2]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
-        integrations[3]  = _createAaveIntegration("AAVE-SPETH",         SparkLend.WETH_SPTOKEN);
-        integrations[4]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  SparkLend.USDC_SPTOKEN); // SparkLend
-        integrations[5]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
-        integrations[6]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
-        integrations[7]  = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
+        integrations[0]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
+        integrations[1]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
+        integrations[2]  = _createAaveIntegration("AAVE-SPETH",         SparkLend.WETH_SPTOKEN);
+        integrations[3]  = _createAaveIntegration("AAVE-USDC_SPTOKEN",  SparkLend.USDC_SPTOKEN); // SparkLend
+        integrations[4]  = _createAaveIntegration("AAVE-USDE_ATOKEN",   USDE_ATOKEN);
+        integrations[5]  = _createAaveIntegration("AAVE-USDS_SPTOKEN",  SparkLend.USDS_SPTOKEN);
+        integrations[6]  = _createAaveIntegration("AAVE-USDT_SPTOKEN",  SparkLend.USDT_SPTOKEN);
 
-        integrations[8] = _createCctpGeneralIntegration("CCTP_GENERAL");
+        integrations[7] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
-        integrations[9] = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[10] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
-        integrations[11] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[12] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[13] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[8]  = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+        integrations[9]  = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
+        integrations[10] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+        integrations[11] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
+        integrations[12] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
 
-        integrations[14] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
+        integrations[13] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
 
-        integrations[15] = _createCurveLpIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
-        integrations[16] = _createCurveLpIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
+        integrations[14] = _createCurveLpIntegration("CURVE_LP-PYUSDUSDS", Ethereum.CURVE_PYUSDUSDS);
+        integrations[15] = _createCurveLpIntegration("CURVE_LP-SUSDSUSDT", Ethereum.CURVE_SUSDSUSDT);
 
-        integrations[17] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDC",   Ethereum.CURVE_PYUSDUSDC);
-        integrations[18] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS",   Ethereum.CURVE_PYUSDUSDS);
-        integrations[19] = _createCurveSwapIntegration("CURVE_SWAP-SUSDSUSDT",   Ethereum.CURVE_SUSDSUSDT);
-        integrations[20] = _createCurveSwapIntegration("CURVE_SWAP-USDCUSDT",    Ethereum.CURVE_USDCUSDT);
-        integrations[21] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", Ethereum.CURVE_WEETHWETHNG);
+        integrations[16] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDC",   Ethereum.CURVE_PYUSDUSDC);
+        integrations[17] = _createCurveSwapIntegration("CURVE_SWAP-PYUSDUSDS",   Ethereum.CURVE_PYUSDUSDS);
+        integrations[18] = _createCurveSwapIntegration("CURVE_SWAP-SUSDSUSDT",   Ethereum.CURVE_SUSDSUSDT);
+        integrations[19] = _createCurveSwapIntegration("CURVE_SWAP-USDCUSDT",    Ethereum.CURVE_USDCUSDT);
+        integrations[20] = _createCurveSwapIntegration("CURVE_SWAP-WEETHWETHNG", Ethereum.CURVE_WEETHWETHNG);
 
-        integrations[22] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",       MORPHO_USDC_BC);
-        integrations[23] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1",   Ethereum.MORPHO_VAULT_DAI_1);
-        integrations[24] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",    Ethereum.MORPHO_VAULT_USDS);
-        integrations[25] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
-        integrations[26] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
-        integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", MORPHO_VAULT_V2_USDT);
+        integrations[21] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",       MORPHO_USDC_BC);
+        integrations[22] = _createERC4626Integration("ERC4626-MORPHO_VAULT_DAI_1",   Ethereum.MORPHO_VAULT_DAI_1);
+        integrations[23] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",    Ethereum.MORPHO_VAULT_USDS);
+        integrations[24] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
+        integrations[25] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
+        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", MORPHO_VAULT_V2_USDT);
+        integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
 
         integrations[28] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 
@@ -4084,15 +4093,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsAvalanche() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](4);
+        integrations = new SLLIntegration[](3);
 
         integrations[0] = _createCctpIntegration("CCTP-ETHEREUM", CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
         integrations[1] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
         integrations[2] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC", Avalanche.SPARK_VAULT_V2_SPUSDC);
-
-        integrations[3] = _createAaveIntegration("AAVE-ATOKEN_USDC", AAVE_ATOKEN_USDC);
 
         return integrations;
     }
@@ -4175,17 +4182,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
         newIntegrations = new SLLIntegration[](integrations.length);
 
-        uint256 index = 0;
-
         for (uint256 i = 0; i < integrations.length; ++i) {
-            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-CORE_AUSDT")) ) continue;
-
-            newIntegrations[index] = integrations[i];
-
-            index++;
+            newIntegrations[i] = integrations[i];
         }
-
-        newIntegrations[newIntegrations.length - 1] = _createERC4626Integration("ERC4626-NEW_MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
     }
 
     function _getPostExecutionIntegrationsBase(
@@ -4211,17 +4210,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsAvalanche(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Remove "AAVE-ATOKEN_USDC" integration which is expected to be offboarded after execution.
-        newIntegrations = new SLLIntegration[](integrations.length - 1);
-
-        uint256 index = 0;
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            if ( keccak256(bytes(integrations[i].label)) == keccak256(bytes("AAVE-ATOKEN_USDC")) ) continue;
-
-            newIntegrations[index] = integrations[i];
-
-            index++;
+            newIntegrations[i] = integrations[i];
         }
     }
 

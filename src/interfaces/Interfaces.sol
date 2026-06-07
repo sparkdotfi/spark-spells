@@ -12,11 +12,11 @@ import { PoolId }       from "spark-alm-controller/lib/uniswap-v4-core/src/types
 import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
 
-import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-
-interface IALMProxyFreezableLike is IALMProxy {
-    function FREEZER() external returns (bytes32);
+interface IALMProxyFreezableLike {
+    function ALLOCATOR_ROLE() external returns (bytes32);
     function DEFAULT_ADMIN_ROLE() external returns (bytes32);
+    function FREEZER_ROLE() external returns (bytes32);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 }
 
 interface IArbitrumTokenBridge {

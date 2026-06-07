@@ -46,7 +46,9 @@ abstract contract SpellTests is SpellRunner {
                 aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_PROXY);
             }
 
-            accruedToTreasury[i] = IPool(SparkLend.POOL).getReserveData(IAToken(aToken).UNDERLYING_ASSET_ADDRESS()).accruedToTreasury > 0;
+            address treasury = aToken == SparkLend.DAI_SPTOKEN ? SparkLend.DAI_TREASURY : SparkLend.TREASURY;
+            accruedToTreasury[i] = IPool(SparkLend.POOL).getReserveData(IAToken(aToken).UNDERLYING_ASSET_ADDRESS()).accruedToTreasury > 0
+                || IERC20(aToken).balanceOf(treasury) > 0;
         }
 
         _executeAllPayloadsAndBridges();
