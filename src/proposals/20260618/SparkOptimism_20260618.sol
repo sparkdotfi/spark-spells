@@ -4,12 +4,12 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-import { Base }     from "spark-address-registry/Base.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Optimism } from "spark-address-registry/Optimism.sol";
 
 import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
-import { SparkPayloadBase } from "../../SparkPayloadBase.sol";
+import { SparkPayloadOptimism } from "../../SparkPayloadOptimism.sol";
 
 interface ITokenBridgeLike {
 
@@ -25,45 +25,45 @@ interface ITokenBridgeLike {
 }
 
 /**
- * @title  June 18, 2026 Spark Base Proposal
+ * @title  June 18, 2026 Spark Optimism Proposal
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer - Remove Excess Liquidity.
  * Forum:
  * Vote:
  */
-contract SparkBase_20260618 is SparkPayloadBase {
+contract SparkOptimism_20260618 is SparkPayloadOptimism {
 
     uint256 internal constant USDS_WITHDRAW_AMOUNT  = 10_000e18;
     uint256 internal constant SUSDS_WITHDRAW_AMOUNT = 10_000e18;
 
     function execute() external {
-        IALMProxy almProxy = IALMProxy(Base.ALM_PROXY);
+        IALMProxy almProxy = IALMProxy(Optimism.ALM_PROXY);
 
         almProxy.grantRole(almProxy.CONTROLLER(), address(this));
 
-        // Withdraw USDS from Base to Ethereum
+        // Withdraw USDS from Optimism to Ethereum
         almProxy.doCall(
-            Base.USDS,
-            abi.encodeCall(IERC20(Base.USDS).approve, (Base.TOKEN_BRIDGE, USDS_WITHDRAW_AMOUNT))
+            Optimism.USDS,
+            abi.encodeCall(IERC20(Optimism.USDS).approve, (Optimism.TOKEN_BRIDGE, USDS_WITHDRAW_AMOUNT))
         );
         almProxy.doCall(
-            Base.TOKEN_BRIDGE,
+            Optimism.TOKEN_BRIDGE,
             abi.encodeCall(
-                ITokenBridgeLike(Base.TOKEN_BRIDGE).bridgeERC20To,
-                (Base.USDS, Ethereum.USDS, Ethereum.ALM_PROXY, USDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
+                ITokenBridgeLike(Optimism.TOKEN_BRIDGE).bridgeERC20To,
+                (Optimism.USDS, Ethereum.USDS, Ethereum.ALM_PROXY, USDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
             )
         );
 
-        // Withdraw sUSDS from Base to Ethereum
+        // Withdraw sUSDS from Optimism to Ethereum
         almProxy.doCall(
-            Base.SUSDS,
-            abi.encodeCall(IERC20(Base.SUSDS).approve, (Base.TOKEN_BRIDGE, SUSDS_WITHDRAW_AMOUNT))
+            Optimism.SUSDS,
+            abi.encodeCall(IERC20(Optimism.SUSDS).approve, (Optimism.TOKEN_BRIDGE, SUSDS_WITHDRAW_AMOUNT))
         );
         almProxy.doCall(
-            Base.TOKEN_BRIDGE,
+            Optimism.TOKEN_BRIDGE,
             abi.encodeCall(
-                ITokenBridgeLike(Base.TOKEN_BRIDGE).bridgeERC20To,
-                (Base.SUSDS, Ethereum.SUSDS, Ethereum.ALM_PROXY, SUSDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
+                ITokenBridgeLike(Optimism.TOKEN_BRIDGE).bridgeERC20To,
+                (Optimism.SUSDS, Ethereum.SUSDS, Ethereum.ALM_PROXY, SUSDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
             )
         );
 

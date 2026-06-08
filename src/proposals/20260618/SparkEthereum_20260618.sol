@@ -14,7 +14,6 @@ import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol
 
 import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
 
-
 /**
  * @title  June 18, 2026 Spark Ethereum Proposal
  * @author Phoenix Labs

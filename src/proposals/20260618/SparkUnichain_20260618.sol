@@ -4,12 +4,12 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-import { Base }     from "spark-address-registry/Base.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Unichain } from "spark-address-registry/Unichain.sol";
 
 import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
-import { SparkPayloadBase } from "../../SparkPayloadBase.sol";
+import { SparkPayloadUnichain } from "../../SparkPayloadUnichain.sol";
 
 interface ITokenBridgeLike {
 
@@ -25,45 +25,45 @@ interface ITokenBridgeLike {
 }
 
 /**
- * @title  June 18, 2026 Spark Base Proposal
+ * @title  June 18, 2026 Spark Unichain Proposal
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer - Remove Excess Liquidity.
  * Forum:
  * Vote:
  */
-contract SparkBase_20260618 is SparkPayloadBase {
+contract SparkUnichain_20260618 is SparkPayloadUnichain {
 
     uint256 internal constant USDS_WITHDRAW_AMOUNT  = 10_000e18;
     uint256 internal constant SUSDS_WITHDRAW_AMOUNT = 10_000e18;
 
     function execute() external {
-        IALMProxy almProxy = IALMProxy(Base.ALM_PROXY);
+        IALMProxy almProxy = IALMProxy(Unichain.ALM_PROXY);
 
         almProxy.grantRole(almProxy.CONTROLLER(), address(this));
 
-        // Withdraw USDS from Base to Ethereum
+        // Withdraw USDS from Unichain to Ethereum
         almProxy.doCall(
-            Base.USDS,
-            abi.encodeCall(IERC20(Base.USDS).approve, (Base.TOKEN_BRIDGE, USDS_WITHDRAW_AMOUNT))
+            Unichain.USDS,
+            abi.encodeCall(IERC20(Unichain.USDS).approve, (Unichain.TOKEN_BRIDGE, USDS_WITHDRAW_AMOUNT))
         );
         almProxy.doCall(
-            Base.TOKEN_BRIDGE,
+            Unichain.TOKEN_BRIDGE,
             abi.encodeCall(
-                ITokenBridgeLike(Base.TOKEN_BRIDGE).bridgeERC20To,
-                (Base.USDS, Ethereum.USDS, Ethereum.ALM_PROXY, USDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
+                ITokenBridgeLike(Unichain.TOKEN_BRIDGE).bridgeERC20To,
+                (Unichain.USDS, Ethereum.USDS, Ethereum.ALM_PROXY, USDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
             )
         );
 
-        // Withdraw sUSDS from Base to Ethereum
+        // Withdraw sUSDS from Unichain to Ethereum
         almProxy.doCall(
-            Base.SUSDS,
-            abi.encodeCall(IERC20(Base.SUSDS).approve, (Base.TOKEN_BRIDGE, SUSDS_WITHDRAW_AMOUNT))
+            Unichain.SUSDS,
+            abi.encodeCall(IERC20(Unichain.SUSDS).approve, (Unichain.TOKEN_BRIDGE, SUSDS_WITHDRAW_AMOUNT))
         );
         almProxy.doCall(
-            Base.TOKEN_BRIDGE,
+            Unichain.TOKEN_BRIDGE,
             abi.encodeCall(
-                ITokenBridgeLike(Base.TOKEN_BRIDGE).bridgeERC20To,
-                (Base.SUSDS, Ethereum.SUSDS, Ethereum.ALM_PROXY, SUSDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
+                ITokenBridgeLike(Unichain.TOKEN_BRIDGE).bridgeERC20To,
+                (Unichain.SUSDS, Ethereum.SUSDS, Ethereum.ALM_PROXY, SUSDS_WITHDRAW_AMOUNT, uint32(500_000), bytes(""))
             )
         );
 
