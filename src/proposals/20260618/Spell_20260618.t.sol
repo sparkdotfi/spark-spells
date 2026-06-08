@@ -9,6 +9,8 @@ import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
@@ -33,7 +35,9 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-import { RecordedLogs } from "xchain-helpers/testing/utils/RecordedLogs.sol";
+import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
+import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
+import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBridgeTesting.sol";
 
 import {
     IALMProxyFreezableLike,
@@ -43,6 +47,8 @@ import {
 } from "../../interfaces/Interfaces.sol";
 
 contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
+
+    using DomainHelpers for Domain;
 
     address internal constant BINANCE_OTC_BUFFER = 0x1851c64BBfad132CBE75481f1690C381288ea492;
 
@@ -108,6 +114,105 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
             asset1:        Ethereum.USDC,
             amount:        5_000_000e6
         }));
+    }
+
+    function test_BASE_sll_removeExcessLiquidity() external onChain(ChainIdUtils.Base()) {
+        // Prevent other OP chain spells from running so their L2 SentMessage logs don't
+        // interfere with the Base bridge relay (all OP chains share 0x4200...0007 as L2 messenger)
+        chainData[ChainIdUtils.Optimism()].payload = address(0);
+        chainData[ChainIdUtils.Unichain()].payload = address(0);
+
+        uint256 baseUsdsBalanceBefore  = IERC20(Base.USDS).balanceOf(Base.ALM_PROXY);
+        uint256 baseSusdsBalanceBefore = IERC20(Base.SUSDS).balanceOf(Base.ALM_PROXY);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethSusdsBalanceBefore = IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY);
+
+        chainData[ChainIdUtils.Base()].domain.selectFork();
+
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        // Base ALM proxy sent the tokens to the bridge (burned on L2)
+        assertEq(IERC20(Base.USDS).balanceOf(Base.ALM_PROXY),  baseUsdsBalanceBefore  - 10_000e18);
+        assertEq(IERC20(Base.SUSDS).balanceOf(Base.ALM_PROXY), baseSusdsBalanceBefore - 10_000e18);
+
+        // Relay L2->L1 OP bridge messages to Ethereum (simulates the 7-day withdrawal finalization)
+        OptimismBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.Base()].bridges[0], false);
+
+        // Ethereum ALM proxy received the withdrawn tokens
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),  ethUsdsBalanceBefore  + 10_000e18);
+        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY), ethSusdsBalanceBefore + 10_000e18);
+    }
+
+    function test_UNICHAIN_sll_removeExcessLiquidity() external onChain(ChainIdUtils.Unichain()) {
+        // Prevent other OP chain spells from running so their L2 SentMessage logs don't
+        // interfere with the Unichain bridge relay (all OP chains share 0x4200...0007 as L2 messenger)
+        chainData[ChainIdUtils.Base()].payload     = address(0);
+        chainData[ChainIdUtils.Optimism()].payload = address(0);
+
+        uint256 unichainUsdsBalanceBefore  = IERC20(Unichain.USDS).balanceOf(Unichain.ALM_PROXY);
+        uint256 unichainSusdsBalanceBefore = IERC20(Unichain.SUSDS).balanceOf(Unichain.ALM_PROXY);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethSusdsBalanceBefore = IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY);
+
+        chainData[ChainIdUtils.Unichain()].domain.selectFork();
+
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        // Unichain ALM proxy sent the tokens to the bridge (burned on L2)
+        assertEq(IERC20(Unichain.USDS).balanceOf(Unichain.ALM_PROXY),  unichainUsdsBalanceBefore  - 10_000e18);
+        assertEq(IERC20(Unichain.SUSDS).balanceOf(Unichain.ALM_PROXY), unichainSusdsBalanceBefore - 10_000e18);
+
+        // Relay L2->L1 OP bridge messages to Ethereum
+        OptimismBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.Unichain()].bridges[0], false);
+
+        // Ethereum ALM proxy received the withdrawn tokens
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),  ethUsdsBalanceBefore  + 10_000e18);
+        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY), ethSusdsBalanceBefore + 10_000e18);
+    }
+
+    function test_OPTIMISM_sll_removeExcessLiquidity() external onChain(ChainIdUtils.Optimism()) {
+        // Prevent other OP chain spells from running so their L2 SentMessage logs don't
+        // interfere with the Optimism bridge relay (all OP chains share 0x4200...0007 as L2 messenger)
+        chainData[ChainIdUtils.Base()].payload     = address(0);
+        chainData[ChainIdUtils.Unichain()].payload = address(0);
+
+        uint256 optimismUsdsBalanceBefore  = IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY);
+        uint256 optimismSusdsBalanceBefore = IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethSusdsBalanceBefore = IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY);
+
+        chainData[ChainIdUtils.Optimism()].domain.selectFork();
+
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        // Optimism ALM proxy sent the tokens to the bridge (burned on L2)
+        assertEq(IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY),  optimismUsdsBalanceBefore  - 10_000e18);
+        assertEq(IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY), optimismSusdsBalanceBefore - 10_000e18);
+
+        // Relay L2->L1 OP bridge messages to Ethereum (simulates the 7-day withdrawal finalization)
+        OptimismBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.Optimism()].bridges[0], false);
+
+        // Ethereum ALM proxy received the withdrawn tokens
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),  ethUsdsBalanceBefore  + 10_000e18);
+        assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY), ethSusdsBalanceBefore + 10_000e18);
     }
 
 }
