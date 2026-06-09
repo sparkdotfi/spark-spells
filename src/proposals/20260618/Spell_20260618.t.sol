@@ -237,7 +237,7 @@ contract SparkEthereum_20260618_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20260618_SpellTests is SpellTests {
 
-    uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
+    uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
 
     constructor() {

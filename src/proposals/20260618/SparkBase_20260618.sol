@@ -28,8 +28,8 @@ interface ITokenBridgeLike {
  * @title  June 18, 2026 Spark Base Proposal
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer - Remove Excess Liquidity.
- * Forum:
- * Vote:
+ * Forum:  https://forum.skyeco.com/t/june-18-2026-proposed-changes-to-spark-for-upcoming-spell/27952
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x81e46a9c323dafde20fa6104fb93855889217b590335157c3c58be6760735747
  */
 contract SparkBase_20260618 is SparkPayloadBase {
 

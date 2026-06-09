@@ -21,15 +21,16 @@ import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
  *         - Onboard Binance with OTC-Buffer.
  *         Spark Treasury:
  *         - Grants for Spark Foundation and Spark Assets Foundation for Q3 2026.
- * Forum:  
- * Vote:   
+ * Forum:  https://forum.skyeco.com/t/june-18-2026-proposed-changes-to-spark-for-upcoming-spell/27952
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x81e46a9c323dafde20fa6104fb93855889217b590335157c3c58be6760735747
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0xe556733096975218413695c0bd3905a865a38e4ded7603551b40f49cebfbb9ba
  */
 contract SparkEthereum_20260618 is SparkPayloadEthereum {
 
-    address internal constant BINANCE_EXCHANGE   = 0x6666666666666666666666666666666666666666;
+    address internal constant BINANCE_EXCHANGE   = 0xd010b876696F345d9E0a1B70F573244FcC2e0A0e;
     address internal constant BINANCE_OTC_BUFFER = 0x1851c64BBfad132CBE75481f1690C381288ea492;
 
-    uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 100_000e18;
+    uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
 
     constructor() {
