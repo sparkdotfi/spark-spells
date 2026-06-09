@@ -277,6 +277,12 @@ abstract contract SpellRunner is Test {
             tag_  : bytecodeHash
         });
 
+        vm.mockCall(
+            payloadAddress,
+            abi.encodeWithSelector(SparkPayloadEthereum.isExecutable.selector),
+            abi.encode(true)
+        );
+
         address payload = IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
 
         require(payloadAddress == payload, "FAILED TO EXECUTE PAYLOAD");
