@@ -54,7 +54,7 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260618;
-        _blockDate = 1780912753;  // 2026-06-8T09:59:13Z
+        _blockDate = 1781087665;  // 2026-06-10T10:34:25Z
     }
 
     function setUp() public override {
@@ -221,7 +221,7 @@ contract SparkEthereum_20260618_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260618;
-        _blockDate = 1780912753;  // 2026-06-8T09:59:13Z
+        _blockDate = 1781087665;  // 2026-06-10T10:34:25Z
     }
 
     function setUp() public override {
@@ -242,7 +242,7 @@ contract SparkEthereum_20260618_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260618;
-        _blockDate = 1780912753;  // 2026-06-8T09:59:13Z
+        _blockDate = 1781087665;  // 2026-06-10T10:34:25Z
     }
 
     function setUp() public override {
@@ -261,8 +261,8 @@ contract SparkEthereum_20260618_SpellTests is SpellTests {
         uint256 foundationBalanceBefore      = usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
-        assertEq(sparkProxyBalanceBefore,      37_022_794.249708907368137212e18);
-        assertEq(foundationBalanceBefore,      326_990.0222e18);
+        assertEq(sparkProxyBalanceBefore,      36_359_440.249708907368137212e18);
+        assertEq(foundationBalanceBefore,      306_990.0222e18);
         assertEq(assetFoundationBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
