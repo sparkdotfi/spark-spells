@@ -84,7 +84,7 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
         assertEq(mainnetController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC), false);
 
         {
-            (address buffer, uint256 rechargeRate18,,,) = mainnetController.otcs(BINANCE_EXCHANGE);
+            ( address buffer, uint256 rechargeRate18, , , ) = mainnetController.otcs(BINANCE_EXCHANGE);
             assertEq(buffer,         address(0));
             assertEq(rechargeRate18, 0);
         }
@@ -101,7 +101,7 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
         assertTrue(mainnetController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC));
 
         {
-            (address buffer, uint256 rechargeRate18,,,) = mainnetController.otcs(BINANCE_EXCHANGE);
+            ( address buffer, uint256 rechargeRate18, , , ) = mainnetController.otcs(BINANCE_EXCHANGE);
             assertEq(buffer,         BINANCE_OTC_BUFFER);
             assertEq(rechargeRate18, uint256(50_000e18) / 1 days);
         }

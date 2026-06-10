@@ -41,10 +41,9 @@ contract SparkEthereum_20260618 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         // 1. Onboard Binance with OTC-Buffer.
-        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits        = IRateLimits(Ethereum.ALM_RATE_LIMITS);
-
-        OTCBuffer otcBuffer = OTCBuffer(BINANCE_OTC_BUFFER);
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+        OTCBuffer         otcBuffer         = OTCBuffer(BINANCE_OTC_BUFFER);
 
         otcBuffer.approve(Ethereum.USDT, type(uint256).max);
         otcBuffer.approve(Ethereum.USDC, type(uint256).max);

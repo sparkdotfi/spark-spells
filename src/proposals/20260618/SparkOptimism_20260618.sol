@@ -14,12 +14,12 @@ import { SparkPayloadOptimism } from "../../SparkPayloadOptimism.sol";
 interface ITokenBridgeLike {
 
     function bridgeERC20To(
-        address      _localToken,
-        address      _remoteToken,
-        address      _to,
-        uint256      _amount,
-        uint32       _minGasLimit,
-        bytes memory _extraData
+        address        localToken,
+        address        remoteToken,
+        address        to,
+        uint256        amount,
+        uint32         minGasLimit,
+        bytes   memory extraData
     ) external;
 
 }
