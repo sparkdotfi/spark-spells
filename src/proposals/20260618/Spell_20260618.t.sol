@@ -66,7 +66,7 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
         // chainData[ChainIdUtils.Unichain()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
     }
 
-    function test_ETHEREUM_sll_onboardBinanceOTCBuffer() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_onboardBinanceOTCBuffer_swapUsdtToUsdc() public onChain(ChainIdUtils.Ethereum()) {
         MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
 
         bytes32 key = RateLimitHelpers.makeAddressKey(
@@ -112,6 +112,56 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
             transferKey:   key,
             asset0:        Ethereum.USDT,
             asset1:        Ethereum.USDC,
+            amount:        5_000_000e6
+        }));
+    }
+
+    function test_ETHEREUM_sll_onboardBinanceOTCBuffer_swapUsdcToUsdt() public onChain(ChainIdUtils.Ethereum()) {
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        bytes32 key = RateLimitHelpers.makeAddressKey(
+            mainnetController.LIMIT_OTC_SWAP(),
+            BINANCE_EXCHANGE
+        );
+
+        _assertRateLimit(key, 0, 0);
+
+        assertEq(mainnetController.maxSlippages(BINANCE_EXCHANGE),                        0);
+        assertEq(IERC20(Ethereum.USDT).allowance(BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), 0);
+        assertEq(IERC20(Ethereum.USDC).allowance(BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), 0);
+
+        assertEq(mainnetController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDT), false);
+        assertEq(mainnetController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC), false);
+
+        {
+            ( address buffer, uint256 rechargeRate18, , , ) = mainnetController.otcs(BINANCE_EXCHANGE);
+            assertEq(buffer,         address(0));
+            assertEq(rechargeRate18, 0);
+        }
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
+
+        assertEq(mainnetController.maxSlippages(BINANCE_EXCHANGE),                        0.998e18);
+        assertEq(IERC20(Ethereum.USDT).allowance(BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+        assertEq(IERC20(Ethereum.USDC).allowance(BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+
+        assertTrue(mainnetController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDT));
+        assertTrue(mainnetController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC));
+
+        {
+            ( address buffer, uint256 rechargeRate18, , , ) = mainnetController.otcs(BINANCE_EXCHANGE);
+            assertEq(buffer,         BINANCE_OTC_BUFFER);
+            assertEq(rechargeRate18, uint256(50_000e18) / 1 days);
+        }
+
+        _testOTCIntegration(OTCE2ETestParams({
+            ctx:           _getSparkLiquidityLayerContext(),
+            exchange:      BINANCE_EXCHANGE,
+            transferKey:   key,
+            asset0:        Ethereum.USDC,
+            asset1:        Ethereum.USDT,
             amount:        5_000_000e6
         }));
     }

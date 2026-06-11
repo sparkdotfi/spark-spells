@@ -107,6 +107,8 @@ interface IMainnetControllerLike {
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
+    using SafeERC20 for IERC20;
+
     enum Category {
         AAVE,
         BUIDL,
@@ -990,13 +992,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testOTCIntegration(OTCE2ETestParams memory p) internal {
-        uint48 startingTimestamp = uint48(block.timestamp);
-
         IERC20 asset0 = IERC20(p.asset0);
+        IERC20 asset1 = IERC20(p.asset1);
 
         ( address otcBuffer, uint256 rechargeRate, , , ) = MainnetController(p.ctx.controller).otcs(p.exchange);
 
-        uint256 amount18 = p.amount * 1e18 / 10 ** IERC20Metadata(p.asset0).decimals();
+        uint256 amount18    = p.amount * 1e18 / 10 ** IERC20Metadata(p.asset0).decimals();
+        uint256 threshold18 = amount18 * MainnetController(p.ctx.controller).maxSlippages(p.exchange) / 1e18;
+
+        IRateLimits.RateLimitData memory rateLimitData = p.ctx.rateLimits.getRateLimitData(p.transferKey);
 
         // Step 1: Send asset0 to exchange
 
@@ -1028,89 +1032,109 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ctx           : p.ctx,
             exchange      : p.exchange,
             sent18        : amount18,
-            sentTimestamp : startingTimestamp,
+            sentTimestamp : block.timestamp,
             claimed18     : 0
         });
 
         assertEq(MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange), 0);
+        assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange),          false);
 
-        assertFalse(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange));
+        // Step 2: Exchange returns the full equivalent amount of asset1, claim in the same block
 
-        // Skip enough time for the recharge to cover the slippage threshold so isOtcSwapReady returns true
-        uint256 skipTime = (amount18 * MainnetController(p.ctx.controller).maxSlippages(p.exchange) / 1e18) / rechargeRate + 1 days;  // +1 days to overcome rounding errors.
-
-        skip(skipTime);
-
-        // Recharge starts without any claim after send
-        assertEq(
-            MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange),
-            skipTime * rechargeRate
-        );
-
-        // Step 2: Send asset1 to buffer from exchange under slippage
-
-        IERC20 asset1 = IERC20(p.asset1);
+        uint256 returnAmountA = p.amount * 10 ** IERC20Metadata(p.asset1).decimals() / 10 ** IERC20Metadata(p.asset0).decimals();
 
         deal(p.asset1, address(p.ctx.proxy), 0);  // Deal zero asset1 to almProxy to ensure balance changes are from the test actions
-        deal(p.asset1, p.exchange,           p.amount);
+        deal(p.asset1, p.exchange,           returnAmountA);
 
         vm.prank(p.exchange);
-        asset1.transfer(otcBuffer, p.amount);
-
-        assertEq(asset1.balanceOf(address(otcBuffer)),   p.amount);
-        assertEq(asset1.balanceOf(address(p.ctx.proxy)), 0);
-
-        // Step 3: Claim OTC funds
-
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : amount18,
-            sentTimestamp : startingTimestamp,
-            claimed18     : 0
-        });
-
-        assertTrue(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange));
+        asset1.safeTransfer(otcBuffer, returnAmountA);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).otcClaim(p.exchange, p.asset1);
 
+        assertEq(asset1.balanceOf(address(p.ctx.proxy)), returnAmountA);
+        assertEq(asset1.balanceOf(address(otcBuffer)),   0);
+
+        _assertOtcState(p.ctx, p.exchange, amount18, block.timestamp, amount18);
+
+        // No time has passed since the send, so readiness is driven purely by the claim
+        assertEq(MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange), amount18);
+        assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange),          true);
+
+        // Step 3: Recharge the transfer rate limit and send again (resets OTC state)
+
+        skip(1 days);
+
+        deal(p.asset0, address(p.ctx.proxy), p.amount);
+        deal(p.asset0, p.exchange,           0);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset0, p.amount);
+
         _assertOtcState({
             ctx           : p.ctx,
             exchange      : p.exchange,
             sent18        : amount18,
-            sentTimestamp : startingTimestamp,
-            claimed18     : p.amount * 1e18 / 10 ** IERC20Metadata(p.asset1).decimals()
+            sentTimestamp : block.timestamp,
+            claimed18     : 0
         });
 
-        assertTrue(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange));
+        // Step 4: Exchange returns one day of recharge under the sent amount, claim is not enough
 
-        // Step 4: Swap another asset using the same rate limit
+        uint256 shortfall18 = rechargeRate * 1 days;
 
-        skip(skipTime);  // Recharge rate limit
+        // The shortfall must exceed the slippage allowance, otherwise the claim alone unblocks the swap
+        require(shortfall18 > amount18 - threshold18, "shortfall is within slippage tolerance");
 
-        uint256 asset1SendAmount   = asset1.balanceOf(address(p.ctx.proxy));
-        uint256 asset1SendAmount18 = asset1SendAmount * 1e18 / 10 ** IERC20Metadata(p.asset1).decimals();
+        uint256 returnAmountB   = (amount18 - shortfall18) * 10 ** IERC20Metadata(p.asset1).decimals() / 1e18;
+        uint256 returnAmountB18 = returnAmountB * 1e18 / 10 ** IERC20Metadata(p.asset1).decimals();
 
-        uint256 currentRateLimit = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
+        deal(p.asset1, address(p.ctx.proxy), 0);
+        deal(p.asset1, p.exchange,           returnAmountB);
 
-        assertEq(asset1.balanceOf(address(p.ctx.proxy)), asset1SendAmount);
-        assertEq(asset1.balanceOf(p.exchange),           0);
+        vm.prank(p.exchange);
+        asset1.safeTransfer(otcBuffer, returnAmountB);
 
-        // Able to do another swap
         vm.prank(p.ctx.relayer);
-        MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset1, asset1SendAmount);
+        MainnetController(p.ctx.controller).otcClaim(p.exchange, p.asset1);
 
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), currentRateLimit - asset1SendAmount18);
+        assertEq(asset1.balanceOf(address(p.ctx.proxy)), returnAmountB);
+        assertEq(asset1.balanceOf(address(otcBuffer)),   0);
 
-        assertEq(asset1.balanceOf(address(p.ctx.proxy)), p.amount - asset1SendAmount);
-        assertEq(asset1.balanceOf(p.exchange),           asset1SendAmount);
+        _assertOtcState(p.ctx, p.exchange, amount18, block.timestamp, returnAmountB18);
 
-        // OTC state is reset
+        assertEq(MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange), returnAmountB18);
+        assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange),          false);
+
+        // Step 5: Show the next swap is blocked by the unreturned slippage, not the rate limit
+
+        skip(rateLimitData.maxAmount / rateLimitData.slope + 1); // Skip enough time to refill the rate limit but not enough to open the swap
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),            rateLimitData.maxAmount);
+        assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange), false);
+
+        vm.prank(p.ctx.relayer);
+        vm.expectRevert("MC/last-swap-not-returned");
+        MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset1, returnAmountB);
+
+        // Step 6: One day of recharge covers the shortfall, swap again without claiming
+
+        skip(1 days);
+
+        assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange), true);
+
+        vm.prank(p.ctx.relayer);
+        MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset1, returnAmountB);
+
+        assertEq(asset1.balanceOf(address(p.ctx.proxy)), 0);
+        assertEq(asset1.balanceOf(p.exchange),           returnAmountB);
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), rateLimitData.maxAmount - returnAmountB18);
+
         _assertOtcState({
             ctx           : p.ctx,
             exchange      : p.exchange,
-            sent18        : asset1SendAmount18,
+            sent18        : returnAmountB18,
             sentTimestamp : block.timestamp,
             claimed18     : 0
         });
