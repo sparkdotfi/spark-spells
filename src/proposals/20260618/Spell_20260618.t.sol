@@ -54,16 +54,16 @@ contract SparkEthereum_20260618_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260618;
-        _blockDate = 1781087665;  // 2026-06-10T10:34:25Z
+        _blockDate = 1781276867;  // Jun-12-2026 03:07:47 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x1566BFA55D95686a823751298533D42651183988;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
-        // chainData[ChainIdUtils.Optimism()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
-        // chainData[ChainIdUtils.Unichain()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
+        chainData[ChainIdUtils.Base()].payload     = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
+        chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
     function test_ETHEREUM_sll_onboardBinanceOTCBuffer_swapUsdtToUsdc() public onChain(ChainIdUtils.Ethereum()) {
@@ -271,16 +271,16 @@ contract SparkEthereum_20260618_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260618;
-        _blockDate = 1781087665;  // 2026-06-10T10:34:25Z
+        _blockDate = 1781276867;  // Jun-12-2026 03:07:47 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x1566BFA55D95686a823751298533D42651183988;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
-        // chainData[ChainIdUtils.Optimism()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
-        // chainData[ChainIdUtils.Unichain()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
+        chainData[ChainIdUtils.Base()].payload     = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
+        chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
 }
@@ -292,16 +292,16 @@ contract SparkEthereum_20260618_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260618;
-        _blockDate = 1781087665;  // 2026-06-10T10:34:25Z
+        _blockDate = 1781276867;  // Jun-12-2026 03:07:47 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x1566BFA55D95686a823751298533D42651183988;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
-        // chainData[ChainIdUtils.Optimism()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
-        // chainData[ChainIdUtils.Unichain()].payload = 0xAb385eC0Df225D5A37F5245D2aE43D53Fe4Fed20;
+        chainData[ChainIdUtils.Base()].payload     = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
+        chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
@@ -312,7 +312,7 @@ contract SparkEthereum_20260618_SpellTests is SpellTests {
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      36_359_440.249708907368137212e18);
-        assertEq(foundationBalanceBefore,      306_990.0222e18);
+        assertEq(foundationBalanceBefore,      231990.0222e18);
         assertEq(assetFoundationBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
