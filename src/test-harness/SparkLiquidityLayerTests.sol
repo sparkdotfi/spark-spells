@@ -104,6 +104,14 @@ interface IMainnetControllerLike {
 
 }
 
+interface IMainnetControllerV9Like {
+
+    function depositERC4626(address vault, uint256 amount) external returns (uint256 shares);
+
+    function withdrawERC4626(address vault, uint256 amount) external returns (uint256 shares);
+
+}
+
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
@@ -718,7 +726,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _depositERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
         if (controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
-            shares = MainnetController(controller).depositERC4626(vault, amount);
+            shares = IMainnetControllerV9Like(controller).depositERC4626(vault, amount);
         } else {
             shares = IMainnetControllerLike(controller).depositERC4626(vault, amount, 0);
         }
@@ -726,7 +734,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _withdrawERC4626(address controller, address vault, uint256 amount) internal returns (uint256 shares) {
         if (controller == Base.ALM_CONTROLLER || controller == Arbitrum.ALM_CONTROLLER) {
-            shares = MainnetController(controller).withdrawERC4626(vault, amount);
+            shares = IMainnetControllerV9Like(controller).withdrawERC4626(vault, amount);
         } else {
             shares = IMainnetControllerLike(controller).withdrawERC4626(vault, amount, type(uint256).max);
         }
@@ -1081,11 +1089,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // Step 4: Exchange returns one day of recharge under the sent amount, claim is not enough
 
-        uint256 shortfall18 = rechargeRate * 1 days;
-
-        // The shortfall must exceed the slippage allowance, otherwise the claim alone unblocks the swap
-        require(shortfall18 > amount18 - threshold18, "shortfall is within slippage tolerance");
-
+        uint256 shortfall18     = (amount18 - threshold18) + rechargeRate * 1 days;
         uint256 returnAmountB   = (amount18 - shortfall18) * 10 ** IERC20Metadata(p.asset1).decimals() / 1e18;
         uint256 returnAmountB18 = returnAmountB * 1e18 / 10 ** IERC20Metadata(p.asset1).decimals();
 
@@ -1101,7 +1105,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(asset1.balanceOf(address(p.ctx.proxy)), returnAmountB);
         assertEq(asset1.balanceOf(address(otcBuffer)),   0);
 
-        _assertOtcState(p.ctx, p.exchange, amount18, block.timestamp, returnAmountB18);
+        _assertOtcState({
+            ctx           : p.ctx,
+            exchange      : p.exchange,
+            sent18        : amount18,
+            sentTimestamp : block.timestamp,
+            claimed18     : returnAmountB18
+        });
 
         assertEq(MainnetController(p.ctx.controller).getOtcClaimWithRecharge(p.exchange), returnAmountB18);
         assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange),          false);
@@ -1113,8 +1123,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey),            rateLimitData.maxAmount);
         assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange), false);
 
-        vm.prank(p.ctx.relayer);
         vm.expectRevert("MC/last-swap-not-returned");
+        vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset1, returnAmountB);
 
         // Step 6: One day of recharge covers the shortfall, swap again without claiming
