@@ -277,6 +277,12 @@ abstract contract SpellRunner is Test {
             tag_  : bytecodeHash
         });
 
+        vm.mockCall(
+            payloadAddress,
+            abi.encodeWithSelector(SparkPayloadEthereum.isExecutable.selector),
+            abi.encode(true)
+        );
+
         address payload = IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
 
         require(payloadAddress == payload, "FAILED TO EXECUTE PAYLOAD");
@@ -314,6 +320,7 @@ abstract contract SpellRunner is Test {
             uint256 chainId = chainData[allChains[i]].domain.chain.chainId;
 
             if (chainId == ChainIdUtils.Ethereum()) continue;  // Don't execute mainnet
+            if (chainData[chainId].payload == address(0)) continue; // test explicitly disabled this chain
 
             address   mainnetSpellPayload = _getForeignPayloadFromMainnetSpell(chainId);
             IExecutor executor            = chainData[chainId].executor;
