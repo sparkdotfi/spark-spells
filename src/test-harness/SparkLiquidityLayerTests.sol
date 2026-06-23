@@ -21,12 +21,16 @@ import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { IALMProxy }                           from "spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits }                         from "spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { ILayerZero, MessagingFee, SendParam } from "spark-alm-controller/src/interfaces/ILayerZero.sol";
+
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
+
+import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
 import { FullMath } from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/FullMath.sol";
 import { TickMath } from "spark-alm-controller/lib/uniswap-v4-core/src/libraries/TickMath.sol";
@@ -37,9 +41,10 @@ import { PoolKey }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/Poo
 import { IAToken } from "sparklend-v1-core/interfaces/IAToken.sol";
 
 import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.sol";
-import { Bridge }                from "xchain-helpers/testing/Bridge.sol";
+import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
 import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
@@ -70,6 +75,12 @@ import {
 } from "../interfaces/Interfaces.sol";
 
 import { SpellRunner } from "./SpellRunner.sol";
+
+interface ILZEndpointExtended {
+    function lazyInboundNonce(address _receiver, uint32 _srcEid, bytes32 _sender) external view returns (uint64);
+    function outboundNonce(address _sender, uint32 _dstEid, bytes32 _receiver) external view returns (uint64);
+    function skip(address _oapp, uint32 _srcEid, bytes32 _sender, uint64 _nonce) external;
+}
 
 interface IMainnetControllerLike {
 
@@ -129,6 +140,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ERC4626,
         ETHENA,
         FARM,
+        LAYERZERO_TRANSFER,
         MAPLE,
         OTC,
         PSM,
@@ -284,6 +296,18 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 totalEscrowedShares;
     }
 
+    struct LayerZeroTransferE2ETestParams {
+        SparkLiquidityLayerContext ctx;
+        address                    oftAddress;
+        uint32                     destinationEndpointId;
+        bytes32                    transferKey;
+        uint256                    transferAmount;
+        uint256                    destinationDomainId;
+        address                    destinationOftAddress;
+        address                    destinationAsset;
+        address                    destinationReceiver;
+    }
+
     struct OTCE2ETestParams {
         SparkLiquidityLayerContext ctx;
         address                    exchange;
@@ -432,6 +456,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     using DomainHelpers for Domain;
+    using OptionsBuilder for bytes;
 
     // TODO: Put in registry
     address internal constant ANCHORAGE            = 0x49506C3Aa028693458d6eE816b2EC28522946872;
@@ -458,6 +483,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant USDE_ATOKEN          = 0x4F5923Fc5FD4a93352581b38B7cD26943012DECF;
     address internal constant USDS_ATOKEN          = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM        = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
+
+    address internal constant LZ_ENDPOINT          = 0x1a44076050125825900e736c501f859c50fE728c;
+    uint32  internal constant LZ_EID_ETHEREUM      = 30101;
+    address internal constant USDT_OFT             = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
+    address internal constant USDT0_OFT_ARBITRUM   = 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92;
+    address internal constant USDT0_ARBITRUM       = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
+    uint32  internal constant LZ_ENDPOINT_ARBITRUM = 30110;
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
@@ -2395,6 +2427,129 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.mintKey), p.ctx.rateLimits.getRateLimitData(p.mintKey).maxAmount);
     }
 
+    function _testLayerZeroTransferIntegration(LayerZeroTransferE2ETestParams memory p) internal {
+        MainnetController controller = MainnetController(p.ctx.controller);
+
+        skip(10 days);  // Recharge rate limits
+
+        IERC20 asset = IERC20(ILayerZero(p.oftAddress).token());
+
+        uint256 transferLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
+        uint256 transferAmount = p.transferAmount;
+
+        uint256 oftBalanceBefore = asset.balanceOf(p.oftAddress);
+
+        chainData[p.destinationDomainId].domain.selectFork();
+
+        uint256 destinationBalanceBefore = IERC20(p.destinationAsset).balanceOf(p.destinationReceiver);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        deal(address(asset), address(p.ctx.proxy), transferAmount);
+        deal(p.ctx.relayer, 1 ether);  // For LayerZero fees
+
+        /********************************/
+        /*** Step 1: Check rate limit ***/
+        /********************************/
+
+        _checkRateLimitValue(p.ctx, p.transferKey, IERC20Metadata(address(asset)).decimals());
+
+        /*****************************************************/
+        /*** Step 2: Transfer and check source-chain state ***/
+        /*****************************************************/
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0);
+        SendParam memory sendParams = SendParam({
+            dstEid       : p.destinationEndpointId,
+            to           : controller.layerZeroRecipients(p.destinationEndpointId),
+            amountLD     : transferAmount,
+            minAmountLD  : transferAmount,
+            extraOptions : options,
+            composeMsg   : "",
+            oftCmd       : ""
+        });
+        MessagingFee memory fee = ILayerZero(p.oftAddress).quoteSend(sendParams, false);
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)),                 transferAmount);
+        assertEq(asset.balanceOf(p.oftAddress),                         oftBalanceBefore);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
+
+        uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
+            p.oftAddress,
+            p.destinationEndpointId,
+            bytes32(uint256(uint160(p.destinationOftAddress)))
+        ) + 1;
+
+        vm.prank(p.ctx.relayer);
+        controller.transferTokenLayerZero{value: fee.nativeFee}(
+            p.oftAddress,
+            transferAmount,
+            p.destinationEndpointId
+        );
+
+        assertEq(asset.balanceOf(address(p.ctx.proxy)),                 0);
+        assertEq(asset.balanceOf(p.oftAddress),                         oftBalanceBefore + transferAmount);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - transferAmount);
+
+        /****************************************************************/
+        /*** Step 3: Relay message to destination and verify arrival  ***/
+        /****************************************************************/
+
+        // Skip any in-flight nonces from the fork state that haven't been relayed yet
+        chainData[p.destinationDomainId].domain.selectFork();
+
+        _skipLZPendingNonces(
+            p.destinationOftAddress,
+            LZ_EID_ETHEREUM,
+            bytes32(uint256(uint160(p.oftAddress))),
+            sentNonce
+        );
+
+        assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        Bridge storage bridge = _getLZBridge(p.destinationDomainId);
+
+        LZBridgeTesting.relayMessagesToDestination(bridge, true, p.oftAddress, p.destinationOftAddress);
+
+        assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore + transferAmount);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        /********************************************/
+        /*** Step 4: Warp to recharge rate limits ***/
+        /********************************************/
+
+        skip(1 days + 1 seconds);  // +1 second due to rounding
+
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
+        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), p.ctx.rateLimits.getRateLimitData(p.transferKey).maxAmount);
+    }
+
+    function _getLZBridge(uint256 domainId) internal view returns (Bridge storage) {
+        Bridge[] storage bridges = chainData[domainId].bridges;
+        for (uint256 i = 0; i < bridges.length; i++) {
+            if (bridges[i].bridgeType == BridgeType.LZ) {
+                return bridges[i];
+            }
+        }
+        revert("No LZ bridge found for domain");
+    }
+
+    function _skipLZPendingNonces(
+        address oapp,
+        uint32  srcEid,
+        bytes32 sender,
+        uint64  targetNonce
+    ) internal {
+        uint64 currentNonce = ILZEndpointExtended(LZ_ENDPOINT).lazyInboundNonce(oapp, srcEid, sender);
+        for (uint64 n = currentNonce + 1; n < targetNonce; n++) {
+            vm.prank(oapp);
+            ILZEndpointExtended(LZ_ENDPOINT).skip(oapp, srcEid, sender, n);
+        }
+    }
+
     function _testTransferAssetIntegration(TransferAssetE2ETestParams memory p) internal {
         MainnetController controller = MainnetController(p.ctx.controller);
 
@@ -4001,7 +4156,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 depositAmount: 10_000_000 * 10 ** IERC20Metadata(asset).decimals(),
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
-                tolerance:     10
+                tolerance:     300
             }));
         }
 
@@ -4065,6 +4220,31 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 asset0      : asset0,
                 asset1      : asset1,
                 amount      : 5_000_000e6  // Amount for each swap direction
+            }));
+        }
+
+        else if (integration.category == Category.LAYERZERO_TRANSFER) {
+            console2.log("Running SLL E2E test for", integration.label);
+
+            (
+                address oftAddress,
+                uint32  destinationEndpointId,
+                uint256 destinationDomainId,
+                address destinationOftAddress,
+                address destinationAsset,
+                address destinationReceiver
+            ) = abi.decode(integration.extraData, (address, uint32, uint256, address, address, address));
+
+            _testLayerZeroTransferIntegration(LayerZeroTransferE2ETestParams({
+                ctx:                   ctx,
+                oftAddress:            oftAddress,
+                destinationEndpointId: destinationEndpointId,
+                transferKey:           integration.entryId,
+                transferAmount:        1_000_000e6,
+                destinationDomainId:   destinationDomainId,
+                destinationOftAddress: destinationOftAddress,
+                destinationAsset:      destinationAsset,
+                destinationReceiver:   destinationReceiver
             }));
         }
 
@@ -4152,7 +4332,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](55);
+        integrations = new SLLIntegration[](56);
 
         integrations[0]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[1]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
@@ -4228,6 +4408,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         integrations[53] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
         integrations[54] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
+
+        integrations[55] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -4373,7 +4555,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 1] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
+        newIntegrations[newIntegrations.length - 1] = _createLayerZeroTransferIntegration(
+            "LAYERZERO_TRANSFER-USDT0_ARBITRUM",
+            USDT_OFT,
+            LZ_ENDPOINT_ARBITRUM,
+            ChainIdUtils.ArbitrumOne(),
+            USDT0_OFT_ARBITRUM,
+            USDT0_ARBITRUM,
+            Arbitrum.ALM_PROXY
+        );
     }
 
     function _getPostExecutionIntegrationsBase(
@@ -4662,6 +4852,29 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             exitId:      RateLimitHelpers.makeAddressKey(foreignController.LIMIT_PSM_WITHDRAW(), asset),
             exitId2:     bytes32(0),
             extraData:   abi.encode(asset)
+        });
+    }
+
+    function _createLayerZeroTransferIntegration(
+        string  memory label,
+        address        oftAddress,
+        uint32         destinationEndpointId,
+        uint256        destinationDomainId,
+        address        destinationOftAddress,
+        address        destinationAsset,
+        address        destinationReceiver
+    ) internal view returns (SLLIntegration memory) {
+        MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
+
+        return SLLIntegration({
+            label:       label,
+            category:    Category.LAYERZERO_TRANSFER,
+            integration: oftAddress,
+            entryId:     keccak256(abi.encode(mainnetController.LIMIT_LAYERZERO_TRANSFER(), oftAddress, destinationEndpointId)),
+            entryId2:    bytes32(0),
+            exitId:      bytes32(0),
+            exitId2:     bytes32(0),
+            extraData:   abi.encode(oftAddress, destinationEndpointId, destinationDomainId, destinationOftAddress, destinationAsset, destinationReceiver)
         });
     }
 

@@ -155,6 +155,13 @@ abstract contract SpellRunner is Test {
             )
         );
 
+        chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
+            LZBridgeTesting.createLZBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.ArbitrumOne()].domain
+            )
+        );
+
         // Base
         chainData[ChainIdUtils.Base()].bridges.push(
             OptimismBridgeTesting.createNativeBridge(
@@ -310,8 +317,10 @@ abstract contract SpellRunner is Test {
             AMBBridgeTesting.relayMessagesToDestination(bridge, false);
         } else if (bridge.bridgeType == BridgeType.ARBITRUM) {
             ArbitrumBridgeTesting.relayMessagesToDestination(bridge, false);
-        } else if (bridge.bridgeType == BridgeType.LZ) {  // TODO: Figure out how to make this chain agnostic
-            LZBridgeTesting.relayMessagesToDestination(bridge, false, Ethereum.SPARK_PROXY, Avalanche.SPARK_RECEIVER);
+        } else if (bridge.bridgeType == BridgeType.LZ) {
+            if (bridge.destination.chain.chainId == ChainIdUtils.Avalanche()) {
+                LZBridgeTesting.relayMessagesToDestination(bridge, false, Ethereum.SPARK_PROXY, Avalanche.SPARK_RECEIVER);
+            }
         }
     }
 
@@ -411,7 +420,7 @@ abstract contract SpellRunner is Test {
 
         for (uint256 i; i < allChains.length; ++i) {
             // TODO: Remove this once Avalanche is working
-            if (allChains[i] == ChainIdUtils.Avalanche() || allChains[i] == ChainIdUtils.Gnosis()) {
+            if (allChains[i] == ChainIdUtils.Avalanche() || allChains[i] == ChainIdUtils.Gnosis() || allChains[i] == ChainIdUtils.Base()) {
                 blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
                 continue;
             }
