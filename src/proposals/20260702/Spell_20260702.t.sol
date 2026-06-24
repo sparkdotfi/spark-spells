@@ -461,6 +461,167 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         vm.stopPrank();
     }
 
+    function test_ARBITRUM_sll_spUSDT_usdt0RoundTrip() external onChain(ChainIdUtils.ArbitrumOne()) {
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        ForeignController foreignController = ForeignController(Arbitrum.ALM_CONTROLLER);
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        IERC20            usdt0Arbitrum = IERC20(ARBITRUM_USDT);
+        IERC20            usdt          = IERC20(Ethereum.USDT);
+        ISparkVaultV2Like vault         = ISparkVaultV2Like(ARBITRUM_SPARK_VAULT_V2_SPUSDT);
+
+        Bridge storage lzBridge = _getLZBridge(ChainIdUtils.ArbitrumOne());
+
+        address user   = makeAddr("user");
+        uint256 amount = 1_000_000e6;
+
+        // ================================================================================
+        // STEP 1: User deposits USDT0 into spUSDT on Arbitrum
+        // ================================================================================
+
+        uint256 vaultUsdt0Before = usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT);
+
+        deal(ARBITRUM_USDT, user, amount);
+
+        assertEq(usdt0Arbitrum.balanceOf(user),                           amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before);
+
+        vm.startPrank(user);
+        SafeERC20.safeIncreaseAllowance(usdt0Arbitrum, ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
+        uint256 userShares = vault.deposit(amount, user);
+        vm.stopPrank();
+
+        assertEq(usdt0Arbitrum.balanceOf(user),                           0);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before + amount);
+
+        // ================================================================================
+        // STEP 2: SLL takes USDT0 from spUSDT into ALMProxy on Arbitrum
+        // ================================================================================
+
+        uint256 arbProxyUsdt0Before = usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY);
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before + amount);
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        foreignController.takeFromSparkVault(ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before);
+
+        // ================================================================================
+        // STEP 3: USDT0 transferred to USDT0 OFT on Arbitrum (Arbitrum → Mainnet bridge)
+        // ================================================================================
+
+        uint64 sentNonce1 = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
+            USDT0_OFT_ARBITRUM,
+            LZ_EID_ETHEREUM,
+            bytes32(uint256(uint160(USDT_OFT)))
+        ) + 1;
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before + amount);
+
+        deal(Arbitrum.ALM_RELAYER_MULTISIG, 1 ether);
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        foreignController.transferTokenLayerZero{value: 1 ether}(
+            USDT0_OFT_ARBITRUM,
+            amount,
+            LZ_EID_ETHEREUM
+        );
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before);
+
+        // ================================================================================
+        // STEP 4: Relay message to Mainnet — USDT arrives in ALMProxy on Mainnet
+        // ================================================================================
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 ethProxyUsdtBefore = usdt.balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethOFTUsdtBefore   = usdt.balanceOf(USDT_OFT);
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore);
+
+        _skipLZPendingNonces(
+            USDT_OFT,
+            LZ_ENDPOINT_ARBITRUM,
+            bytes32(uint256(uint160(USDT0_OFT_ARBITRUM))),
+            sentNonce1
+        );
+
+        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+
+        LZBridgeTesting.relayMessagesToSource(lzBridge, true, USDT0_OFT_ARBITRUM, USDT_OFT);
+
+        // Now on Ethereum fork
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore + amount);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore - amount);
+
+        // ================================================================================
+        // STEP 5: USDT transferred to USDT OFT on Mainnet (Mainnet → Arbitrum bridge)
+        // ================================================================================
+
+        uint64 sentNonce2 = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
+            USDT_OFT,
+            LZ_ENDPOINT_ARBITRUM,
+            bytes32(uint256(uint160(USDT0_OFT_ARBITRUM)))
+        ) + 1;
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore + amount);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore - amount);
+
+        deal(Ethereum.ALM_RELAYER_MULTISIG, 1 ether);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        mainnetController.transferTokenLayerZero{value: 1 ether}(
+            USDT_OFT,
+            amount,
+            LZ_ENDPOINT_ARBITRUM
+        );
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore);
+
+        // ================================================================================
+        // STEP 6: Relay message to Arbitrum — USDT0 received in Arbitrum ALMProxy
+        // ================================================================================
+
+        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before);
+
+        _skipLZPendingNonces(
+            USDT0_OFT_ARBITRUM,
+            LZ_EID_ETHEREUM,
+            bytes32(uint256(uint160(USDT_OFT))),
+            sentNonce2
+        );
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        LZBridgeTesting.relayMessagesToDestination(lzBridge, true, USDT_OFT, USDT0_OFT_ARBITRUM);
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before + amount);
+
+        // ================================================================================
+        // STEP 7: USDT0 transferAsset into spUSDT vault
+        // ================================================================================
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before);
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        foreignController.transferAsset(ARBITRUM_USDT, ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
+
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before + amount);
+    }
+
 }
 
 contract SparkEthereum_20260702_SparklendTests is SparklendTests {
