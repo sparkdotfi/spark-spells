@@ -69,6 +69,10 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
     address internal constant ARBITRUM_USDT                  = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
     address internal constant ARBITRUM_ALM_PROXY_FREEZABLE   = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
 
+    // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
+    //   1.000000001547125957863212167
+    uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212167e27;
+
     // > bc -l <<< 'scale=27; e( l(1.06)/(60 * 60 * 24 * 365) )'
     //   1.000000001847694957439350562
     uint256 internal constant SIX_PCT_APY = 1.000000001847694957439350562e27;
@@ -492,11 +496,18 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         Bridge storage lzBridge = _getLZBridge(ChainIdUtils.ArbitrumOne());
 
-        address user   = makeAddr("user");
-        uint256 amount = 1_000_000e6;
+        address user     = makeAddr("user");
+        uint256 amount   = 1_000_000e6;
 
         // ================================================================================
-        // STEP 1: User deposits USDT0 into spUSDT on Arbitrum
+        // STEP 1: Setter sets VSR to 5% APY
+        // ================================================================================
+
+        vm.prank(ARBITRUM_ALM_PROXY_FREEZABLE);
+        vault.setVsr(FIVE_PCT_APY);
+
+        // ================================================================================
+        // STEP 2: User deposits USDT0 into spUSDT on Arbitrum
         // ================================================================================
 
         uint256 vaultUsdt0Starting = usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT);
@@ -515,7 +526,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
 
         // ================================================================================
-        // STEP 2: SLL takes USDT0 from spUSDT into ALMProxy on Arbitrum
+        // STEP 3: SLL takes USDT0 from spUSDT into ALMProxy on Arbitrum
         // ================================================================================
 
         uint256 arbProxyUsdt0Starting = usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY);
@@ -530,7 +541,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
 
         // ================================================================================
-        // STEP 3: USDT0 transferred to USDT0 OFT on Arbitrum (Arbitrum → Mainnet bridge)
+        // STEP 4: USDT0 transferred to USDT0 OFT on Arbitrum (Arbitrum → Mainnet bridge)
         // ================================================================================
 
         uint64 sentNonce1 = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
@@ -553,7 +564,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting);
 
         // ================================================================================
-        // STEP 4: Relay message to Mainnet — USDT arrives in ALMProxy on Mainnet
+        // STEP 5: Relay message to Mainnet — USDT arrives in ALMProxy on Mainnet
         // ================================================================================
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
@@ -580,7 +591,24 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
 
         // ================================================================================
-        // STEP 5: USDT transferred to USDT OFT on Mainnet (Mainnet → Arbitrum bridge)
+        // STEP 6: Warp 10 days, deal additional $2k into mainnet ALMProxy
+        // ================================================================================
+
+        uint256 interest = 2_000e6;  // $2k covers real 10-day interest at 5% APY (~$1338)
+
+        skip(10 days);
+
+        // Also warp Arbitrum fork so the vault's VSR accrues over the same 10 days
+        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+        skip(10 days);
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, ethProxyUsdtStarting + amount + interest);
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount + interest);
+
+        // ================================================================================
+        // STEP 7: USDT transferred to USDT OFT on Mainnet (Mainnet → Arbitrum bridge)
         // ================================================================================
 
         uint64 sentNonce2 = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
@@ -589,7 +617,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
             bytes32(uint256(uint160(USDT0_OFT_ARBITRUM)))
         ) + 1;
 
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount + interest);
         assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
 
         deal(Ethereum.ALM_RELAYER_MULTISIG, 0.1 ether);
@@ -597,15 +625,15 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetController.transferTokenLayerZero{value: 0.1 ether}(
             USDT_OFT,
-            amount,
+            amount + interest,
             LZ_ENDPOINT_ARBITRUM
         );
 
         assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting);
-        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting + interest);
 
         // ================================================================================
-        // STEP 6: Relay message to Arbitrum — USDT0 received in Arbitrum ALMProxy
+        // STEP 8: Relay message to Arbitrum — USDT0 received in Arbitrum ALMProxy
         // ================================================================================
 
         chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
@@ -623,20 +651,33 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         LZBridgeTesting.relayMessagesToDestination(lzBridge, true, USDT_OFT, USDT0_OFT_ARBITRUM);
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting + amount);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting + amount + interest);
 
         // ================================================================================
-        // STEP 7: USDT0 transferAsset into spUSDT vault
+        // STEP 9: USDT0 transferAsset into spUSDT vault
         // ================================================================================
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting + amount);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting + amount + interest);
         assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
 
         vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
-        foreignController.transferAsset(ARBITRUM_USDT, ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
+        foreignController.transferAsset(ARBITRUM_USDT, ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount + interest);
 
         assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount + interest);
+
+        // ================================================================================
+        // STEP 10: User redeems all shares, gets more assets out
+        // ================================================================================
+
+        assertEq(usdt0Arbitrum.balanceOf(user), 0);
+        assertEq(vault.balanceOf(user),         userShares);
+
+        vm.prank(user);
+        vault.redeem(userShares, user, user);
+
+        assertGt(usdt0Arbitrum.balanceOf(user), amount);
+        assertEq(vault.balanceOf(user),         0);
     }
 
 }
