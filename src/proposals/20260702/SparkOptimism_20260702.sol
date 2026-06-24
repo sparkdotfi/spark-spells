@@ -29,7 +29,7 @@ interface ITokenBridgeLike {
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer - Remove Excess Liquidity.
  * Forum:  https://forum.skyeco.com/t/july-2-2026-proposed-changes-to-spark-for-upcoming-spell/27982
- * Vote:   
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x4f6d0c56862e4b66e006c8c363a8daa79df521af0964360016edd2bfb8a49178
  */
 contract SparkOptimism_20260702 is SparkPayloadOptimism {
 

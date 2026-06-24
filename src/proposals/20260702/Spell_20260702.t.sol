@@ -16,6 +16,7 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { ILayerZero, MessagingFee, SendParam } from "spark-alm-controller/src/interfaces/ILayerZero.sol";
 
+import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
@@ -38,6 +39,8 @@ import { SparklendTests }                                from "src/test-harness/
 import { SparkLiquidityLayerTests, ILZEndpointExtended } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }                                    from "src/test-harness/SpellTests.sol";
 
+import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
+
 import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
@@ -51,17 +54,28 @@ import {
     IALMProxyFreezableLike,
     IMorphoVaultLike,
     IPositionManagerLike,
-    ISparkVaultV2Like 
+    ISparkVaultV2Like,
+    IERC20Like
 } from "../../interfaces/Interfaces.sol";
 
 contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+
     using DomainHelpers for Domain;
     using OptionsBuilder for bytes;
 
+    address internal constant ARBITRUM_SPARK_VAULT_V2_SPUSDT = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
+    address internal constant ARBITRUM_USDT                  = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
+    address internal constant ARBITRUM_ALM_PROXY_FREEZABLE   = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
+
+    // > bc -l <<< 'scale=27; e( l(1.06)/(60 * 60 * 24 * 365) )'
+    //   1.000000001847694957439350562
+    uint256 internal constant SIX_PCT_APY = 1.000000001847694957439350562e27;
+
     constructor() {
         _spellId   = 20260702;
-        _blockDate = 1782209490;  // Jun-23-2026 10:11:30 AM +UTC
+        _blockDate = 1782228626;  // Jun-23-2026 3:30:26 PM +UTC
     }
 
     function setUp() public override {
@@ -285,6 +299,168 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY), ethSusdsBalanceBefore + optimismSusdsBalanceBefore);
     }
 
+    function test_ARBITRUM_ALMProxyFreezableConfiguration() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IALMProxyFreezableLike proxy = IALMProxyFreezableLike(ARBITRUM_ALM_PROXY_FREEZABLE);
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Arbitrum.ALM_RELAYER_MULTISIG),          false);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Arbitrum.ALM_BACKSTOP_RELAYER_MULTISIG), false);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),       Arbitrum.ALM_FREEZER_MULTISIG),          false);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR),                true);
+
+        VmSafe.EthGetLogs[] memory roleLogs = _getEvents(block.chainid, address(proxy), RoleGranted.selector);
+
+        assertEq(roleLogs.length, 1);
+
+        assertEq32(roleLogs[0].topics[1], proxy.DEFAULT_ADMIN_ROLE());
+
+        assertEq(address(uint160(uint256(roleLogs[0].topics[2]))), Arbitrum.SPARK_EXECUTOR);
+
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Arbitrum.ALM_RELAYER_MULTISIG),          true);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Arbitrum.ALM_BACKSTOP_RELAYER_MULTISIG), true);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),       Arbitrum.ALM_FREEZER_MULTISIG),          true);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR),                true);
+
+        VmSafe.Log[] memory recordedLogs = vm.getRecordedLogs();  // This gets the logs of all payloads
+        VmSafe.Log[] memory newLogs      = new VmSafe.Log[](7);
+
+        uint256 j = 0;
+        for (uint256 i = 0; i < recordedLogs.length; ++i) {
+            if (recordedLogs[i].emitter   != address(proxy))       continue;
+            if (recordedLogs[i].topics[0] != RoleGranted.selector) continue;
+            newLogs[j] = recordedLogs[i];
+            j++;
+        }
+
+        assertEq32(newLogs[0].topics[1], proxy.ALLOCATOR_ROLE());
+        assertEq32(newLogs[1].topics[1], proxy.ALLOCATOR_ROLE());
+        assertEq32(newLogs[2].topics[1], proxy.FREEZER_ROLE());
+
+        assertEq(address(uint160(uint256(newLogs[0].topics[2]))), Arbitrum.ALM_RELAYER_MULTISIG);
+        assertEq(address(uint160(uint256(newLogs[1].topics[2]))), Arbitrum.ALM_BACKSTOP_RELAYER_MULTISIG);
+        assertEq(address(uint160(uint256(newLogs[2].topics[2]))), Arbitrum.ALM_FREEZER_MULTISIG);
+    }
+
+    function test_ARBITRUM_sparkVaultV2_configureSPUSDT() external onChain(ChainIdUtils.ArbitrumOne()) {
+        _testVaultConfiguration({
+            asset:      ARBITRUM_USDT,
+            name:       "Spark Savings USDT",
+            symbol:     "spUSDT",
+            rho:        1782227880,
+            vault_:     ARBITRUM_SPARK_VAULT_V2_SPUSDT,
+            minVsr:     1e27,
+            maxVsr:     SIX_PCT_APY,
+            depositCap: 250_000_000e6,
+            amount:     1_000_000e6
+        });
+    }
+
+    function _testVaultConfiguration(
+        address asset,
+        string  memory name,
+        string  memory symbol,
+        uint64  rho,
+        address vault_,
+        uint256 minVsr,
+        uint256 maxVsr,
+        uint256 depositCap,
+        uint256 amount
+    ) internal override {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);
+
+        bytes32 takeKey = RateLimitHelpers.makeAddressKey(
+            ForeignController(Arbitrum.ALM_CONTROLLER).LIMIT_SPARK_VAULT_TAKE(),
+            vault_
+        );
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            ForeignController(Arbitrum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            vault.asset(),
+            vault_
+        );
+
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR),      true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        ARBITRUM_ALM_PROXY_FREEZABLE), false);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Arbitrum.ALM_PROXY),           false);
+
+        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        0);
+        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         0);
+
+        assertEq(vault.asset(),      asset);
+        assertEq(vault.name(),       name);
+        assertEq(vault.decimals(),   IERC20Like(vault.asset()).decimals());
+        assertEq(vault.symbol(),     symbol);
+        assertEq(vault.rho(),        rho);
+        assertEq(vault.chi(),        uint192(1e27));
+        assertEq(vault.vsr(),        1e27);
+        assertEq(vault.minVsr(),     1e27);
+        assertEq(vault.maxVsr(),     1e27);
+        assertEq(vault.depositCap(), 0);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR),      true);
+        assertEq(vault.hasRole(vault.SETTER_ROLE(),        ARBITRUM_ALM_PROXY_FREEZABLE), true);
+        assertEq(vault.hasRole(vault.TAKER_ROLE(),         Arbitrum.ALM_PROXY),           true);
+
+        assertEq(vault.getRoleMemberCount(vault.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vault.getRoleMemberCount(vault.SETTER_ROLE()),        1);
+        assertEq(vault.getRoleMemberCount(vault.TAKER_ROLE()),         1);
+
+        assertEq(vault.minVsr(),     minVsr);
+        assertEq(vault.maxVsr(),     maxVsr);
+        assertEq(vault.depositCap(), depositCap);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     type(uint256).max);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+
+        _testSetterIntegration(vault, minVsr, maxVsr);
+
+        uint256 initialChi = vault.nowChi();
+
+        vm.prank(ARBITRUM_ALM_PROXY_FREEZABLE);
+        vault.setVsr(SIX_PCT_APY);
+
+        skip(1 days);
+
+        assertGt(vault.nowChi(), initialChi);
+
+        _testSparkVaultV2Integration(SparkVaultV2E2ETestParams({
+            ctx:             ctx,
+            vault:           vault_,
+            takeKey:         takeKey,
+            transferKey:     transferKey,
+            takeAmount:      amount,
+            transferAmount:  amount,
+            userVaultAmount: amount,
+            tolerance:       10
+        }));
+    }
+
+    function _testSetterIntegration(ISparkVaultV2Like vault, uint256 minVsr, uint256 maxVsr) internal {
+        vm.startPrank(ARBITRUM_ALM_PROXY_FREEZABLE);
+
+        vm.expectRevert("SparkVault/vsr-too-low");
+        vault.setVsr(minVsr - 1);
+
+        vault.setVsr(minVsr);
+
+        vm.expectRevert("SparkVault/vsr-too-high");
+        vault.setVsr(maxVsr + 1);
+
+        vault.setVsr(maxVsr);
+
+        vm.stopPrank();
+    }
+
 }
 
 contract SparkEthereum_20260702_SparklendTests is SparklendTests {
@@ -294,7 +470,7 @@ contract SparkEthereum_20260702_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260702;
-        _blockDate = 1782209490;  // Jun-23-2026 10:11:30 AM +UTC
+        _blockDate = 1782228626;  // Jun-23-2026 3:30:26 PM +UTC
     }
 
     function setUp() public override {
@@ -330,7 +506,7 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260702;
-        _blockDate = 1782209490;  // Jun-23-2026 10:11:30 AM +UTC
+        _blockDate = 1782228626;  // Jun-23-2026 3:30:26 PM +UTC
     }
 
     function setUp() public override {
@@ -340,6 +516,20 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
         // chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
         // chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
         // chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+    }
+
+    function test_AVALANCHE_bridgeConfiguration() external onChain(ChainIdUtils.Avalanche()) {
+        IExecutor executor = IExecutor(Avalanche.SPARK_EXECUTOR);
+
+        assertEq(executor.delay(),                                                       0);
+        assertEq(executor.gracePeriod(),                                                 7 days);
+        assertEq(executor.hasRole(executor.GUARDIAN_ROLE(), Avalanche.ALM_OPS_MULTISIG), false);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(executor.delay(),                                                       3 days);
+        assertEq(executor.gracePeriod(),                                                 7 days);
+        assertEq(executor.hasRole(executor.GUARDIAN_ROLE(), Avalanche.ALM_OPS_MULTISIG), true);
     }
 
 }

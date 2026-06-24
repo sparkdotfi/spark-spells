@@ -3785,7 +3785,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 maxVsr,
         uint256 depositCap,
         uint256 amount
-    ) internal {
+    ) internal virtual {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         ISparkVaultV2Like vault = ISparkVaultV2Like(vault_);

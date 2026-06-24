@@ -18,8 +18,8 @@ import { SparkPayloadEthereum } from "src/SparkPayloadEthereum.sol";
  *         - Set USDC Interest Rate Model to Target Very Low Liquidity.
  *         Spark Liquidity Layer:
  *         - Enable USDT Bridging to Arbitrum.
- * Forum:  https://forum.skyeco.com/t/june-18-2026-proposed-changes-to-spark-for-upcoming-spell/27952
- * Vote:
+ * Forum:  https://forum.skyeco.com/t/july-2-2026-proposed-changes-to-spark-for-upcoming-spell/27982
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xcd4642f0ada4ccb7d8ad744594dc1ea8051c5819724810b11aca042df6dd0a66
  */
 contract SparkEthereum_20260702 is SparkPayloadEthereum {
 
@@ -28,6 +28,7 @@ contract SparkEthereum_20260702 is SparkPayloadEthereum {
     uint32  internal constant LZ_ENDPOINT_ARBITRUM = 30110;
 
     constructor() {
+        // PAYLOAD_ARBITRUM  = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
         // PAYLOAD_AVALANCHE = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
         // PAYLOAD_BASE      = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
         // PAYLOAD_OPTIMISM  = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
