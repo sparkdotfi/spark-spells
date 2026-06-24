@@ -96,6 +96,9 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         uint256 baseUsdsBalanceBefore  = IERC20(Base.USDS).balanceOf(Base.ALM_PROXY);
         uint256 baseSusdsBalanceBefore = IERC20(Base.SUSDS).balanceOf(Base.ALM_PROXY);
 
+        assertEq(baseUsdsBalanceBefore,  146_550_618.210418117475041461e18);
+        assertEq(baseSusdsBalanceBefore, 191_958_411.108646346259425604e18);
+
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
@@ -128,6 +131,9 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         uint256 unichainUsdsBalanceBefore  = IERC20(Unichain.USDS).balanceOf(Unichain.ALM_PROXY);
         uint256 unichainSusdsBalanceBefore = IERC20(Unichain.SUSDS).balanceOf(Unichain.ALM_PROXY);
+
+        assertEq(unichainUsdsBalanceBefore,  99_990_828.814818609701977623e18);
+        assertEq(unichainSusdsBalanceBefore, 94_737_866.160999974496590936e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -275,6 +281,9 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         uint256 optimismUsdsBalanceBefore  = IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY);
         uint256 optimismSusdsBalanceBefore = IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY);
 
+        assertEq(optimismUsdsBalanceBefore,  100_304_256.586332342515511286e18);
+        assertEq(optimismSusdsBalanceBefore, 182_561_888.353827758745421790e18);
+
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
@@ -402,10 +411,18 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(vault.maxVsr(),     1e27);
         assertEq(vault.depositCap(), 0);
 
+        assertLt(vault.rho(), block.timestamp);
+
         assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey),     0);
         assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), 0);
 
+        assertEq(vault.balanceOf(address(1)), 0);
+        assertEq(vault.totalSupply(),         0);
+
         _executeAllPayloadsAndBridges();
+
+        assertEq(vault.balanceOf(address(1)), 1e6);
+        assertEq(vault.totalSupply(),         1e6);
 
         assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR),      true);
         assertEq(vault.hasRole(vault.SETTER_ROLE(),        ARBITRUM_ALM_PROXY_FREEZABLE), true);
@@ -482,12 +499,12 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         // STEP 1: User deposits USDT0 into spUSDT on Arbitrum
         // ================================================================================
 
-        uint256 vaultUsdt0Before = usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT);
+        uint256 vaultUsdt0Starting = usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT);
 
         deal(ARBITRUM_USDT, user, amount);
 
         assertEq(usdt0Arbitrum.balanceOf(user),                           amount);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
 
         vm.startPrank(user);
         SafeERC20.safeIncreaseAllowance(usdt0Arbitrum, ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
@@ -495,22 +512,22 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         vm.stopPrank();
 
         assertEq(usdt0Arbitrum.balanceOf(user),                           0);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
 
         // ================================================================================
         // STEP 2: SLL takes USDT0 from spUSDT into ALMProxy on Arbitrum
         // ================================================================================
 
-        uint256 arbProxyUsdt0Before = usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbProxyUsdt0Starting = usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY);
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
 
         vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
         foreignController.takeFromSparkVault(ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before + amount);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting + amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
 
         // ================================================================================
         // STEP 3: USDT0 transferred to USDT0 OFT on Arbitrum (Arbitrum → Mainnet bridge)
@@ -522,18 +539,18 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
             bytes32(uint256(uint160(USDT_OFT)))
         ) + 1;
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting + amount);
 
-        deal(Arbitrum.ALM_RELAYER_MULTISIG, 1 ether);
+        deal(Arbitrum.ALM_RELAYER_MULTISIG, 0.1 ether);
 
         vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
-        foreignController.transferTokenLayerZero{value: 1 ether}(
+        foreignController.transferTokenLayerZero{value: 0.1 ether}(
             USDT0_OFT_ARBITRUM,
             amount,
             LZ_EID_ETHEREUM
         );
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting);
 
         // ================================================================================
         // STEP 4: Relay message to Mainnet — USDT arrives in ALMProxy on Mainnet
@@ -541,11 +558,11 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 ethProxyUsdtBefore = usdt.balanceOf(Ethereum.ALM_PROXY);
-        uint256 ethOFTUsdtBefore   = usdt.balanceOf(USDT_OFT);
+        uint256 ethProxyUsdtStarting = usdt.balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethOFTUsdtStarting   = usdt.balanceOf(USDT_OFT);
 
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore);
-        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting);
 
         _skipLZPendingNonces(
             USDT_OFT,
@@ -559,8 +576,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         LZBridgeTesting.relayMessagesToSource(lzBridge, true, USDT0_OFT_ARBITRUM, USDT_OFT);
 
         // Now on Ethereum fork
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore + amount);
-        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore - amount);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
 
         // ================================================================================
         // STEP 5: USDT transferred to USDT OFT on Mainnet (Mainnet → Arbitrum bridge)
@@ -572,20 +589,20 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
             bytes32(uint256(uint160(USDT0_OFT_ARBITRUM)))
         ) + 1;
 
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore + amount);
-        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore - amount);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
 
-        deal(Ethereum.ALM_RELAYER_MULTISIG, 1 ether);
+        deal(Ethereum.ALM_RELAYER_MULTISIG, 0.1 ether);
 
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        mainnetController.transferTokenLayerZero{value: 1 ether}(
+        mainnetController.transferTokenLayerZero{value: 0.1 ether}(
             USDT_OFT,
             amount,
             LZ_ENDPOINT_ARBITRUM
         );
 
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtBefore);
-        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtBefore);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting);
 
         // ================================================================================
         // STEP 6: Relay message to Arbitrum — USDT0 received in Arbitrum ALMProxy
@@ -593,7 +610,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting);
 
         _skipLZPendingNonces(
             USDT0_OFT_ARBITRUM,
@@ -606,20 +623,20 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         LZBridgeTesting.relayMessagesToDestination(lzBridge, true, USDT_OFT, USDT0_OFT_ARBITRUM);
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting + amount);
 
         // ================================================================================
         // STEP 7: USDT0 transferAsset into spUSDT vault
         // ================================================================================
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before + amount);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting + amount);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
 
         vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
         foreignController.transferAsset(ARBITRUM_USDT, ARBITRUM_SPARK_VAULT_V2_SPUSDT, amount);
 
-        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Before);
-        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Before + amount);
+        assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY),             arbProxyUsdt0Starting);
+        assertEq(usdt0Arbitrum.balanceOf(ARBITRUM_SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
     }
 
 }
@@ -691,6 +708,66 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
         assertEq(executor.delay(),                                                       3 days);
         assertEq(executor.gracePeriod(),                                                 7 days);
         assertEq(executor.hasRole(executor.GUARDIAN_ROLE(), Avalanche.ALM_OPS_MULTISIG), true);
+    }
+
+    function test_AVALANCHE_timelock() external onChain(ChainIdUtils.Avalanche()) {
+        _executeAllPayloadsAndBridges();
+
+        IExecutor executor = IExecutor(Avalanche.SPARK_EXECUTOR);
+
+        assertEq(executor.delay(), 3 days);
+
+        address[] memory targets           = new address[](1);
+        uint256[] memory values            = new uint256[](1);
+        string[]  memory signatures        = new string[](1);
+        bytes[]   memory calldatas         = new bytes[](1);
+        bool[]    memory withDelegatecalls = new bool[](1);
+
+        targets[0]    = address(executor);
+        signatures[0] = "receiveFunds()";
+
+        uint256 firstId = executor.actionsSetCount();
+
+        // Step 1: Prank as receiver, call queue
+        vm.prank(Avalanche.SPARK_RECEIVER);
+        executor.queue(targets, values, signatures, calldatas, withDelegatecalls);
+
+        assertEq(uint256(executor.getCurrentState(firstId)), uint256(IExecutor.ActionsSetState.Queued));
+
+        // Step 2: Prank as multisig (guardian), call cancel
+        vm.prank(Avalanche.ALM_OPS_MULTISIG);
+        executor.cancel(firstId);
+
+        assertEq(uint256(executor.getCurrentState(firstId)), uint256(IExecutor.ActionsSetState.Canceled));
+
+        // Step 3: Warp to execution time — can't execute (cancelled)
+        uint256 executionTime1 = executor.getActionsSetById(firstId).executionTime;
+        vm.warp(executionTime1);
+
+        vm.expectRevert(abi.encodeWithSignature("OnlyQueuedActions()"));
+        executor.execute(firstId);
+
+        // Step 4: Prank as receiver, call queue again
+        uint256 secondId = executor.actionsSetCount();
+
+        vm.prank(Avalanche.SPARK_RECEIVER);
+        executor.queue(targets, values, signatures, calldatas, withDelegatecalls);
+
+        assertEq(uint256(executor.getCurrentState(secondId)), uint256(IExecutor.ActionsSetState.Queued));
+
+        uint256 executionTime2 = executor.getActionsSetById(secondId).executionTime;
+
+        // Step 5: Warp 1 second before execution time
+        vm.warp(executionTime2 - 1);
+
+        vm.expectRevert(abi.encodeWithSignature("TimelockNotFinished()"));
+        executor.execute(secondId);
+
+        // Step 6: Warp to exactly execution time
+        vm.warp(executionTime2);
+        executor.execute(secondId);
+
+        assertEq(uint256(executor.getCurrentState(secondId)), uint256(IExecutor.ActionsSetState.Executed));
     }
 
 }

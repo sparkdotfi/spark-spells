@@ -41,7 +41,7 @@ interface ISparkVaultV2 {
 
 /**
  * @title  July 2, 2026 Spark Arbitrum Proposal
- * @notice Spark Liquidity Layer - Update Controller to v1.8
+ * @notice Spark Savings - Deploy spUSDT
  * @author Phoenix Labs
  * Forum:  https://forum.skyeco.com/t/july-2-2026-proposed-changes-to-spark-for-upcoming-spell/27982
  * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xbf91a06534d47861b5810c646ccc1560eb7730ff14ab1c16a1e0b92fc535a073
@@ -105,7 +105,7 @@ contract SparkArbitrumOne_20260702 is SparkPayloadArbitrumOne {
         IRateLimits       rateLimits = IRateLimits(Arbitrum.ALM_RATE_LIMITS);
         ForeignController controller = ForeignController(Arbitrum.ALM_CONTROLLER);
 
-        // Grant SETTER_ROLE to Spark Operations Safe
+        // Grant SETTER_ROLE to ALMProxyFreezable
         vault.grantRole(vault.SETTER_ROLE(), ALM_PROXY_FREEZABLE);
 
         // Grant TAKER_ROLE to Alm Proxy
