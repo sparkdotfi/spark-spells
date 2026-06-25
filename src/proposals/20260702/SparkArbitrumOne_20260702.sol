@@ -48,9 +48,7 @@ interface ISparkVaultV2 {
  */
 contract SparkArbitrumOne_20260702 is SparkPayloadArbitrumOne {
 
-    address internal constant ALM_PROXY_FREEZABLE   = 0x4eE67c8Db1BAa6ddE99d936C7D313B5d31e8fa38;
-    address internal constant SPARK_VAULT_V2_SPUSDT = 0x45d91340B3B7B96985A72b5c678F7D9e8D664b62;
-    address internal constant USDT_OFT              = 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92;
+    address internal constant USDT_OFT = 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92;
 
     uint32  internal constant LZ_ENDPOINT_ETHEREUM = 30101;
 
@@ -60,14 +58,14 @@ contract SparkArbitrumOne_20260702 is SparkPayloadArbitrumOne {
 
     function execute() external {
         // Grant ALLOCATOR_ROLE Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and FREEZER_ROLE role to the ALM_FREEZER_MULTISIG
-        IALMProxyFreezableLike proxy = IALMProxyFreezableLike(ALM_PROXY_FREEZABLE);
+        IALMProxyFreezableLike proxy = IALMProxyFreezableLike(Arbitrum.ALM_PROXY_FREEZABLE);
 
         proxy.grantRole(proxy.ALLOCATOR_ROLE(), Arbitrum.ALM_RELAYER_MULTISIG);
         proxy.grantRole(proxy.ALLOCATOR_ROLE(), Arbitrum.ALM_BACKSTOP_RELAYER_MULTISIG);
         proxy.grantRole(proxy.FREEZER_ROLE(),   Arbitrum.ALM_FREEZER_MULTISIG);
 
         _configureVaultsV2({
-            vault_        : SPARK_VAULT_V2_SPUSDT,
+            vault_        : Arbitrum.SPARK_VAULT_V2_SPUSDT,
             supplyCap     : 250_000_000e6,
             minVsr        : 1e27,
             maxVsr        : SIX_PCT_APY,
@@ -106,7 +104,7 @@ contract SparkArbitrumOne_20260702 is SparkPayloadArbitrumOne {
         ForeignController controller = ForeignController(Arbitrum.ALM_CONTROLLER);
 
         // Grant SETTER_ROLE to ALMProxyFreezable
-        vault.grantRole(vault.SETTER_ROLE(), ALM_PROXY_FREEZABLE);
+        vault.grantRole(vault.SETTER_ROLE(), Arbitrum.ALM_PROXY_FREEZABLE);
 
         // Grant TAKER_ROLE to Alm Proxy
         vault.grantRole(vault.TAKER_ROLE(), Arbitrum.ALM_PROXY);

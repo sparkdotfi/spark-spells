@@ -302,11 +302,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint32                     destinationEndpointId;
         bytes32                    transferKey;
         uint256                    transferAmount;
-        uint256                    destinationDomainId;
+        uint256                    destinationChainId;
         address                    destinationOftAddress;
         address                    destinationAsset;
         address                    destinationReceiver;
-        uint256                    sourceDomainId;
+        uint256                    sourceChainId;
         uint32                     sourceEndpointId;
     }
 
@@ -486,12 +486,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     address internal constant USDS_ATOKEN          = 0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359;
     address internal constant USDS_SPK_FARM        = 0x173e314C7635B45322cd8Cb14f44b312e079F3af;
 
-    address internal constant LZ_ENDPOINT          = 0x1a44076050125825900e736c501f859c50fE728c;
-    uint32  internal constant LZ_EID_ETHEREUM      = 30101;
-    address internal constant USDT_OFT             = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
-    address internal constant USDT0_OFT_ARBITRUM   = 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92;
-    address internal constant USDT0_ARBITRUM       = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
-    uint32  internal constant LZ_ENDPOINT_ARBITRUM = 30110;
+    uint32  internal constant LZ_EID_ARBITRUM    = 30110;
+    uint32  internal constant LZ_EID_ETHEREUM    = 30101;
+    address internal constant LZ_ENDPOINT        = 0x1a44076050125825900e736c501f859c50fE728c;
+    address internal constant USDT_OFT           = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
+    address internal constant USDT0_OFT_ARBITRUM = 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92;
+    address internal constant USDT0_ARBITRUM     = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
 
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
@@ -2430,9 +2430,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testLayerZeroTransferIntegration(LayerZeroTransferE2ETestParams memory p) internal {
-        chainData[p.sourceDomainId].domain.selectFork();
+        chainData[p.sourceChainId].domain.selectFork();
 
-        p.ctx = _getSparkLiquidityLayerContext(p.sourceDomainId);
+        p.ctx = _getSparkLiquidityLayerContext(p.sourceChainId);
 
         MainnetController controller = MainnetController(p.ctx.controller);
 
@@ -2445,11 +2445,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 oftBalanceBefore = asset.balanceOf(p.oftAddress);
 
-        chainData[p.destinationDomainId].domain.selectFork();
+        chainData[p.destinationChainId].domain.selectFork();
 
         uint256 destinationBalanceBefore = IERC20(p.destinationAsset).balanceOf(p.destinationReceiver);
 
-        chainData[p.sourceDomainId].domain.selectFork();
+        chainData[p.sourceChainId].domain.selectFork();
 
         deal(address(asset), address(p.ctx.proxy), transferAmount);
         deal(p.ctx.relayer, 1 ether);  // For LayerZero fees
@@ -2505,7 +2505,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         /****************************************************************/
 
         // Skip any in-flight nonces from the fork state that haven't been relayed yet
-        chainData[p.destinationDomainId].domain.selectFork();
+        chainData[p.destinationChainId].domain.selectFork();
 
         _skipLZPendingNonces(
             p.destinationOftAddress,
@@ -2516,15 +2516,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore);
 
-        chainData[p.sourceDomainId].domain.selectFork();
+        chainData[p.sourceChainId].domain.selectFork();
 
-        Bridge storage bridge = _getLZBridge(p.destinationDomainId);
+        Bridge storage bridge = _getLZBridge(p.destinationChainId);
 
         LZBridgeTesting.relayMessagesToDestination(bridge, true, p.oftAddress, p.destinationOftAddress);
 
         assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore + transferAmount);
 
-        chainData[p.sourceDomainId].domain.selectFork();
+        chainData[p.sourceChainId].domain.selectFork();
 
         /********************************************/
         /*** Step 4: Warp to recharge rate limits ***/
@@ -2842,6 +2842,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertApproxEqAbs(vault.assetsOf(user), p.userVaultAmount, p.tolerance);
 
+        if (vault.vsr() == 1e27) {
+            address setter = vault.getRoleMember(vault.SETTER_ROLE(), 0);
+
+            uint256 maxVsr = vault.maxVsr();
+
+            vm.prank(setter);
+            vault.setVsr(maxVsr);
+        }
+
         skip(1 days);
 
         assertEq(asset.balanceOf(user),           0);
@@ -2849,13 +2858,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
-        assertGe(vault.assetsOf(user),  p.userVaultAmount);
+        assertGt(vault.assetsOf(user),  p.userVaultAmount);
 
         vm.prank(user);
         vault.redeem(shares, user, user);
 
-        assertGe(asset.balanceOf(user),           p.userVaultAmount);
-        assertLe(asset.balanceOf(address(vault)), assetBalanceVault);
+        assertGt(asset.balanceOf(user),           p.userVaultAmount);
+        assertLt(asset.balanceOf(address(vault)), assetBalanceVault);
 
         assertEq(vault.totalSupply(),   vaultTotalSupply);
         assertEq(vault.balanceOf(user), 0);
@@ -4238,11 +4247,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             (
                 address oftAddress,
                 uint32  destinationEndpointId,
-                uint256 destinationDomainId,
+                uint256 destinationChainId,
                 address destinationOftAddress,
                 address destinationAsset,
                 address destinationReceiver,
-                uint256 sourceDomainId,
+                uint256 sourceChainId,
                 uint32  sourceEndpointId
             ) = abi.decode(integration.extraData, (address, uint32, uint256, address, address, address, uint256, uint32));
 
@@ -4252,11 +4261,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 destinationEndpointId: destinationEndpointId,
                 transferKey:           integration.entryId,
                 transferAmount:        1_000_000e6,
-                destinationDomainId:   destinationDomainId,
+                destinationChainId:    destinationChainId,
                 destinationOftAddress: destinationOftAddress,
                 destinationAsset:      destinationAsset,
                 destinationReceiver:   destinationReceiver,
-                sourceDomainId:        sourceDomainId,
+                sourceChainId:         sourceChainId,
                 sourceEndpointId:      sourceEndpointId
             }));
         }
@@ -4572,12 +4581,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         newIntegrations[newIntegrations.length - 1] = _createLayerZeroTransferIntegration({
             label                 : "LAYERZERO_TRANSFER-USDT0_ARBITRUM",
             oftAddress            : USDT_OFT,
-            destinationEndpointId : LZ_ENDPOINT_ARBITRUM,
-            destinationDomainId   : ChainIdUtils.ArbitrumOne(),
+            destinationEndpointId : LZ_EID_ARBITRUM,
+            destinationChainId    : ChainIdUtils.ArbitrumOne(),
             destinationOftAddress : USDT0_OFT_ARBITRUM,
             destinationAsset      : USDT0_ARBITRUM,
             destinationReceiver   : Arbitrum.ALM_PROXY,
-            sourceDomainId        : ChainIdUtils.Ethereum(),
+            sourceChainId         : ChainIdUtils.Ethereum(),
             sourceEndpointId      : LZ_EID_ETHEREUM
         });
     }
@@ -4605,12 +4614,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             label                 : "LAYERZERO_TRANSFER-USDT0_ETHEREUM",
             oftAddress            : USDT0_OFT_ARBITRUM,
             destinationEndpointId : LZ_EID_ETHEREUM,
-            destinationDomainId   : ChainIdUtils.Ethereum(),
+            destinationChainId    : ChainIdUtils.Ethereum(),
             destinationOftAddress : USDT_OFT,
             destinationAsset      : Ethereum.USDT,
             destinationReceiver   : Ethereum.ALM_PROXY,
-            sourceDomainId        : ChainIdUtils.ArbitrumOne(),
-            sourceEndpointId      : LZ_ENDPOINT_ARBITRUM
+            sourceChainId         : ChainIdUtils.ArbitrumOne(),
+            sourceEndpointId      : LZ_EID_ARBITRUM
         });
 
         newIntegrations[newIntegrations.length - 1] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Arbitrum.SPARK_VAULT_V2_SPUSDT);
@@ -4891,11 +4900,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         string  memory label,
         address        oftAddress,
         uint32         destinationEndpointId,
-        uint256        destinationDomainId,
+        uint256        destinationChainId,
         address        destinationOftAddress,
         address        destinationAsset,
         address        destinationReceiver,
-        uint256        sourceDomainId,
+        uint256        sourceChainId,
         uint32         sourceEndpointId
     ) internal view returns (SLLIntegration memory) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
@@ -4908,7 +4917,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   abi.encode(oftAddress, destinationEndpointId, destinationDomainId, destinationOftAddress, destinationAsset, destinationReceiver, sourceDomainId, sourceEndpointId)
+            extraData:   abi.encode(oftAddress, destinationEndpointId, destinationChainId, destinationOftAddress, destinationAsset, destinationReceiver, sourceChainId, sourceEndpointId)
         });
     }
 
