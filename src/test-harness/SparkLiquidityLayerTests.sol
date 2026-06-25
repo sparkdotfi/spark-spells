@@ -2522,6 +2522,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         LZBridgeTesting.relayMessagesToDestination(bridge, true, p.oftAddress, p.destinationOftAddress);
 
+        // `LZBridgeTesting.relayMessagesToDestination` ends on `destinationChain` selected as fork.
         assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore + transferAmount);
 
         chainData[p.sourceChainId].domain.selectFork();

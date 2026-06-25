@@ -229,8 +229,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
             bytes32(uint256(uint160(USDT0_OFT_ARBITRUM)))
         ) + 1;
 
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),        bridgeAmount);
-        assertEq(usdt.balanceOf(USDT_OFT),                  usdtOFTBalanceBefore);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),      bridgeAmount);
+        assertEq(usdt.balanceOf(USDT_OFT),                usdtOFTBalanceBefore);
         assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6);
 
         vm.prank(ctx.relayer);
@@ -240,8 +240,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
             LZ_EID_ARBITRUM
         );
 
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),        0);
-        assertEq(usdt.balanceOf(USDT_OFT),                  usdtOFTBalanceBefore + bridgeAmount);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),      0);
+        assertEq(usdt.balanceOf(USDT_OFT),                usdtOFTBalanceBefore + bridgeAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6 - bridgeAmount);
 
         // --- Step 2: Relay message to Arbitrum and verify USDT0 arrived ---
@@ -263,6 +263,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         LZBridgeTesting.relayMessagesToDestination(bridge, true, USDT_OFT, USDT0_OFT_ARBITRUM);
 
+        // `LZBridgeTesting.relayMessagesToDestination` ended on the Arbitrum as the selected fork.
         assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), usdt0ArbitrumProxyBalanceBefore + bridgeAmount);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
@@ -548,8 +549,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         Bridge storage lzBridge = _getLZBridge(ChainIdUtils.ArbitrumOne());
 
-        address user     = makeAddr("user");
-        uint256 amount   = 1_000_000e6;
+        address user   = makeAddr("user");
+        uint256 amount = 1_000_000e6;
 
         // ================================================================================
         // STEP 1: Setter sets VSR to 5% APY
@@ -638,7 +639,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         LZBridgeTesting.relayMessagesToSource(lzBridge, true, USDT0_OFT_ARBITRUM, USDT_OFT);
 
-        // Now on Ethereum fork
+        // `LZBridgeTesting.relayMessagesToSource` ended on the Ethereum as the selected fork.
         assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount);
         assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
 
@@ -703,6 +704,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         LZBridgeTesting.relayMessagesToDestination(lzBridge, true, USDT_OFT, USDT0_OFT_ARBITRUM);
 
+        // `LZBridgeTesting.relayMessagesToDestination` ended on the Arbitrum as the selected fork.
         assertEq(usdt0Arbitrum.balanceOf(Arbitrum.ALM_PROXY), arbProxyUsdt0Starting + amount + interest);
 
         // ================================================================================
