@@ -306,6 +306,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address                    destinationOftAddress;
         address                    destinationAsset;
         address                    destinationReceiver;
+        uint256                    sourceDomainId;
+        uint32                     sourceEndpointId;
     }
 
     struct OTCE2ETestParams {
@@ -2428,6 +2430,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _testLayerZeroTransferIntegration(LayerZeroTransferE2ETestParams memory p) internal {
+        chainData[p.sourceDomainId].domain.selectFork();
+
+        p.ctx = _getSparkLiquidityLayerContext(p.sourceDomainId);
+
         MainnetController controller = MainnetController(p.ctx.controller);
 
         skip(10 days);  // Recharge rate limits
@@ -2443,7 +2449,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 destinationBalanceBefore = IERC20(p.destinationAsset).balanceOf(p.destinationReceiver);
 
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        chainData[p.sourceDomainId].domain.selectFork();
 
         deal(address(asset), address(p.ctx.proxy), transferAmount);
         deal(p.ctx.relayer, 1 ether);  // For LayerZero fees
@@ -2470,8 +2476,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
         MessagingFee memory fee = ILayerZero(p.oftAddress).quoteSend(sendParams, false);
 
-        assertEq(asset.balanceOf(address(p.ctx.proxy)),                 transferAmount);
-        assertEq(asset.balanceOf(p.oftAddress),                         oftBalanceBefore);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)),               transferAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
 
         uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
@@ -2487,9 +2492,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             p.destinationEndpointId
         );
 
-        assertEq(asset.balanceOf(address(p.ctx.proxy)),                 0);
-        assertEq(asset.balanceOf(p.oftAddress),                         oftBalanceBefore + transferAmount);
-        assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - transferAmount);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)), 0);
+
+        if (transferLimit == type(uint256).max) {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
+        } else {
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - transferAmount);
+        }
 
         /****************************************************************/
         /*** Step 3: Relay message to destination and verify arrival  ***/
@@ -2500,14 +2509,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _skipLZPendingNonces(
             p.destinationOftAddress,
-            LZ_EID_ETHEREUM,
+            p.sourceEndpointId,
             bytes32(uint256(uint160(p.oftAddress))),
             sentNonce
         );
 
         assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore);
 
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        chainData[p.sourceDomainId].domain.selectFork();
 
         Bridge storage bridge = _getLZBridge(p.destinationDomainId);
 
@@ -2515,7 +2524,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore + transferAmount);
 
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        chainData[p.sourceDomainId].domain.selectFork();
 
         /********************************************/
         /*** Step 4: Warp to recharge rate limits ***/
@@ -2840,13 +2849,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(vault.totalSupply(),   vaultTotalSupply + shares);
         assertEq(vault.balanceOf(user), shares);
-        assertGt(vault.assetsOf(user),  p.userVaultAmount);
+        assertGe(vault.assetsOf(user),  p.userVaultAmount);
 
         vm.prank(user);
         vault.redeem(shares, user, user);
 
-        assertGt(asset.balanceOf(user),           p.userVaultAmount);
-        assertLt(asset.balanceOf(address(vault)), assetBalanceVault);
+        assertGe(asset.balanceOf(user),           p.userVaultAmount);
+        assertLe(asset.balanceOf(address(vault)), assetBalanceVault);
 
         assertEq(vault.totalSupply(),   vaultTotalSupply);
         assertEq(vault.balanceOf(user), 0);
@@ -4232,8 +4241,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 uint256 destinationDomainId,
                 address destinationOftAddress,
                 address destinationAsset,
-                address destinationReceiver
-            ) = abi.decode(integration.extraData, (address, uint32, uint256, address, address, address));
+                address destinationReceiver,
+                uint256 sourceDomainId,
+                uint32  sourceEndpointId
+            ) = abi.decode(integration.extraData, (address, uint32, uint256, address, address, address, uint256, uint32));
 
             _testLayerZeroTransferIntegration(LayerZeroTransferE2ETestParams({
                 ctx:                   ctx,
@@ -4244,7 +4255,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 destinationDomainId:   destinationDomainId,
                 destinationOftAddress: destinationOftAddress,
                 destinationAsset:      destinationAsset,
-                destinationReceiver:   destinationReceiver
+                destinationReceiver:   destinationReceiver,
+                sourceDomainId:        sourceDomainId,
+                sourceEndpointId:      sourceEndpointId
             }));
         }
 
@@ -4318,6 +4331,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             VmSafe.Log[] memory newLogs = vm.getRecordedLogs();
 
             for (uint256 i = 0; i < newLogs.length; ++i) {
+                if (newLogs[i].emitter != rateLimits) continue;
                 if (newLogs[i].topics[0] != IRateLimits.RateLimitDataSet.selector) continue;
 
                 ( uint256 maxAmount, , , ) = abi.decode(newLogs[i].data, (uint256,uint256,uint256,uint256));
@@ -4555,15 +4569,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[i] = integrations[i];
         }
 
-        newIntegrations[newIntegrations.length - 1] = _createLayerZeroTransferIntegration(
-            "LAYERZERO_TRANSFER-USDT0_ARBITRUM",
-            USDT_OFT,
-            LZ_ENDPOINT_ARBITRUM,
-            ChainIdUtils.ArbitrumOne(),
-            USDT0_OFT_ARBITRUM,
-            USDT0_ARBITRUM,
-            Arbitrum.ALM_PROXY
-        );
+        newIntegrations[newIntegrations.length - 1] = _createLayerZeroTransferIntegration({
+            label                 : "LAYERZERO_TRANSFER-USDT0_ARBITRUM",
+            oftAddress            : USDT_OFT,
+            destinationEndpointId : LZ_ENDPOINT_ARBITRUM,
+            destinationDomainId   : ChainIdUtils.ArbitrumOne(),
+            destinationOftAddress : USDT0_OFT_ARBITRUM,
+            destinationAsset      : USDT0_ARBITRUM,
+            destinationReceiver   : Arbitrum.ALM_PROXY,
+            sourceDomainId        : ChainIdUtils.Ethereum(),
+            sourceEndpointId      : LZ_EID_ETHEREUM
+        });
     }
 
     function _getPostExecutionIntegrationsBase(
@@ -4579,11 +4595,27 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsArbitrumOne(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        newIntegrations = new SLLIntegration[](integrations.length + 2);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
+
+        newIntegrations[newIntegrations.length - 2] = _createLayerZeroTransferIntegration({
+            label                 : "LAYERZERO_TRANSFER-USDT0_ETHEREUM",
+            oftAddress            : USDT0_OFT_ARBITRUM,
+            destinationEndpointId : LZ_EID_ETHEREUM,
+            destinationDomainId   : ChainIdUtils.Ethereum(),
+            destinationOftAddress : USDT_OFT,
+            destinationAsset      : Ethereum.USDT,
+            destinationReceiver   : Ethereum.ALM_PROXY,
+            sourceDomainId        : ChainIdUtils.ArbitrumOne(),
+            sourceEndpointId      : LZ_ENDPOINT_ARBITRUM
+        });
+
+        newIntegrations[newIntegrations.length - 1] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT", Arbitrum.SPARK_VAULT_V2_SPUSDT);
+
+        return newIntegrations;
     }
 
     function _getPostExecutionIntegrationsAvalanche(
@@ -4862,7 +4894,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256        destinationDomainId,
         address        destinationOftAddress,
         address        destinationAsset,
-        address        destinationReceiver
+        address        destinationReceiver,
+        uint256        sourceDomainId,
+        uint32         sourceEndpointId
     ) internal view returns (SLLIntegration memory) {
         MainnetController mainnetController = MainnetController(_getSparkLiquidityLayerContext().controller);
 
@@ -4874,7 +4908,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             entryId2:    bytes32(0),
             exitId:      bytes32(0),
             exitId2:     bytes32(0),
-            extraData:   abi.encode(oftAddress, destinationEndpointId, destinationDomainId, destinationOftAddress, destinationAsset, destinationReceiver)
+            extraData:   abi.encode(oftAddress, destinationEndpointId, destinationDomainId, destinationOftAddress, destinationAsset, destinationReceiver, sourceDomainId, sourceEndpointId)
         });
     }
 

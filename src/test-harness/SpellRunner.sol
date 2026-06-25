@@ -140,6 +140,13 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Avalanche()].executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
 
+        chainData[ChainIdUtils.Ethereum()].bridges.push(
+            LZBridgeTesting.createLZBridge(
+                chainData[ChainIdUtils.ArbitrumOne()].domain,
+                chainData[ChainIdUtils.Ethereum()].domain
+            )
+        );
+
         // Arbitrum One
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
             ArbitrumBridgeTesting.createNativeBridge(
