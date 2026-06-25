@@ -276,6 +276,58 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6);
     }
 
+    function test_ETHEREUM_sll_lzRateLimits() external onChain(ChainIdUtils.Ethereum()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController mainnetController   = MainnetController(ctx.controller);
+
+        bytes32 key = keccak256(abi.encode(
+            mainnetController.LIMIT_LAYERZERO_TRANSFER(),
+            USDT_OFT,
+            LZ_ENDPOINT_ARBITRUM
+        ));
+
+        assertEq(ctx.rateLimits.getRateLimitData(key).maxAmount, 0);
+        assertEq(ctx.rateLimits.getRateLimitData(key).slope,     0);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key),        0);
+
+        assertEq(mainnetController.layerZeroRecipients(LZ_ENDPOINT_ARBITRUM), bytes32(0));
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(ctx.rateLimits.getRateLimitData(key).maxAmount, 5_000_000e6);
+        assertEq(ctx.rateLimits.getRateLimitData(key).slope,     uint256(50_000_000e6) / 1 days);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key),        5_000_000e6);
+
+        assertEq(
+            mainnetController.layerZeroRecipients(LZ_ENDPOINT_ARBITRUM),
+            bytes32(uint256(uint160(Arbitrum.ALM_PROXY)))
+        );
+    }
+
+    function test_ARBITRUM_sll_lzRateLimits() external onChain(ChainIdUtils.ArbitrumOne()) {
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        ForeignController foreignController   = ForeignController(ctx.controller);
+
+        bytes32 key = keccak256(abi.encode(
+            foreignController.LIMIT_LAYERZERO_TRANSFER(),
+            USDT0_OFT_ARBITRUM,
+            LZ_EID_ETHEREUM
+        ));
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 0);
+
+        assertEq(foreignController.layerZeroRecipients(LZ_EID_ETHEREUM), bytes32(0));
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key), type(uint256).max);
+
+        assertEq(
+            foreignController.layerZeroRecipients(LZ_EID_ETHEREUM),
+            bytes32(uint256(uint160(Ethereum.ALM_PROXY)))
+        );
+    }
+
     function test_OPTIMISM_sll_removeExcessLiquidity() external onChain(ChainIdUtils.Optimism()) {
         // Prevent other OP chain spells from running so their L2 SentMessage logs don't
         // interfere with the Optimism bridge relay (all OP chains share 0x4200...0007 as L2 messenger)
