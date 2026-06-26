@@ -1554,7 +1554,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         swapAmount = _fromNormalizedAmount(tokenIn, swapAmount);
 
-        uint256 minAmountOut = swapAmount * rates[inputIndex] * maxSlippage / rates[outputIndex] / 1e18;        
+        uint256 minAmountOut = swapAmount * rates[inputIndex] * maxSlippage / rates[outputIndex] / 1e18;
         uint256 swapLimit    = p.ctx.rateLimits.getCurrentRateLimit(p.swapKey);
         uint256 swapValue    = swapAmount * rates[inputIndex] / 1e18;
 
@@ -3653,7 +3653,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // --- Step 1: Mint and bridge 1m USDC to Base ---
 
-        uint256 usdcAmount = 1_000_000e6;
+        uint256 usdcAmount       = 1_000_000e6;
+        uint256 mainnetTimestamp = block.timestamp;
 
         vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetController.mintUSDS(usdcAmount * 1e12);
@@ -3719,6 +3720,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
 
         // --- Step 6: Swap USDC to USDS and burn ---
+
+        if (block.timestamp < mainnetTimestamp) vm.warp(mainnetTimestamp);
 
         vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetController.swapUSDCToUSDS(usdcAmount);
@@ -4597,7 +4600,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
         newIntegrations = new SLLIntegration[](integrations.length);
 
-        for (uint256 i = 0; i < integrations.length; ++i) {               
+        for (uint256 i = 0; i < integrations.length; ++i) {
             newIntegrations[i] = integrations[i];
         }
     }
