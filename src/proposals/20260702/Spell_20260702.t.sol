@@ -77,16 +77,18 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260702;
-        _blockDate = 1782228626;  // Jun-23-2026 3:30:26 PM +UTC
+        _blockDate = 1782454872;  // Jun-26-2026 6:21:12 AM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
-        // chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
-        // chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0x011A115b5498B85b3d12245A3a7296F77325B5C3;
+        chainData[ChainIdUtils.Base()].payload        = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+        chainData[ChainIdUtils.Optimism()].payload    = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x32F5820F1a67419bD46e0F973B85AB0E0f17b62a;
     }
 
     function test_BASE_sll_removeExcessLiquidity() external onChain(ChainIdUtils.Base()) {
@@ -746,16 +748,18 @@ contract SparkEthereum_20260702_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260702;
-        _blockDate = 1782228626;  // Jun-23-2026 3:30:26 PM +UTC
+        _blockDate = 1782454872;  // Jun-26-2026 6:21:12 AM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
-        // chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
-        // chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0x011A115b5498B85b3d12245A3a7296F77325B5C3;
+        chainData[ChainIdUtils.Base()].payload        = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+        chainData[ChainIdUtils.Optimism()].payload    = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x32F5820F1a67419bD46e0F973B85AB0E0f17b62a;
     }
 
     function test_ETHEREUM_sparkLend_usdcIrmUpdate() external onChain(ChainIdUtils.Ethereum()) {
@@ -782,16 +786,18 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260702;
-        _blockDate = 1782228626;  // Jun-23-2026 3:30:26 PM +UTC
+        _blockDate = 1782454872;  // Jun-26-2026 6:21:12 AM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xe08BD6D9016EAC522903FC68c80F809664C2692A;
-        // chainData[ChainIdUtils.Optimism()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
-        // chainData[ChainIdUtils.Unichain()].payload = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
+        chainData[ChainIdUtils.ArbitrumOne()].payload = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Avalanche()].payload   = 0x011A115b5498B85b3d12245A3a7296F77325B5C3;
+        chainData[ChainIdUtils.Base()].payload        = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
+        chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+        chainData[ChainIdUtils.Optimism()].payload    = 0xE15718d48E2C56b65aAB61f1607A5c096e9204f1;
+        chainData[ChainIdUtils.Unichain()].payload    = 0x32F5820F1a67419bD46e0F973B85AB0E0f17b62a;
     }
 
     function test_AVALANCHE_bridgeConfiguration() external onChain(ChainIdUtils.Avalanche()) {
