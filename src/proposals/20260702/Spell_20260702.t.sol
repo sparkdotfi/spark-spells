@@ -875,8 +875,17 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
 }
 
 interface IOptimismPortalLike {
+    struct WithdrawalTransaction {
+        uint256 nonce;
+        address sender;
+        address target;
+        uint256 value;
+        uint256 gasLimit;
+        bytes   data;
+    }
     function disputeGameFinalityDelaySeconds() external view returns (uint256);
     function finalizedWithdrawals(bytes32 withdrawalHash) external view returns (bool);
+    function finalizeWithdrawalTransactionExternalProof(WithdrawalTransaction memory tx_, address proofSubmitter) external;
     function proofMaturityDelaySeconds() external view returns (uint256);
     function provenWithdrawals(bytes32 withdrawalHash, address proofSubmitter)
         external view returns (address disputeGameProxy, uint64 timestamp);
@@ -921,25 +930,81 @@ contract SparkEthereum_20260702_USDSTransfers is Test {
         vm.createSelectFork(getChain("mainnet").rpcUrl, 25_446_257);
     }
 
-    function test_USDSTransfers_base() public {
-        _testUsdsWithdrawalFinalization(BASE_PORTAL, BASE_WITHDRAWAL_HASH, BASE_FINALIZE_CALLDATA, 1_783_096_644);  // Jul 3, 2026, 16:37:24 UTC
+    function test_USDSTransfers_base_fromProver() public {
+        _testUsdsWithdrawalFinalizationFromProver(BASE_PORTAL, BASE_WITHDRAWAL_HASH, BASE_FINALIZE_CALLDATA, 1_783_096_644);  // Jul 3, 2026, 16:37:24 UTC
     }
 
-    function test_USDSTransfers_optimism() public {
-        _testUsdsWithdrawalFinalization(OPTIMISM_PORTAL, OPTIMISM_WITHDRAWAL_HASH, OPTIMISM_FINALIZE_CALLDATA, 1_783_617_324);  // Jul 9, 2026, 17:15:24 UTC
+    function test_USDSTransfers_base_externalProof() public {
+        _testUsdsWithdrawalFinalizationExternalProof(BASE_PORTAL, BASE_WITHDRAWAL_HASH, BASE_FINALIZE_CALLDATA, 1_783_096_644);  // Jul 3, 2026, 16:37:24 UTC
     }
 
-    function test_USDSTransfers_unichain() public {
-        _testUsdsWithdrawalFinalization(UNICHAIN_PORTAL, UNICHAIN_WITHDRAWAL_HASH, UNICHAIN_FINALIZE_CALLDATA, 1_783_617_348);  // Jul 9, 2026, 17:15:48 UTC
+    function test_USDSTransfers_optimism_fromProver() public {
+        _testUsdsWithdrawalFinalizationFromProver(OPTIMISM_PORTAL, OPTIMISM_WITHDRAWAL_HASH, OPTIMISM_FINALIZE_CALLDATA, 1_783_617_324);  // Jul 9, 2026, 17:15:24 UTC
     }
 
-    function _testUsdsWithdrawalFinalization(
+    function test_USDSTransfers_optimism_externalProof() public {
+        _testUsdsWithdrawalFinalizationExternalProof(OPTIMISM_PORTAL, OPTIMISM_WITHDRAWAL_HASH, OPTIMISM_FINALIZE_CALLDATA, 1_783_617_324);  // Jul 9, 2026, 17:15:24 UTC
+    }
+
+    function test_USDSTransfers_unichain_fromProver() public {
+        _testUsdsWithdrawalFinalizationFromProver(UNICHAIN_PORTAL, UNICHAIN_WITHDRAWAL_HASH, UNICHAIN_FINALIZE_CALLDATA, 1_783_617_348);  // Jul 9, 2026, 17:15:48 UTC
+    }
+
+    function test_USDSTransfers_unichain_externalProof() public {
+        _testUsdsWithdrawalFinalizationExternalProof(UNICHAIN_PORTAL, UNICHAIN_WITHDRAWAL_HASH, UNICHAIN_FINALIZE_CALLDATA, 1_783_617_348);  // Jul 9, 2026, 17:15:48 UTC
+    }
+
+    // Finalize from the proving address with the exact calldata of the real transaction
+    // (finalizeWithdrawalTransaction looks up the proof under msg.sender)
+    function _testUsdsWithdrawalFinalizationFromProver(
         IOptimismPortalLike portal,
         bytes32             withdrawalHash,
         bytes memory        finalizeCalldata,
         uint256             finalizableTimestamp
     )
         internal
+    {
+        uint256 usdsBalanceBefore = _warpToFinalizable(portal, withdrawalHash, finalizableTimestamp);
+
+        vm.prank(WITHDRAWAL_PROVER);
+        ( bool success, ) = address(portal).call(finalizeCalldata);
+        assertTrue(success);
+
+        _assertFinalized(portal, withdrawalHash, usdsBalanceBefore);
+    }
+
+    // Finalize from an unrelated address, referencing the prover's proof
+    function _testUsdsWithdrawalFinalizationExternalProof(
+        IOptimismPortalLike portal,
+        bytes32             withdrawalHash,
+        bytes memory        finalizeCalldata,
+        uint256             finalizableTimestamp
+    )
+        internal
+    {
+        uint256 usdsBalanceBefore = _warpToFinalizable(portal, withdrawalHash, finalizableTimestamp);
+
+        // Decode the WithdrawalTransaction out of the finalizeWithdrawalTransaction calldata
+        bytes memory finalizeArgs = new bytes(finalizeCalldata.length - 4);
+        for (uint256 i; i < finalizeArgs.length; ++i) {
+            finalizeArgs[i] = finalizeCalldata[i + 4];
+        }
+
+        vm.prank(makeAddr("user"));
+        portal.finalizeWithdrawalTransactionExternalProof(
+            abi.decode(finalizeArgs, (IOptimismPortalLike.WithdrawalTransaction)),
+            WITHDRAWAL_PROVER
+        );
+
+        _assertFinalized(portal, withdrawalHash, usdsBalanceBefore);
+    }
+
+    function _warpToFinalizable(
+        IOptimismPortalLike portal,
+        bytes32             withdrawalHash,
+        uint256             finalizableTimestamp
+    )
+        internal returns (uint256 usdsBalanceBefore)
     {
         ( address disputeGame, uint64 provenTimestamp ) = portal.provenWithdrawals(withdrawalHash, WITHDRAWAL_PROVER);
 
@@ -949,7 +1014,7 @@ contract SparkEthereum_20260702_USDSTransfers is Test {
 
         assertEq(portal.finalizedWithdrawals(withdrawalHash), false);
 
-        uint256 usdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+        usdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
 
         // Check finalizableTimestamp is the earliest time past both the proof maturity
         // delay (from prove time) and the dispute game finality delay (from game
@@ -960,11 +1025,15 @@ contract SparkEthereum_20260702_USDSTransfers is Test {
         assertEq(finalizableTimestamp, (proofMaturedAt > gameMaturedAt ? proofMaturedAt : gameMaturedAt) + 1);
 
         vm.warp(finalizableTimestamp);
+    }
 
-        vm.prank(WITHDRAWAL_PROVER);
-        ( bool success, ) = address(portal).call(finalizeCalldata);
-        assertTrue(success);
-
+    function _assertFinalized(
+        IOptimismPortalLike portal,
+        bytes32             withdrawalHash,
+        uint256             usdsBalanceBefore
+    )
+        internal view
+    {
         assertEq(portal.finalizedWithdrawals(withdrawalHash), true);
 
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), usdsBalanceBefore + 10_000e18);
