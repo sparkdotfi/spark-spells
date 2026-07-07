@@ -5,11 +5,14 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
+import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
+
+import { ISyrupLike } from "src/interfaces/Interfaces.sol";
 
 /**
  * @title  July 16, 2026 Spark Ethereum Proposal
@@ -18,26 +21,40 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  *         - Deactivate Old USDT Morpho V2 Vault.
  *         - Enable USDT Bridging to X Layer.
  *         - Enable USDG Bridging to Robinhood Chain.
+ *         - Transfer USDS to Grove.
+ *         Spark Treasury:
+ *         - USDS Transfer to Spark Foundation for Incentives.
+ *         - USDS Transfer to Spark Assets Foundation for Anchorage Fees.
+ *         - Grants for Spark Foundation and Spark Assets Foundation (Exec).
+ *         - Transfer USDS for Buybacks (Exec).
  * Forum:  https://forum.skyeco.com/t/july-16-2026-proposed-changes-to-spark-for-upcoming-spell/28029
- * Vote:
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xd177bc28b65afb23dc39a5e7cfdded7084b3b722b230e08d7067b68fa0f4486a
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0xdde478db4ba5882a5d48d19fdbae057fd703688e4f1e16fb673407fc08476a9f
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0xf99372ccca4b99dd04dc0ddb038e949b62f4d25810b0203572dc90bce025e805
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x2df281a276e0c17eff9a05e65bfc05937c2f600edec1a82386a6efb6dbe9d63d
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x3cb4165f1357d553445b0de790e4e8b4a71358f42f39d35f7de51b308ade558c
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x451bb53f80ad2906ff06cc3d03c88a6b09f350db371c4782e0621e26a1d55a43
  */
 contract SparkEthereum_20260716 is SparkPayloadEthereum {
 
     address internal constant ANCHORAGE_FEES_RECIPIENT = 0x2002020202020202020202020202020202020202;  // TODO: change
+    address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant INCENTIVES_RECIPIENT     = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
-    address internal constant XLAYER_ALM_PROXY         = 0x0000000000000000000000000000000000000064;  // TODO: change
+    address internal constant XLAYER_ALM_PROXY         = 0x83A914C361bB729EB6BEBC8C7bA993667A0E6Df8;
 
     uint256 internal constant ANCHORAGE_FEES_AMOUNT         = 500_000e18;
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
+    uint256 internal constant GROVE_SYRUP_USDC_AMOUNT       = 85_943_747.637271e6;
     uint256 internal constant INCENTIVES_AMOUNT             = 2_000_000e18;
     uint256 internal constant SPK_BUYBACKS_AMOUNT           = 64_231e18;
 
-    uint32 internal constant LZ_ENDPOINT_XLAYER = 30110;  // TODO: change
+    uint32 internal constant LZ_ENDPOINT_XLAYER = 30274;
 
     constructor() {
+        // PAYLOAD_ROBINHOOD =
     }
 
     function _postExecute() internal override {
@@ -95,6 +112,24 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
         // Transfer USDS for Buybacks (Exec).
 
         IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, SPK_BUYBACKS_AMOUNT);
+
+        // Transfer USDS to Grove.
+
+        uint256 usdsAmount = ISyrupLike(Ethereum.SYRUP_USDC).convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
+
+        almController.grantRole(almController.RELAYER(), address(this));
+
+        almController.mintUSDS(usdsAmount);
+
+        almController.revokeRole(almController.RELAYER(), address(this));
+
+        IALMProxy almProxy = IALMProxy(Ethereum.ALM_PROXY);
+
+        almProxy.grantRole(almProxy.CONTROLLER(), address(this));
+
+        almProxy.doCall(Ethereum.USDS, abi.encodeCall(IERC20.transfer, (GROVE_ALM_PROXY, usdsAmount)));
+
+        almProxy.revokeRole(almProxy.CONTROLLER(), address(this));
     }
 
 }

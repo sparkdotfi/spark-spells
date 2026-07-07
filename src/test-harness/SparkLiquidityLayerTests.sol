@@ -18,6 +18,7 @@ import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
@@ -50,6 +51,7 @@ import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs
 import { ICurvePoolLike, ISparkVaultV2Like } from "../interfaces/Interfaces.sol";
 
 import { ChainIdUtils }  from "../libraries/ChainIdUtils.sol";
+import { DealUtils }     from "../libraries/DealUtils.sol";
 import { MorphoHelpers } from "../libraries/MorphoHelpers.sol";
 import { SLLHelpers }    from "../libraries/SLLHelpers.sol";
 
@@ -2573,7 +2575,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 destinationBalance = asset.balanceOf(p.destination);
 
-        deal(address(asset), address(p.ctx.proxy), transferAmount1 + transferAmount2);
+        if (!DealUtils.patchedDeal(address(asset), address(p.ctx.proxy), transferAmount1 + transferAmount2)) {
+            deal(address(asset), address(p.ctx.proxy), transferAmount1 + transferAmount2);
+        }
 
         bool unlimitedTransfer = transferLimit == type(uint256).max;
 
@@ -5098,6 +5102,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 IRateLimits(Avalanche.ALM_RATE_LIMITS),
                 Avalanche.ALM_RELAYER_MULTISIG,
                 Avalanche.ALM_FREEZER_MULTISIG
+            );
+        } else if (chainId == ChainIdUtils.Robinhood()) {
+            ctx = SparkLiquidityLayerContext(
+                Robinhood.ALM_CONTROLLER,
+                address(0),
+                IALMProxy(Robinhood.ALM_PROXY),
+                IRateLimits(Robinhood.ALM_RATE_LIMITS),
+                Robinhood.ALM_RELAYER_MULTISIG,
+                Robinhood.ALM_FREEZER_MULTISIG
             );
         } else {
             revert("SLL/executing on unknown chain");

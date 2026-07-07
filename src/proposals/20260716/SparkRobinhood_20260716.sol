@@ -12,22 +12,23 @@ import { SLLHelpers } from "../../libraries/SLLHelpers.sol";
 /**
  * @title  July 16, 2026 Spark Robinhood Proposal
  * @author Phoenix Labs
- * @notice
- * Forum:
- * Vote:
+ * @notice Spark Liquidity Layer - Activate SLL and Spark Savings Infrastructure.
+ * Forum:  https://forum.skyeco.com/t/july-16-2026-proposed-changes-to-spark-for-upcoming-spell/28029
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xd177bc28b65afb23dc39a5e7cfdded7084b3b722b230e08d7067b68fa0f4486a
  */
 contract SparkRobinhood_20260716 {
 
-    address internal constant PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
+    address internal constant OLD_FREEZER_RELAYER = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant PAXOS_USDG_DEPOSIT  = 0x17C0F5345d1144fdF670D14719077be3842E5087;
 
     function execute() external {
         ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
 
-        controller.grantRole(controller.FREEZER(),  Robinhood.ALM_FREEZER_MULTISIG_2);
-        controller.revokeRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_1);
+        controller.grantRole(controller.FREEZER(),  Robinhood.ALM_FREEZER_MULTISIG);
+        controller.revokeRole(controller.FREEZER(), OLD_FREEZER_RELAYER);
 
         controller.grantRole(controller.RELAYER(),  Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG);
-        controller.revokeRole(controller.RELAYER(), Robinhood.ALM_RELAYER_MULTISIG_1);
+        controller.revokeRole(controller.RELAYER(), OLD_FREEZER_RELAYER);
 
         SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAddressAddressKey(
