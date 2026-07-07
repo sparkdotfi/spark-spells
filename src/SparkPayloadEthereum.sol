@@ -21,6 +21,7 @@ import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
+import { XLayer }    from "spark-address-registry/XLayer.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
@@ -64,6 +65,7 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     address public immutable PAYLOAD_UNICHAIN;
     address public immutable PAYLOAD_AVALANCHE;
     address public immutable PAYLOAD_ROBINHOOD;
+    address public immutable PAYLOAD_XLAYER;
 
     function execute() public override {
         super.execute();
@@ -130,6 +132,14 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
                 gasLimit:      1_000_000,
                 maxFeePerGas:  50e9,
                 baseFee:       block.basefee
+            });
+        }
+        if (PAYLOAD_XLAYER != address(0)) {
+            OptimismForwarder.sendMessageL1toL2({
+                l1CrossDomain: OptimismForwarder.L1_CROSS_DOMAIN_XLAYER,
+                target:        XLayer.SPARK_RECEIVER,
+                message:       _encodePayloadQueue(PAYLOAD_XLAYER),
+                gasLimit:      1_000_000
             });
         }
 
