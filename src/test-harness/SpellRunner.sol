@@ -12,6 +12,7 @@ import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
@@ -89,11 +90,16 @@ abstract contract SpellRunner is Test {
     /**********************************************************************************************/
 
     function _setupBlocksFromDate(uint256 date) internal {
-
         setChain("unichain", ChainData({
-            name: "Unichain",
-            rpcUrl: vm.envString("UNICHAIN_RPC_URL"),
-            chainId: 130
+            name    : "Unichain",
+            rpcUrl  : vm.envString("UNICHAIN_RPC_URL"),
+            chainId : 130
+        }));
+
+        setChain("robinhood_chain", ChainData({
+            name    : "Robinhood Chain",
+            rpcUrl  : vm.envString("RH_RPC_URL"),
+            chainId : 4663
         }));
 
         uint256[] memory blocks = _getBlocksFromDate(date);
@@ -105,6 +111,7 @@ abstract contract SpellRunner is Test {
         console.log("Optimism block: ", blocks[4]);
         console.log("Unichain block: ", blocks[5]);
         console.log("Avalanche block:", blocks[6]);
+        console.log("Robinhood block:", blocks[7]);
 
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
@@ -113,6 +120,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[4]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(blocks[5]);
         chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[6]);
+        chainData[ChainIdUtils.Robinhood()].domain   = getChain("robinhood_chain").createFork(blocks[7]);
     }
 
     /// @dev to be called in setUp
@@ -126,6 +134,7 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Optimism());
         allChains.push(ChainIdUtils.Unichain());
         allChains.push(ChainIdUtils.Avalanche());
+        allChains.push(ChainIdUtils.Robinhood());
 
         _setupBlocksFromDate(_blockDate);
 
@@ -139,6 +148,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Optimism()].executor    = IExecutor(Optimism.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Avalanche()].executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Robinhood()].executor   = IExecutor(Robinhood.SPARK_EXECUTOR);
 
         chainData[ChainIdUtils.Ethereum()].bridges.push(
             LZBridgeTesting.createLZBridge(
@@ -413,6 +423,8 @@ abstract contract SpellRunner is Test {
 
         if (chainId == ChainIdUtils.Avalanche()) return spell.PAYLOAD_AVALANCHE();
 
+        if (chainId == ChainIdUtils.Robinhood()) return spell.PAYLOAD_ROBINHOOD();
+
         revert("Unsupported chainId");
     }
 
@@ -434,8 +446,8 @@ abstract contract SpellRunner is Test {
         blocks = new uint256[](allChains.length);
 
         for (uint256 i; i < allChains.length; ++i) {
-            // TODO: Remove this once Avalanche is working
-            if (allChains[i] == ChainIdUtils.Avalanche() || allChains[i] == ChainIdUtils.Gnosis() || allChains[i] == ChainIdUtils.Base()) {
+            // TODO: Remove this once Robinhood is added https://api.etherscan.io/v2/chainlist
+            if (allChains[i] == ChainIdUtils.Robinhood()) {
                 blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
                 continue;
             }

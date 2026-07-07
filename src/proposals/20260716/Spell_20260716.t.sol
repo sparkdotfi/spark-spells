@@ -3,6 +3,8 @@ pragma solidity ^0.8.25;
 
 import { VmSafe } from "forge-std/Vm.sol";
 
+import { console } from "forge-std/console.sol";
+
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -11,8 +13,9 @@ import { Avalanche } from "spark-address-registry/Avalanche.sol";
 import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
-import { Unichain }  from "spark-address-registry/Unichain.sol";
+import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
+import { Unichain }  from "spark-address-registry/Unichain.sol";
 
 import { ILayerZero, MessagingFee, SendParam } from "spark-alm-controller/src/interfaces/ILayerZero.sol";
 
@@ -128,6 +131,22 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+    }
+
+    function test_ROBINHOOD_controllerRoleChanges() external onChain(ChainIdUtils.Robinhood()) {
+        ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
+
+        assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
+
+        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_2), false);
+        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_1), true);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
+
+        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_2), true);
+        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_1), false);
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
