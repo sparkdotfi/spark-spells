@@ -14,6 +14,7 @@ import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
+import { XLayer }    from "spark-address-registry/XLayer.sol";
 
 import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 
@@ -102,6 +103,12 @@ abstract contract SpellRunner is Test {
             chainId : 4663
         }));
 
+        setChain("xlayer", ChainData({
+            name    : "XLayer",
+            rpcUrl  : "https://rpc.xlayer.tech",
+            chainId : 196
+        }));
+
         uint256[] memory blocks = _getBlocksFromDate(date);
 
         console.log("Mainnet block:  ", blocks[0]);
@@ -112,6 +119,7 @@ abstract contract SpellRunner is Test {
         console.log("Unichain block: ", blocks[5]);
         console.log("Avalanche block:", blocks[6]);
         console.log("Robinhood block:", blocks[7]);
+        console.log("XLayer block:   ", blocks[8]);
 
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
@@ -121,6 +129,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(blocks[5]);
         chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[6]);
         chainData[ChainIdUtils.Robinhood()].domain   = getChain("robinhood_chain").createFork(blocks[7]);
+        chainData[ChainIdUtils.XLayer()].domain      = getChain("xlayer").createFork(blocks[8]);
     }
 
     /// @dev to be called in setUp
@@ -135,6 +144,7 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Unichain());
         allChains.push(ChainIdUtils.Avalanche());
         allChains.push(ChainIdUtils.Robinhood());
+        allChains.push(ChainIdUtils.XLayer());
 
         _setupBlocksFromDate(_blockDate);
 
@@ -149,6 +159,7 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Avalanche()].executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Robinhood()].executor   = IExecutor(Robinhood.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.XLayer()].executor      = IExecutor(XLayer.SPARK_EXECUTOR);
 
         chainData[ChainIdUtils.Ethereum()].bridges.push(
             LZBridgeTesting.createLZBridge(
@@ -252,6 +263,14 @@ abstract contract SpellRunner is Test {
             ArbitrumBridgeTesting.createNativeBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.Robinhood()].domain
+            )
+        );
+
+        // XLayer
+        chainData[ChainIdUtils.XLayer()].bridges.push(
+            OptimismBridgeTesting.createNativeBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.XLayer()].domain
             )
         );
     }
@@ -425,6 +444,8 @@ abstract contract SpellRunner is Test {
 
         if (chainId == ChainIdUtils.Robinhood()) return spell.PAYLOAD_ROBINHOOD();
 
+        if (chainId == ChainIdUtils.XLayer()) return spell.PAYLOAD_XLAYER();
+
         revert("Unsupported chainId");
     }
 
@@ -446,8 +467,8 @@ abstract contract SpellRunner is Test {
         blocks = new uint256[](allChains.length);
 
         for (uint256 i; i < allChains.length; ++i) {
-            // TODO: Remove this once Robinhood is added https://api.etherscan.io/v2/chainlist
-            if (allChains[i] == ChainIdUtils.Robinhood()) {
+            // TODO: Remove this once Robinhood and XLayer are added https://api.etherscan.io/v2/chainlist
+            if (allChains[i] == ChainIdUtils.Robinhood() || allChains[i] == ChainIdUtils.XLayer()) {
                 blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
                 continue;
             }
