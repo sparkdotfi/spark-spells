@@ -12,9 +12,9 @@ import { SLLHelpers } from "../../libraries/SLLHelpers.sol";
 /**
  * @title  July 16, 2026 Spark Robinhood Proposal
  * @author Phoenix Labs
- * @notice
- * Forum:
- * Vote:
+ * @notice Spark Liquidity Layer - Activate SLL and Spark Savings Infrastructure.
+ * Forum:  https://forum.skyeco.com/t/july-16-2026-proposed-changes-to-spark-for-upcoming-spell/28029
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xd177bc28b65afb23dc39a5e7cfdded7084b3b722b230e08d7067b68fa0f4486a
  */
 contract SparkRobinhood_20260716 {
 
