@@ -18,16 +18,17 @@ import { SLLHelpers } from "../../libraries/SLLHelpers.sol";
  */
 contract SparkRobinhood_20260716 {
 
-    address internal constant PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
+    address internal constant OLD_FREEZER_RELAYER = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant PAXOS_USDG_DEPOSIT  = 0x17C0F5345d1144fdF670D14719077be3842E5087;
 
     function execute() external {
         ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
 
-        controller.grantRole(controller.FREEZER(),  Robinhood.ALM_FREEZER_MULTISIG_2);
-        controller.revokeRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_1);
+        controller.grantRole(controller.FREEZER(),  Robinhood.ALM_FREEZER_MULTISIG);
+        controller.revokeRole(controller.FREEZER(), OLD_FREEZER_RELAYER);
 
         controller.grantRole(controller.RELAYER(),  Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG);
-        controller.revokeRole(controller.RELAYER(), Robinhood.ALM_RELAYER_MULTISIG_1);
+        controller.revokeRole(controller.RELAYER(), OLD_FREEZER_RELAYER);
 
         SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAddressAddressKey(

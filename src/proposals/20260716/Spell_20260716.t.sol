@@ -63,9 +63,12 @@ import {
 
 contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
+    address internal constant OLD_FREEZER_RELAYER          = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant ROBINHOOD_PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
+
     constructor() {
         _spellId   = 20260716;
-        _blockDate = 1783235025;  // Jul-5-2026 7:03:45 AM +UTC
+        _blockDate = 1783438280;  // Jul-7-2026 9:01:20 PM +UTC
     }
 
     function setUp() public override {
@@ -91,13 +94,63 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(withdrawKey, 0, 0);
     }
 
+    function test_ROBINHOOD_controllerRoleChanges() external onChain(ChainIdUtils.Robinhood()) {
+        ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
+
+        assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
+
+        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG), false);
+        assertEq(controller.hasRole(controller.FREEZER(), OLD_FREEZER_RELAYER),            true);
+
+        assertEq(controller.getRoleMemberCount(controller.RELAYER()), 2);
+
+        assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG), false);
+        assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_RELAYER_MULTISIG),          true);
+        assertEq(controller.hasRole(controller.RELAYER(), OLD_FREEZER_RELAYER),                     true);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
+
+        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG), true);
+        assertEq(controller.hasRole(controller.FREEZER(), OLD_FREEZER_RELAYER),            false);
+
+        assertEq(controller.getRoleMemberCount(controller.RELAYER()), 2);
+
+        assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG), true);
+        assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_RELAYER_MULTISIG),          true);
+        assertEq(controller.hasRole(controller.RELAYER(), OLD_FREEZER_RELAYER),                     false);
+    }
+
+    function test_ROBINHOOD_sll_enableUsdgTransferToPaxosDeposit() external onChain(ChainIdUtils.Robinhood()) {
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            ForeignController(Robinhood.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Robinhood.USDG,
+            ROBINHOOD_PAXOS_USDG_DEPOSIT
+        );
+
+        _assertRateLimit(transferKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(transferKey, 50_000_000e6, 250_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : Robinhood.USDG,
+            destination    : ROBINHOOD_PAXOS_USDG_DEPOSIT,
+            transferKey    : transferKey,
+            transferAmount : 50_000_000e6
+        }));
+    }
+
 }
 
 contract SparkEthereum_20260702_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260716;
-        _blockDate = 1783235025;  // Jul-5-2026 7:03:45 AM +UTC
+        _blockDate = 1783438280;  // Jul-7-2026 9:01:20 PM +UTC
     }
 
     function setUp() public override {
@@ -124,29 +177,13 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260716;
-        _blockDate = 1783235025;  // Jul-5-2026 7:03:45 AM +UTC
+        _blockDate = 1783438280;  // Jul-7-2026 9:01:20 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
-    }
-
-    function test_ROBINHOOD_controllerRoleChanges() external onChain(ChainIdUtils.Robinhood()) {
-        ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
-
-        assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
-
-        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_2), false);
-        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_1), true);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
-
-        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_2), true);
-        assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG_1), false);
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
@@ -159,9 +196,9 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
         uint256 incentivesRecipientBalanceBefore    = usds.balanceOf(INCENTIVES_RECIPIENT);
         uint256 anchorageFeesRecipientBalanceBefore = usds.balanceOf(ANCHORAGE_FEES_RECIPIENT);
 
-        assertEq(sparkProxyBalanceBefore,             36_899_113.913977620254401020e18);
-        assertEq(foundationBalanceBefore,             1_100_000.0095e18);
-        assertEq(assetFoundationBalanceBefore,        167_000e18);
+        assertEq(sparkProxyBalanceBefore,             39_309_297.249708907368137212e18);
+        assertEq(foundationBalanceBefore,             1_206_390.0222e18);
+        assertEq(assetFoundationBalanceBefore,        155_000e18);
         assertEq(almOpsBalanceBefore,                 0);
         assertEq(incentivesRecipientBalanceBefore,    0);
         assertEq(anchorageFeesRecipientBalanceBefore, 0);
