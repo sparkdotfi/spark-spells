@@ -124,6 +124,10 @@ abstract contract SpellTests is SpellRunner {
         _testPayloadBytecodeMatches(ChainIdUtils.Avalanche());
     }
 
+    function test_ROBINHOOD_PayloadBytecodeMatches() external {
+        _testPayloadBytecodeMatches(ChainIdUtils.Robinhood());
+    }
+
     function test_ETHEREUM_SparkProxyStorage() external onChain(ChainIdUtils.Ethereum()) {
         assertEq(ISparkProxyLike(Ethereum.SPARK_PROXY).wards(ESM),                  1);
         assertEq(ISparkProxyLike(Ethereum.SPARK_PROXY).wards(Ethereum.PAUSE_PROXY), 1);

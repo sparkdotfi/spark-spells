@@ -36,7 +36,7 @@ interface IAMBExecutorLike {
 
     function getActionsSetCount() external view returns (uint256);
 
-    function executeDelegateCall(address target, bytes calldata data) 
+    function executeDelegateCall(address target, bytes calldata data)
         external payable returns (bool, bytes memory);
 
 }
@@ -234,6 +234,14 @@ abstract contract SpellRunner is Test {
             CCTPBridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.Avalanche()].domain
+            )
+        );
+
+        // Robinhood
+        chainData[ChainIdUtils.Robinhood()].bridges.push(
+            ArbitrumBridgeTesting.createNativeBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Robinhood()].domain
             )
         );
     }
