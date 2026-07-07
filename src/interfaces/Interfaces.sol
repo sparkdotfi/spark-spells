@@ -104,6 +104,8 @@ interface ISparkVaultV2Like {
 
     function depositCap() external view returns (uint256);
 
+    function getImplementation() external view returns (address);
+
     function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
