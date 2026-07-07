@@ -17,6 +17,7 @@ import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
 
+import { IALMProxy }                           from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { ILayerZero, MessagingFee, SendParam } from "spark-alm-controller/src/interfaces/ILayerZero.sol";
 
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
@@ -58,6 +59,7 @@ import {
     IMorphoVaultLike,
     IPositionManagerLike,
     ISparkVaultV2Like,
+    ISyrupLike,
     IERC20Like
 } from "../../interfaces/Interfaces.sol";
 
@@ -164,6 +166,7 @@ contract SparkEthereum_20260702_SparklendTests is SparklendTests {
 contract SparkEthereum_20260702_SpellTests is SpellTests {
 
     address internal constant ANCHORAGE_FEES_RECIPIENT = 0x2002020202020202020202020202020202020202;  // TODO: change
+    address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant INCENTIVES_RECIPIENT     = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
@@ -171,6 +174,7 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
 
     uint256 internal constant ANCHORAGE_FEES_AMOUNT         = 500_000e18;
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
+    uint256 internal constant GROVE_SYRUP_USDC_AMOUNT       = 85_943_747.637271e6;
     uint256 internal constant FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
     uint256 internal constant INCENTIVES_AMOUNT             = 2_000_000e18;
     uint256 internal constant SPK_BUYBACKS_AMOUNT           = 64_231e18;
@@ -184,6 +188,33 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
         super.setUp();
 
         // chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+    }
+
+    function test_ETHEREUM_sll_transferUsdsToGrove() external onChain(ChainIdUtils.Ethereum()) {
+        IERC20     usds  = IERC20(Ethereum.USDS);
+        ISyrupLike syrup = ISyrupLike(Ethereum.SYRUP_USDC);
+
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+        IALMProxy         almProxy   = IALMProxy(Ethereum.ALM_PROXY);
+
+        uint256 expectedUsdsAmount = syrup.convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
+
+        uint256 almProxyUsdsBalanceBefore = usds.balanceOf(Ethereum.ALM_PROXY);
+        uint256 groveUsdsBalanceBefore    = usds.balanceOf(GROVE_ALM_PROXY);
+
+        assertEq(almProxyUsdsBalanceBefore, 0);
+        assertEq(groveUsdsBalanceBefore,    0);
+
+        assertEq(controller.hasRole(controller.RELAYER(), Ethereum.SPARK_PROXY), false);
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),  Ethereum.SPARK_PROXY), false);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(controller.hasRole(controller.RELAYER(), Ethereum.SPARK_PROXY), false);
+        assertEq(almProxy.hasRole(almProxy.CONTROLLER(),  Ethereum.SPARK_PROXY), false);
+
+        assertEq(usds.balanceOf(Ethereum.ALM_PROXY), almProxyUsdsBalanceBefore);
+        assertEq(usds.balanceOf(GROVE_ALM_PROXY),    groveUsdsBalanceBefore + expectedUsdsAmount);
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
