@@ -18,6 +18,8 @@ import { XLayer }    from "spark-address-registry/XLayer.sol";
 
 import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
 
+import { LZForwarder } from "xchain-helpers/forwarders/LZForwarder.sol";
+
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBridgeTesting.sol";
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
@@ -47,6 +49,12 @@ abstract contract SpellRunner is Test {
 
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
+
+    // LayerZero contracts on XLayer (chain alias not supported by LZBridgeTesting.createLZBridge).
+    // Endpoint is the canonical EndpointV2 address (eid 30274), receive library is the
+    // endpoint's defaultReceiveLibrary for packets from Ethereum (eid 30101).
+    address internal constant LZ_ENDPOINT_XLAYER         = 0x1a44076050125825900e736c501f859c50fE728c;
+    address internal constant LZ_RECEIVE_LIBRARY_XLAYER  = 0x2367325334447C5E1E0f1b3a6fB947b262F58312;
 
     // ChainData is already taken in StdChains
     struct DomainData {
@@ -272,6 +280,21 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.XLayer()].domain
             )
+        );
+
+        // Constructed manually because LZBridgeTesting.createLZBridge does not support the
+        // xlayer chain alias. Used by the Ethereum -> XLayer USDT0 E2E test.
+        chainData[ChainIdUtils.XLayer()].bridges.push(
+            LZBridgeTesting.init(Bridge({
+                bridgeType:                     BridgeType.LZ,
+                source:                         chainData[ChainIdUtils.Ethereum()].domain,
+                destination:                    chainData[ChainIdUtils.XLayer()].domain,
+                sourceCrossChainMessenger:      LZForwarder.ENDPOINT_ETHEREUM,
+                destinationCrossChainMessenger: LZ_ENDPOINT_XLAYER,
+                lastSourceLogIndex:             0,
+                lastDestinationLogIndex:        0,
+                extraData:                      abi.encode(LZForwarder.RECEIVE_LIBRARY_ETHEREUM, LZ_RECEIVE_LIBRARY_XLAYER)
+            }))
         );
     }
 
