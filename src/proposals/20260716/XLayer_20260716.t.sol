@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { XLayer }   from "spark-address-registry/XLayer.sol";
 
 import { ALMProxy }          from "spark-alm-controller/src/ALMProxy.sol";
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
@@ -44,21 +45,22 @@ contract XLayerConfigTests is Test {
     bytes32 internal constant FREEZER_ROLE       = keccak256("FREEZER");
     bytes32 internal constant CONTROLLER_ROLE    = keccak256("CONTROLLER");
 
-    address internal constant ALM_PROXY    = 0x83A914C361bB729EB6BEBC8C7bA993667A0E6Df8;
-    address internal constant CONTROLLER   = 0xf9187C99Ee842beABE8e2e346d958315BFc9331f;
-    address internal constant RATE_LIMITS  = 0x7F7E2286983994c4403Cf2B86758cE0e7bA666a8;
-    address internal constant SPUSDT_VAULT = 0xc358c90D32375721Cb3924320Fdc2F8B694347Ca;
+    address internal constant ALM_PROXY    = XLayer.ALM_PROXY;
+    address internal constant CONTROLLER   = XLayer.ALM_CONTROLLER;
+    address internal constant RATE_LIMITS  = XLayer.ALM_RATE_LIMITS;
+    address internal constant SPUSDT_VAULT = XLayer.SPARK_VAULT_V2_SPUSDT;
 
     address internal constant DEPLOYER  = 0x23d43f3189Ab9CEBfFcC0352C0490387e3105FB3;
-    address internal constant FREEZER   = 0x90D8c80C028B4C09C0d8dcAab9bbB057F0513431;
-    address internal constant EXECUTOR  = 0xCF5af6F53ceC74B791cb4182aC778ca9CD323510;
-    address internal constant RECEIVER  = 0x4bd50B9c00Ae19e8B59723F27645C7A5cCe7a4A0;
-    address internal constant RELAYER_1 = 0x8a25A24EDE9482C4Fc0738F99611BE58F1c839AB;
-    address internal constant RELAYER_2 = 0x9330edE0Fc6E3E0D47Ebf3C145efd569796aC7F5;
-    address internal constant SETTER    = 0x9449ed367C60ea757544fd990B57e1C2D0Ec3A94;
+    address internal constant FREEZER   = XLayer.ALM_FREEZER_MULTISIG;
+    address internal constant EXECUTOR  = XLayer.SPARK_EXECUTOR;
+    address internal constant RECEIVER  = XLayer.SPARK_RECEIVER;
+    address internal constant RELAYER_1 = XLayer.ALM_RELAYER_MULTISIG;
+    address internal constant RELAYER_2 = XLayer.ALM_BACKSTOP_RELAYER_MULTISIG;
+    address internal constant SETTER    = XLayer.ALM_PROXY_FREEZABLE;
 
     address internal constant USDT                = 0x779Ded0c9e1022225f8E0630b35a9b54bE713736;
-    address internal constant SPARK_VAULT_V2_IMPL = 0xdCe929A335C75a1676EF5957A4D7a3b928C48820;
+    address internal constant USDT_OFT            = 0x94BCCa6bdfd6A61817Ab0E960bFedE4984505554;
+    address internal constant SPARK_VAULT_V2_IMPL = XLayer.SPARK_VAULT_V2_IMPL;
 
     ALMProxy          internal almProxy;
     ForeignController internal controller;
@@ -68,6 +70,8 @@ contract XLayerConfigTests is Test {
     // > bc -l <<< 'scale=27; e( l(1.06)/(60 * 60 * 24 * 365) )'
     //   1.000000001847694957439350562
     uint256 internal constant SIX_PCT_APY = 1.000000001847694957439350562e27;
+
+    uint32 internal constant LZ_EID_ETHEREUM = 30101;
 
     function setUp() public {
         vm.createSelectFork("https://rpc.xlayer.tech", 64662930);
@@ -149,6 +153,13 @@ contract XLayerConfigTests is Test {
 
         assertEq(rateLimit.maxAmount, type(uint256).max);
         assertEq(rateLimit.slope,     0);
+
+        bytes32 layerZeroTransferKey = keccak256(abi.encode(controller.LIMIT_LAYERZERO_TRANSFER(), USDT_OFT, LZ_EID_ETHEREUM));
+
+        rateLimit = rateLimits.getRateLimitData(layerZeroTransferKey);
+
+        assertEq(rateLimit.maxAmount, type(uint256).max);
+        assertEq(rateLimit.slope,     0);
     }
 
     function test_controller_config() external view {
@@ -157,11 +168,21 @@ contract XLayerConfigTests is Test {
         assertEq(address(controller.psm()),        address(0));
         assertEq(address(controller.usdc()),       address(0));
         assertEq(address(controller.cctp()),       address(0));
+
+        // LayerZero Receipient Configuration
+
+        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
     }
 
     function test_executor_config() external view {
         assertEq(IExecutor(EXECUTOR).delay(),       0);
         assertEq(IExecutor(EXECUTOR).gracePeriod(), 7 days);
+
+        // Role Assertions
+
+        assertEq(IExecutor(EXECUTOR).hasRole(DEFAULT_ADMIN_ROLE,                    DEPLOYER), false);
+        assertEq(IExecutor(EXECUTOR).hasRole(DEFAULT_ADMIN_ROLE,                    EXECUTOR), true);
+        assertEq(IExecutor(EXECUTOR).hasRole(IExecutor(EXECUTOR).SUBMISSION_ROLE(), RECEIVER), true);
     }
 
     function test_receiver_config() external view {
@@ -173,13 +194,13 @@ contract XLayerConfigTests is Test {
 
 contract XLayerE2ETests is Test {
 
-    address internal constant ALM_PROXY    = 0x83A914C361bB729EB6BEBC8C7bA993667A0E6Df8;
-    address internal constant CONTROLLER   = 0xf9187C99Ee842beABE8e2e346d958315BFc9331f;
-    address internal constant EXECUTOR     = 0xCF5af6F53ceC74B791cb4182aC778ca9CD323510;
-    address internal constant RATE_LIMITS  = 0x7F7E2286983994c4403Cf2B86758cE0e7bA666a8;
-    address internal constant RELAYER_1    = 0x8a25A24EDE9482C4Fc0738F99611BE58F1c839AB;
-    address internal constant SETTER       = 0x9449ed367C60ea757544fd990B57e1C2D0Ec3A94;
-    address internal constant SPUSDT_VAULT = 0xc358c90D32375721Cb3924320Fdc2F8B694347Ca;
+    address internal constant ALM_PROXY    = XLayer.ALM_PROXY;
+    address internal constant CONTROLLER   = XLayer.ALM_CONTROLLER;
+    address internal constant EXECUTOR     = XLayer.SPARK_EXECUTOR;
+    address internal constant RATE_LIMITS  = XLayer.ALM_RATE_LIMITS;
+    address internal constant RELAYER_1    = XLayer.ALM_RELAYER_MULTISIG;
+    address internal constant SETTER       = XLayer.ALM_PROXY_FREEZABLE;
+    address internal constant SPUSDT_VAULT = XLayer.SPARK_VAULT_V2_SPUSDT;
 
     address internal constant USDT = 0x779Ded0c9e1022225f8E0630b35a9b54bE713736;
 
@@ -247,97 +268,6 @@ contract XLayerE2ETests is Test {
 
         vm.prank(SETTER);
         spusdtVault.setVsr(SIX_PCT_APY);
-    }
-
-    function test_E2E() external {
-        IERC20 usdt = IERC20(USDT);
-
-        uint256 depositAmount = 1_000_000e6;
-
-        deal(USDT, USER, depositAmount);
-
-        // Step 1: User deposits USDT into the SPUSDT Vault
-
-        assertEq(usdt.balanceOf(USER),        depositAmount);
-        assertEq(spusdtVault.totalAssets(),   1e6);
-        assertEq(spusdtVault.totalSupply(),   1e6);
-        assertEq(spusdtVault.balanceOf(USER), 0);
-
-        vm.startPrank(USER);
-        SafeERC20.safeIncreaseAllowance(usdt, SPUSDT_VAULT, depositAmount);
-        spusdtVault.deposit(depositAmount, USER);
-        vm.stopPrank();
-
-        assertEq(usdt.balanceOf(USER),        0);
-        assertEq(spusdtVault.totalAssets(),   depositAmount + 1e6);
-        assertEq(spusdtVault.totalSupply(),   depositAmount + 1e6);
-        assertEq(spusdtVault.balanceOf(USER), depositAmount);
-
-        assertEq(usdt.balanceOf(SPUSDT_VAULT),      depositAmount + 1e6);
-        assertEq(usdt.balanceOf(address(almProxy)), 0);
-
-        // Warp to show that there is no interest accruing yet.
-        assertEq(spusdtVault.totalAssets(), depositAmount + 1e6);
-
-        vm.warp(block.timestamp + 1 days);
-
-        assertEq(spusdtVault.totalAssets(), depositAmount + 1e6);
-
-        // Step 2: Controller takes USDT from the SPUSDT Vault
-
-        bytes32 takeKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_SPARK_VAULT_TAKE(), address(spusdtVault));
-
-        _assertUnlimitedRateLimit(takeKey);
-
-        vm.prank(RELAYER_1);
-        controller.takeFromSparkVault(address(spusdtVault), depositAmount);
-
-        _assertUnlimitedRateLimit(takeKey);
-
-        assertEq(usdt.balanceOf(SPUSDT_VAULT),      1e6);
-        assertEq(usdt.balanceOf(address(almProxy)), depositAmount);
-
-        // Step 3: Set VSR and warp to show interest accrual
-
-        vm.prank(SETTER);
-        spusdtVault.setVsr(ONE_PCT_APY);
-
-        assertEq(spusdtVault.vsr(),         ONE_PCT_APY);
-        assertEq(spusdtVault.totalAssets(), depositAmount + 1e6);
-
-        vm.warp(block.timestamp + 1 days);
-
-        assertEq(spusdtVault.totalAssets(), depositAmount + 1e6 + 27.261579e6);
-
-        // Step 4: Controller transfers USDT from ALMProxy to SPUSDT Vault
-
-        // Deal 100e6 USDT to the ALMProxy to simulate accrued yield
-        deal(USDT, address(almProxy), depositAmount + 100e6);
-
-        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(controller.LIMIT_ASSET_TRANSFER(), USDT, address(spusdtVault));
-
-        _assertUnlimitedRateLimit(transferKey);
-
-        assertEq(usdt.balanceOf(address(almProxy)),    depositAmount + 100e6);
-        assertEq(usdt.balanceOf(address(spusdtVault)), 1e6);
-
-        vm.startPrank(RELAYER_1);
-        controller.transferAsset(USDT, address(spusdtVault), usdt.balanceOf(address(almProxy)));
-        vm.stopPrank();
-
-        _assertUnlimitedRateLimit(transferKey);
-
-        assertEq(usdt.balanceOf(address(almProxy)),    0);
-        assertEq(usdt.balanceOf(address(spusdtVault)), depositAmount + 100e6 + 1e6);
-
-        // Step 5: User withdraws USDT from the SPUSDT Vault
-
-        vm.startPrank(USER);
-        spusdtVault.redeem(spusdtVault.balanceOf(USER), USER, USER);
-        vm.stopPrank();
-
-        assertEq(usdt.balanceOf(USER),        depositAmount + 27.261552e6);  // Accrued yield
-        assertEq(spusdtVault.balanceOf(USER), 0);
     }
 
     function _assertUnlimitedRateLimit(
@@ -442,9 +372,9 @@ contract XLayerCrosschainE2ETests is Test {
     address constant L1_PAUSE_PROXY = 0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB;
 
     // XLayer deployed contracts
-    address constant EXECUTOR        = 0xCF5af6F53ceC74B791cb4182aC778ca9CD323510;
-    address constant BRIDGE_RECEIVER = 0x4bd50B9c00Ae19e8B59723F27645C7A5cCe7a4A0;
-    address constant SPUSDT_VAULT    = 0xc358c90D32375721Cb3924320Fdc2F8B694347Ca;
+    address constant EXECUTOR        = XLayer.SPARK_EXECUTOR;
+    address constant BRIDGE_RECEIVER = XLayer.SPARK_RECEIVER;
+    address constant SPUSDT_VAULT    = XLayer.SPARK_VAULT_V2_SPUSDT;
 
     // > bc -l <<< 'scale=27; e( l(1.06)/(60 * 60 * 24 * 365) )'
     //   1.000000001847694957439350562

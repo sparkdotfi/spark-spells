@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { XLayer }   from "spark-address-registry/XLayer.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
@@ -40,9 +41,9 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
     address internal constant ANCHORAGE_FEES_RECIPIENT = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant INCENTIVES_RECIPIENT     = 0x2002020202020202020202020202020202020202;  // TODO: change
+    address internal constant OLD_MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
     address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
-    address internal constant XLAYER_ALM_PROXY         = 0x83A914C361bB729EB6BEBC8C7bA993667A0E6Df8;
 
     uint256 internal constant ANCHORAGE_FEES_AMOUNT         = 500_000e18;
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
@@ -79,7 +80,7 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
 
         almController.setLayerZeroRecipient(
             LZ_ENDPOINT_XLAYER,
-            bytes32(uint256(uint160(XLAYER_ALM_PROXY)))
+            bytes32(uint256(uint160(XLayer.ALM_PROXY)))
         );
 
         rateLimits.setRateLimitData(
@@ -90,8 +91,8 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
 
         // Deactivate Old USDT Morpho V2 Vault.
 
-        bytes32 MORPHO_VAULT_V2_USDT_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(almController.LIMIT_4626_DEPOSIT(),  Ethereum.MORPHO_VAULT_V2_USDT);
-        bytes32 MORPHO_VAULT_V2_USDT_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(almController.LIMIT_4626_WITHDRAW(), Ethereum.MORPHO_VAULT_V2_USDT);
+        bytes32 MORPHO_VAULT_V2_USDT_DEPOSIT_KEY  = RateLimitHelpers.makeAddressKey(almController.LIMIT_4626_DEPOSIT(),  OLD_MORPHO_VAULT_V2_USDT);
+        bytes32 MORPHO_VAULT_V2_USDT_WITHDRAW_KEY = RateLimitHelpers.makeAddressKey(almController.LIMIT_4626_WITHDRAW(), OLD_MORPHO_VAULT_V2_USDT);
 
         rateLimits.setRateLimitData(MORPHO_VAULT_V2_USDT_DEPOSIT_KEY,  0, 0);
         rateLimits.setRateLimitData(MORPHO_VAULT_V2_USDT_WITHDRAW_KEY, 0, 0);

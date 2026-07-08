@@ -15,6 +15,7 @@ import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/
 interface IALMProxyFreezableLike {
     function ALLOCATOR_ROLE() external returns (bytes32);
     function DEFAULT_ADMIN_ROLE() external returns (bytes32);
+    function doCall(address target, bytes memory data) external returns (bytes memory result);
     function FREEZER_ROLE() external returns (bytes32);
     function hasRole(bytes32 role, address account) external view returns (bool);
 }

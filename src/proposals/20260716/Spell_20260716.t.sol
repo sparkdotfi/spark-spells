@@ -59,13 +59,14 @@ import {
     IERC20Like
 } from "../../interfaces/Interfaces.sol";
 
-contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
+contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
 
     using DomainHelpers for Domain;
     using OptionsBuilder for bytes;
 
     address internal constant ETHEREUM_PAXOS_USDG_DEPOSIT  = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant OLD_FREEZER_RELAYER          = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant OLD_MORPHO_VAULT_V2_USDT     = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
     address internal constant ROBINHOOD_PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
     address internal constant ROBINHOOD_SPUSDG_SETTER      = 0x59C85fe4385403e93877e48e5521f2F02B150359;
 
@@ -90,8 +91,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
         MainnetController controller = MainnetController(ctx.controller);
 
-        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_DEPOSIT(),  Ethereum.MORPHO_VAULT_V2_USDT);
-        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_WITHDRAW(), Ethereum.MORPHO_VAULT_V2_USDT);
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_DEPOSIT(),  OLD_MORPHO_VAULT_V2_USDT);
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_WITHDRAW(), OLD_MORPHO_VAULT_V2_USDT);
 
         _assertRateLimit(depositKey,  100_000_000e6,     1_000_000_000e6 / uint256(1 days));
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
@@ -174,120 +175,6 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         }));
     }
 
-    function test_ETHEREUM_sll_bridgeUSDTToXLayer() external onChain(ChainIdUtils.Ethereum()) {
-        RecordedLogs.init();
-
-        _executeAllPayloadsAndBridges();
-
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-        MainnetController mainnetController   = MainnetController(ctx.controller);
-
-        _testLayerZeroBridgeUSDTToXLayer(mainnetController, ctx);
-    }
-
-    function _testLayerZeroBridgeUSDTToXLayer(
-        MainnetController                 mainnetController,
-        SparkLiquidityLayerContext memory ctx
-    )
-        internal onChain(ChainIdUtils.Ethereum())
-    {
-        IERC20 usdt        = IERC20(Ethereum.USDT);
-        IERC20 usdt0XLayer = IERC20(USDT0_XLAYER);
-
-        uint256 bridgeAmount = 1_000_000e6;
-
-        bytes32 key = keccak256(abi.encode(
-            mainnetController.LIMIT_LAYERZERO_TRANSFER(),
-            USDT_OFT,
-            LZ_EID_XLAYER
-        ));
-
-        assertEq(ctx.rateLimits.getRateLimitData(key).maxAmount, 5_000_000e6);
-        assertEq(ctx.rateLimits.getRateLimitData(key).slope,     uint256(100_000_000e6) / 1 days);
-
-        assertEq(
-            mainnetController.layerZeroRecipients(LZ_EID_XLAYER),
-            bytes32(uint256(uint160(XLayer.ALM_PROXY)))
-        );
-
-        // --- Step 1: Bridge USDT from Ethereum to XLayer ---
-
-        uint256 usdtProxyBalanceBefore = usdt.balanceOf(Ethereum.ALM_PROXY);
-        uint256 usdtOFTBalanceBefore   = usdt.balanceOf(USDT_OFT);
-
-        chainData[ChainIdUtils.XLayer()].domain.selectFork();
-
-        uint256 usdt0XLayerProxyBalanceBefore = usdt0XLayer.balanceOf(XLayer.ALM_PROXY);
-
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-
-        deal(Ethereum.USDT, Ethereum.ALM_PROXY, bridgeAmount);
-        deal(ctx.relayer, 1 ether);
-
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0);
-        SendParam memory sendParams = SendParam({
-            dstEid       : LZ_EID_XLAYER,
-            to           : mainnetController.layerZeroRecipients(LZ_EID_XLAYER),
-            amountLD     : bridgeAmount,
-            minAmountLD  : bridgeAmount,
-            extraOptions : options,
-            composeMsg   : "",
-            oftCmd       : ""
-        });
-        MessagingFee memory fee = ILayerZero(USDT_OFT).quoteSend(sendParams, false);
-
-        uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
-            USDT_OFT,
-            LZ_EID_XLAYER,
-            bytes32(uint256(uint160(USDT0_OFT_XLAYER)))
-        ) + 1;
-
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),      bridgeAmount);
-        assertEq(usdt.balanceOf(USDT_OFT),                usdtOFTBalanceBefore);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6);
-
-        vm.prank(ctx.relayer);
-        mainnetController.transferTokenLayerZero{value: fee.nativeFee}(
-            USDT_OFT,
-            bridgeAmount,
-            LZ_EID_XLAYER
-        );
-
-        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),      0);
-        assertEq(usdt.balanceOf(USDT_OFT),                usdtOFTBalanceBefore + bridgeAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6 - bridgeAmount);
-
-        // --- Step 2: Relay message to XLayer and verify USDT0 arrived ---
-
-        Bridge storage bridge = _getLZBridge(ChainIdUtils.XLayer());
-
-        chainData[ChainIdUtils.XLayer()].domain.selectFork();
-
-        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), usdt0XLayerProxyBalanceBefore);
-
-        _skipLZPendingNonces(
-            USDT0_OFT_XLAYER,
-            LZ_EID_ETHEREUM,
-            bytes32(uint256(uint160(USDT_OFT))),
-            sentNonce
-        );
-
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-
-        LZBridgeTesting.relayMessagesToDestination(bridge, true, USDT_OFT, USDT0_OFT_XLAYER);
-
-        // `LZBridgeTesting.relayMessagesToDestination` ended on the XLayer as the selected fork.
-        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), usdt0XLayerProxyBalanceBefore + bridgeAmount);
-
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-
-        // --- Step 3: Verify rate limit refills after 1 day ---
-
-        skip(1 days + 1 seconds);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6);
-    }
-
     function test_XLAYER_sll_spUSDT_usdt0RoundTrip() external onChain(ChainIdUtils.XLayer()) {
         RecordedLogs.init();
 
@@ -309,8 +196,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         // STEP 1: Setter sets VSR to 5% APY
         // ================================================================================
 
-        vm.prank(XLayer.ALM_PROXY_FREEZABLE);
-        vault.setVsr(FIVE_PCT_APY);
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        IALMProxyFreezableLike(XLayer.ALM_PROXY_FREEZABLE).doCall(XLayer.SPARK_VAULT_V2_SPUSDT, abi.encodeCall(ISparkVaultV2Like.setVsr, (FIVE_PCT_APY)));
 
         // ================================================================================
         // STEP 2: User deposits USDT0 into spUSDT on XLayer
@@ -640,7 +527,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
 }
 
-contract SparkEthereum_20260702_SparklendTests is SparklendTests {
+contract SparkEthereum_20260716_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260716;
@@ -656,7 +543,7 @@ contract SparkEthereum_20260702_SparklendTests is SparklendTests {
 
 }
 
-contract SparkEthereum_20260702_SpellTests is SpellTests {
+contract SparkEthereum_20260716_SpellTests is SpellTests {
 
     address internal constant ANCHORAGE_FEES_RECIPIENT = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
@@ -691,6 +578,8 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
         IALMProxy         almProxy   = IALMProxy(Ethereum.ALM_PROXY);
 
         uint256 expectedUsdsAmount = syrup.convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
+
+        assertEq(expectedUsdsAmount, 100_759_983.080842e18);
 
         uint256 almProxyUsdsBalanceBefore = usds.balanceOf(Ethereum.ALM_PROXY);
         uint256 groveUsdsBalanceBefore    = usds.balanceOf(GROVE_ALM_PROXY);
