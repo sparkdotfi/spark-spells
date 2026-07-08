@@ -8,14 +8,9 @@ import { console } from "forge-std/console.sol";
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata }    from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
-import { Avalanche } from "spark-address-registry/Avalanche.sol";
-import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
-import { Optimism }  from "spark-address-registry/Optimism.sol";
 import { Robinhood } from "spark-address-registry/Robinhood.sol";
-import { SparkLend } from "spark-address-registry/SparkLend.sol";
-import { Unichain }  from "spark-address-registry/Unichain.sol";
+import { XLayer }    from "spark-address-registry/XLayer.sol";
 
 import { IALMProxy }                           from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { ILayerZero, MessagingFee, SendParam } from "spark-alm-controller/src/interfaces/ILayerZero.sol";
@@ -65,8 +60,16 @@ import {
 
 contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
 
+    using DomainHelpers for Domain;
+    using OptionsBuilder for bytes;
+
+    address internal constant ETHEREUM_PAXOS_USDG_DEPOSIT  = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant OLD_FREEZER_RELAYER          = 0x59C85fe4385403e93877e48e5521f2F02B150359;
     address internal constant ROBINHOOD_PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
+
+    // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
+    //   1.000000001547125957863212167
+    uint256 internal constant FIVE_PCT_APY = 1.000000001547125957863212167e27;
 
     constructor() {
         _spellId   = 20260716;
@@ -76,7 +79,8 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xcc7529473B850103524905D3914470898aDe8747;
+        // chainData[ChainIdUtils.Robinhood()].payload = 0xcc7529473B850103524905D3914470898aDe8747;
     }
 
     function test_ETHEREUM_sll_deactivateOldMorphoUsdtVault() external onChain(ChainIdUtils.Ethereum()) {
@@ -146,6 +150,344 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         }));
     }
 
+    function test_ETHEREUM_sll_enableUsdgTransferToPaxosDeposit() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDG,
+            ETHEREUM_PAXOS_USDG_DEPOSIT
+        );
+
+        _assertRateLimit(transferKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(transferKey, 50_000_000e6, 250_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : Ethereum.USDG,
+            destination    : ETHEREUM_PAXOS_USDG_DEPOSIT,
+            transferKey    : transferKey,
+            transferAmount : 50_000_000e6
+        }));
+    }
+
+    function test_ETHEREUM_sll_bridgeUSDTToXLayer() external onChain(ChainIdUtils.Ethereum()) {
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+        MainnetController mainnetController   = MainnetController(ctx.controller);
+
+        _testLayerZeroBridgeUSDTToXLayer(mainnetController, ctx);
+    }
+
+    function _testLayerZeroBridgeUSDTToXLayer(
+        MainnetController                 mainnetController,
+        SparkLiquidityLayerContext memory ctx
+    )
+        internal onChain(ChainIdUtils.Ethereum())
+    {
+        IERC20 usdt        = IERC20(Ethereum.USDT);
+        IERC20 usdt0XLayer = IERC20(USDT0_XLAYER);
+
+        uint256 bridgeAmount = 1_000_000e6;
+
+        bytes32 key = keccak256(abi.encode(
+            mainnetController.LIMIT_LAYERZERO_TRANSFER(),
+            USDT_OFT,
+            LZ_EID_XLAYER
+        ));
+
+        assertEq(ctx.rateLimits.getRateLimitData(key).maxAmount, 5_000_000e6);
+        assertEq(ctx.rateLimits.getRateLimitData(key).slope,     uint256(100_000_000e6) / 1 days);
+
+        assertEq(
+            mainnetController.layerZeroRecipients(LZ_EID_XLAYER),
+            bytes32(uint256(uint160(XLayer.ALM_PROXY)))
+        );
+
+        // --- Step 1: Bridge USDT from Ethereum to XLayer ---
+
+        uint256 usdtProxyBalanceBefore = usdt.balanceOf(Ethereum.ALM_PROXY);
+        uint256 usdtOFTBalanceBefore   = usdt.balanceOf(USDT_OFT);
+
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
+
+        uint256 usdt0XLayerProxyBalanceBefore = usdt0XLayer.balanceOf(XLayer.ALM_PROXY);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, bridgeAmount);
+        deal(ctx.relayer, 1 ether);
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0);
+        SendParam memory sendParams = SendParam({
+            dstEid       : LZ_EID_XLAYER,
+            to           : mainnetController.layerZeroRecipients(LZ_EID_XLAYER),
+            amountLD     : bridgeAmount,
+            minAmountLD  : bridgeAmount,
+            extraOptions : options,
+            composeMsg   : "",
+            oftCmd       : ""
+        });
+        MessagingFee memory fee = ILayerZero(USDT_OFT).quoteSend(sendParams, false);
+
+        uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
+            USDT_OFT,
+            LZ_EID_XLAYER,
+            bytes32(uint256(uint160(USDT0_OFT_XLAYER)))
+        ) + 1;
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),      bridgeAmount);
+        assertEq(usdt.balanceOf(USDT_OFT),                usdtOFTBalanceBefore);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6);
+
+        vm.prank(ctx.relayer);
+        mainnetController.transferTokenLayerZero{value: fee.nativeFee}(
+            USDT_OFT,
+            bridgeAmount,
+            LZ_EID_XLAYER
+        );
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),      0);
+        assertEq(usdt.balanceOf(USDT_OFT),                usdtOFTBalanceBefore + bridgeAmount);
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6 - bridgeAmount);
+
+        // --- Step 2: Relay message to XLayer and verify USDT0 arrived ---
+
+        Bridge storage bridge = _getLZBridge(ChainIdUtils.XLayer());
+
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), usdt0XLayerProxyBalanceBefore);
+
+        _skipLZPendingNonces(
+            USDT0_OFT_XLAYER,
+            LZ_EID_ETHEREUM,
+            bytes32(uint256(uint160(USDT_OFT))),
+            sentNonce
+        );
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        LZBridgeTesting.relayMessagesToDestination(bridge, true, USDT_OFT, USDT0_OFT_XLAYER);
+
+        // `LZBridgeTesting.relayMessagesToDestination` ended on the XLayer as the selected fork.
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), usdt0XLayerProxyBalanceBefore + bridgeAmount);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        // --- Step 3: Verify rate limit refills after 1 day ---
+
+        skip(1 days + 1 seconds);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(key), 5_000_000e6);
+    }
+
+    function test_XLAYER_sll_spUSDT_usdt0RoundTrip() external onChain(ChainIdUtils.XLayer()) {
+        RecordedLogs.init();
+
+        _executeAllPayloadsAndBridges();
+
+        ForeignController foreignController = ForeignController(XLayer.ALM_CONTROLLER);
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        IERC20            usdt0XLayer = IERC20(USDT0_XLAYER);
+        IERC20            usdt        = IERC20(Ethereum.USDT);
+        ISparkVaultV2Like vault       = ISparkVaultV2Like(XLayer.SPARK_VAULT_V2_SPUSDT);
+
+        Bridge storage lzBridge = _getLZBridge(ChainIdUtils.XLayer());
+
+        address user   = makeAddr("user");
+        uint256 amount = 1_000_000e6;
+
+        // ================================================================================
+        // STEP 1: Setter sets VSR to 5% APY
+        // ================================================================================
+
+        vm.prank(XLayer.ALM_PROXY_FREEZABLE);
+        vault.setVsr(FIVE_PCT_APY);
+
+        // ================================================================================
+        // STEP 2: User deposits USDT0 into spUSDT on XLayer
+        // ================================================================================
+
+        uint256 vaultUsdt0Starting = usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT);
+
+        deal(USDT0_XLAYER, user, amount);
+
+        assertEq(usdt0XLayer.balanceOf(user),                         amount);
+        assertEq(usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
+
+        vm.startPrank(user);
+        SafeERC20.safeIncreaseAllowance(usdt0XLayer, XLayer.SPARK_VAULT_V2_SPUSDT, amount);
+        uint256 userShares = vault.deposit(amount, user);
+        vm.stopPrank();
+
+        assertEq(usdt0XLayer.balanceOf(user),                         0);
+        assertEq(usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
+
+        // ================================================================================
+        // STEP 3: SLL takes USDT0 from spUSDT into ALMProxy on XLayer
+        // ================================================================================
+
+        uint256 xLayerProxyUsdt0Starting = usdt0XLayer.balanceOf(XLayer.ALM_PROXY);
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY),             xLayerProxyUsdt0Starting);
+        assertEq(usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount);
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        foreignController.takeFromSparkVault(XLayer.SPARK_VAULT_V2_SPUSDT, amount);
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY),             xLayerProxyUsdt0Starting + amount);
+        assertEq(usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
+
+        // ================================================================================
+        // STEP 4: USDT0 transferred to USDT0 OFT on XLayer (XLayer → Mainnet bridge)
+        // ================================================================================
+
+        uint64 sentNonce1 = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
+            USDT0_OFT_XLAYER,
+            LZ_EID_ETHEREUM,
+            bytes32(uint256(uint160(USDT_OFT)))
+        ) + 1;
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), xLayerProxyUsdt0Starting + amount);
+
+        deal(XLayer.ALM_RELAYER_MULTISIG, 0.1 ether);
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        foreignController.transferTokenLayerZero{value: 0.1 ether}(
+            USDT0_OFT_XLAYER,
+            amount,
+            LZ_EID_ETHEREUM
+        );
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), xLayerProxyUsdt0Starting);
+
+        // ================================================================================
+        // STEP 5: Relay message to Mainnet — USDT arrives in ALMProxy on Mainnet
+        // ================================================================================
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 ethProxyUsdtStarting = usdt.balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethOFTUsdtStarting   = usdt.balanceOf(USDT_OFT);
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting);
+
+        _skipLZPendingNonces(
+            USDT_OFT,
+            LZ_EID_XLAYER,
+            bytes32(uint256(uint160(USDT0_OFT_XLAYER))),
+            sentNonce1
+        );
+
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
+
+        LZBridgeTesting.relayMessagesToSource(lzBridge, true, USDT0_OFT_XLAYER, USDT_OFT);
+
+        // `LZBridgeTesting.relayMessagesToSource` ended on the Ethereum as the selected fork.
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
+
+        // ================================================================================
+        // STEP 6: Warp 10 days, deal additional $2k into mainnet ALMProxy
+        // ================================================================================
+
+        uint256 interest = 2_000e6;  // $2k covers real 10-day interest at 5% APY (~$1338)
+
+        skip(10 days);
+
+        // Also warp XLayer fork so the vault's VSR accrues over the same 10 days
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
+        skip(10 days);
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, ethProxyUsdtStarting + amount + interest);
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount + interest);
+
+        // ================================================================================
+        // STEP 7: USDT transferred to USDT OFT on Mainnet (Mainnet → XLayer bridge)
+        // ================================================================================
+
+        uint64 sentNonce2 = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
+            USDT_OFT,
+            LZ_EID_XLAYER,
+            bytes32(uint256(uint160(USDT0_OFT_XLAYER)))
+        ) + 1;
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting + amount + interest);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting - amount);
+
+        deal(Ethereum.ALM_RELAYER_MULTISIG, 0.1 ether);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        mainnetController.transferTokenLayerZero{value: 0.1 ether}(
+            USDT_OFT,
+            amount + interest,
+            LZ_EID_XLAYER
+        );
+
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY), ethProxyUsdtStarting);
+        assertEq(usdt.balanceOf(USDT_OFT),           ethOFTUsdtStarting + interest);
+
+        // ================================================================================
+        // STEP 8: Relay message to XLayer — USDT0 received in XLayer ALMProxy
+        // ================================================================================
+
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), xLayerProxyUsdt0Starting);
+
+        _skipLZPendingNonces(
+            USDT0_OFT_XLAYER,
+            LZ_EID_ETHEREUM,
+            bytes32(uint256(uint160(USDT_OFT))),
+            sentNonce2
+        );
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        LZBridgeTesting.relayMessagesToDestination(lzBridge, true, USDT_OFT, USDT0_OFT_XLAYER);
+
+        // `LZBridgeTesting.relayMessagesToDestination` ended on the XLayer as the selected fork.
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY), xLayerProxyUsdt0Starting + amount + interest);
+
+        // ================================================================================
+        // STEP 9: USDT0 transferAsset into spUSDT vault
+        // ================================================================================
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY),             xLayerProxyUsdt0Starting + amount + interest);
+        assertEq(usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting);
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        foreignController.transferAsset(USDT0_XLAYER, XLayer.SPARK_VAULT_V2_SPUSDT, amount + interest);
+
+        assertEq(usdt0XLayer.balanceOf(XLayer.ALM_PROXY),             xLayerProxyUsdt0Starting);
+        assertEq(usdt0XLayer.balanceOf(XLayer.SPARK_VAULT_V2_SPUSDT), vaultUsdt0Starting + amount + interest);
+
+        // ================================================================================
+        // STEP 10: User redeems all shares, gets more assets out
+        // ================================================================================
+
+        assertEq(usdt0XLayer.balanceOf(user), 0);
+        assertEq(vault.balanceOf(user),       userShares);
+
+        vm.prank(user);
+        vault.redeem(userShares, user, user);
+
+        // 1m + 10 days of interest at 5% APY
+        // bc -l <<< 'scale=27; e( l(1.000000001547125957863212448)*(60*60*24*10) )'
+        // 1.001337610630706965933736950
+        assertEq(usdt0XLayer.balanceOf(user), 1_001_337.610630e6);
+        assertEq(vault.balanceOf(user),       0);
+    }
+
 }
 
 contract SparkEthereum_20260702_SparklendTests is SparklendTests {
@@ -158,7 +500,8 @@ contract SparkEthereum_20260702_SparklendTests is SparklendTests {
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xcc7529473B850103524905D3914470898aDe8747;
+        // chainData[ChainIdUtils.Robinhood()].payload = 0xcc7529473B850103524905D3914470898aDe8747;
     }
 
 }
@@ -170,7 +513,6 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
     address internal constant INCENTIVES_RECIPIENT     = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
-    address internal constant XLAYER_ALM_PROXY         = 0x0000000000000000000000000000000000000064;  // TODO: change
 
     uint256 internal constant ANCHORAGE_FEES_AMOUNT         = 500_000e18;
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
@@ -187,7 +529,8 @@ contract SparkEthereum_20260702_SpellTests is SpellTests {
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload    = 0xcc7529473B850103524905D3914470898aDe8747;
+        // chainData[ChainIdUtils.Ethereum()].payload  = 0xcc7529473B850103524905D3914470898aDe8747;
+        // chainData[ChainIdUtils.Robinhood()].payload = 0xcc7529473B850103524905D3914470898aDe8747;
     }
 
     function test_ETHEREUM_sll_transferUsdsToGrove() external onChain(ChainIdUtils.Ethereum()) {
