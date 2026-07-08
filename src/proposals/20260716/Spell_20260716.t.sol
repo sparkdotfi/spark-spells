@@ -33,6 +33,7 @@ import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/confi
 import { WadRayMath }           from "sparklend-v1-core/protocol/libraries/math/WadRayMath.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
+import { DealUtils }    from "src/libraries/DealUtils.sol";
 
 import { SparklendTests }                                from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests, ILZEndpointExtended } from "src/test-harness/SparkLiquidityLayerTests.sol";
@@ -66,6 +67,7 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
     address internal constant ETHEREUM_PAXOS_USDG_DEPOSIT  = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant OLD_FREEZER_RELAYER          = 0x59C85fe4385403e93877e48e5521f2F02B150359;
     address internal constant ROBINHOOD_PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
+    address internal constant ROBINHOOD_SPUSDG_SETTER      = 0x59C85fe4385403e93877e48e5521f2F02B150359;
 
     // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
     //   1.000000001547125957863212167
@@ -486,6 +488,154 @@ contract SparkEthereum_20260702_SLLTests is SparkLiquidityLayerTests {
         // 1.001337610630706965933736950
         assertEq(usdt0XLayer.balanceOf(user), 1_001_337.610630e6);
         assertEq(vault.balanceOf(user),       0);
+    }
+
+    function test_ROBINHOOD_sll_spUSDGPaxosRoundTrip() external onChain(ChainIdUtils.Robinhood()) {
+        _executeAllPayloadsAndBridges();
+
+        ForeignController foreignController = ForeignController(Robinhood.ALM_CONTROLLER);
+        MainnetController mainnetController = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        IERC20            usdgRobinhood = IERC20(Robinhood.USDG);
+        IERC20            usdgMainnet   = IERC20(Ethereum.USDG);
+        ISparkVaultV2Like vault         = ISparkVaultV2Like(Robinhood.SPARK_VAULT_V2_SPUSDG);
+
+        address user     = makeAddr("user");
+        uint256 amount   = 1_000_000e6;
+        uint256 interest = 2_000e6;
+
+        // ================================================================================
+        // STEP 1: Setter sets VSR to 5% APY
+        // ================================================================================
+
+        vm.prank(ROBINHOOD_SPUSDG_SETTER);
+        vault.setVsr(FIVE_PCT_APY);
+
+        // ================================================================================
+        // STEP 2: User deposits USDG into spUSDG on Robinhood
+        // ================================================================================
+
+        uint256 vaultUsdgStarting = usdgRobinhood.balanceOf(Robinhood.SPARK_VAULT_V2_SPUSDG);
+
+        if (!DealUtils.patchedDeal(Robinhood.USDG, user, amount)) {
+            deal(Robinhood.USDG, user, amount);
+        }
+
+        assertEq(usdgRobinhood.balanceOf(user),                            amount);
+        assertEq(usdgRobinhood.balanceOf(Robinhood.SPARK_VAULT_V2_SPUSDG), vaultUsdgStarting);
+
+        vm.startPrank(user);
+        SafeERC20.safeIncreaseAllowance(usdgRobinhood, Robinhood.SPARK_VAULT_V2_SPUSDG, amount);
+        uint256 userShares = vault.deposit(amount, user);
+        vm.stopPrank();
+
+        assertEq(usdgRobinhood.balanceOf(user),                            0);
+        assertEq(usdgRobinhood.balanceOf(Robinhood.SPARK_VAULT_V2_SPUSDG), vaultUsdgStarting + amount);
+
+        // ================================================================================
+        // STEP 3: Controller takes USDG from spUSDG into ALMProxy on Robinhood
+        // ================================================================================
+
+        uint256 robinhoodProxyUsdgStarting = usdgRobinhood.balanceOf(Robinhood.ALM_PROXY);
+
+        vm.prank(Robinhood.ALM_RELAYER_MULTISIG);
+        foreignController.takeFromSparkVault(Robinhood.SPARK_VAULT_V2_SPUSDG, amount);
+
+        assertEq(usdgRobinhood.balanceOf(Robinhood.ALM_PROXY),             robinhoodProxyUsdgStarting + amount);
+        assertEq(usdgRobinhood.balanceOf(Robinhood.SPARK_VAULT_V2_SPUSDG), vaultUsdgStarting);
+
+        // ================================================================================
+        // STEP 4: Controller uses transferAsset to send USDG to the Paxos deposit address on Robinhood
+        // ================================================================================
+
+        uint256 robinhoodPaxosUsdgStarting = usdgRobinhood.balanceOf(ROBINHOOD_PAXOS_USDG_DEPOSIT);
+
+        vm.prank(Robinhood.ALM_RELAYER_MULTISIG);
+        foreignController.transferAsset(Robinhood.USDG, ROBINHOOD_PAXOS_USDG_DEPOSIT, amount);
+
+        assertEq(usdgRobinhood.balanceOf(Robinhood.ALM_PROXY),          robinhoodProxyUsdgStarting);
+        assertEq(usdgRobinhood.balanceOf(ROBINHOOD_PAXOS_USDG_DEPOSIT), robinhoodPaxosUsdgStarting + amount);
+
+        // ================================================================================
+        // STEP 5: Paxos redeems the Robinhood-side USDG off-chain — deal the transferred
+        //         amount onto the Mainnet ALMProxy to simulate settlement
+        // ================================================================================
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 mainnetProxyUsdgStarting = usdgMainnet.balanceOf(Ethereum.ALM_PROXY);
+
+        deal(Ethereum.USDG, Ethereum.ALM_PROXY, mainnetProxyUsdgStarting + amount);
+
+        assertEq(usdgMainnet.balanceOf(Ethereum.ALM_PROXY), mainnetProxyUsdgStarting + amount);
+
+        // ================================================================================
+        // STEP 6: Warp 10 days, deal additional $2k interest into the Mainnet ALMProxy
+        // ================================================================================
+
+        skip(10 days);
+
+        // Also warp the Robinhood fork so the vault's VSR accrues over the same 10 days
+        chainData[ChainIdUtils.Robinhood()].domain.selectFork();
+        skip(10 days);
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        deal(Ethereum.USDG, Ethereum.ALM_PROXY, mainnetProxyUsdgStarting + amount + interest);
+
+        assertEq(usdgMainnet.balanceOf(Ethereum.ALM_PROXY), mainnetProxyUsdgStarting + amount + interest);
+
+        // ================================================================================
+        // STEP 7: Mainnet ALMProxy uses transferAsset to send USDG to the Paxos deposit
+        //         address on Mainnet
+        // ================================================================================
+
+        uint256 mainnetPaxosUsdgStarting = usdgMainnet.balanceOf(ETHEREUM_PAXOS_USDG_DEPOSIT);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        mainnetController.transferAsset(Ethereum.USDG, ETHEREUM_PAXOS_USDG_DEPOSIT, amount + interest);
+
+        assertEq(usdgMainnet.balanceOf(Ethereum.ALM_PROXY),          mainnetProxyUsdgStarting);
+        assertEq(usdgMainnet.balanceOf(ETHEREUM_PAXOS_USDG_DEPOSIT), mainnetPaxosUsdgStarting + amount + interest);
+
+        // ================================================================================
+        // STEP 8: Paxos redeems the Mainnet-side USDG off-chain — deal the amount + interest
+        //         back onto the Robinhood ALMProxy to simulate settlement back to Robinhood
+        // ================================================================================
+
+        chainData[ChainIdUtils.Robinhood()].domain.selectFork();
+
+        if (!DealUtils.patchedDeal(Robinhood.USDG, Robinhood.ALM_PROXY, robinhoodProxyUsdgStarting + amount + interest)) {
+            deal(Robinhood.USDG, Robinhood.ALM_PROXY, robinhoodProxyUsdgStarting + amount + interest);
+        }
+
+        assertEq(usdgRobinhood.balanceOf(Robinhood.ALM_PROXY), robinhoodProxyUsdgStarting + amount + interest);
+
+        // ================================================================================
+        // STEP 9: Foreign controller on Robinhood uses transferAsset to send the USDG back
+        //         into the spUSDG vault
+        // ================================================================================
+
+        vm.prank(Robinhood.ALM_RELAYER_MULTISIG);
+        foreignController.transferAsset(Robinhood.USDG, Robinhood.SPARK_VAULT_V2_SPUSDG, amount + interest);
+
+        assertEq(usdgRobinhood.balanceOf(Robinhood.ALM_PROXY),             robinhoodProxyUsdgStarting);
+        assertEq(usdgRobinhood.balanceOf(Robinhood.SPARK_VAULT_V2_SPUSDG), vaultUsdgStarting + amount + interest);
+
+        // ================================================================================
+        // STEP 10: User redeems all shares, gets more assets out due to accrued interest
+        // ================================================================================
+
+        assertEq(usdgRobinhood.balanceOf(user), 0);
+        assertEq(vault.balanceOf(user),         userShares);
+
+        vm.prank(user);
+        vault.redeem(userShares, user, user);
+
+        // 1m + 10 days of interest at 5% APY
+        // bc -l <<< 'scale=27; e( l(1.000000001547125957863212167)*(60*60*24*10) )'
+        // 1.001337610630706965933736950
+        assertEq(usdgRobinhood.balanceOf(user), 1_001_337.610630e6);
+        assertEq(vault.balanceOf(user),         0);
     }
 
 }
