@@ -528,7 +528,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    function test_E2E_sparkLiquidityLayerCrossChainSetup() external {
+    function test_E2E_sparkLiquidityLayerCCTPCrossChainSetup() external {
         _runE2ESLLCrossChainTestForAllDomains({ isPostExecution: false });
 
         _executeAllPayloadsAndBridges();
@@ -3646,7 +3646,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(maxTickSpacing, expectedMaxTickSpacing);
     }
 
-    function _testE2ESLLCrossChainForDomain(
+    function _testE2ESLLCCTPCrossChainForDomain(
         uint256           domainId,
         MainnetController mainnetController,
         ForeignController foreignController
@@ -3944,7 +3944,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         console2.log(prefix, "E2E cross chain tests starting");
 
         for (uint256 i = 0; i < allChains.length; ++i) {
-            if (allChains[i] == ChainIdUtils.Ethereum() || allChains[i] == ChainIdUtils.Gnosis()) continue;
+            if (
+                allChains[i] == ChainIdUtils.Ethereum() ||
+                allChains[i] == ChainIdUtils.Gnosis()   ||
+                allChains[i] == ChainIdUtils.XLayer()   ||
+                allChains[i] == ChainIdUtils.Robinhood()
+            ) continue;
 
             console2.log("Testing cross chain setup for", ChainIdUtils.toDomainString(allChains[i]));
 
@@ -3952,7 +3957,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             SparkLiquidityLayerContext memory domainCtx = _getSparkLiquidityLayerContext(domainChainId);
 
-            _testE2ESLLCrossChainForDomain(
+            _testE2ESLLCCTPCrossChainForDomain(
                 domainChainId,
                 MainnetController(isPostExecution ? ctxMainnet.controller : ctxMainnet.prevController),
                 ForeignController(isPostExecution ? domainCtx.controller  : domainCtx.prevController)

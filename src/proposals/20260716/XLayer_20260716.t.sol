@@ -96,7 +96,7 @@ contract XLayerConfigTests is Test {
         assertEq(controller.getRoleMemberCount(FREEZER_ROLE),       1);
         assertEq(controller.getRoleMemberCount(RELAYER_ROLE),       2);
 
-        // Spark Savings USDG Vault roles
+        // Spark Savings USDT Vault roles
         assertEq(spusdtVault.hasRole(DEFAULT_ADMIN_ROLE,        EXECUTOR),  true);
         assertEq(spusdtVault.hasRole(spusdtVault.SETTER_ROLE(), SETTER),    true);
         assertEq(spusdtVault.hasRole(spusdtVault.TAKER_ROLE(),  ALM_PROXY), true);
@@ -208,31 +208,31 @@ contract XLayerE2ETests is Test {
     }
 
     function test_boundary_depositCap() external {
-        IERC20 usdg = IERC20(USDT);
+        IERC20 usdt = IERC20(USDT);
 
         uint256 depositCap = 750_000_000e6;
 
-        deal(USDT, USER, depositCap);  // SPUSDG Vault already has 8.01e6 of USDG.
+        deal(USDT, USER, depositCap);
 
         vm.startPrank(USER);
-        SafeERC20.safeIncreaseAllowance(usdg, SPUSDT_VAULT, depositCap);
+        SafeERC20.safeIncreaseAllowance(usdt, SPUSDT_VAULT, depositCap);
         vm.expectRevert("SparkVault/deposit-cap-exceeded");
         spusdtVault.deposit(depositCap, USER);
         vm.stopPrank();
 
         deal(USDT, USER, depositCap - 1e6);
 
-        assertEq(usdg.balanceOf(USER),        depositCap - 1e6);
+        assertEq(usdt.balanceOf(USER),        depositCap - 1e6);
         assertEq(spusdtVault.totalAssets(),   1e6);
         assertEq(spusdtVault.totalSupply(),   1e6);
         assertEq(spusdtVault.balanceOf(USER), 0);
 
         vm.startPrank(USER);
-        SafeERC20.safeIncreaseAllowance(usdg, SPUSDT_VAULT, depositCap - 1e6);
+        SafeERC20.safeIncreaseAllowance(usdt, SPUSDT_VAULT, depositCap - 1e6);
         spusdtVault.deposit(depositCap - 1e6, USER);
         vm.stopPrank();
 
-        assertEq(usdg.balanceOf(USER),        0);
+        assertEq(usdt.balanceOf(USER),        0);
         assertEq(spusdtVault.totalAssets(),   depositCap);
         assertEq(spusdtVault.totalSupply(),   depositCap);
         assertEq(spusdtVault.balanceOf(USER), depositCap - 1e6);
@@ -256,7 +256,7 @@ contract XLayerE2ETests is Test {
 
         deal(USDT, USER, depositAmount);
 
-        // Step 1: User deposits USDG into the SPUSDG Vault
+        // Step 1: User deposits USDT into the SPUSDT Vault
 
         assertEq(usdt.balanceOf(USER),        depositAmount);
         assertEq(spusdtVault.totalAssets(),   1e6);
@@ -309,9 +309,9 @@ contract XLayerE2ETests is Test {
 
         assertEq(spusdtVault.totalAssets(), depositAmount + 1e6 + 27.261579e6);
 
-        // Step 4: Controller transfers USDG from ALMProxy to SPUSDG Vault
+        // Step 4: Controller transfers USDT from ALMProxy to SPUSDT Vault
 
-        // Deal 100e6 USDG to the ALMProxy to simulate accrued yield
+        // Deal 100e6 USDT to the ALMProxy to simulate accrued yield
         deal(USDT, address(almProxy), depositAmount + 100e6);
 
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(controller.LIMIT_ASSET_TRANSFER(), USDT, address(spusdtVault));
@@ -330,7 +330,7 @@ contract XLayerE2ETests is Test {
         assertEq(usdt.balanceOf(address(almProxy)),    0);
         assertEq(usdt.balanceOf(address(spusdtVault)), depositAmount + 100e6 + 1e6);
 
-        // Step 5: User withdraws USDG from the SPUSDG Vault
+        // Step 5: User withdraws USDT from the SPUSDT Vault
 
         vm.startPrank(USER);
         spusdtVault.redeem(spusdtVault.balanceOf(USER), USER, USER);

@@ -82,7 +82,7 @@ library DealUtils {
             // USDG
             if (asset == USDG_ROBINHOOD) {
                 VM.prank(amount > startingBalance ? USDG_ROBINHOOD_WHALE : user);
-                IERC20(asset).transfer(amount > startingBalance ? user : USDG_ROBINHOOD_WHALE, amount - startingBalance);
+                IERC20(asset).transfer(amount > startingBalance ? user : USDG_ROBINHOOD_WHALE, amount > startingBalance ? amount - startingBalance : startingBalance - amount);
                 return true;
             }
         }
