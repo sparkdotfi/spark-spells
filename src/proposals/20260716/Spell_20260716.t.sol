@@ -64,8 +64,8 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
     using DomainHelpers for Domain;
     using OptionsBuilder for bytes;
 
-    address internal constant OLD_FREEZER_RELAYER_SETTER      = 0x59C85fe4385403e93877e48e5521f2F02B150359;
-    address internal constant OLD_MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
+    address internal constant OLD_FREEZER_RELAYER_SETTER = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant OLD_MORPHO_VAULT_V2_USDT   = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
 
     // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
     //   1.000000001547125957863212167
@@ -640,9 +640,11 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
         IALMProxy         almProxy   = IALMProxy(Ethereum.ALM_PROXY);
 
-        uint256 expectedUsdsAmount = syrup.convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
+        uint256 usdsTotalSupplyBefore = usds.totalSupply();
+        uint256 expectedUsdsAmount    = syrup.convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
 
-        assertEq(expectedUsdsAmount, 100_781_916.482416e18);
+        assertEq(usdsTotalSupplyBefore, 7_571_164_848.481782272550717411e18);
+        assertEq(expectedUsdsAmount,    100_781_916.482416e18);
 
         uint256 almProxyUsdsBalanceBefore = usds.balanceOf(Ethereum.ALM_PROXY);
         uint256 groveUsdsBalanceBefore    = usds.balanceOf(GROVE_ALM_PROXY);
@@ -660,6 +662,7 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
 
         assertEq(usds.balanceOf(Ethereum.ALM_PROXY), almProxyUsdsBalanceBefore);
         assertEq(usds.balanceOf(GROVE_ALM_PROXY),    groveUsdsBalanceBefore + expectedUsdsAmount);
+        assertEq(usds.totalSupply(),                 usdsTotalSupplyBefore + expectedUsdsAmount);
     }
 
     function test_ETHEREUM_sparkTreasury_transfers() external onChain(ChainIdUtils.Ethereum()) {
@@ -670,10 +673,10 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
         uint256 assetFoundationBalanceBefore        = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
         uint256 almOpsBalanceBefore                 = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
-        assertEq(sparkProxyBalanceBefore,             39_309_297.249708907368137212e18);
-        assertEq(foundationBalanceBefore,             311_390.0222e18);
-        assertEq(assetFoundationBalanceBefore,        155_000e18);
-        assertEq(almOpsBalanceBefore,                 0);
+        assertEq(sparkProxyBalanceBefore,      39_309_297.249708907368137212e18);
+        assertEq(foundationBalanceBefore,      311_390.0222e18);
+        assertEq(assetFoundationBalanceBefore, 155_000e18);
+        assertEq(almOpsBalanceBefore,          0);
 
         _executeAllPayloadsAndBridges();
 

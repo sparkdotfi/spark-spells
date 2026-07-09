@@ -155,6 +155,9 @@ contract XLayerConfigTests is Test {
         assertEq(spusdtVault.chi(),               1e27);
         assertEq(spusdtVault.vsr(),               1e27);
         assertEq(spusdtVault.minVsr(),            1e27);
+
+        // Vault is seeded to address(1)
+        assertEq(spusdtVault.balanceOf(address(1)), 1e6);
     }
 
     function test_rateLimits_config() external view {
