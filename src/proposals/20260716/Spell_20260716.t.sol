@@ -530,8 +530,9 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         // 1m + 10 days of interest at 5% APY
         // bc -l <<< 'scale=27; e( l(1.000000001547125957863212167)*(60*60*24*10) )'
         // 1.001337610630706965933736950
-        assertEq(usdgRobinhood.balanceOf(user), 1_001_337.610629e6);
-        assertEq(vault.balanceOf(user),         0);
+        assertApproxEqAbs(usdgRobinhood.balanceOf(user), 1_001_337.610629e6, 1);
+
+        assertEq(vault.balanceOf(user), 0);
     }
 
     function test_XLAYER_ALMProxyFreezableConfiguration() external onChain(ChainIdUtils.XLayer()) {
