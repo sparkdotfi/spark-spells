@@ -38,9 +38,7 @@ import { ISyrupLike } from "src/interfaces/Interfaces.sol";
  */
 contract SparkEthereum_20260716 is SparkPayloadEthereum {
 
-    address internal constant ANCHORAGE_FEES_RECIPIENT = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
-    address internal constant INCENTIVES_RECIPIENT     = 0x2002020202020202020202020202020202020202;  // TODO: change
     address internal constant OLD_MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
     address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
@@ -97,18 +95,12 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
         rateLimits.setRateLimitData(MORPHO_VAULT_V2_USDT_DEPOSIT_KEY,  0, 0);
         rateLimits.setRateLimitData(MORPHO_VAULT_V2_USDT_WITHDRAW_KEY, 0, 0);
 
-        // USDS Transfer to Spark Foundation for Incentives.
-
-        IERC20(Ethereum.USDS).transfer(INCENTIVES_RECIPIENT, INCENTIVES_AMOUNT);
-
         // USDS Transfer to Spark Assets Foundation for Anchorage Fees.
-
-        IERC20(Ethereum.USDS).transfer(ANCHORAGE_FEES_RECIPIENT, ANCHORAGE_FEES_AMOUNT);
-
+        // USDS Transfer to Spark Foundation for Incentives.
         // Grants for Spark Foundation and Spark Assets Foundation (Exec).
 
-        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG,       FOUNDATION_GRANT_AMOUNT);
-        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG, ASSET_FOUNDATION_GRANT_AMOUNT);
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_FOUNDATION_MULTISIG,       FOUNDATION_GRANT_AMOUNT + INCENTIVES_AMOUNT);
+        IERC20(Ethereum.USDS).transfer(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG, ASSET_FOUNDATION_GRANT_AMOUNT + ANCHORAGE_FEES_AMOUNT);
 
         // Transfer USDS for Buybacks (Exec).
 

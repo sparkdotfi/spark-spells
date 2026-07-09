@@ -18,7 +18,7 @@ interface IALMProxyFreezableLike {
  * @author Phoenix Labs
  * @notice Spark Savings - Deploy spUSDT.
  * Forum:  https://forum.skyeco.com/t/july-16-2026-proposed-changes-to-spark-for-upcoming-spell/28029
- * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xd177bc28b65afb23dc39a5e7cfdded7084b3b722b230e08d7067b68fa0f4486a
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xdde478db4ba5882a5d48d19fdbae057fd703688e4f1e16fb673407fc08476a9f
  */
 contract SparkXLayer_20260716 {
 

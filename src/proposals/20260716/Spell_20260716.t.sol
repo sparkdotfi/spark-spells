@@ -76,7 +76,7 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260716;
-        _blockDate = 1783438280;  // Jul-7-2026 9:01:20 PM +UTC
+        _blockDate = 1783581356;  // Jul-9-2026 7:15:56 AM +UTC
     }
 
     function setUp() public override {
@@ -521,8 +521,40 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         // 1m + 10 days of interest at 5% APY
         // bc -l <<< 'scale=27; e( l(1.000000001547125957863212167)*(60*60*24*10) )'
         // 1.001337610630706965933736950
-        assertEq(usdgRobinhood.balanceOf(user), 1_001_337.610630e6);
+        assertEq(usdgRobinhood.balanceOf(user), 1_001_337.610629e6);
         assertEq(vault.balanceOf(user),         0);
+    }
+
+    function test_XLAYER_ALMProxyFreezableConfiguration() external onChain(ChainIdUtils.XLayer()) {
+        IALMProxyFreezableLike proxy = IALMProxyFreezableLike(XLayer.ALM_PROXY_FREEZABLE);
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     XLayer.ALM_RELAYER_MULTISIG),          false);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     XLayer.ALM_BACKSTOP_RELAYER_MULTISIG), false);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),       XLayer.ALM_FREEZER_MULTISIG),          false);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), XLayer.SPARK_EXECUTOR),                true);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     XLayer.ALM_RELAYER_MULTISIG),          true);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     XLayer.ALM_BACKSTOP_RELAYER_MULTISIG), true);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),       XLayer.ALM_FREEZER_MULTISIG),          true);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), XLayer.SPARK_EXECUTOR),                true);
+    }
+
+    function test_Robinhood_ALMProxyFreezableConfiguration() external onChain(ChainIdUtils.Robinhood()) {
+        IALMProxyFreezableLike proxy = IALMProxyFreezableLike(Robinhood.ALM_PROXY_FREEZABLE);
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Robinhood.ALM_RELAYER_MULTISIG),          false);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG), false);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),       Robinhood.ALM_FREEZER_MULTISIG),          false);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Robinhood.SPARK_EXECUTOR),                true);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Robinhood.ALM_RELAYER_MULTISIG),          true);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(),     Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG), true);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),       Robinhood.ALM_FREEZER_MULTISIG),          true);
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Robinhood.SPARK_EXECUTOR),                true);
     }
 
 }
@@ -531,7 +563,7 @@ contract SparkEthereum_20260716_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260716;
-        _blockDate = 1783438280;  // Jul-7-2026 9:01:20 PM +UTC
+        _blockDate = 1783581356;  // Jul-9-2026 7:15:56 AM +UTC
     }
 
     function setUp() public override {
@@ -545,11 +577,9 @@ contract SparkEthereum_20260716_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20260716_SpellTests is SpellTests {
 
-    address internal constant ANCHORAGE_FEES_RECIPIENT = 0x2002020202020202020202020202020202020202;  // TODO: change
-    address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
-    address internal constant INCENTIVES_RECIPIENT     = 0x2002020202020202020202020202020202020202;  // TODO: change
-    address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
-    address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
+    address internal constant GROVE_ALM_PROXY    = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
+    address internal constant PAXOS_USDG_DEPOSIT = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
+    address internal constant USDT_OFT           = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
 
     uint256 internal constant ANCHORAGE_FEES_AMOUNT         = 500_000e18;
     uint256 internal constant ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
@@ -560,7 +590,7 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260716;
-        _blockDate = 1783438280;  // Jul-7-2026 9:01:20 PM +UTC
+        _blockDate = 1783581356;  // Jul-9-2026 7:15:56 AM +UTC
     }
 
     function setUp() public override {
@@ -579,7 +609,7 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
 
         uint256 expectedUsdsAmount = syrup.convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
 
-        assertEq(expectedUsdsAmount, 100_759_983.080842e18);
+        assertEq(expectedUsdsAmount, 100_781_916.482416e18);
 
         uint256 almProxyUsdsBalanceBefore = usds.balanceOf(Ethereum.ALM_PROXY);
         uint256 groveUsdsBalanceBefore    = usds.balanceOf(GROVE_ALM_PROXY);
@@ -606,24 +636,18 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
         uint256 foundationBalanceBefore             = usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
         uint256 assetFoundationBalanceBefore        = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
         uint256 almOpsBalanceBefore                 = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
-        uint256 incentivesRecipientBalanceBefore    = usds.balanceOf(INCENTIVES_RECIPIENT);
-        uint256 anchorageFeesRecipientBalanceBefore = usds.balanceOf(ANCHORAGE_FEES_RECIPIENT);
 
         assertEq(sparkProxyBalanceBefore,             39_309_297.249708907368137212e18);
-        assertEq(foundationBalanceBefore,             1_206_390.0222e18);
+        assertEq(foundationBalanceBefore,             311_390.0222e18);
         assertEq(assetFoundationBalanceBefore,        155_000e18);
         assertEq(almOpsBalanceBefore,                 0);
-        assertEq(incentivesRecipientBalanceBefore,    0);
-        assertEq(anchorageFeesRecipientBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),                     sparkProxyBalanceBefore - FOUNDATION_GRANT_AMOUNT - ASSET_FOUNDATION_GRANT_AMOUNT - SPK_BUYBACKS_AMOUNT - INCENTIVES_AMOUNT - ANCHORAGE_FEES_AMOUNT);
-        assertEq(usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG),       foundationBalanceBefore + FOUNDATION_GRANT_AMOUNT);
-        assertEq(usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG), assetFoundationBalanceBefore + ASSET_FOUNDATION_GRANT_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG),       foundationBalanceBefore + FOUNDATION_GRANT_AMOUNT + INCENTIVES_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG), assetFoundationBalanceBefore + ASSET_FOUNDATION_GRANT_AMOUNT + ANCHORAGE_FEES_AMOUNT);
         assertEq(usds.balanceOf(Ethereum.ALM_OPS_MULTISIG),                almOpsBalanceBefore + SPK_BUYBACKS_AMOUNT);
-        assertEq(usds.balanceOf(INCENTIVES_RECIPIENT),                     incentivesRecipientBalanceBefore + INCENTIVES_AMOUNT);
-        assertEq(usds.balanceOf(ANCHORAGE_FEES_RECIPIENT),                 anchorageFeesRecipientBalanceBefore + ANCHORAGE_FEES_AMOUNT);
     }
 
 }

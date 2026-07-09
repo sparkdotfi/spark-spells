@@ -9,6 +9,16 @@ import { Robinhood } from "spark-address-registry/Robinhood.sol";
 
 import { SLLHelpers } from "../../libraries/SLLHelpers.sol";
 
+interface IALMProxyFreezableLike {
+
+    function ALLOCATOR_ROLE() external view returns (bytes32);
+
+    function FREEZER_ROLE() external view returns (bytes32);
+
+    function grantRole(bytes32 role, address account) external;
+
+}
+
 /**
  * @title  July 16, 2026 Spark Robinhood Proposal
  * @author Phoenix Labs
@@ -23,6 +33,13 @@ contract SparkRobinhood_20260716 {
 
     function execute() external {
         ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
+
+        // Grant ALLOCATOR_ROLE Role for Relayer 1 and 2 on ALM_PROXY_FREEZABLE and FREEZER_ROLE role to the ALM_FREEZER_MULTISIG
+        IALMProxyFreezableLike proxy = IALMProxyFreezableLike(Robinhood.ALM_PROXY_FREEZABLE);
+
+        proxy.grantRole(proxy.ALLOCATOR_ROLE(), Robinhood.ALM_RELAYER_MULTISIG);
+        proxy.grantRole(proxy.ALLOCATOR_ROLE(), Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG);
+        proxy.grantRole(proxy.FREEZER_ROLE(),   Robinhood.ALM_FREEZER_MULTISIG);
 
         controller.grantRole(controller.FREEZER(),  Robinhood.ALM_FREEZER_MULTISIG);
         controller.revokeRole(controller.FREEZER(), OLD_FREEZER_RELAYER);
