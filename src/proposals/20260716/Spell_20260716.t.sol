@@ -566,6 +566,29 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), Robinhood.SPARK_EXECUTOR),                true);
     }
 
+    function test_ETHEREUM_sll_enableUSDTBridgingToXLayer() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        bytes32 layerZeroTransferKey = keccak256(abi.encode(
+            controller.LIMIT_LAYERZERO_TRANSFER(),
+            USDT_OFT,
+            LZ_EID_XLAYER
+        ));
+
+        _assertRateLimit(layerZeroTransferKey, 0, 0);
+
+        assertEq(controller.layerZeroRecipients(LZ_EID_XLAYER), bytes32(0));
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(layerZeroTransferKey, 5_000_000e6, 100_000_000e6 / uint256(1 days));
+
+        assertEq(
+            controller.layerZeroRecipients(LZ_EID_XLAYER),
+            bytes32(uint256(uint160(XLayer.ALM_PROXY)))
+        );
+    }
+
 }
 
 contract SparkEthereum_20260716_SparklendTests is SparklendTests {

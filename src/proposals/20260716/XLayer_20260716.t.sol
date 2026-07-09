@@ -38,6 +38,18 @@ interface IXLayerReceiver {
 
 }
 
+interface IXLayerALMProxyFreezable {
+
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
+    function ALLOCATOR_ROLE() external view returns (bytes32);
+
+    function FREEZER_ROLE() external view returns (bytes32);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+}
+
 contract XLayerConfigTests is Test {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
@@ -123,6 +135,12 @@ contract XLayerConfigTests is Test {
         assertEq(spusdtVault.hasRole(DEFAULT_ADMIN_ROLE,        DEPLOYER), false);
         assertEq(spusdtVault.hasRole(spusdtVault.SETTER_ROLE(), DEPLOYER), false);
         assertEq(spusdtVault.hasRole(spusdtVault.TAKER_ROLE(),  DEPLOYER), false);
+
+        IXLayerALMProxyFreezable almProxyFreezable = IXLayerALMProxyFreezable(SETTER);
+
+        assertEq(almProxyFreezable.hasRole(almProxyFreezable.DEFAULT_ADMIN_ROLE(), DEPLOYER), false);
+        assertEq(almProxyFreezable.hasRole(almProxyFreezable.ALLOCATOR_ROLE(),     DEPLOYER), false);
+        assertEq(almProxyFreezable.hasRole(almProxyFreezable.FREEZER_ROLE(),       DEPLOYER), false);
     }
 
     function test_vault_config() external view {
@@ -188,6 +206,16 @@ contract XLayerConfigTests is Test {
     function test_receiver_config() external view {
         assertEq(IXLayerReceiver(RECEIVER).l1Authority(), Ethereum.SPARK_PROXY);
         assertEq(IXLayerReceiver(RECEIVER).target(),      EXECUTOR);
+    }
+
+    function test_almProxyFreezable_config() external view {
+        IXLayerALMProxyFreezable proxy = IXLayerALMProxyFreezable(SETTER);
+
+        assertEq(proxy.hasRole(proxy.DEFAULT_ADMIN_ROLE(), EXECUTOR), true);
+
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(), RELAYER_1), false);
+        assertEq(proxy.hasRole(proxy.ALLOCATOR_ROLE(), RELAYER_2), false);
+        assertEq(proxy.hasRole(proxy.FREEZER_ROLE(),   FREEZER),   false);
     }
 
 }
