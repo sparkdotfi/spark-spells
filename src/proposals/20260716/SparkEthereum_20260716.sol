@@ -40,7 +40,6 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
 
     address internal constant GROVE_ALM_PROXY          = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address internal constant OLD_MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
-    address internal constant PAXOS_USDG_DEPOSIT       = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
     address internal constant USDT_OFT                 = 0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee;
 
     uint256 internal constant ANCHORAGE_FEES_AMOUNT         = 500_000e18;
@@ -66,7 +65,7 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
             RateLimitHelpers.makeAddressAddressKey(
                 almController.LIMIT_ASSET_TRANSFER(),
                 Ethereum.USDG,
-                PAXOS_USDG_DEPOSIT
+                Ethereum.PAXOS_USDG_DEPOSIT
             ),
             Ethereum.ALM_RATE_LIMITS,
             50_000_000e6,

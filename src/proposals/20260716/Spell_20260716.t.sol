@@ -64,11 +64,8 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
     using DomainHelpers for Domain;
     using OptionsBuilder for bytes;
 
-    address internal constant ETHEREUM_PAXOS_USDG_DEPOSIT  = 0xf752cF318dfF2C01575c98741AA52e7a34d873Fd;
-    address internal constant OLD_FREEZER_RELAYER          = 0x59C85fe4385403e93877e48e5521f2F02B150359;
-    address internal constant OLD_MORPHO_VAULT_V2_USDT     = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
-    address internal constant ROBINHOOD_PAXOS_USDG_DEPOSIT = 0x17C0F5345d1144fdF670D14719077be3842E5087;
-    address internal constant ROBINHOOD_SPUSDG_SETTER      = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant OLD_FREEZER_RELAYER_SETTER      = 0x59C85fe4385403e93877e48e5521f2F02B150359;
+    address internal constant OLD_MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
 
     // > bc -l <<< 'scale=27; e( l(1.05)/(60 * 60 * 24 * 365) )'
     //   1.000000001547125957863212167
@@ -103,39 +100,51 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(withdrawKey, 0, 0);
     }
 
-    function test_ROBINHOOD_controllerRoleChanges() external onChain(ChainIdUtils.Robinhood()) {
+    function test_ROBINHOOD_roleChanges() external onChain(ChainIdUtils.Robinhood()) {
         ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
 
         assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
 
         assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG), false);
-        assertEq(controller.hasRole(controller.FREEZER(), OLD_FREEZER_RELAYER),            true);
+        assertEq(controller.hasRole(controller.FREEZER(), OLD_FREEZER_RELAYER_SETTER),     true);
 
         assertEq(controller.getRoleMemberCount(controller.RELAYER()), 2);
 
         assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG), false);
         assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_RELAYER_MULTISIG),          true);
-        assertEq(controller.hasRole(controller.RELAYER(), OLD_FREEZER_RELAYER),                     true);
+        assertEq(controller.hasRole(controller.RELAYER(), OLD_FREEZER_RELAYER_SETTER),              true);
+
+        ISparkVaultV2Like spUSDGvault = ISparkVaultV2Like(Robinhood.SPARK_VAULT_V2_SPUSDG);
+
+        assertEq(spUSDGvault.getRoleMemberCount(spUSDGvault.SETTER_ROLE()), 1);
+
+        assertEq(spUSDGvault.hasRole(spUSDGvault.SETTER_ROLE(), OLD_FREEZER_RELAYER_SETTER),    true);
+        assertEq(spUSDGvault.hasRole(spUSDGvault.SETTER_ROLE(), Robinhood.ALM_PROXY_FREEZABLE), false);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(controller.getRoleMemberCount(controller.FREEZER()), 1);
 
         assertEq(controller.hasRole(controller.FREEZER(), Robinhood.ALM_FREEZER_MULTISIG), true);
-        assertEq(controller.hasRole(controller.FREEZER(), OLD_FREEZER_RELAYER),            false);
+        assertEq(controller.hasRole(controller.FREEZER(), OLD_FREEZER_RELAYER_SETTER),     false);
 
         assertEq(controller.getRoleMemberCount(controller.RELAYER()), 2);
 
         assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG), true);
         assertEq(controller.hasRole(controller.RELAYER(), Robinhood.ALM_RELAYER_MULTISIG),          true);
-        assertEq(controller.hasRole(controller.RELAYER(), OLD_FREEZER_RELAYER),                     false);
+        assertEq(controller.hasRole(controller.RELAYER(), OLD_FREEZER_RELAYER_SETTER),              false);
+
+        assertEq(spUSDGvault.getRoleMemberCount(spUSDGvault.SETTER_ROLE()), 1);
+
+        assertEq(spUSDGvault.hasRole(spUSDGvault.SETTER_ROLE(), OLD_FREEZER_RELAYER_SETTER),    false);
+        assertEq(spUSDGvault.hasRole(spUSDGvault.SETTER_ROLE(), Robinhood.ALM_PROXY_FREEZABLE), true);
     }
 
     function test_ROBINHOOD_sll_enableUsdgTransferToPaxosDeposit() external onChain(ChainIdUtils.Robinhood()) {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             ForeignController(Robinhood.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Robinhood.USDG,
-            ROBINHOOD_PAXOS_USDG_DEPOSIT
+            Robinhood.PAXOS_USDG_DEPOSIT
         );
 
         _assertRateLimit(transferKey, 0, 0);
@@ -147,7 +156,7 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
             asset          : Robinhood.USDG,
-            destination    : ROBINHOOD_PAXOS_USDG_DEPOSIT,
+            destination    : Robinhood.PAXOS_USDG_DEPOSIT,
             transferKey    : transferKey,
             transferAmount : 50_000_000e6
         }));
@@ -157,7 +166,7 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Ethereum.USDG,
-            ETHEREUM_PAXOS_USDG_DEPOSIT
+            Ethereum.PAXOS_USDG_DEPOSIT
         );
 
         _assertRateLimit(transferKey, 0, 0);
@@ -169,7 +178,7 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
             asset          : Ethereum.USDG,
-            destination    : ETHEREUM_PAXOS_USDG_DEPOSIT,
+            destination    : Ethereum.PAXOS_USDG_DEPOSIT,
             transferKey    : transferKey,
             transferAmount : 50_000_000e6
         }));
@@ -395,8 +404,8 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         // STEP 1: Setter sets VSR to 5% APY
         // ================================================================================
 
-        vm.prank(ROBINHOOD_SPUSDG_SETTER);
-        vault.setVsr(FIVE_PCT_APY);
+        vm.prank(Robinhood.ALM_RELAYER_MULTISIG);
+        IALMProxyFreezableLike(Robinhood.ALM_PROXY_FREEZABLE).doCall(Robinhood.SPARK_VAULT_V2_SPUSDG, abi.encodeCall(ISparkVaultV2Like.setVsr, (FIVE_PCT_APY)));
 
         // ================================================================================
         // STEP 2: User deposits USDG into spUSDG on Robinhood
@@ -435,13 +444,13 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         // STEP 4: Controller uses transferAsset to send USDG to the Paxos deposit address on Robinhood
         // ================================================================================
 
-        uint256 robinhoodPaxosUsdgStarting = usdgRobinhood.balanceOf(ROBINHOOD_PAXOS_USDG_DEPOSIT);
+        uint256 robinhoodPaxosUsdgStarting = usdgRobinhood.balanceOf(Robinhood.PAXOS_USDG_DEPOSIT);
 
         vm.prank(Robinhood.ALM_RELAYER_MULTISIG);
-        foreignController.transferAsset(Robinhood.USDG, ROBINHOOD_PAXOS_USDG_DEPOSIT, amount);
+        foreignController.transferAsset(Robinhood.USDG, Robinhood.PAXOS_USDG_DEPOSIT, amount);
 
         assertEq(usdgRobinhood.balanceOf(Robinhood.ALM_PROXY),          robinhoodProxyUsdgStarting);
-        assertEq(usdgRobinhood.balanceOf(ROBINHOOD_PAXOS_USDG_DEPOSIT), robinhoodPaxosUsdgStarting + amount);
+        assertEq(usdgRobinhood.balanceOf(Robinhood.PAXOS_USDG_DEPOSIT), robinhoodPaxosUsdgStarting + amount);
 
         // ================================================================================
         // STEP 5: Paxos redeems the Robinhood-side USDG off-chain — deal the transferred
@@ -476,13 +485,13 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
         //         address on Mainnet
         // ================================================================================
 
-        uint256 mainnetPaxosUsdgStarting = usdgMainnet.balanceOf(ETHEREUM_PAXOS_USDG_DEPOSIT);
+        uint256 mainnetPaxosUsdgStarting = usdgMainnet.balanceOf(Ethereum.PAXOS_USDG_DEPOSIT);
 
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
-        mainnetController.transferAsset(Ethereum.USDG, ETHEREUM_PAXOS_USDG_DEPOSIT, amount + interest);
+        mainnetController.transferAsset(Ethereum.USDG, Ethereum.PAXOS_USDG_DEPOSIT, amount + interest);
 
         assertEq(usdgMainnet.balanceOf(Ethereum.ALM_PROXY),          mainnetProxyUsdgStarting);
-        assertEq(usdgMainnet.balanceOf(ETHEREUM_PAXOS_USDG_DEPOSIT), mainnetPaxosUsdgStarting + amount + interest);
+        assertEq(usdgMainnet.balanceOf(Ethereum.PAXOS_USDG_DEPOSIT), mainnetPaxosUsdgStarting + amount + interest);
 
         // ================================================================================
         // STEP 8: Paxos redeems the Mainnet-side USDG off-chain — deal the amount + interest

@@ -9,6 +9,8 @@ import { Robinhood } from "spark-address-registry/Robinhood.sol";
 
 import { SLLHelpers } from "../../libraries/SLLHelpers.sol";
 
+import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
+
 interface IALMProxyFreezableLike {
 
     function ALLOCATOR_ROLE() external view returns (bytes32);
@@ -28,8 +30,7 @@ interface IALMProxyFreezableLike {
  */
 contract SparkRobinhood_20260716 {
 
-    address internal constant OLD_FREEZER_RELAYER = 0x59C85fe4385403e93877e48e5521f2F02B150359;
-    address internal constant PAXOS_USDG_DEPOSIT  = 0x17C0F5345d1144fdF670D14719077be3842E5087;
+    address internal constant OLD_FREEZER_RELAYER_SETTER = 0x59C85fe4385403e93877e48e5521f2F02B150359;
 
     function execute() external {
         ForeignController controller = ForeignController(Robinhood.ALM_CONTROLLER);
@@ -41,17 +42,22 @@ contract SparkRobinhood_20260716 {
         proxy.grantRole(proxy.ALLOCATOR_ROLE(), Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG);
         proxy.grantRole(proxy.FREEZER_ROLE(),   Robinhood.ALM_FREEZER_MULTISIG);
 
+        ISparkVaultV2Like spUSDGvault = ISparkVaultV2Like(Robinhood.SPARK_VAULT_V2_SPUSDG);
+
+        spUSDGvault.revokeRole(spUSDGvault.SETTER_ROLE(), OLD_FREEZER_RELAYER_SETTER);
+        spUSDGvault.grantRole(spUSDGvault.SETTER_ROLE(),  Robinhood.ALM_PROXY_FREEZABLE);
+
         controller.grantRole(controller.FREEZER(),  Robinhood.ALM_FREEZER_MULTISIG);
-        controller.revokeRole(controller.FREEZER(), OLD_FREEZER_RELAYER);
+        controller.revokeRole(controller.FREEZER(), OLD_FREEZER_RELAYER_SETTER);
 
         controller.grantRole(controller.RELAYER(),  Robinhood.ALM_BACKSTOP_RELAYER_MULTISIG);
-        controller.revokeRole(controller.RELAYER(), OLD_FREEZER_RELAYER);
+        controller.revokeRole(controller.RELAYER(), OLD_FREEZER_RELAYER_SETTER);
 
         SLLHelpers.setRateLimitData(
             RateLimitHelpers.makeAddressAddressKey(
                 controller.LIMIT_ASSET_TRANSFER(),
                 Robinhood.USDG,
-                PAXOS_USDG_DEPOSIT
+                Robinhood.PAXOS_USDG_DEPOSIT
             ),
             Robinhood.ALM_RATE_LIMITS,
             50_000_000e6,
