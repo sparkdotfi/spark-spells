@@ -324,6 +324,8 @@ interface ICurvePoolLike is IERC20 {
 
 interface IPoolManagerLike {
 
+    function poolPermissionManager() external view returns (address);
+
     function poolDelegate() external view returns (address);
 
     function strategyList(uint256 index) external view returns (address);

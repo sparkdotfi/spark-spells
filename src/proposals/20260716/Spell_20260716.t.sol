@@ -646,8 +646,8 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
         uint256 usdsTotalSupplyBefore = usds.totalSupply();
         uint256 expectedUsdsAmount    = syrup.convertToAssets(GROVE_SYRUP_USDC_AMOUNT) * 1e12;
 
-        assertEq(usdsTotalSupplyBefore, 7_546_530_953.878738838189582218e18);
-        assertEq(expectedUsdsAmount,    100_781_916.482416e18);
+        assertEq(usdsTotalSupplyBefore, 7_547_622_385.72190932010136079e18);
+        assertEq(expectedUsdsAmount,    100_798_238.306784e18);
 
         uint256 almProxyUsdsBalanceBefore = usds.balanceOf(Ethereum.ALM_PROXY);
         uint256 groveUsdsBalanceBefore    = usds.balanceOf(GROVE_ALM_PROXY);

@@ -126,6 +126,18 @@ interface IMainnetControllerV9Like {
 
 }
 
+interface IPermissionManagerLike {
+
+    function admin() external view returns (address);
+
+    function setLenderAllowlist(
+        address            poolManager_,
+        address[] calldata lenders_,
+        bool[]    calldata booleans_
+    ) external;
+
+}
+
 // TODO: expand on this on https://github.com/marsfoundation/spark-spells/issues/65
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
@@ -1028,6 +1040,40 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             remainingWithdrawal -= strategyWithdrawAmount;
 
             if (remainingWithdrawal == 0) break;
+        }
+
+        // If the liquidity available isn't enough to cover all outstanding withdrawals plus SLL withdrawal,
+        // add a user to the allowlist to allow them to deposit beforehand to cover the shortfall.
+        if (remainingWithdrawal > asset.balanceOf(address(syrup))) {
+            vm.stopPrank();
+
+            address user = makeAddr("user");
+
+            IPermissionManagerLike permissionManager = IPermissionManagerLike(IPoolManagerLike(syrup.manager()).poolPermissionManager());
+
+            address[] memory lenders  = new address[](1);
+            bool[]    memory booleans = new bool[](1);
+
+            lenders[0]  = user;
+            booleans[0] = true;
+
+            vm.startPrank(permissionManager.admin());
+            permissionManager.setLenderAllowlist(
+                syrup.manager(),
+                lenders,
+                booleans
+            );
+            vm.stopPrank();
+
+            uint256 shortfall = remainingWithdrawal - asset.balanceOf(address(syrup)) + 100_000e6;
+
+            deal(address(asset), user, shortfall);
+            vm.startPrank(user);
+            IERC20(asset).safeIncreaseAllowance(address(syrup), shortfall);
+            syrup.deposit(shortfall, user);
+            vm.stopPrank();
+
+            vm.startPrank(poolManager.poolDelegate());
         }
 
         IWithdrawalManagerLike(withdrawalManager).processRedemptions(totalShares);
