@@ -52,8 +52,8 @@ contract SparkEthereum_20260716 is SparkPayloadEthereum {
     uint32 internal constant LZ_ENDPOINT_XLAYER = 30274;
 
     constructor() {
-        // PAYLOAD_ROBINHOOD =
-        // PAYLOAD_XLAYER    =
+        PAYLOAD_ROBINHOOD = 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4;
+        PAYLOAD_XLAYER    = 0x03801438834a9127088b4F2Cba02F42F8a600036;
     }
 
     function _postExecute() internal override {
