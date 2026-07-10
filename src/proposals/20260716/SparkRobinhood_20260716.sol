@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
