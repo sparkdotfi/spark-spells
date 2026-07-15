@@ -18,8 +18,10 @@ import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
+import { XLayer }    from "spark-address-registry/XLayer.sol";
 
 import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
@@ -62,6 +64,8 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
     address public immutable PAYLOAD_OPTIMISM;
     address public immutable PAYLOAD_UNICHAIN;
     address public immutable PAYLOAD_AVALANCHE;
+    address public immutable PAYLOAD_ROBINHOOD;
+    address public immutable PAYLOAD_XLAYER;
 
     function execute() public override {
         super.execute();
@@ -118,6 +122,24 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
                 _options:       options,
                 _refundAddress: Ethereum.SPARK_PROXY,
                 _payInLzToken:  false
+            });
+        }
+        if (PAYLOAD_ROBINHOOD != address(0)) {
+            ArbitrumForwarder.sendMessageL1toL2({
+                l1CrossDomain: ArbitrumForwarder.L1_CROSS_DOMAIN_ROBINHOOD_CHAIN,
+                target:        Robinhood.SPARK_RECEIVER,
+                message:       _encodePayloadQueue(PAYLOAD_ROBINHOOD),
+                gasLimit:      1_000_000,
+                maxFeePerGas:  50e9,
+                baseFee:       block.basefee
+            });
+        }
+        if (PAYLOAD_XLAYER != address(0)) {
+            OptimismForwarder.sendMessageL1toL2({
+                l1CrossDomain: OptimismForwarder.L1_CROSS_DOMAIN_XLAYER,
+                target:        XLayer.SPARK_RECEIVER,
+                message:       _encodePayloadQueue(PAYLOAD_XLAYER),
+                gasLimit:      1_000_000
             });
         }
 
@@ -440,10 +462,10 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
 
         IERC20(token).approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, amount);
         IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).outboundTransfer{value: maxSubmission + maxRedemption}({
-            l1Token     : token, 
-            to          : Arbitrum.ALM_PROXY, 
-            amount      : amount, 
-            maxGas      : gasLimit, 
+            l1Token     : token,
+            to          : Arbitrum.ALM_PROXY,
+            amount      : amount,
+            maxGas      : gasLimit,
             gasPriceBid : maxFeePerGas,
             data        : abi.encode(maxSubmission, bytes(""))
         });

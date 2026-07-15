@@ -20,6 +20,7 @@ library DealUtils {
     uint256 internal constant ARBITRUM  = 42161;
     uint256 internal constant AVALANCHE = 43114;
     uint256 internal constant HARMONY   = 1666600000;
+    uint256 internal constant ROBINHOOD = 4663;
 
     address internal constant USDC_MAINNET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
@@ -28,10 +29,13 @@ library DealUtils {
 
     address internal constant USDC_BASE = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
-    address internal constant USDC_MAINNET_WHALE = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
-    address internal constant EURE_GNOSIS_WHALE  = 0xbDA14C8F73773469a819C52C110FdC1A63884aDc;
-    address internal constant USDCE_GNOSIS_WHALE = 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3;
-    address internal constant USDC_BASE_WHALE    = 0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78;
+    address internal constant USDG_ROBINHOOD = 0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168;
+
+    address internal constant USDC_MAINNET_WHALE   = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
+    address internal constant EURE_GNOSIS_WHALE    = 0xbDA14C8F73773469a819C52C110FdC1A63884aDc;
+    address internal constant USDCE_GNOSIS_WHALE   = 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3;
+    address internal constant USDC_BASE_WHALE      = 0x7C310a03f4CFa19F7f3d7F36DD3E05828629fa78;
+    address internal constant USDG_ROBINHOOD_WHALE = 0x2d4d2A025b10C09BDbd794B4FCe4F7ea8C7d7bB4;
 
     /**
      * @notice deal doesn't support amounts stored in a script right now.
@@ -72,6 +76,13 @@ library DealUtils {
             if (asset == USDC_BASE) {
                 VM.prank(amount > startingBalance ? USDC_BASE_WHALE : user);
                 IERC20(asset).transfer(amount > startingBalance ? user : USDC_BASE_WHALE, amount);
+                return true;
+            }
+        } else if (block.chainid == ROBINHOOD) {
+            // USDG
+            if (asset == USDG_ROBINHOOD) {
+                VM.prank(amount > startingBalance ? USDG_ROBINHOOD_WHALE : user);
+                IERC20(asset).transfer(amount > startingBalance ? user : USDG_ROBINHOOD_WHALE, amount > startingBalance ? amount - startingBalance : startingBalance - amount);
                 return true;
             }
         }

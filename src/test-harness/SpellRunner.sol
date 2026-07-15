@@ -12,9 +12,13 @@ import { Base }      from "spark-address-registry/Base.sol";
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { Optimism }  from "spark-address-registry/Optimism.sol";
+import { Robinhood } from "spark-address-registry/Robinhood.sol";
 import { Unichain }  from "spark-address-registry/Unichain.sol";
+import { XLayer }    from "spark-address-registry/XLayer.sol";
 
 import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
+
+import { LZForwarder } from "xchain-helpers/forwarders/LZForwarder.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBridgeTesting.sol";
@@ -36,7 +40,7 @@ interface IAMBExecutorLike {
 
     function getActionsSetCount() external view returns (uint256);
 
-    function executeDelegateCall(address target, bytes calldata data) 
+    function executeDelegateCall(address target, bytes calldata data)
         external payable returns (bool, bytes memory);
 
 }
@@ -45,6 +49,12 @@ abstract contract SpellRunner is Test {
 
     using DomainHelpers for Domain;
     using DomainHelpers for StdChains.Chain;
+
+    // LayerZero contracts on XLayer (chain alias not supported by LZBridgeTesting.createLZBridge).
+    // Endpoint is the canonical EndpointV2 address (eid 30274), receive library is the
+    // endpoint's defaultReceiveLibrary for packets from Ethereum (eid 30101).
+    address internal constant LZ_ENDPOINT_XLAYER         = 0x1a44076050125825900e736c501f859c50fE728c;
+    address internal constant LZ_RECEIVE_LIBRARY_XLAYER  = 0x2367325334447C5E1E0f1b3a6fB947b262F58312;
 
     // ChainData is already taken in StdChains
     struct DomainData {
@@ -89,11 +99,22 @@ abstract contract SpellRunner is Test {
     /**********************************************************************************************/
 
     function _setupBlocksFromDate(uint256 date) internal {
-
         setChain("unichain", ChainData({
-            name: "Unichain",
-            rpcUrl: vm.envString("UNICHAIN_RPC_URL"),
-            chainId: 130
+            name    : "Unichain",
+            rpcUrl  : vm.envString("UNICHAIN_RPC_URL"),
+            chainId : 130
+        }));
+
+        setChain("robinhood_chain", ChainData({
+            name    : "Robinhood Chain",
+            rpcUrl  : vm.envString("RH_RPC_URL"),
+            chainId : 4663
+        }));
+
+        setChain("xlayer", ChainData({
+            name    : "XLayer",
+            rpcUrl  : "https://rpc.xlayer.tech",
+            chainId : 196
         }));
 
         uint256[] memory blocks = _getBlocksFromDate(date);
@@ -105,6 +126,8 @@ abstract contract SpellRunner is Test {
         console.log("Optimism block: ", blocks[4]);
         console.log("Unichain block: ", blocks[5]);
         console.log("Avalanche block:", blocks[6]);
+        console.log("Robinhood block:", blocks[7]);
+        console.log("XLayer block:   ", blocks[8]);
 
         chainData[ChainIdUtils.Ethereum()].domain    = getChain("mainnet").createFork(blocks[0]);
         chainData[ChainIdUtils.Base()].domain        = getChain("base").createFork(blocks[1]);
@@ -113,6 +136,8 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Optimism()].domain    = getChain("optimism").createFork(blocks[4]);
         chainData[ChainIdUtils.Unichain()].domain    = getChain("unichain").createFork(blocks[5]);
         chainData[ChainIdUtils.Avalanche()].domain   = getChain("avalanche").createFork(blocks[6]);
+        chainData[ChainIdUtils.Robinhood()].domain   = getChain("robinhood_chain").createFork(blocks[7]);
+        chainData[ChainIdUtils.XLayer()].domain      = getChain("xlayer").createFork(blocks[8]);
     }
 
     /// @dev to be called in setUp
@@ -126,6 +151,8 @@ abstract contract SpellRunner is Test {
         allChains.push(ChainIdUtils.Optimism());
         allChains.push(ChainIdUtils.Unichain());
         allChains.push(ChainIdUtils.Avalanche());
+        allChains.push(ChainIdUtils.Robinhood());
+        allChains.push(ChainIdUtils.XLayer());
 
         _setupBlocksFromDate(_blockDate);
 
@@ -139,6 +166,8 @@ abstract contract SpellRunner is Test {
         chainData[ChainIdUtils.Optimism()].executor    = IExecutor(Optimism.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Unichain()].executor    = IExecutor(Unichain.SPARK_EXECUTOR);
         chainData[ChainIdUtils.Avalanche()].executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.Robinhood()].executor   = IExecutor(Robinhood.SPARK_EXECUTOR);
+        chainData[ChainIdUtils.XLayer()].executor      = IExecutor(XLayer.SPARK_EXECUTOR);
 
         chainData[ChainIdUtils.Ethereum()].bridges.push(
             LZBridgeTesting.createLZBridge(
@@ -235,6 +264,37 @@ abstract contract SpellRunner is Test {
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.Avalanche()].domain
             )
+        );
+
+        // Robinhood
+        chainData[ChainIdUtils.Robinhood()].bridges.push(
+            ArbitrumBridgeTesting.createNativeBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Robinhood()].domain
+            )
+        );
+
+        // XLayer
+        chainData[ChainIdUtils.XLayer()].bridges.push(
+            OptimismBridgeTesting.createNativeBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.XLayer()].domain
+            )
+        );
+
+        // Constructed manually because LZBridgeTesting.createLZBridge does not support the
+        // xlayer chain alias. Used by the Ethereum -> XLayer USDT0 E2E test.
+        chainData[ChainIdUtils.XLayer()].bridges.push(
+            LZBridgeTesting.init(Bridge({
+                bridgeType:                     BridgeType.LZ,
+                source:                         chainData[ChainIdUtils.Ethereum()].domain,
+                destination:                    chainData[ChainIdUtils.XLayer()].domain,
+                sourceCrossChainMessenger:      LZForwarder.ENDPOINT_ETHEREUM,
+                destinationCrossChainMessenger: LZ_ENDPOINT_XLAYER,
+                lastSourceLogIndex:             0,
+                lastDestinationLogIndex:        0,
+                extraData:                      abi.encode(LZForwarder.RECEIVE_LIBRARY_ETHEREUM, LZ_RECEIVE_LIBRARY_XLAYER)
+            }))
         );
     }
 
@@ -405,6 +465,10 @@ abstract contract SpellRunner is Test {
 
         if (chainId == ChainIdUtils.Avalanche()) return spell.PAYLOAD_AVALANCHE();
 
+        if (chainId == ChainIdUtils.Robinhood()) return spell.PAYLOAD_ROBINHOOD();
+
+        if (chainId == ChainIdUtils.XLayer()) return spell.PAYLOAD_XLAYER();
+
         revert("Unsupported chainId");
     }
 
@@ -426,8 +490,8 @@ abstract contract SpellRunner is Test {
         blocks = new uint256[](allChains.length);
 
         for (uint256 i; i < allChains.length; ++i) {
-            // TODO: Remove this once Avalanche is working
-            if (allChains[i] == ChainIdUtils.Avalanche() || allChains[i] == ChainIdUtils.Gnosis() || allChains[i] == ChainIdUtils.Base()) {
+            // TODO: Remove this once Robinhood and XLayer are added https://api.etherscan.io/v2/chainlist
+            if (allChains[i] == ChainIdUtils.Robinhood() || allChains[i] == ChainIdUtils.XLayer()) {
                 blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
                 continue;
             }
