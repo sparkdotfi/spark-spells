@@ -15,6 +15,7 @@ import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/
 interface IALMProxyFreezableLike {
     function ALLOCATOR_ROLE() external returns (bytes32);
     function DEFAULT_ADMIN_ROLE() external returns (bytes32);
+    function doCall(address target, bytes memory data) external returns (bytes memory result);
     function FREEZER_ROLE() external returns (bytes32);
     function hasRole(bytes32 role, address account) external view returns (bool);
 }
@@ -103,6 +104,8 @@ interface ISparkVaultV2Like {
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
 
     function depositCap() external view returns (uint256);
+
+    function getImplementation() external view returns (address);
 
     function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
@@ -320,6 +323,8 @@ interface ICurvePoolLike is IERC20 {
 }
 
 interface IPoolManagerLike {
+
+    function poolPermissionManager() external view returns (address);
 
     function poolDelegate() external view returns (address);
 
