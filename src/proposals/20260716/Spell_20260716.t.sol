@@ -74,14 +74,10 @@ contract SparkEthereum_20260716_SLLTests is SparkLiquidityLayerTests {
     constructor() {
         _spellId   = 20260716;
         _blockDate = 1783688889;  // Jul-10-2026 1:08:09 PM +UTC
-    }
 
-    function setUp() public override {
-        super.setUp();
-
-        chainData[ChainIdUtils.Ethereum()].payload  = 0xC1090e8fEE666868622a2F1e870185F944108Ee2;
-        chainData[ChainIdUtils.Robinhood()].payload = 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4;
-        chainData[ChainIdUtils.XLayer()].payload    = 0x03801438834a9127088b4F2Cba02F42F8a600036;
+        _setPayloadAddress(ChainIdUtils.Ethereum(),  0xC1090e8fEE666868622a2F1e870185F944108Ee2);
+        _setPayloadAddress(ChainIdUtils.Robinhood(), 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4);
+        _setPayloadAddress(ChainIdUtils.XLayer(),    0x03801438834a9127088b4F2Cba02F42F8a600036);
     }
 
     function test_ETHEREUM_sll_deactivateOldMorphoUsdtVault() external onChain(ChainIdUtils.Ethereum()) {
@@ -598,14 +594,10 @@ contract SparkEthereum_20260716_SparklendTests is SparklendTests {
     constructor() {
         _spellId   = 20260716;
         _blockDate = 1783688889;  // Jul-10-2026 1:08:09 PM +UTC
-    }
 
-    function setUp() public override {
-        super.setUp();
-
-        chainData[ChainIdUtils.Ethereum()].payload  = 0xC1090e8fEE666868622a2F1e870185F944108Ee2;
-        chainData[ChainIdUtils.Robinhood()].payload = 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4;
-        chainData[ChainIdUtils.XLayer()].payload    = 0x03801438834a9127088b4F2Cba02F42F8a600036;
+        _setPayloadAddress(ChainIdUtils.Ethereum(),  0xC1090e8fEE666868622a2F1e870185F944108Ee2);
+        _setPayloadAddress(ChainIdUtils.Robinhood(), 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4);
+        _setPayloadAddress(ChainIdUtils.XLayer(),    0x03801438834a9127088b4F2Cba02F42F8a600036);
     }
 
 }
@@ -626,14 +618,10 @@ contract SparkEthereum_20260716_SpellTests is SpellTests {
     constructor() {
         _spellId   = 20260716;
         _blockDate = 1783688889;  // Jul-10-2026 1:08:09 PM +UTC
-    }
 
-    function setUp() public override {
-        super.setUp();
-
-        chainData[ChainIdUtils.Ethereum()].payload  = 0xC1090e8fEE666868622a2F1e870185F944108Ee2;
-        chainData[ChainIdUtils.Robinhood()].payload = 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4;
-        chainData[ChainIdUtils.XLayer()].payload    = 0x03801438834a9127088b4F2Cba02F42F8a600036;
+        _setPayloadAddress(ChainIdUtils.Ethereum(),  0xC1090e8fEE666868622a2F1e870185F944108Ee2);
+        _setPayloadAddress(ChainIdUtils.Robinhood(), 0xE7933ffE5D03f0c0100456cE2E41d911db70Afa4);
+        _setPayloadAddress(ChainIdUtils.XLayer(),    0x03801438834a9127088b4F2Cba02F42F8a600036);
     }
 
     function test_ETHEREUM_sll_transferUsdsToGrove() external onChain(ChainIdUtils.Ethereum()) {

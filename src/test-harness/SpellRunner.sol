@@ -306,6 +306,10 @@ abstract contract SpellRunner is Test {
         for (uint256 i = 0; i < allChains.length; ++i) {
             uint256 chainId = chainData[allChains[i]].domain.chain.chainId;
 
+            if (chainData[chainId].payload != address(0)) {
+                continue;
+            }
+
             string memory identifier = _getSpellIdentifier(chainId);
 
             try vm.getCode(identifier) {
@@ -314,6 +318,11 @@ abstract contract SpellRunner is Test {
                 console.log("skipping spell deployment for network: ", ChainIdUtils.toDomainString(chainId));
             }
         }
+    }
+
+    /// @dev Use in spell test constructors when payloads are already deployed on-chain.
+    function _setPayloadAddress(uint256 chainId, address payload) internal {
+        chainData[chainId].payload = payload;
     }
 
     /// @dev takes care to revert the selected fork to what was chosen before
