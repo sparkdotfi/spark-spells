@@ -59,7 +59,7 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260813;
-        _blockDate = 1785746952;
+        _blockDate = 1785761559;
     }
 
     function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4USDGUSDS() public onChain(ChainIdUtils.Ethereum()) {
@@ -134,14 +134,12 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests {
         _testUniswapV4LimitOrder(RLUSD_USDS_POOL_ID);
     }
 
-    // ⚠️ NOVEL / PLACEHOLDER pool address — will revert on `_isDeployedByFactory` until the real
-    // Curve rlUSD/USDC pool address is filled in (see CURVE_RLUSD_USDC above).
     function test_ETHEREUM_curvePoolOnboarding_RLUSDUSDC() external onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
             controller:                  Ethereum.ALM_CONTROLLER,
             pool:                        CURVE_RLUSD_USDC,
             expectedDepositAmountToken0: 0,
-            expectedSwapAmountToken0:    500_000e18,
+            expectedSwapAmountToken0:    500_000e6,  // coins(0) is USDC (6 decimals)
             maxSlippage:                 0.999e18,
             swapLimit:                   RateLimitData(5_000_000e18, 25_000_000e18 / uint256(1 days)),
             depositLimit:                RateLimitData(0, 0),
@@ -423,7 +421,7 @@ contract SparkEthereum_20260813_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260813;
-        _blockDate = 1785746952;
+        _blockDate = 1785761559;
     }
 
 }
@@ -434,7 +432,7 @@ contract SparkEthereum_20260813_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260813;
-        _blockDate = 1785746952;
+        _blockDate = 1785761559;
     }
 
     function test_ETHEREUM_sparkTreasury_transferExcessUSDSForBuybacks() external onChain(ChainIdUtils.Ethereum()) {
@@ -445,8 +443,8 @@ contract SparkEthereum_20260813_SpellTests is SpellTests {
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),        sparkProxyBalanceBefore - USDS_SPK_BUYBACK_AMOUNT);
-        assertEq(usds.balanceOf(Ethereum.ALM_OPS_MULTISIG),   opsMultisigBalanceBefore + USDS_SPK_BUYBACK_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),      sparkProxyBalanceBefore - USDS_SPK_BUYBACK_AMOUNT);
+        assertEq(usds.balanceOf(Ethereum.ALM_OPS_MULTISIG), opsMultisigBalanceBefore + USDS_SPK_BUYBACK_AMOUNT);
     }
 
 }

@@ -24,9 +24,7 @@ contract SparkEthereum_20260813 is SparkPayloadEthereum {
     bytes32 internal constant USDG_USDS_POOL_ID  = 0x28adc7179a8a83c3379955d59563c0fec33eadfa83946b447af289190ff5fcff;
     bytes32 internal constant RLUSD_USDS_POOL_ID = 0x9035721b23481db3888fd201b9c2b26dbc3af60258bca65e669f2ed98dc8eb4f;
 
-    // ⚠️ NOVEL / PLACEHOLDER — real Curve rlUSD/USDC pool address not supplied in scope doc.
-    // Must be filled in with the real deployed pool address before this spell can go to a vote.
-    address internal constant CURVE_RLUSD_USDC = 0x0000000000000000000000000000000000000001;
+    address internal constant CURVE_RLUSD_USDC = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
 
     uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 1_756_359e18;
 

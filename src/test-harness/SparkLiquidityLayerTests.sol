@@ -518,9 +518,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     bytes32 internal constant USDG_USDS_POOL_ID  = 0x28adc7179a8a83c3379955d59563c0fec33eadfa83946b447af289190ff5fcff;
     bytes32 internal constant RLUSD_USDS_POOL_ID = 0x9035721b23481db3888fd201b9c2b26dbc3af60258bca65e669f2ed98dc8eb4f;
 
-    // ⚠️ NOVEL / PLACEHOLDER — real Curve rlUSD/USDC pool address not supplied in the 20260813 scope doc.
-    // Must be filled in with the real deployed pool address before this spell can go to a vote.
-    address internal constant CURVE_RLUSD_USDC = 0x0000000000000000000000000000000000000001;
+    address internal constant CURVE_RLUSD_USDC = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
 
     address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
     address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
