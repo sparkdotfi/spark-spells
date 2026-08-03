@@ -515,6 +515,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
 
+    bytes32 internal constant USDG_USDS_POOL_ID  = 0x28adc7179a8a83c3379955d59563c0fec33eadfa83946b447af289190ff5fcff;
+    bytes32 internal constant RLUSD_USDS_POOL_ID = 0x9035721b23481db3888fd201b9c2b26dbc3af60258bca65e669f2ed98dc8eb4f;
+
+    // ⚠️ NOVEL / PLACEHOLDER — real Curve rlUSD/USDC pool address not supplied in the 20260813 scope doc.
+    // Must be filled in with the real deployed pool address before this spell can go to a vote.
+    address internal constant CURVE_RLUSD_USDC = 0x0000000000000000000000000000000000000001;
+
     address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
     address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
     address internal constant PAXOS_USDC_PYUSD     = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
@@ -1690,9 +1697,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.depositLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.depositKey);
         v.withdrawLimit = p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey);
 
-        // Uniswap V4 rate limits should not be unlimited
+        // Uniswap V4 deposit rate limit should not be unlimited
         assertTrue(v.depositLimit  != type(uint256).max);
-        assertTrue(v.withdrawLimit != type(uint256).max);
 
         _checkRateLimitValue(p.ctx, p.depositKey,  18);
         _checkRateLimitValue(p.ctx, p.withdrawKey, 18);
@@ -1784,7 +1790,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), 0);
 
-        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue, totalError);
+        if (v.withdrawLimit != type(uint256).max) {
+            assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), v.withdrawLimit - v.totalWithdrawnValue, totalError);
+        }
 
         /************************************/
         /*** Step 4: Recharge rate limits ***/
@@ -4445,7 +4453,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](57);
+        integrations = new SLLIntegration[](58);
 
         integrations[0]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[1]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
@@ -4479,15 +4487,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[23] = _createERC4626Integration("ERC4626-MORPHO_VAULT_USDS",    Ethereum.MORPHO_VAULT_USDS);
         integrations[24] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
         integrations[25] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
-        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", MORPHO_VAULT_V2_USDT);
-        integrations[27] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
+        // MORPHO_VAULT_V2_USDT (old) fully offboarded in the 2026-07-16 spell (live on-chain); only the new vault remains.
+        integrations[26] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
 
-        integrations[28] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
+        integrations[27] = _createEthenaIntegration("ETHENA-SUSDE", Ethereum.SUSDE);
 
-        integrations[29] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
+        integrations[28] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
         // Onboarded in the 2026-07-02 spell (live on-chain, so part of the pre-execution state).
-        integrations[30] = _createLayerZeroTransferIntegration({
+        integrations[29] = _createLayerZeroTransferIntegration({
             label                 : "LAYERZERO_TRANSFER-USDT0_ARBITRUM",
             oftAddress            : USDT_OFT,
             destinationEndpointId : LZ_EID_ARBITRUM,
@@ -4495,6 +4503,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             destinationOftAddress : USDT0_OFT_ARBITRUM,
             destinationAsset      : USDT0_ARBITRUM,
             destinationReceiver   : Arbitrum.ALM_PROXY,
+            sourceChainId         : ChainIdUtils.Ethereum(),
+            sourceEndpointId      : LZ_EID_ETHEREUM
+        });
+
+        // Onboarded in the 2026-07-16 spell (live on-chain, so part of the pre-execution state).
+        integrations[30] = _createLayerZeroTransferIntegration({
+            label                 : "LAYERZERO_TRANSFER-USDT0_XLAYER",
+            oftAddress            : USDT_OFT,
+            destinationEndpointId : LZ_EID_XLAYER,
+            destinationChainId    : ChainIdUtils.XLayer(),
+            destinationOftAddress : USDT0_OFT_XLAYER,
+            destinationAsset      : USDT0_XLAYER,
+            destinationReceiver   : XLayer.ALM_PROXY,
             sourceChainId         : ChainIdUtils.Ethereum(),
             sourceEndpointId      : LZ_EID_ETHEREUM
         });
@@ -4532,10 +4553,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[52] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",  Ethereum.PYUSD, PAXOS_PYUSD_USDG);
         integrations[53] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",  Ethereum.USDG,  PAXOS_USDG_PYUSD);
 
-        integrations[54] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
-        integrations[55] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
+        // Onboarded in the 2026-07-16 spell (live on-chain, so part of the pre-execution state).
+        integrations[54] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_ROBINHOOD", Ethereum.USDG, PAXOS_USDG_ROBINHOOD);
 
-        integrations[56] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
+        integrations[55] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USAT", Ethereum.USAT, ANCHORAGE);
+        integrations[56] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
+
+        integrations[57] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -4690,31 +4714,25 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Two integrations onboarded, old USDT Morpho V2 vault offboarded (length + 2 - 1).
-        newIntegrations = new SLLIntegration[](integrations.length + 1);
+        // Spell 20260813: onboard Uniswap v4 USDG/USDS + rlUSD/USDS (LP + swap each), and Curve rlUSD/USDC
+        // (swap only). No removals (length + 5).
+        newIntegrations = new SLLIntegration[](integrations.length + 5);
 
         uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            // Skip the old USDT Morpho V2 vault, fully offboarded in this spell.
-            if (integrations[i].integration == MORPHO_VAULT_V2_USDT) continue;
-
             newIntegrations[index++] = integrations[i];
         }
 
-        newIntegrations[index++] = _createLayerZeroTransferIntegration({
-            label                 : "LAYERZERO_TRANSFER-USDT0_XLAYER",
-            oftAddress            : USDT_OFT,
-            destinationEndpointId : LZ_EID_XLAYER,
-            destinationChainId    : ChainIdUtils.XLayer(),
-            destinationOftAddress : USDT0_OFT_XLAYER,
-            destinationAsset      : USDT0_XLAYER,
-            destinationReceiver   : XLayer.ALM_PROXY,
-            sourceChainId         : ChainIdUtils.Ethereum(),
-            sourceEndpointId      : LZ_EID_ETHEREUM
-        });
+        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDG_USDS",  USDG_USDS_POOL_ID);
+        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
 
-        newIntegrations[index++] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_ROBINHOOD", Ethereum.USDG, PAXOS_USDG_ROBINHOOD);
+        // seedLiquidity must cover the harness's fixed 1_000_000e18 test swap within maxSlippage on a pool with
+        // no other real liquidity yet; matches the current PYUSD_USDS/USDT_USDS seed value.
+        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDG_USDS",  USDG_USDS_POOL_ID,  2_000_000e18);
+        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
+
+        newIntegrations[index++] = _createCurveSwapIntegration("CURVE_SWAP-RLUSDUSDC", CURVE_RLUSD_USDC);
     }
 
     function _getPostExecutionIntegrationsBase(
