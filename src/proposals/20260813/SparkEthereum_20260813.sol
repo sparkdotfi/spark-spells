@@ -16,8 +16,10 @@ import { SparkPayloadEthereum, SLLHelpers } from "src/SparkPayloadEthereum.sol";
  *         - Onboard Curve rlUSD/USDC for Swaps.
  *         Spark Treasury:
  *         - Transfer Excess USDS for Buybacks.
- * Forum:  TBD
- * Vote:   TBD
+ * Forum:  https://forum.skyeco.com/t/august-13-2026-proposed-changes-to-spark-for-upcoming-spell/28135/8
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x101ed4ff7ef77f8e4a6db6af4bbf053b703001c0245a1e166babb8ba6ad633fb
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0xf99d50e34900ea8f54c90053584f758d2a6d1ddbbe77a8c8d751e2c5a8fd0493
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x3240fc78276a2f4898188809464b3357124b2c42065f55a46a7a7254eabd0f82
  */
 contract SparkEthereum_20260813 is SparkPayloadEthereum {
 
@@ -30,10 +32,6 @@ contract SparkEthereum_20260813 is SparkPayloadEthereum {
 
     function _postExecute() internal override {
         // 1. Onboard Uniswap v4 USDG/USDS Pool.
-        // Doc gave the 0.999-1.001 band as +276_314/+276_334 (the PYUSD/USDS-style ordering, currency0 = 6-decimal
-        // token). In this pool USDS (18 decimals) is currency0 and USDG (6 decimals) is currency1 — the opposite
-        // ordering — so the same 0.999-1.001 band lands at the negated ticks. Verified against the live pool's
-        // actual current tick (-276_325) via StateView.getSlot0 at the fork block.
         SLLHelpers.configureUniswapV4Pool({
             controller     : Ethereum.ALM_CONTROLLER,
             rateLimits     : Ethereum.ALM_RATE_LIMITS,

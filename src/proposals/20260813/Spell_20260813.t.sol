@@ -50,10 +50,8 @@ interface IMinimalERC20ApproveLike {
 
 contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests {
 
-    // USDG_USDS_POOL_ID, RLUSD_USDS_POOL_ID, CURVE_RLUSD_USDC are inherited from SparkLiquidityLayerTests
-    // (registered there alongside this spell's post-execution integrations).
-
-    uint256 internal constant _V4_SWAP = 0x10;
+    uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
+    uint256 internal constant _V4_SWAP                 = 0x10;
 
     address internal constant _STATE_VIEW = 0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227;
 
@@ -136,25 +134,16 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests {
 
     function test_ETHEREUM_curvePoolOnboarding_RLUSDUSDC() external onChain(ChainIdUtils.Ethereum()) {
         _testCurveOnboarding({
-            controller:                  Ethereum.ALM_CONTROLLER,
-            pool:                        CURVE_RLUSD_USDC,
-            expectedDepositAmountToken0: 0,
-            expectedSwapAmountToken0:    500_000e6,  // coins(0) is USDC (6 decimals)
-            maxSlippage:                 0.999e18,
-            swapLimit:                   RateLimitData(5_000_000e18, 25_000_000e18 / uint256(1 days)),
-            depositLimit:                RateLimitData(0, 0),
-            withdrawLimit:               RateLimitData(0, 0)
+            controller                  : Ethereum.ALM_CONTROLLER,
+            pool                        : CURVE_RLUSD_USDC,
+            expectedDepositAmountToken0 : 0,
+            expectedSwapAmountToken0    : 500_000e6,  // coins(0) is USDC (6 decimals)
+            maxSlippage                 : 0.999e18,
+            swapLimit                   : RateLimitData(5_000_000e18, 25_000_000e18 / uint256(1 days)),
+            depositLimit                : RateLimitData(0, 0),
+            withdrawLimit               : RateLimitData(0, 0)
         });
     }
-
-    // forge-std's deal() slot-finder mis-detects a second candidate storage slot on USDG (an ERC1967 proxy)
-    // during its balanceOf() probe, which corrupts the proxy and panics. Verified by manual probing (via
-    // vm.record/vm.accesses against Ethereum.ALM_PROXY at this fork block, then confirmed generically by
-    // brute-forcing `keccak256(abi.encode(account, baseSlot))` for baseSlot 0-30) that USDG's
-    // `balances` mapping lives at storage slot index 1; write to it directly instead of going through
-    // forge-std's stdstore-based detection (mirrors the Gnosis.EURE `deal()` override pattern used in
-    // archive/20260129/Spell_20260129.t.sol, which hits the same class of issue on a different proxied token).
-    uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
 
     function deal(address token, address to, uint256 amount) internal override {
         if (token == Ethereum.USDG) {
@@ -163,8 +152,6 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests {
         }
         super.deal(token, to, amount);
     }
-
-    // Helper functions (copied from archive/20260129 Uniswap v4 onboarding test pattern)
 
     function _testUniswapV4LimitOrder(bytes32 poolId) internal {
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
@@ -440,6 +427,9 @@ contract SparkEthereum_20260813_SpellTests is SpellTests {
 
         uint256 sparkProxyBalanceBefore  = usds.balanceOf(Ethereum.SPARK_PROXY);
         uint256 opsMultisigBalanceBefore = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
+
+        assertEq(sparkProxyBalanceBefore,  45_236_509.249708907368137212e18);
+        assertEq(opsMultisigBalanceBefore, 0);
 
         _executeAllPayloadsAndBridges();
 

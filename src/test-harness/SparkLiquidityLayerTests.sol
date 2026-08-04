@@ -4712,8 +4712,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // Spell 20260813: onboard Uniswap v4 USDG/USDS + rlUSD/USDS (LP + swap each), and Curve rlUSD/USDC
-        // (swap only). No removals (length + 5).
         newIntegrations = new SLLIntegration[](integrations.length + 5);
 
         uint256 index;
@@ -4725,8 +4723,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDG_USDS",  USDG_USDS_POOL_ID);
         newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
 
-        // seedLiquidity must cover the harness's fixed 1_000_000e18 test swap within maxSlippage on a pool with
-        // no other real liquidity yet; matches the current PYUSD_USDS/USDT_USDS seed value.
         newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDG_USDS",  USDG_USDS_POOL_ID,  2_000_000e18);
         newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
 
