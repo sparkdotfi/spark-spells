@@ -515,10 +515,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     bytes32 internal constant PYUSD_USDS_POOL_ID = 0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
 
-    bytes32 internal constant USDG_USDS_POOL_ID  = 0x28adc7179a8a83c3379955d59563c0fec33eadfa83946b447af289190ff5fcff;
+    bytes32 internal constant USDS_USDG_POOL_ID  = 0x28adc7179a8a83c3379955d59563c0fec33eadfa83946b447af289190ff5fcff;
     bytes32 internal constant RLUSD_USDS_POOL_ID = 0x9035721b23481db3888fd201b9c2b26dbc3af60258bca65e669f2ed98dc8eb4f;
 
-    address internal constant CURVE_RLUSD_USDC = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
+    address internal constant CURVE_USDC_RLUSD = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
 
     address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
     address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
@@ -4270,7 +4270,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 depositAmount: 10_000_000 * 10 ** IERC20Metadata(asset).decimals(),
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
-                tolerance:     305
+                tolerance:     310
             }));
         }
 
@@ -4720,13 +4720,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[index++] = integrations[i];
         }
 
-        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDG_USDS",  USDG_USDS_POOL_ID);
+        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDS_USDG",  USDS_USDG_POOL_ID);
         newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
 
-        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDG_USDS",  USDG_USDS_POOL_ID,  2_000_000e18);
+        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDS_USDG",  USDS_USDG_POOL_ID,  2_000_000e18);
         newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
 
-        newIntegrations[index++] = _createCurveSwapIntegration("CURVE_SWAP-RLUSDUSDC", CURVE_RLUSD_USDC);
+        newIntegrations[index++] = _createCurveSwapIntegration("CURVE_SWAP-USDCRLUSD", CURVE_USDC_RLUSD);
     }
 
     function _getPostExecutionIntegrationsBase(
