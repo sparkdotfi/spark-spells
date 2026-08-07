@@ -46,8 +46,8 @@ EID/domain constants).
 ## 3. Action patterns → references/precedent-index.md + archive/
 
 Match each post item to a pattern card in `precedent-index.md` first; the card names the call
-sequence, keys, units, and intake items. Then open the actual `archive/` precedent it points to
-and extract the verbatim code (Stage A). If no card and no archive hit matches, the item is NOVEL:
+sequence, keys, units, and intake items. Then inspect the matching current or archived proposal and
+extract its semantic pattern (Stage A). If no repository precedent matches, the item is NOVEL:
 build minimally from the audited product source and flag it.
 
 ## 4. On-chain verification of supplied/new addresses
@@ -64,6 +64,15 @@ contracts, recipient multisigs):
   finding to surface, not a value to use.
 - Record what was verified (and how) in the patterns file; anything unverifiable is `[TBD]` and
   goes in the report's **Not verified** section.
+
+### Pool identity and units
+
+Before generating an AMM test amount, verify at `_blockDate` and record the canonical factory/pool
+identity, ordered assets, and each asset's `decimals()`. For Curve, query `coins(0)`/`coins(1)` and
+factory membership; for Uniswap, reconstruct the PoolKey and pool id. Record the human amount and
+raw token amount separately from controller rate limits, which may be 1e18-normalized regardless
+of token decimals. An unresolved pool keeps the item in Scaffold state; never infer units from its
+rate-limit values.
 
 ## Parameter conversion cheatsheet
 
@@ -89,3 +98,7 @@ sizing/sanity, and express the action as **full-balance-at-execution** (`type(ui
 the contract caps to available balance, or a live `balanceOf`/conversion read at execution).
 Note in the PR that the post's figure was an at-drafting estimate. Same for recurring "claim all"
 items.
+
+For a fixed deterministic transfer, query exact sender and recipient balances at `_blockDate` and
+pin exact pre-state, post-state, and transfer arithmetic. Relational assertions alone are not
+sufficient.

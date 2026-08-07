@@ -69,15 +69,17 @@ Useful helpers (grep the base contracts for exact signatures):
 uint256 l2Before  = IERC20(<L2>.USDS).balanceOf(<L2>.ALM_PROXY);
 chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 uint256 l1Before  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+assertEq(l2Before, <pinnedL2Balance>);
+assertEq(l1Before, <pinnedL1Balance>);
 chainData[ChainIdUtils.<L2>()].domain.selectFork();
 
 RecordedLogs.init();
 _executeAllPayloadsAndBridges();
-assertEq(IERC20(<L2>.USDS).balanceOf(<L2>.ALM_PROXY), l2Before - <amount>);
+assertEq(IERC20(<L2>.USDS).balanceOf(<L2>.ALM_PROXY), <pinnedL2Balance> - <amount>);
 
 OptimismBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.<L2>()].bridges[0], false);
 chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), l1Before + <amount>);
+assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), <pinnedL1Balance> + <amount>);
 ```
 
 Note: when testing one OP-stack chain's bridge, set the *other* OP chains' `chainData[...].payload = address(0)` inside the test so their `SentMessage` logs don't interfere with the relay (all OP chains share the same L2 messenger). Copy this exactly from a precedent that does an L2 withdrawal, if one exists.

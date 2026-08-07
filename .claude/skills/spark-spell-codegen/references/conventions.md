@@ -4,14 +4,14 @@
 > copy, not this one, and re-sync. The codegen addendum at the end of this file is owned here.
 
 Reference for writing (and self-reviewing) spell code. Everything here is verifiable in the repo —
-if a convention below conflicts with what the 3–4 most recent `archive/` spells do, the archive
-wins (the repo evolves); flag the discrepancy so this file gets updated.
+if a convention below conflicts with the current proposal or 3–4 most recent archives, the live
+repository pattern wins; flag the discrepancy so this file gets updated.
 
 ## Directory layout
 
 - `src/proposals/<YYYYMMDD>/` — the active spell under review. The date is the target execution date.
-- `archive/<YYYYMMDD>/` — completed spells. Use the 3–4 most recent as the ground truth for current
-  conventions (the repo evolves; old archive entries may use superseded patterns).
+- `archive/<YYYYMMDD>/` — completed spells. Use the current proposal plus the 3–4 most recent
+  archives as ground truth (the repo evolves; old archive entries may use superseded patterns).
 - One payload file per chain: `Spark<Chain>_<YYYYMMDD>.sol` (e.g. `SparkEthereum_20260702.sol`,
   `SparkBase_20260702.sol`).
 - One test file per spell: `Spell_<YYYYMMDD>.t.sol`, in the same directory.
@@ -177,7 +177,8 @@ Key mechanics:
 ## Spell lifecycle (what the PR stage implies for review)
 
 1. **Pre-deployment**: payload code + tests; constructor `PAYLOAD_*` slots and test `chainData`
-   addresses may be unset/placeholder; forum post exists; Snapshot vote may not.
+   deployment addresses may be unset; forum post exists; Snapshot vote may not. This does not
+   permit unresolved integration addresses in a review-ready payload.
 2. **Post-deployment ("finalize")**: constructor gets the deployed L2 payload addresses, test
    `chainData` gets the deployed addresses for all chains, `Vote:` links added. Bytecode-match
    tests become meaningful: deployed code must equal compiled source at this commit. Deployment

@@ -5,24 +5,24 @@
 
 Two layers, used together in Stage A:
 
-1. **Pointers** — which `archive/<date>/` spell exemplifies an item type. Pointers are not the
-   pattern: always open the actual archive file and extract the verbatim code. Prefer the most
-   recent match (conventions evolve).
+1. **Pointers** — which repository spell exemplifies an item type. Pointers are not the pattern:
+   always open the actual current or archived proposal and extract its semantic pattern. Prefer
+   the most recent match (conventions evolve).
 2. **Pattern cards** — the canonical call sequence, rate-limit keys, units, and intake/`[TBD]`
-   items per action type, mined from spell history. Cards anchor Stage 0 derivation; the archive
-   file anchors the code shape. **Re-verify specifics against the live source** (`lib/` submodules,
+   items per action type, mined from spell history. Cards anchor Stage 0 derivation; the repository
+   precedent anchors the code shape. **Re-verify specifics against the live source** (`lib/` submodules,
    `src/SparkPayload*.sol`) — signatures and keys evolve; the cards are the map, not frozen truth.
 
-**If an item matches no card and no archive grep hit → exploration mode:** mine `archive/` history
-directly (greps below, then read candidates), and if genuinely nothing matches, the item is
+**If an item matches no card and no repository grep hit → exploration mode:** mine current and
+archived proposals (greps below, then read candidates), and if genuinely nothing matches, the item is
 **NOVEL**: build minimally from the audited product source (sourcing.md §2), cite file:line for
 every signature used, and flag for thorough human review. Do not improvise an unmapped action.
 Consider appending a new card here afterwards.
 
 ## Finding a precedent fast
 
-- By action verb / helper: `grep -rl "setRateLimitData\|_transferFromSparkLendTreasury\|setSupplyCapConfig\|_configureERC4626Vault\|setReserveFactor\|bridgeERC20To\|setOTCBuffer" archive/`
-- By product wording: grep the `@notice` headers across `archive/*/Spark*_*.sol`.
+- By action verb / helper: grep `src/proposals/` and `archive/` for the relevant call/helper.
+- By product wording: grep `@notice` headers across current and archived payloads.
 - By harness helper: grep `src/test-harness/` for a `_test*Integration` helper matching the item —
   its existence reveals the expected test shape even for first-time payload patterns.
 
