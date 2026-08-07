@@ -10,6 +10,11 @@ import { MainnetController } from "spark-alm-controller/src/MainnetController.so
 import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
 import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
 
+import { Currency } from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
+import { PoolKey }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
+
+import { IHooks } from "spark-alm-controller/lib/uniswap-v4-core/src/interfaces/IHooks.sol";
+
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
@@ -17,9 +22,13 @@ import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTe
 import { SpellTests}                from "src/test-harness/SpellTests.sol";
 import { UniV4Helpers }             from "src/test-harness/UniV4Helpers.sol";
 
+import { ICurvePoolLike } from "src/interfaces/Interfaces.sol";
+
 contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests, UniV4Helpers {
 
     uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
+
+    address internal constant RLUSD = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
 
     constructor() {
         _spellId   = 20260813;
@@ -99,6 +108,9 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests, UniV4Helpe
     }
 
     function test_ETHEREUM_curvePoolOnboarding_USDCRLUSD() external onChain(ChainIdUtils.Ethereum()) {
+        assertEq(ICurvePoolLike(CURVE_USDC_RLUSD).coins(0), Ethereum.USDC);
+        assertEq(ICurvePoolLike(CURVE_USDC_RLUSD).coins(1), RLUSD);
+
         _testCurveOnboarding({
             controller                  : Ethereum.ALM_CONTROLLER,
             pool                        : CURVE_USDC_RLUSD,
@@ -109,6 +121,23 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests, UniV4Helpe
             depositLimit                : RateLimitData(0, 0),
             withdrawLimit               : RateLimitData(0, 0)
         });
+    }
+
+    function test_ETHEREUM_uniswapV4PoolIdIntegrity() external onChain(ChainIdUtils.Ethereum()) {
+        _assertUniswapV4PoolId(USDS_USDG_POOL_ID,  Ethereum.USDS, Ethereum.USDG);
+        _assertUniswapV4PoolId(RLUSD_USDS_POOL_ID, RLUSD,         Ethereum.USDS);
+    }
+
+    function _assertUniswapV4PoolId(bytes32 poolId, address currency0, address currency1) internal view {
+        PoolKey memory expectedPoolKey = PoolKey({
+            currency0   : Currency.wrap(currency0),
+            currency1   : Currency.wrap(currency1),
+            fee         : 5,  // 0.0005%
+            tickSpacing : 1,
+            hooks       : IHooks(address(0))
+        });
+
+        assertEq(keccak256(abi.encode(expectedPoolKey)), poolId);
     }
 
     function deal(address token, address to, uint256 amount) internal override {
