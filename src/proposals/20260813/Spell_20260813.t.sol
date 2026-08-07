@@ -29,7 +29,9 @@ contract SparkEthereum_20260813_SLLTests is SparkLiquidityLayerTests, UniV4Helpe
 
     constructor() {
         _spellId   = 20260813;
-        _blockDate = 1785761559;
+        _blockDate = 1786114475;
+
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xc827237CB91Fa8E78B8dfA4F77838eDf924C04e9;
     }
 
     function test_ETHEREUM_sparkLiquidityLayer_onboardUniswapV4USDGUSDS() public onChain(ChainIdUtils.Ethereum()) {
@@ -151,7 +153,9 @@ contract SparkEthereum_20260813_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260813;
-        _blockDate = 1785761559;
+        _blockDate = 1786114475;
+
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xc827237CB91Fa8E78B8dfA4F77838eDf924C04e9;
     }
 
 }
@@ -162,7 +166,9 @@ contract SparkEthereum_20260813_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260813;
-        _blockDate = 1785761559;
+        _blockDate = 1786114475;
+
+        chainData[ChainIdUtils.Ethereum()].payload  = 0xc827237CB91Fa8E78B8dfA4F77838eDf924C04e9;
     }
 
     function test_ETHEREUM_sparkTreasury_transferExcessUSDSForBuybacks() external onChain(ChainIdUtils.Ethereum()) {
