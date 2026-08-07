@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC20Metadata } from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
 
 import { Currency } from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
 import { PoolKey }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
