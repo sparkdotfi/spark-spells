@@ -9,6 +9,8 @@ import { MainnetController } from "spark-alm-controller/src/MainnetController.so
 
 import { IV3RateStrategyFactory as Rates } from "src/interfaces/IV3RateStrategyFactory.sol";
 
+import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
+
 import { EngineFlags } from "../../AaveV3PayloadBase.sol";
 
 import { SparkPayloadEthereum, IEngine } from "../../SparkPayloadEthereum.sol";
@@ -24,21 +26,14 @@ import { SparkPayloadEthereum, IEngine } from "../../SparkPayloadEthereum.sol";
  *         - Onboard SparkLend RLUSD.
  *         Spark Treasury:
  *         - Grants for Spark Foundation and Spark Assets Foundation.
- * Forum:  [TBD]
+ * Forum:  https://forum.skyeco.com/t/august-27-2026-proposed-changes-to-spark-for-upcoming-spell/28181
+ * Vote:
  */
 contract SparkEthereum_20260827 is SparkPayloadEthereum {
 
-    // RLUSD is not in spark-address-registry yet (to be added).
-    address internal constant RLUSD = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
-
-    // Fixed $1 price feed shared by all existing SparkLend USD stablecoin reserves
-    // (USDT, USDC, USDS, DAI and PYUSD all use this source on the Aave oracle).
+    address internal constant RLUSD                = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
     address internal constant FIXED_USD_PRICE_FEED = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
-
-    // PLACEHOLDER: the shared USDG/RLUSD RateTargetBaseInterestRateStrategy is not deployed
-    // yet. Constructor params must be (POOL_ADDRESSES_PROVIDER, SSR_RATE_SOURCE, 0.95e27,
-    // 0, 0.0125e27, 0.15e27). Replace with the deployed address before review/deployment.
-    address internal constant USDG_RLUSD_IRM = 0x1111111111111111111111111111111111111111;
+    address internal constant USDG_RLUSD_IRM       = 0x5fCFEc770eDF3971C4f700a599364c244217dc9A;
 
     // Predicted spToken proxy addresses, CREATE(POOL_CONFIGURATOR, nonce 55 and 58). Valid
     // only while no other reserve is listed before this spell executes.
@@ -76,8 +71,8 @@ contract SparkEthereum_20260827 is SparkPayloadEthereum {
             liqThreshold:          0,
             liqBonus:              0,
             reserveFactor:         10_00,
-            supplyCap:             68_719_476_735,
-            borrowCap:             68_719_476_735,
+            supplyCap:             ReserveConfiguration.MAX_VALID_SUPPLY_CAP,
+            borrowCap:             ReserveConfiguration.MAX_VALID_BORROW_CAP,
             debtCeiling:           0,
             liqProtocolFee:        10_00,
             eModeCategory:         0
@@ -108,8 +103,8 @@ contract SparkEthereum_20260827 is SparkPayloadEthereum {
             liqThreshold:          0,
             liqBonus:              0,
             reserveFactor:         10_00,
-            supplyCap:             68_719_476_735,
-            borrowCap:             68_719_476_735,
+            supplyCap:             ReserveConfiguration.MAX_VALID_SUPPLY_CAP,
+            borrowCap:             ReserveConfiguration.MAX_VALID_BORROW_CAP,
             debtCeiling:           0,
             liqProtocolFee:        10_00,
             eModeCategory:         0

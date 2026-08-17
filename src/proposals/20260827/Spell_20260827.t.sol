@@ -9,11 +9,6 @@ import { SparkLend } from "spark-address-registry/SparkLend.sol";
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import {
-    IPoolAddressesProvider,
-    RateTargetBaseInterestRateStrategy
-} from "sparklend-advanced/src/RateTargetBaseInterestRateStrategy.sol";
-
 import { IPool }     from "sparklend-v1-core/interfaces/IPool.sol";
 import { DataTypes } from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 
@@ -25,56 +20,23 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
 import { IRateSourceLike } from "src/interfaces/Interfaces.sol";
 
-// The USDG/RLUSD RateTargetBase IRM is not deployed on-chain yet. Until it is, every test
-// contract injects the exact strategy the spell expects at the payload's placeholder address
-// (see _setUpNewReserveDependencies). Remove the injection and replace the payload constant
-// once the real IRM is deployed.
-abstract contract SparkEthereum_20260827_TestHelpers {
+contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
 
-    address internal constant RLUSD                = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
-    address internal constant FIXED_USD_PRICE_FEED = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
-    address internal constant USDG_RLUSD_IRM       = 0x1111111111111111111111111111111111111111;
-    address internal constant USDG_SPTOKEN         = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
-    address internal constant RLUSD_SPTOKEN        = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
+    address internal constant RLUSD          = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
+    address internal constant USDG_RLUSD_IRM = 0x5fCFEc770eDF3971C4f700a599364c244217dc9A;
 
     uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
 
-}
-
-contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEthereum_20260827_TestHelpers {
-
     constructor() {
         _spellId   = 20260827;
-        _blockDate = 1786950525;
+        _blockDate = 1786986631;
     }
 
     function setUp() public override {
         super.setUp();
-
-        // Scaffold: inject the not-yet-deployed USDG/RLUSD IRM at the placeholder address.
-        vm.etch(
-            USDG_RLUSD_IRM,
-            address(new RateTargetBaseInterestRateStrategy({
-                provider:                     IPoolAddressesProvider(SparkLend.POOL_ADDRESSES_PROVIDER),
-                rateSource:                   SparkLend.SSR_RATE_SOURCE,
-                optimalUsageRatio:            0.95e27,
-                baseVariableBorrowRateSpread: 0,
-                variableRateSlope1:           0.0125e27,
-                variableRateSlope2:           0.15e27
-            })).code
-        );
-
-        // The Spark Proxy must hold the seed deposits at execution.
-        deal(Ethereum.USDG, Ethereum.SPARK_PROXY, 1e6);
-        deal(RLUSD,         Ethereum.SPARK_PROXY, 1e18);
     }
 
-    // Note: the harness `_testAaveOnboarding`/`_testAaveIntegration` helpers cannot be used here:
-    //       they query the aToken before execution (it only exists once this spell lists the
-    //       reserve) and assert interest accrual (a fresh reserve has no borrows). The
-    //       deposit/withdraw round trip below mirrors the PYUSD onboarding test
-    //       (archive/20250807).
-    function test_ETHEREUM_sparkLiquidityLayer_onboardSparkLendUSDG() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_onboardSPUSDG() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
@@ -82,6 +44,7 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  USDG_SPTOKEN);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), USDG_SPTOKEN);
 
+        IERC20 spUsdg     = IERC20(USDG_SPTOKEN);
         IERC20 underlying = IERC20(Ethereum.USDG);
 
         uint256 depositAmount = 1_000_000e6;
@@ -102,8 +65,8 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
 
         uint256 aTokenUnderlyingBalance = underlying.balanceOf(USDG_SPTOKEN);
 
-        assertEq(underlying.balanceOf(address(ctx.proxy)),           depositAmount);
-        assertEq(IERC20(USDG_SPTOKEN).balanceOf(address(ctx.proxy)), 0);
+        assertEq(underlying.balanceOf(address(ctx.proxy)), depositAmount);
+        assertEq(spUsdg.balanceOf(address(ctx.proxy)),     0);
 
         vm.prank(ctx.relayer);
         controller.depositAave(USDG_SPTOKEN, depositAmount);
@@ -114,7 +77,7 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
         assertApproxEqAbs(underlying.balanceOf(USDG_SPTOKEN),       aTokenUnderlyingBalance + depositAmount, 1);
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                       1);
 
-        assertApproxEqAbs(IERC20(USDG_SPTOKEN).balanceOf(address(ctx.proxy)), depositAmount, 1);
+        assertApproxEqAbs(spUsdg.balanceOf(address(ctx.proxy)), depositAmount, 1);
 
         vm.prank(ctx.relayer);
         controller.withdrawAave(USDG_SPTOKEN, depositAmount / 2);
@@ -125,10 +88,10 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
 
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
 
-        assertApproxEqAbs(IERC20(USDG_SPTOKEN).balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
+        assertApproxEqAbs(spUsdg.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
     }
 
-    function test_ETHEREUM_sparkLiquidityLayer_onboardSparkLendRLUSD() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLiquidityLayer_onboardSparkLendRLUSD() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
@@ -136,6 +99,7 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  RLUSD_SPTOKEN);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), RLUSD_SPTOKEN);
 
+        IERC20 spRlusd    = IERC20(RLUSD_SPTOKEN);
         IERC20 underlying = IERC20(RLUSD);
 
         uint256 depositAmount = 1_000_000e18;
@@ -156,8 +120,8 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
 
         uint256 aTokenUnderlyingBalance = underlying.balanceOf(RLUSD_SPTOKEN);
 
-        assertEq(underlying.balanceOf(address(ctx.proxy)),            depositAmount);
-        assertEq(IERC20(RLUSD_SPTOKEN).balanceOf(address(ctx.proxy)), 0);
+        assertEq(underlying.balanceOf(address(ctx.proxy)), depositAmount);
+        assertEq(spRlusd.balanceOf(address(ctx.proxy)),    0);
 
         vm.prank(ctx.relayer);
         controller.depositAave(RLUSD_SPTOKEN, depositAmount);
@@ -168,7 +132,7 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
         assertApproxEqAbs(underlying.balanceOf(RLUSD_SPTOKEN),      aTokenUnderlyingBalance + depositAmount, 1);
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                       1);
 
-        assertApproxEqAbs(IERC20(RLUSD_SPTOKEN).balanceOf(address(ctx.proxy)), depositAmount, 1);
+        assertApproxEqAbs(spRlusd.balanceOf(address(ctx.proxy)), depositAmount, 1);
 
         vm.prank(ctx.relayer);
         controller.withdrawAave(RLUSD_SPTOKEN, depositAmount / 2);
@@ -179,7 +143,7 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
 
         assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
 
-        assertApproxEqAbs(IERC20(RLUSD_SPTOKEN).balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
+        assertApproxEqAbs(spRlusd.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
     }
 
     function deal(address token, address to, uint256 amount) internal override {
@@ -192,35 +156,25 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests, SparkEther
 
 }
 
-contract SparkEthereum_20260827_SparklendTests is SparklendTests, SparkEthereum_20260827_TestHelpers {
+contract SparkEthereum_20260827_SparklendTests is SparklendTests {
+
+    address internal constant FIXED_USD_PRICE_FEED = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
+    address internal constant RLUSD                = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
+    address internal constant USDG_RLUSD_IRM       = 0x5fCFEc770eDF3971C4f700a599364c244217dc9A;
+
+    address internal constant USDG_SPTOKEN  = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
+    address internal constant RLUSD_SPTOKEN = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
 
     constructor() {
         _spellId   = 20260827;
-        _blockDate = 1786950525;
+        _blockDate = 1786986631;
     }
 
     function setUp() public override {
         super.setUp();
-
-        // Scaffold: inject the not-yet-deployed USDG/RLUSD IRM at the placeholder address.
-        vm.etch(
-            USDG_RLUSD_IRM,
-            address(new RateTargetBaseInterestRateStrategy({
-                provider:                     IPoolAddressesProvider(SparkLend.POOL_ADDRESSES_PROVIDER),
-                rateSource:                   SparkLend.SSR_RATE_SOURCE,
-                optimalUsageRatio:            0.95e27,
-                baseVariableBorrowRateSpread: 0,
-                variableRateSlope1:           0.0125e27,
-                variableRateSlope2:           0.15e27
-            })).code
-        );
-
-        // The Spark Proxy must hold the seed deposits at execution.
-        deal(Ethereum.USDG, Ethereum.SPARK_PROXY, 1e6);
-        deal(RLUSD,         Ethereum.SPARK_PROXY, 1e18);
     }
 
-    function test_ETHEREUM_sparkLend_onboardUsdgAndRlusd() public onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sparkLend_onboardUsdgAndRlusd() external onChain(ChainIdUtils.Ethereum()) {
         uint256 ssrRate = uint256(IRateSourceLike(SparkLend.SSR_RATE_SOURCE).getAPR());
 
         SparkLendAssetOnboardingParams[] memory newAssets = new SparkLendAssetOnboardingParams[](2);
@@ -320,45 +274,20 @@ contract SparkEthereum_20260827_SparklendTests is SparklendTests, SparkEthereum_
         assertEq(IERC20(RLUSD_SPTOKEN).totalSupply(), 1e18);
     }
 
-    function deal(address token, address to, uint256 amount) internal override {
-        if (token == Ethereum.USDG) {
-            vm.store(Ethereum.USDG, keccak256(abi.encode(to, USDG_BALANCES_SLOT_INDEX)), bytes32(amount));
-            return;
-        }
-        super.deal(token, to, amount);
-    }
-
 }
 
-contract SparkEthereum_20260827_SpellTests is SpellTests, SparkEthereum_20260827_TestHelpers {
+contract SparkEthereum_20260827_SpellTests is SpellTests {
 
     uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 1_100_000e18;
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 155_000e18;
 
     constructor() {
         _spellId   = 20260827;
-        _blockDate = 1786950525;
+        _blockDate = 1786986631;
     }
 
     function setUp() public override {
         super.setUp();
-
-        // Scaffold: inject the not-yet-deployed USDG/RLUSD IRM at the placeholder address.
-        vm.etch(
-            USDG_RLUSD_IRM,
-            address(new RateTargetBaseInterestRateStrategy({
-                provider:                     IPoolAddressesProvider(SparkLend.POOL_ADDRESSES_PROVIDER),
-                rateSource:                   SparkLend.SSR_RATE_SOURCE,
-                optimalUsageRatio:            0.95e27,
-                baseVariableBorrowRateSpread: 0,
-                variableRateSlope1:           0.0125e27,
-                variableRateSlope2:           0.15e27
-            })).code
-        );
-
-        // The Spark Proxy must hold the seed deposits at execution.
-        deal(Ethereum.USDG, Ethereum.SPARK_PROXY, 1e6);
-        deal(RLUSD,         Ethereum.SPARK_PROXY, 1e18);
     }
 
     function test_ETHEREUM_sparkTreasury_foundationGrants() external onChain(ChainIdUtils.Ethereum()) {
@@ -368,7 +297,7 @@ contract SparkEthereum_20260827_SpellTests is SpellTests, SparkEthereum_20260827
         uint256 foundationBalanceBefore      = usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG);
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
-        assertEq(sparkProxyBalanceBefore,      45_236_509.249708907368137212e18);
+        assertEq(sparkProxyBalanceBefore,      48_142_491.085806286854722044e18);
         assertEq(foundationBalanceBefore,      2_367_790.0222e18);
         assertEq(assetFoundationBalanceBefore, 0);
 
@@ -377,14 +306,6 @@ contract SparkEthereum_20260827_SpellTests is SpellTests, SparkEthereum_20260827
         assertEq(usds.balanceOf(Ethereum.SPARK_PROXY),                     sparkProxyBalanceBefore - SPARK_FOUNDATION_GRANT_AMOUNT - SPARK_ASSET_FOUNDATION_GRANT_AMOUNT);
         assertEq(usds.balanceOf(Ethereum.SPARK_FOUNDATION_MULTISIG),       foundationBalanceBefore + SPARK_FOUNDATION_GRANT_AMOUNT);
         assertEq(usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG), assetFoundationBalanceBefore + SPARK_ASSET_FOUNDATION_GRANT_AMOUNT);
-    }
-
-    function deal(address token, address to, uint256 amount) internal override {
-        if (token == Ethereum.USDG) {
-            vm.store(Ethereum.USDG, keccak256(abi.encode(to, USDG_BALANCES_SLOT_INDEX)), bytes32(amount));
-            return;
-        }
-        super.deal(token, to, amount);
     }
 
 }
