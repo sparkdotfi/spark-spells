@@ -27,7 +27,8 @@ import { SparkPayloadEthereum, IEngine } from "../../SparkPayloadEthereum.sol";
  *         Spark Treasury:
  *         - Grants for Spark Foundation and Spark Assets Foundation.
  * Forum:  https://forum.skyeco.com/t/august-27-2026-proposed-changes-to-spark-for-upcoming-spell/28181
- * Vote:
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xf8a0b03d3638192899495e8d85a272d78f7c61324e3f1c1f320add23ab91bda3
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x01a287ddec297d1ffe1e5c8391431fe1ee1c415e3f7e8b93d437ee9a66f29820
  */
 contract SparkEthereum_20260827 is SparkPayloadEthereum {
 
