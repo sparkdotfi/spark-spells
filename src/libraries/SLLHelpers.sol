@@ -285,11 +285,11 @@ library SLLHelpers {
 
     function setMaxExchangeRate(
         address almController,
-        address vault, 
-        uint256 normalizedShares, 
+        address vault,
+        uint256 normalizedShares,
         uint256 normalizedAssets
-    ) 
-        internal 
+    )
+        internal
     {
         uint256 sharePrecision = 10 ** IERC20Metadata(vault).decimals();
         uint256 assetPrecision = 10 ** IERC20Metadata(IERC4626(vault).asset()).decimals();
