@@ -34,7 +34,7 @@ contract SparkEthereum_20260827 is SparkPayloadEthereum {
 
     address internal constant RLUSD                = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
     address internal constant FIXED_USD_PRICE_FEED = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
-    address internal constant USDG_RLUSD_IRM       = 0x5fCFEc770eDF3971C4f700a599364c244217dc9A;
+    address internal constant USDG_RLUSD_IRM       = 0x473fDf9713C9a02A9a9c17173a57d120493F3C6B;
 
     // Predicted spToken proxy addresses, CREATE(POOL_CONFIGURATOR, nonce 55 and 58). Valid
     // only while no other reserve is listed before this spell executes.

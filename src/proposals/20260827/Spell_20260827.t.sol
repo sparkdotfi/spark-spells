@@ -23,13 +23,13 @@ import { IRateSourceLike } from "src/interfaces/Interfaces.sol";
 contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant RLUSD          = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
-    address internal constant USDG_RLUSD_IRM = 0x5fCFEc770eDF3971C4f700a599364c244217dc9A;
+    address internal constant USDG_RLUSD_IRM = 0x473fDf9713C9a02A9a9c17173a57d120493F3C6B;
 
     uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
 
     constructor() {
         _spellId   = 20260827;
-        _blockDate = 1786986631;
+        _blockDate = 1787063010;
     }
 
     function setUp() public override {
@@ -74,10 +74,10 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e6 - depositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        assertApproxEqAbs(underlying.balanceOf(USDG_SPTOKEN),       aTokenUnderlyingBalance + depositAmount, 1);
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                       1);
+        assertEq(underlying.balanceOf(USDG_SPTOKEN),       aTokenUnderlyingBalance + depositAmount);
+        assertEq(underlying.balanceOf(address(ctx.proxy)), 0);
 
-        assertApproxEqAbs(spUsdg.balanceOf(address(ctx.proxy)), depositAmount, 1);
+        assertEq(spUsdg.balanceOf(address(ctx.proxy)), depositAmount);
 
         vm.prank(ctx.relayer);
         controller.withdrawAave(USDG_SPTOKEN, depositAmount / 2);
@@ -86,12 +86,12 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e6 - depositAmount + depositAmount / 2);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
-
-        assertApproxEqAbs(spUsdg.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
+        assertEq(underlying.balanceOf(address(ctx.proxy)), depositAmount / 2);
+        assertEq(spUsdg.balanceOf(address(ctx.proxy)),     depositAmount / 2);
+        assertEq(underlying.balanceOf(USDG_SPTOKEN),       aTokenUnderlyingBalance + depositAmount / 2);
     }
 
-    function test_ETHEREUM_sparkLiquidityLayer_onboardSparkLendRLUSD() external onChain(ChainIdUtils.Ethereum()) {
+    function test_ETHEREUM_sll_onboardSPRLUSD() external onChain(ChainIdUtils.Ethereum()) {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
@@ -129,10 +129,10 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e18 - depositAmount);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        assertApproxEqAbs(underlying.balanceOf(RLUSD_SPTOKEN),      aTokenUnderlyingBalance + depositAmount, 1);
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), 0,                                       1);
+        assertEq(underlying.balanceOf(RLUSD_SPTOKEN),      aTokenUnderlyingBalance + depositAmount);
+        assertEq(underlying.balanceOf(address(ctx.proxy)), 0);
 
-        assertApproxEqAbs(spRlusd.balanceOf(address(ctx.proxy)), depositAmount, 1);
+        assertEq(spRlusd.balanceOf(address(ctx.proxy)), depositAmount);
 
         vm.prank(ctx.relayer);
         controller.withdrawAave(RLUSD_SPTOKEN, depositAmount / 2);
@@ -141,9 +141,9 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e18 - depositAmount + depositAmount / 2);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
-        assertApproxEqAbs(underlying.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
-
-        assertApproxEqAbs(spRlusd.balanceOf(address(ctx.proxy)), depositAmount / 2, 1);
+        assertEq(underlying.balanceOf(address(ctx.proxy)), depositAmount / 2);
+        assertEq(spRlusd.balanceOf(address(ctx.proxy)),    depositAmount / 2);
+        assertEq(underlying.balanceOf(RLUSD_SPTOKEN),      aTokenUnderlyingBalance + depositAmount / 2);
     }
 
     function deal(address token, address to, uint256 amount) internal override {
@@ -160,14 +160,14 @@ contract SparkEthereum_20260827_SparklendTests is SparklendTests {
 
     address internal constant FIXED_USD_PRICE_FEED = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
     address internal constant RLUSD                = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
-    address internal constant USDG_RLUSD_IRM       = 0x5fCFEc770eDF3971C4f700a599364c244217dc9A;
+    address internal constant USDG_RLUSD_IRM       = 0x473fDf9713C9a02A9a9c17173a57d120493F3C6B;
 
     address internal constant USDG_SPTOKEN  = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
     address internal constant RLUSD_SPTOKEN = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
 
     constructor() {
         _spellId   = 20260827;
-        _blockDate = 1786986631;
+        _blockDate = 1787063010;
     }
 
     function setUp() public override {
@@ -188,7 +188,7 @@ contract SparkEthereum_20260827_SparklendTests is SparklendTests {
             // IRM Params
             optimalUsageRatio:      0.95e27,
             baseVariableBorrowRate: ssrRate,
-            variableRateSlope1:     0.0125e27,
+            variableRateSlope1:     0.003e27,
             variableRateSlope2:     0.15e27,
             // Borrowing configuration
             borrowEnabled:          true,
@@ -227,7 +227,7 @@ contract SparkEthereum_20260827_SparklendTests is SparklendTests {
             // IRM Params
             optimalUsageRatio:      0.95e27,
             baseVariableBorrowRate: ssrRate,
-            variableRateSlope1:     0.0125e27,
+            variableRateSlope1:     0.003e27,
             variableRateSlope2:     0.15e27,
             // Borrowing configuration
             borrowEnabled:          true,
@@ -283,7 +283,7 @@ contract SparkEthereum_20260827_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260827;
-        _blockDate = 1786986631;
+        _blockDate = 1787063010;
     }
 
     function setUp() public override {
