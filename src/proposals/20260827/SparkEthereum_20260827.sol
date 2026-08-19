@@ -3,7 +3,8 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Ethereum }  from "spark-address-registry/Ethereum.sol";
+import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 
@@ -32,9 +33,7 @@ import { SparkPayloadEthereum, IEngine } from "../../SparkPayloadEthereum.sol";
  */
 contract SparkEthereum_20260827 is SparkPayloadEthereum {
 
-    address internal constant RLUSD                = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
-    address internal constant FIXED_USD_PRICE_FEED = 0x42a03F81dd8A1cEcD746dc262e4d1CD9fD39F777;
-    address internal constant USDG_RLUSD_IRM       = 0x473fDf9713C9a02A9a9c17173a57d120493F3C6B;
+    address internal constant USDG_RLUSD_IRM = 0x473fDf9713C9a02A9a9c17173a57d120493F3C6B;
 
     // Predicted spToken proxy addresses, CREATE(POOL_CONFIGURATOR, nonce 55 and 58). Valid
     // only while no other reserve is listed before this spell executes.
@@ -51,7 +50,7 @@ contract SparkEthereum_20260827 is SparkPayloadEthereum {
         listings[0] = IEngine.Listing({
             asset:              Ethereum.USDG,
             assetSymbol:        'USDG',
-            priceFeed:          FIXED_USD_PRICE_FEED,
+            priceFeed:          SparkLend.FIXED_USD_PRICE_FEED,
             rateStrategyParams: Rates.RateStrategyParams({
                 optimalUsageRatio:             _bpsToRay(0),
                 baseVariableBorrowRate:        0,
@@ -81,9 +80,9 @@ contract SparkEthereum_20260827 is SparkPayloadEthereum {
 
         // 2. Onboard RLUSD to SparkLend.
         listings[1] = IEngine.Listing({
-            asset:              RLUSD,
+            asset:              Ethereum.RLUSD,
             assetSymbol:        'RLUSD',
-            priceFeed:          FIXED_USD_PRICE_FEED,
+            priceFeed:          SparkLend.FIXED_USD_PRICE_FEED,
             rateStrategyParams: Rates.RateStrategyParams({
                 optimalUsageRatio:             _bpsToRay(0),
                 baseVariableBorrowRate:        0,
@@ -127,15 +126,15 @@ contract SparkEthereum_20260827 is SparkPayloadEthereum {
         LISTING_ENGINE.POOL().supply(Ethereum.USDG, 1e6, address(this), 0);
 
         // 2. Onboard RLUSD to SparkLend.
-        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(RLUSD, USDG_RLUSD_IRM);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setReserveInterestRateStrategyAddress(Ethereum.RLUSD, USDG_RLUSD_IRM);
 
         // The config engine skips the liquidation protocol fee for non-collateral listings
         // (liqThreshold == 0), so it is set directly.
-        LISTING_ENGINE.POOL_CONFIGURATOR().setLiquidationProtocolFee(RLUSD, 10_00);
+        LISTING_ENGINE.POOL_CONFIGURATOR().setLiquidationProtocolFee(Ethereum.RLUSD, 10_00);
 
         // Seed the new RLUSD pool
-        IERC20(RLUSD).approve(address(LISTING_ENGINE.POOL()), 1e18);
-        LISTING_ENGINE.POOL().supply(RLUSD, 1e18, address(this), 0);
+        IERC20(Ethereum.RLUSD).approve(address(LISTING_ENGINE.POOL()), 1e18);
+        LISTING_ENGINE.POOL().supply(Ethereum.RLUSD, 1e18, address(this), 0);
 
         // 3. Onboard SparkLend USDG to the Spark Liquidity Layer.
         _configureAaveToken({
