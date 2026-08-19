@@ -274,6 +274,29 @@ contract SparkEthereum_20260827_SparklendTests is SparklendTests {
         assertEq(IERC20(RLUSD_SPTOKEN).totalSupply(), 1e18);
     }
 
+    function test_ETHEREUM_sparkLend_activateUsdgAndRlusd_e2e() external onChain(ChainIdUtils.Ethereum()) {
+        _executeAllPayloadsAndBridges();
+
+        SparkLendContext memory ctx = _getSparkLendContext();
+
+        ReserveConfig[] memory allConfigs = _createConfigurationSnapshot('', ctx.pool);
+
+        ReserveConfig memory rlusdConfig = _findReserveConfigBySymbol(allConfigs, 'RLUSD');
+        ReserveConfig memory usdgConfig  = _findReserveConfigBySymbol(allConfigs, 'USDG');
+        ReserveConfig memory wethConfig  = _findReserveConfigBySymbol(allConfigs, 'WETH');
+
+        assertEq(usdgConfig.borrowingEnabled,  true);
+        assertEq(rlusdConfig.borrowingEnabled, true);
+
+        uint256 snapshot = vm.snapshot();
+
+        _e2eTestAsset(ctx.pool, wethConfig, usdgConfig);
+        vm.revertTo(snapshot);
+
+        _e2eTestAsset(ctx.pool, wethConfig, rlusdConfig);
+        vm.revertTo(snapshot);
+    }
+
 }
 
 contract SparkEthereum_20260827_SpellTests is SpellTests {
