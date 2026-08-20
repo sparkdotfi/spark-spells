@@ -116,6 +116,8 @@ interface IMainnetControllerLike {
         uint128 amount1Min
     ) external;
 
+    function maxSlippages(address) external view returns (uint256);
+
 }
 
 interface IMainnetControllerV9Like {
@@ -123,6 +125,8 @@ interface IMainnetControllerV9Like {
     function depositERC4626(address vault, uint256 amount) external returns (uint256 shares);
 
     function withdrawERC4626(address vault, uint256 amount) external returns (uint256 shares);
+
+    function maxSlippages(address) external view returns (uint256);
 
 }
 
@@ -617,9 +621,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address vault,
         uint256 expectedDepositAmount,
         uint256 depositMax,
-        uint256 depositSlope
+        uint256 depositSlope,
+        uint256 maxSlippage
     ) internal {
-        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, 10, false);
+        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, maxSlippage, 10, false);
     }
 
     function _testERC4626Onboarding(
@@ -627,6 +632,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 expectedDepositAmount,
         uint256 depositMax,
         uint256 depositSlope,
+        uint256 maxSlippage,
         uint256 tolerance,
         bool    skipInitialCheck
     ) internal {
@@ -651,6 +657,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _assertRateLimit(depositKey,  0, 0);
             _assertRateLimit(withdrawKey, 0, 0);
 
+            assertEq(IMainnetControllerLike(ctx.controller).maxSlippages(vault), 0);
+
             vm.prank(ctx.relayer);
             vm.expectRevert("RateLimits/zero-maxAmount");
             _depositERC4626(ctx.prevController, vault, expectedDepositAmount);
@@ -660,6 +668,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        assertGe(depositMax / depositSlope, 1 hours);
+
+        assertEq(IMainnetControllerLike(ctx.controller).maxSlippages(vault), maxSlippage);
 
         _testERC4626Integration(E2ETestParams(ctx, vault, expectedDepositAmount, depositKey, withdrawKey, tolerance));
     }
@@ -806,7 +818,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address aToken,
         uint256 expectedDepositAmount,
         uint256 depositMax,
-        uint256 depositSlope
+        uint256 depositSlope,
+        uint256 maxSlippage
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
@@ -823,6 +836,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
 
+        assertEq(controller.maxSlippages(aToken), 0);
+
         vm.prank(ctx.relayer);
         vm.expectRevert("RateLimits/zero-maxAmount");
         MainnetController(ctx.prevController).depositAave(aToken, expectedDepositAmount);
@@ -831,6 +846,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        assertGe(depositMax / depositSlope, 1 hours);
+
+        assertEq(controller.maxSlippages(aToken), maxSlippage);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
@@ -3840,7 +3859,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256               vaultFee,
         uint256               initialDeposit,
         uint256               sllDepositMax,
-        uint256               sllDepositSlope
+        uint256               sllDepositSlope,
+        uint256               sllMaxSlippage
     )
         internal
     {
@@ -3894,7 +3914,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         if (sllDepositMax == 0 || sllDepositSlope == 0) return;
 
-        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
+        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, sllMaxSlippage, 10, true);
     }
 
     function _testVaultConfiguration(
