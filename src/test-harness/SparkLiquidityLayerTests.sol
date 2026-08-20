@@ -823,12 +823,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        address underlying = IAToken(aToken).UNDERLYING_ASSET_ADDRESS();
-
         MainnetController controller = MainnetController(ctx.controller);
-
-        // Note: Aave signature is the same for mainnet and foreign
-        deal(underlying, address(ctx.proxy), expectedDepositAmount);
 
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);

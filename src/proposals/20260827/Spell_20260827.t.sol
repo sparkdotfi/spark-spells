@@ -37,123 +37,23 @@ contract SparkEthereum_20260827_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_ETHEREUM_sll_onboardSPUSDG() external onChain(ChainIdUtils.Ethereum()) {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
-
-        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  USDG_SPTOKEN);
-        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), USDG_SPTOKEN);
-
-        IERC20 spUsdg = IERC20(USDG_SPTOKEN);
-        IERC20 usdg   = IERC20(Ethereum.USDG);
-
-        uint256 depositAmount = 1_000_000e6;
-
-        deal(address(usdg), address(ctx.proxy), depositAmount);
-
-        assertEq(controller.maxSlippages(USDG_SPTOKEN), 0);
-
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(controller.maxSlippages(USDG_SPTOKEN), 0.99999e18);
-
-        _assertRateLimit(depositKey,  100_000_000e6,     100_000_000e6 / uint256(1 days));
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        uint256 aTokenUnderlyingBalance = usdg.balanceOf(USDG_SPTOKEN);
-
-        assertEq(usdg.balanceOf(address(ctx.proxy)),   depositAmount);
-        assertEq(spUsdg.balanceOf(address(ctx.proxy)), 0);
-
-        vm.prank(ctx.relayer);
-        controller.depositAave(USDG_SPTOKEN, depositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e6 - depositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(usdg.balanceOf(USDG_SPTOKEN),       aTokenUnderlyingBalance + depositAmount);
-        assertEq(usdg.balanceOf(address(ctx.proxy)), 0);
-
-        assertEq(spUsdg.balanceOf(address(ctx.proxy)), depositAmount);
-
-        vm.prank(ctx.relayer);
-        controller.withdrawAave(USDG_SPTOKEN, depositAmount / 2);
-
-        // Withdrawals refill the deposit rate limit
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e6 - depositAmount + depositAmount / 2);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(usdg.balanceOf(address(ctx.proxy)),   depositAmount / 2);
-        assertEq(spUsdg.balanceOf(address(ctx.proxy)), depositAmount / 2);
-        assertEq(usdg.balanceOf(USDG_SPTOKEN),         aTokenUnderlyingBalance + depositAmount / 2);
-
-        skip(1 days);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e6);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        _testAaveOnboarding({
+            aToken                : USDG_SPTOKEN,
+            expectedDepositAmount : 100_000_000e6,
+            depositMax            : 100_000_000e6,
+            depositSlope          : 100_000_000e6 / uint256(1 days),
+            maxSlippage           : 0.99999e18
+        });
     }
 
     function test_ETHEREUM_sll_onboardSPRLUSD() external onChain(ChainIdUtils.Ethereum()) {
-        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
-
-        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
-
-        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  RLUSD_SPTOKEN);
-        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), RLUSD_SPTOKEN);
-
-        IERC20 rlUsd   = IERC20(Ethereum.RLUSD);
-        IERC20 spRlusd = IERC20(RLUSD_SPTOKEN);
-
-        uint256 depositAmount = 1_000_000e18;
-
-        deal(address(rlUsd), address(ctx.proxy), depositAmount);
-
-        assertEq(controller.maxSlippages(RLUSD_SPTOKEN), 0);
-
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(controller.maxSlippages(RLUSD_SPTOKEN), 0.99999e18);
-
-        _assertRateLimit(depositKey,  100_000_000e18,    100_000_000e18 / uint256(1 days));
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
-
-        uint256 aTokenUnderlyingBalance = rlUsd.balanceOf(RLUSD_SPTOKEN);
-
-        assertEq(rlUsd.balanceOf(address(ctx.proxy)),   depositAmount);
-        assertEq(spRlusd.balanceOf(address(ctx.proxy)), 0);
-
-        vm.prank(ctx.relayer);
-        controller.depositAave(RLUSD_SPTOKEN, depositAmount);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e18 - depositAmount);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(rlUsd.balanceOf(RLUSD_SPTOKEN),      aTokenUnderlyingBalance + depositAmount);
-        assertEq(rlUsd.balanceOf(address(ctx.proxy)), 0);
-
-        assertEq(spRlusd.balanceOf(address(ctx.proxy)), depositAmount);
-
-        vm.prank(ctx.relayer);
-        controller.withdrawAave(RLUSD_SPTOKEN, depositAmount / 2);
-
-        // Withdrawals refill the deposit rate limit
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e18 - depositAmount + depositAmount / 2);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
-
-        assertEq(rlUsd.balanceOf(address(ctx.proxy)),   depositAmount / 2);
-        assertEq(spRlusd.balanceOf(address(ctx.proxy)), depositAmount / 2);
-        assertEq(rlUsd.balanceOf(RLUSD_SPTOKEN),        aTokenUnderlyingBalance + depositAmount / 2);
-
-        skip(1 days);
-
-        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  100_000_000e18);
-        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+        _testAaveOnboarding({
+            aToken                : RLUSD_SPTOKEN,
+            expectedDepositAmount : 100_000_000e18,
+            depositMax            : 100_000_000e18,
+            depositSlope          : 100_000_000e18 / uint256(1 days),
+            maxSlippage           : 0.99999e18
+        });
     }
 
     function deal(address token, address to, uint256 amount) internal override {
