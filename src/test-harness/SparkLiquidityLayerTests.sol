@@ -80,6 +80,7 @@ import {
 import { SpellRunner } from "./SpellRunner.sol";
 
 interface ILZEndpointExtended {
+    function inboundPayloadHash(address _receiver, uint32 _srcEid, bytes32 _sender, uint64 _nonce) external view returns (bytes32);
     function lazyInboundNonce(address _receiver, uint32 _srcEid, bytes32 _sender) external view returns (uint64);
     function outboundNonce(address _sender, uint32 _dstEid, bytes32 _receiver) external view returns (uint64);
     function skip(address _oapp, uint32 _srcEid, bytes32 _sender, uint64 _nonce) external;
@@ -2665,10 +2666,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 sender,
         uint64  targetNonce
     ) internal {
-        uint64 currentNonce = ILZEndpointExtended(LZ_ENDPOINT).lazyInboundNonce(oapp, srcEid, sender);
+        ILZEndpointExtended endpoint = ILZEndpointExtended(LZ_ENDPOINT);
+
+        uint64 currentNonce = endpoint.lazyInboundNonce(oapp, srcEid, sender);
         for (uint64 n = currentNonce + 1; n < targetNonce; n++) {
+            // A nonce that a DVN has already verified on the destination fork (but the executor hasn't executed yet) cannot be skipped.
+            if (endpoint.inboundPayloadHash(oapp, srcEid, sender, n) != bytes32(0)) continue;
+
             vm.prank(oapp);
-            ILZEndpointExtended(LZ_ENDPOINT).skip(oapp, srcEid, sender, n);
+            endpoint.skip(oapp, srcEid, sender, n);
         }
     }
 
