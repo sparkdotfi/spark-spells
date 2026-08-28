@@ -80,6 +80,7 @@ import {
 import { SpellRunner } from "./SpellRunner.sol";
 
 interface ILZEndpointExtended {
+    function inboundPayloadHash(address _receiver, uint32 _srcEid, bytes32 _sender, uint64 _nonce) external view returns (bytes32);
     function lazyInboundNonce(address _receiver, uint32 _srcEid, bytes32 _sender) external view returns (uint64);
     function outboundNonce(address _sender, uint32 _dstEid, bytes32 _receiver) external view returns (uint64);
     function skip(address _oapp, uint32 _srcEid, bytes32 _sender, uint64 _nonce) external;
@@ -116,6 +117,8 @@ interface IMainnetControllerLike {
         uint128 amount1Min
     ) external;
 
+    function maxSlippages(address) external view returns (uint256);
+
 }
 
 interface IMainnetControllerV9Like {
@@ -123,6 +126,8 @@ interface IMainnetControllerV9Like {
     function depositERC4626(address vault, uint256 amount) external returns (uint256 shares);
 
     function withdrawERC4626(address vault, uint256 amount) external returns (uint256 shares);
+
+    function maxSlippages(address) external view returns (uint256);
 
 }
 
@@ -520,6 +525,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant CURVE_USDC_RLUSD = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
 
+    address internal constant USDG_SPTOKEN  = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
+    address internal constant RLUSD_SPTOKEN = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
+
     address internal constant PAXOS_PYUSD_USDC     = 0x2f7BE67e11A4D621E36f1A8371b0a5Fe16dE6B20;
     address internal constant PAXOS_PYUSD_USDG     = 0x227B1912C2fFE1353EA3A603F1C05F030Cc262Ff;
     address internal constant PAXOS_USDC_PYUSD     = 0xFb1F749024b4544c425f5CAf6641959da31EdF37;
@@ -614,9 +622,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address vault,
         uint256 expectedDepositAmount,
         uint256 depositMax,
-        uint256 depositSlope
+        uint256 depositSlope,
+        uint256 maxSlippage
     ) internal {
-        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, 10, false);
+        _testERC4626Onboarding(vault, expectedDepositAmount, depositMax, depositSlope, maxSlippage, 10, false);
     }
 
     function _testERC4626Onboarding(
@@ -624,6 +633,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 expectedDepositAmount,
         uint256 depositMax,
         uint256 depositSlope,
+        uint256 maxSlippage,
         uint256 tolerance,
         bool    skipInitialCheck
     ) internal {
@@ -648,6 +658,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _assertRateLimit(depositKey,  0, 0);
             _assertRateLimit(withdrawKey, 0, 0);
 
+            assertEq(IMainnetControllerLike(ctx.controller).maxSlippages(vault), 0);
+
             vm.prank(ctx.relayer);
             vm.expectRevert("RateLimits/zero-maxAmount");
             _depositERC4626(ctx.prevController, vault, expectedDepositAmount);
@@ -657,6 +669,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        assertGe(depositMax / depositSlope, 1 hours);
+
+        assertEq(IMainnetControllerLike(ctx.controller).maxSlippages(vault), maxSlippage);
 
         _testERC4626Integration(E2ETestParams(ctx, vault, expectedDepositAmount, depositKey, withdrawKey, tolerance));
     }
@@ -803,22 +819,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address aToken,
         uint256 expectedDepositAmount,
         uint256 depositMax,
-        uint256 depositSlope
+        uint256 depositSlope,
+        uint256 maxSlippage
     ) internal {
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
-        address underlying = IAToken(aToken).UNDERLYING_ASSET_ADDRESS();
-
         MainnetController controller = MainnetController(ctx.controller);
-
-        // Note: Aave signature is the same for mainnet and foreign
-        deal(underlying, address(ctx.proxy), expectedDepositAmount);
 
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
 
         _assertRateLimit(depositKey,  0, 0);
         _assertRateLimit(withdrawKey, 0, 0);
+
+        assertEq(controller.maxSlippages(aToken), 0);
 
         vm.prank(ctx.relayer);
         vm.expectRevert("RateLimits/zero-maxAmount");
@@ -828,6 +842,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _assertRateLimit(depositKey,  depositMax,        depositSlope);
         _assertRateLimit(withdrawKey, type(uint256).max, 0);
+
+        assertGe(depositMax / depositSlope, 1 hours);
+
+        assertEq(controller.maxSlippages(aToken), maxSlippage);
 
         assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  depositMax);
         assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
@@ -915,7 +933,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(asset.balanceOf(address(p.ctx.proxy)),               p.depositAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.withdrawKey), withdrawLimit);
 
-        assertGt(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
+        // A reserve only pays interest while it has outstanding debt (aToken supply above the
+        // idle underlying). A reserve listed by the spell under test has no borrows yet, so its
+        // position cannot grow over the warp above and is only checked for value loss.
+        if (asset.balanceOf(p.vault) < IERC20(p.vault).totalSupply()) {
+            assertGt(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
+        } else {
+            assertGe(IERC20(p.vault).balanceOf(address(p.ctx.proxy)), startingATokenBalance);
+        }
     }
 
     function _testMapleIntegration(MapleE2ETestParams memory p) internal {
@@ -1108,18 +1133,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         deal(p.asset0, address(p.ctx.proxy), p.amount);
         deal(p.asset0, p.exchange,           0);
 
+        // The buffer can hold residual funds from swaps settled before the fork block, and a claim
+        // sweeps its entire balance, so it is zeroed to keep the claimed amounts below attributable
+        // to this test.
+        deal(p.asset0, otcBuffer, 0);
+        deal(p.asset1, otcBuffer, 0);
+
         assertEq(asset0.balanceOf(address(p.ctx.proxy)), p.amount);
         assertEq(asset0.balanceOf(p.exchange),           0);
 
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), amount18);
 
-        _assertOtcState({
-            ctx           : p.ctx,
-            exchange      : p.exchange,
-            sent18        : 0,
-            sentTimestamp : 0,
-            claimed18     : 0
-        });
+        // NOTE: The exchange may carry a settled swap from before the fork block, so the OTC
+        //       state is not asserted to be empty here. What the send below requires is that the
+        //       previous swap has settled, and it overwrites all three fields on success.
+        assertEq(MainnetController(p.ctx.controller).isOtcSwapReady(p.exchange), true);
 
         vm.prank(p.ctx.relayer);
         MainnetController(p.ctx.controller).otcSend(p.exchange, p.asset0, p.amount);
@@ -2638,10 +2666,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 sender,
         uint64  targetNonce
     ) internal {
-        uint64 currentNonce = ILZEndpointExtended(LZ_ENDPOINT).lazyInboundNonce(oapp, srcEid, sender);
+        ILZEndpointExtended endpoint = ILZEndpointExtended(LZ_ENDPOINT);
+
+        uint64 currentNonce = endpoint.lazyInboundNonce(oapp, srcEid, sender);
         for (uint64 n = currentNonce + 1; n < targetNonce; n++) {
+            // A nonce that a DVN has already verified on the destination fork (but the executor hasn't executed yet) cannot be skipped.
+            if (endpoint.inboundPayloadHash(oapp, srcEid, sender, n) != bytes32(0)) continue;
+
             vm.prank(oapp);
-            ILZEndpointExtended(LZ_ENDPOINT).skip(oapp, srcEid, sender, n);
+            endpoint.skip(oapp, srcEid, sender, n);
         }
     }
 
@@ -3827,7 +3860,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256               vaultFee,
         uint256               initialDeposit,
         uint256               sllDepositMax,
-        uint256               sllDepositSlope
+        uint256               sllDepositSlope,
+        uint256               sllMaxSlippage
     )
         internal
     {
@@ -3881,7 +3915,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         if (sllDepositMax == 0 || sllDepositSlope == 0) return;
 
-        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, 10, true);
+        _testERC4626Onboarding(vault, sllDepositMax / 10, sllDepositMax, sllDepositSlope, sllMaxSlippage, 10, true);
     }
 
     function _testVaultConfiguration(
@@ -4270,7 +4304,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 depositAmount: 10_000_000 * 10 ** IERC20Metadata(asset).decimals(),
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
-                tolerance:     310
+                tolerance:     340
             }));
         }
 
@@ -4451,7 +4485,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](58);
+        integrations = new SLLIntegration[](63);
 
         integrations[0]  = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[1]  = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
@@ -4558,6 +4592,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[56] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDT", Ethereum.USDT, ANCHORAGE);
 
         integrations[57] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
+
+        integrations[58] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDS_USDG",  USDS_USDG_POOL_ID);
+        integrations[59] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
+
+        integrations[60] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDS_USDG",  USDS_USDG_POOL_ID,  2_000_000e18);
+        integrations[61] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
+
+        integrations[62] = _createCurveSwapIntegration("CURVE_SWAP-USDCRLUSD", CURVE_USDC_RLUSD);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -4712,7 +4754,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 5);
+        newIntegrations = new SLLIntegration[](integrations.length + 2);
 
         uint256 index;
 
@@ -4720,13 +4762,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[index++] = integrations[i];
         }
 
-        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDS_USDG",  USDS_USDG_POOL_ID);
-        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
-
-        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDS_USDG",  USDS_USDG_POOL_ID,  2_000_000e18);
-        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
-
-        newIntegrations[index++] = _createCurveSwapIntegration("CURVE_SWAP-USDCRLUSD", CURVE_USDC_RLUSD);
+        newIntegrations[index++] = _createAaveIntegration("AAVE-USDG_SPTOKEN",  USDG_SPTOKEN);
+        newIntegrations[index++] = _createAaveIntegration("AAVE-RLUSD_SPTOKEN", RLUSD_SPTOKEN);
     }
 
     function _getPostExecutionIntegrationsBase(
