@@ -39,7 +39,9 @@ abstract contract SpellTests is SpellRunner {
                 aToken != SparkLend.USDS_SPTOKEN  &&
                 aToken != SparkLend.USDC_SPTOKEN  &&
                 aToken != SparkLend.PYUSD_SPTOKEN &&
-                aToken != SparkLend.USDT_SPTOKEN
+                aToken != SparkLend.USDT_SPTOKEN  &&
+                aToken != SparkLend.USDG_SPTOKEN  &&
+                aToken != SparkLend.RLUSD_SPTOKEN
             ) {
                 aTokenBalancesBefore[i] = IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG);
             } else {
@@ -61,7 +63,9 @@ abstract contract SpellTests is SpellRunner {
                 aToken != SparkLend.USDS_SPTOKEN  &&
                 aToken != SparkLend.USDC_SPTOKEN  &&
                 aToken != SparkLend.PYUSD_SPTOKEN &&
-                aToken != SparkLend.USDT_SPTOKEN
+                aToken != SparkLend.USDT_SPTOKEN  &&
+                aToken != SparkLend.USDG_SPTOKEN  &&
+                aToken != SparkLend.RLUSD_SPTOKEN
             ) {
                 if (accruedToTreasury[i]) assertGt(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);
                 else                      assertEq(IERC20(aToken).balanceOf(Ethereum.ALM_OPS_MULTISIG), aTokenBalancesBefore[i]);

@@ -144,12 +144,14 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         }
 
         // Claim Reserves for all Markets
-        address[] memory stablecoinATokens = new address[](5);
+        address[] memory stablecoinATokens = new address[](7);
         stablecoinATokens[0] = SparkLend.DAI_SPTOKEN;
         stablecoinATokens[1] = SparkLend.USDS_SPTOKEN;
         stablecoinATokens[2] = SparkLend.USDC_SPTOKEN;
         stablecoinATokens[3] = SparkLend.PYUSD_SPTOKEN;
         stablecoinATokens[4] = SparkLend.USDT_SPTOKEN;
+        stablecoinATokens[5] = SparkLend.USDG_SPTOKEN;
+        stablecoinATokens[6] = SparkLend.RLUSD_SPTOKEN;
 
         _transferFromSparkLendTreasury(stablecoinATokens, Ethereum.ALM_PROXY);
 
@@ -166,7 +168,9 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
                 aToken == SparkLend.USDS_SPTOKEN  ||
                 aToken == SparkLend.USDC_SPTOKEN  ||
                 aToken == SparkLend.PYUSD_SPTOKEN ||
-                aToken == SparkLend.USDT_SPTOKEN
+                aToken == SparkLend.USDT_SPTOKEN  ||
+                aToken == SparkLend.USDG_SPTOKEN  ||
+                aToken == SparkLend.RLUSD_SPTOKEN
             ) continue;
 
             remainingATokens[i++] = aToken;
