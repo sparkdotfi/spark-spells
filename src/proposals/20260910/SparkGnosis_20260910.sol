@@ -11,7 +11,6 @@ import { SparkPayloadGnosis } from "../../SparkPayloadGnosis.sol";
  * @notice SparkLend:
  *         - Complete the Deprecation of the Gnosis Market.
  * Forum:  https://forum.skyeco.com/t/september-10-2026-proposed-changes-to-spark-for-upcoming-spell/28208
- * Vote:   TBD
  */
 contract SparkGnosis_20260910 is SparkPayloadGnosis {
 

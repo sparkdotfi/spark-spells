@@ -21,7 +21,8 @@ import { SparkPayloadEthereum, IEngine } from "../../SparkPayloadEthereum.sol";
  *         - Offboard Unused Integrations.
  *         - Onboard the Sentora RLUSD Morpho Vaults V2 Instance.
  * Forum:  https://forum.skyeco.com/t/september-10-2026-proposed-changes-to-spark-for-upcoming-spell/28208
- * Vote:   TBD
+ * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xce102fe51d0f9dffa64c47df88974e52899ce5347375854adfe3547225489421
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x95329a02677772384f4d2bad196de1f2b0fe6b83a06ab61fe634fb07643dcb86
  */
 contract SparkEthereum_20260910 is SparkPayloadEthereum {
 
