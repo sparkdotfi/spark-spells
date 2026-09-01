@@ -3149,7 +3149,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         IERC20 usdc = IERC20(address(MainnetController(p.ctx.controller).usdc()));
 
-        deal(address(usdc), address(p.ctx.proxy), p.transferAmount);
+        deal(address(usdc), address(p.ctx.proxy), p.transferAmount, true);
 
         uint256 transferLimit = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
 
