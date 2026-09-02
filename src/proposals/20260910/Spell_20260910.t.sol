@@ -115,13 +115,10 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(mintKey,     0, 0);
-        _assertRateLimit(burnKey,     0, 0);
-        _assertRateLimit(cooldownKey, 0, 0);
-
-        // Note: the sUSDe LIMIT_4626_DEPOSIT rate limit is not among the proposal's 34 keys
-        //       and stays live.
-        _assertRateLimit(susdeDepositKey, 250_000_000e18, 100_000_000e18 / uint256(1 days));
+        _assertRateLimit(mintKey,         0, 0);
+        _assertRateLimit(burnKey,         0, 0);
+        _assertRateLimit(cooldownKey,     0, 0);
+        _assertRateLimit(susdeDepositKey, 0, 0);
     }
 
     function test_ETHEREUM_sll_deactivateMapleSyrupUsdt() external onChain(ChainIdUtils.Ethereum()) {

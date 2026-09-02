@@ -4783,7 +4783,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             "ANCHORAGE_TRANSFER-USDT"
         ];
 
-        newIntegrations = new SLLIntegration[](integrations.length - offboardedLabels.length + 2);
+        newIntegrations = new SLLIntegration[](integrations.length - offboardedLabels.length + 1);
 
         uint256 index;
 
@@ -4801,24 +4801,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             newIntegrations[index++] = integrations[i];
         }
-
-        // The sUSDe LIMIT_4626_DEPOSIT rate limit is left live by the 2026-09-10 proposal
-        // (only the Ethena mint, burn and cooldown limits are zeroed), so the key still needs
-        // an owner in the coverage check. Category.TREASURY has no e2e branch, which is
-        // deliberate here: the sUSDe exit path (cooldown) is zeroed, so no round trip exists.
-        newIntegrations[index++] = SLLIntegration({
-            label:       "ETHENA-SUSDE_DEPOSIT_ONLY",
-            category:    Category.TREASURY,
-            integration: Ethereum.SUSDE,
-            entryId:     RateLimitHelpers.makeAddressKey(
-                MainnetController(_getSparkLiquidityLayerContext().controller).LIMIT_4626_DEPOSIT(),
-                Ethereum.SUSDE
-            ),
-            entryId2:    bytes32(0),
-            exitId:      bytes32(0),
-            exitId2:     bytes32(0),
-            extraData:   ""
-        });
 
         newIntegrations[index++] = _createERC4626Integration("ERC4626-SENTORA_RLUSD", SENTORA_RLUSD_VAULT);
     }

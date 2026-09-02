@@ -86,6 +86,8 @@ contract SparkEthereum_20260910 is SparkPayloadEthereum {
         rateLimits.setRateLimitData(almController.LIMIT_USDE_BURN(),      0, 0);
         rateLimits.setRateLimitData(almController.LIMIT_SUSDE_COOLDOWN(), 0, 0);
 
+        rateLimits.setRateLimitData(RateLimitHelpers.makeAddressKey(erc4626DepositKey, Ethereum.SUSDE), 0, 0);
+
         // Deactivate Maple syrupUSDT.
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressKey(erc4626DepositKey,  Ethereum.SYRUP_USDT), 0, 0);
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressKey(erc4626WithdrawKey, Ethereum.SYRUP_USDT), 0, 0);
