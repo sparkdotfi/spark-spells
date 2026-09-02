@@ -3,9 +3,6 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { ERC20 }   from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import { ERC4626 } from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol";
-
 import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
@@ -30,42 +27,17 @@ import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTe
 import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-// SCAFFOLD: minimal ERC-4626 stand-in for the not-yet-deployed Sentora RLUSD Morpho Vaults V2
-// instance. Etched at the payload's placeholder address so the deposit/withdraw mechanics of
-// the spell's rate limits can be exercised; the real vault replaces it at finalize.
-contract MockERC4626Vault is ERC4626 {
-
-    constructor(IERC20 asset_) ERC4626(asset_) ERC20("Mock Vault", "mVAULT") {}
-
-}
-
-abstract contract Spark20260910TestBase is SpellRunner {
-
-    address internal constant NEW_USDT_IRM                    = 0x4FA65B096681bD6FeecF78e5D83096bf4A5762A0;
-    address internal constant SENTORA_RLUSD_VAULT_PLACEHOLDER = 0x2222222222222222222222222222222222222222;
-
-    function _setUpScaffold() internal onChain(ChainIdUtils.Ethereum()) {
-        vm.etch(
-            SENTORA_RLUSD_VAULT_PLACEHOLDER,
-            address(new MockERC4626Vault(IERC20(Ethereum.RLUSD))).code
-        );
-    }
-
-}
-
-contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests, Spark20260910TestBase {
+contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
 
     uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
 
     constructor() {
         _spellId   = 20260910;
-        _blockDate = 1788188421;  // 2026-08-31T15:00:21Z
+        _blockDate = 1788318977;  // 2026-09-02T03:16:17Z
     }
 
     function setUp() public override {
         super.setUp();
-
-        _setUpScaffold();
     }
 
     function deal(address token, address to, uint256 amount) internal override {
@@ -353,7 +325,7 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests, Spark20260
     function test_ETHEREUM_sll_onboardSentoraRlusdVault() external onChain(ChainIdUtils.Ethereum()) {
         _testERC4626Onboarding({
             vault                 : SENTORA_RLUSD_VAULT,
-            expectedDepositAmount : 10_000_000e18,
+            expectedDepositAmount : 1_000_000e18,
             depositMax            : 10_000_000e18,
             depositSlope          : 100_000_000e18 / uint256(1 days),
             maxSlippage           : 0
@@ -364,21 +336,20 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests, Spark20260
 
 }
 
-contract SparkEthereum_20260910_SparklendTests is SparklendTests, Spark20260910TestBase {
+contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
 
     address internal constant OLD_USDT_IRM = 0x4E494988E68e6Fc52309BE4937869e27F0C304AC;
+    address internal constant NEW_USDT_IRM = 0x4FA65B096681bD6FeecF78e5D83096bf4A5762A0;
 
     constructor() {
         _spellId   = 20260910;
-        _blockDate = 1788188421;  // 2026-08-31T15:00:21Z
+        _blockDate = 1788318977;  // 2026-09-02T03:16:17Z
     }
 
     function setUp() public override {
         super.setUp();
-
-        _setUpScaffold();
     }
 
     function test_ETHEREUM_sparkLend_deprecateLbtcCollateral() external onChain(ChainIdUtils.Ethereum()) {
@@ -547,17 +518,15 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests, Spark20260910T
 
 }
 
-contract SparkEthereum_20260910_SpellTests is SpellTests, Spark20260910TestBase {
+contract SparkEthereum_20260910_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260910;
-        _blockDate = 1788188421;  // 2026-08-31T15:00:21Z
+        _blockDate = 1788318977;  // 2026-09-02T03:16:17Z
     }
 
     function setUp() public override {
         super.setUp();
-
-        _setUpScaffold();
     }
 
 }

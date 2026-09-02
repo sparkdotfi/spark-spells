@@ -26,11 +26,8 @@ import { SparkPayloadEthereum, IEngine } from "../../SparkPayloadEthereum.sol";
  */
 contract SparkEthereum_20260910 is SparkPayloadEthereum {
 
-    address internal constant NEW_USDT_IRM = 0x4FA65B096681bD6FeecF78e5D83096bf4A5762A0;
-
-    // PLACEHOLDER: Sentora-curated RLUSD Morpho Vaults V2 instance, deployed and fully
-    // configured by the vault owner before this spell (targeted 2026-09-04).
-    address internal constant SENTORA_RLUSD_VAULT = 0x2222222222222222222222222222222222222222;
+    address internal constant NEW_USDT_IRM        = 0x4FA65B096681bD6FeecF78e5D83096bf4A5762A0;
+    address internal constant SENTORA_RLUSD_VAULT = 0xFC8C624B6080a0a780583799f2A862DE936F6E22;
 
     constructor() {
         // PAYLOAD_GNOSIS = 0x2222222222222222222222222222222222222222;
@@ -39,6 +36,8 @@ contract SparkEthereum_20260910 is SparkPayloadEthereum {
     function collateralsUpdates()
         public view override returns (IEngine.CollateralUpdate[] memory)
     {
+        // 2. Deprecate LBTC as Collateral.
+
         IEngine.CollateralUpdate[] memory collateralUpdates = new IEngine.CollateralUpdate[](1);
 
         collateralUpdates[0] = IEngine.CollateralUpdate({

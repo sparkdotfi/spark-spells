@@ -539,9 +539,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant NEW_MORPHO_VAULT_V2_USDT = 0xb0c424116172B55CbB6dD3136F5989F7959e5B91;
 
-    // PLACEHOLDER: Sentora-curated RLUSD Morpho Vaults V2 instance (2026-09-10 spell, Item 5).
-    // Mirror of the constant in SparkEthereum_20260910; replace with the deployed address.
-    address internal constant SENTORA_RLUSD_VAULT = 0x2222222222222222222222222222222222222222;
+    address internal constant SENTORA_RLUSD_VAULT = 0xFC8C624B6080a0a780583799f2A862DE936F6E22;
 
     address internal constant NEW_AVALANCHE_ALM_PROXY_FREEZABLE = 0x93c81ADc7F98FdBC8C7a15eCBeD312c8F6adbcB3;
     address internal constant NEW_BASE_ALM_PROXY_FREEZABLE      = 0x92d7B06e5844e67174AE9E86bdCb06428482DDF9;
