@@ -7,6 +7,8 @@ import { Ethereum }  from "spark-address-registry/Ethereum.sol";
 import { Gnosis }    from "spark-address-registry/Gnosis.sol";
 import { SparkLend } from "spark-address-registry/SparkLend.sol";
 
+import { MarketParams } from "morpho-blue/src/interfaces/IMorpho.sol";
+
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
@@ -27,7 +29,51 @@ import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTe
 import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
+import { IMorphoVaultV2Like } from "src/interfaces/Interfaces.sol";
+
+interface IMorphoVaultV2ConfigLike {
+
+    function absoluteCap(bytes32 id) external view returns (uint256);
+
+    function relativeCap(bytes32 id) external view returns (uint256);
+
+    function setSendAssetsGate(address newSendAssetsGate) external;
+
+    function setPerformanceFee(uint256 newPerformanceFee) external;
+
+    function setManagementFee(uint256 newManagementFee) external;
+
+    function setPerformanceFeeRecipient(address newPerformanceFeeRecipient) external;
+
+    function setManagementFeeRecipient(address newManagementFeeRecipient) external;
+
+}
+
+interface IVaultV2FactoryLike {
+
+    function isVaultV2(address account) external view returns (bool);
+
+}
+
+interface ISafeLike {
+
+    function getThreshold() external view returns (uint256);
+
+    function isOwner(address owner) external view returns (bool);
+
+}
+
 contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
+
+    address internal constant SAFE_SIGNER_1               = 0xAB5710211458FC8d7E0Be628202F47DdbD3F38Eb;
+    address internal constant SAFE_SIGNER_2               = 0x9e396dE3312D373b87F9BD8763fb48184b42aac0;
+    address internal constant SENTORA_RLUSD_VAULT_ADAPTER = 0x743C8eb5dE31E41dEF9048DA268EBd036567cd4e;
+    address internal constant SENTORA_SPARK_CURATOR       = 0xff070333654aaE76A0A77465E4F0fd101C57c03F;
+    address internal constant SENTORA_ALLOCATOR           = 0xC4Ba4e822C420452fe2BAB93211208D3CcBd79D3;
+    address internal constant SENTORA_SENTINEL            = 0x9e396dE3312D373b87F9BD8763fb48184b42aac0;
+    address internal constant SENTORA_FEE_RECIPIENT       = 0xbE6b7dCa8D5FCE23B07E0Da9b01d466b95b3EDF3;
+    address internal constant VAULT_SENTINEL              = 0xb5bFd4883256089Dc58D962b80ab7068e71E7c80;
+    address internal constant WBTC_RLUSD_ORACLE           = 0xF58725eb213161E9054C97F970DC80b2d0327E8d;
 
     uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
 
@@ -329,6 +375,105 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
         });
 
         assertEq(MainnetController(Ethereum.ALM_CONTROLLER).maxExchangeRates(SENTORA_RLUSD_VAULT), 3e36);
+    }
+
+    function test_ETHEREUM_morphoVaultV2Config() external onChain(ChainIdUtils.Ethereum()) {
+        IMorphoVaultV2Like       vault = IMorphoVaultV2Like(SENTORA_RLUSD_VAULT);
+        IMorphoVaultV2ConfigLike caps  = IMorphoVaultV2ConfigLike(SENTORA_RLUSD_VAULT);
+
+        assertTrue(IVaultV2FactoryLike(Ethereum.MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)));
+
+        assertEq(vault.name(),   "Sentora x Spark RLUSD");
+        assertEq(vault.symbol(), "sxsRLUSD");
+        assertEq(vault.asset(),  Ethereum.RLUSD);
+        assertEq(vault.owner(),  Ethereum.SPARK_PROXY);
+
+        // Curator is the 2-of-2 Safe.
+        assertEq(vault.curator(), SENTORA_SPARK_CURATOR);
+
+        assertEq(ISafeLike(SENTORA_SPARK_CURATOR).getThreshold(), 2);
+
+        assertTrue(ISafeLike(SENTORA_SPARK_CURATOR).isOwner(SAFE_SIGNER_1));
+        assertTrue(ISafeLike(SENTORA_SPARK_CURATOR).isOwner(SAFE_SIGNER_2));
+
+        assertTrue(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG));
+        assertTrue(vault.isSentinel(VAULT_SENTINEL));
+        assertTrue(vault.isSentinel(SENTORA_SENTINEL));
+
+        assertTrue(vault.isAllocator(SENTORA_ALLOCATOR));
+        assertTrue(vault.isAllocator(SENTORA_SENTINEL));
+
+        assertEq(vault.isAllocator(Ethereum.ALM_PROXY),            false);
+        assertEq(vault.isAllocator(Ethereum.ALM_RELAYER_MULTISIG), false);
+        assertEq(vault.isAllocator(Ethereum.SPARK_PROXY),          false);
+        assertEq(vault.isAllocator(SENTORA_SPARK_CURATOR),         false);
+
+        // setAdapterRegistry and the three critical gate setters are permanently abdicated;
+        // setSendAssetsGate is not abdicated but sits behind the 7-day timelock.
+        assertTrue(vault.abdicated(IMorphoVaultV2Like.setAdapterRegistry.selector));
+        assertTrue(vault.abdicated(IMorphoVaultV2Like.setReceiveSharesGate.selector));
+        assertTrue(vault.abdicated(IMorphoVaultV2Like.setSendSharesGate.selector));
+        assertTrue(vault.abdicated(IMorphoVaultV2Like.setReceiveAssetsGate.selector));
+
+        assertEq(vault.abdicated(IMorphoVaultV2ConfigLike.setSendAssetsGate.selector), false);
+
+        // Per-selector timelocks
+        assertEq(vault.timelock(IMorphoVaultV2Like.increaseAbsoluteCap.selector),              7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.increaseRelativeCap.selector),              7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.abdicate.selector),                         7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.addAdapter.selector),                       7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.removeAdapter.selector),                    7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.increaseTimelock.selector),                 7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.setForceDeallocatePenalty.selector),        7 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setSendAssetsGate.selector),          7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.setIsAllocator.selector),                   3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setPerformanceFee.selector),          3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setManagementFee.selector),           3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setPerformanceFeeRecipient.selector), 3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setManagementFeeRecipient.selector),  3 days);
+
+        assertEq(vault.adapterRegistry(), Ethereum.MORPHO_VAULT_V2_ADAPTER_REGISTRY);
+
+        assertEq(vault.adaptersLength(), 1);
+        assertEq(vault.adapters(0),      SENTORA_RLUSD_VAULT_ADAPTER);
+
+        assertTrue(vault.isAdapter(SENTORA_RLUSD_VAULT_ADAPTER));
+
+        assertEq(vault.liquidityAdapter(), SENTORA_RLUSD_VAULT_ADAPTER);
+
+        // Fees and rate cap.
+        assertEq(vault.performanceFee(),          0.1e18);
+        assertEq(vault.performanceFeeRecipient(), SENTORA_FEE_RECIPIENT);
+        assertEq(vault.managementFee(),           0);
+        assertEq(vault.managementFeeRecipient(),  SENTORA_FEE_RECIPIENT);
+
+        assertEq(vault.maxRate(), 2e18 / uint256(365 days));  // 200% APR cap
+
+        bytes32 adapterId    = keccak256(abi.encode("this", SENTORA_RLUSD_VAULT_ADAPTER));
+        bytes32 collateralId = keccak256(abi.encode("collateralToken", Ethereum.WBTC));
+        bytes32 marketId     = keccak256(abi.encode(
+            "this/marketParams",
+            SENTORA_RLUSD_VAULT_ADAPTER,
+            MarketParams({
+                loanToken:       Ethereum.RLUSD,
+                collateralToken: Ethereum.WBTC,
+                oracle:          WBTC_RLUSD_ORACLE,
+                irm:             Ethereum.MORPHO_DEFAULT_IRM,
+                lltv:            0.86e18
+            })
+        ));
+
+        assertEq(caps.absoluteCap(adapterId),    type(uint128).max);
+        assertEq(caps.relativeCap(adapterId),    1e18);
+        assertEq(caps.absoluteCap(collateralId), type(uint128).max);
+        assertEq(caps.relativeCap(collateralId), 1e18);
+        assertEq(caps.absoluteCap(marketId),     250_000_000e18);
+        assertEq(caps.relativeCap(marketId),     1e18);
+
+        // Dead-deposit seed.
+        assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e9);
+
+        assertGe(vault.totalAssets(), 1e9);
     }
 
 }
