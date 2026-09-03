@@ -960,6 +960,17 @@ abstract contract SparklendTests is SpellRunner {
      * @param pool The pool that should be tested
      */
     function _e2eTest(IPool pool) internal {
+        assertEq(
+            pool.FLASHLOAN_PREMIUM_TOTAL(),
+            0,
+            "FLASHLOAN_PREMIUM_TOTAL is nonzero: check Certora v1.1.0 audit issue I-03 to verify that this is safe"
+        );
+        assertEq(
+            pool.FLASHLOAN_PREMIUM_TO_PROTOCOL(),
+            0,
+            "FLASHLOAN_PREMIUM_TO_PROTOCOL is nonzero: check Certora v1.1.0 audit issue I-03 to verify that this is safe"
+        );
+
         uint256 snapshot = vm.snapshot();
 
         ReserveConfig[] memory configs = _getReservesConfigs(pool);
