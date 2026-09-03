@@ -57,7 +57,7 @@ contract SparkEthereum_20260910 is SparkPayloadEthereum {
         MainnetController almController = MainnetController(Ethereum.ALM_CONTROLLER);
         IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
 
-        // 1. Offboard unused Spark Liquidity Layer integrations (34 rate limits set to zero).
+        // 1. Offboard unused Spark Liquidity Layer integrations (35 rate limits set to zero).
 
         bytes32 erc4626DepositKey  = almController.LIMIT_4626_DEPOSIT();
         bytes32 erc4626WithdrawKey = almController.LIMIT_4626_WITHDRAW();
@@ -114,22 +114,24 @@ contract SparkEthereum_20260910 is SparkPayloadEthereum {
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressKey(curveSwapKey,     Ethereum.CURVE_SUSDSUSDT), 0, 0);
 
         // Deactivate Curve USDC/USDT.
-        // Note: the deposit and withdraw limits were zeroed on 2025-04-21, so only the swap
+        // Note: The deposit and withdraw limits were never configured, so only the swap
         //       leg needs action.
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressKey(curveSwapKey, Ethereum.CURVE_USDCUSDT), 0, 0);
 
         // Deactivate Curve weETH/WETH-ng.
+        // Note: the deposit and withdraw limits were never configured, so only the swap leg
+        //       needs action.
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressKey(curveSwapKey, Ethereum.CURVE_WEETHWETHNG), 0, 0);
 
         // Deactivate Superstate USTB and USCC.
         // Note: the redemption legs are self-transfers — LIMIT_ASSET_TRANSFER(asset, asset) —
         //       used to trigger burn-on-transfer redemption.
-        rateLimits.setRateLimitData(almController.LIMIT_SUPERSTATE_SUBSCRIBE(), 0, 0);
+        rateLimits.setRateLimitData(almController.LIMIT_SUPERSTATE_SUBSCRIBE(),                                        0, 0);
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USTB, Ethereum.USTB), 0, 0);
         // Note: LIMIT_SUPERSTATE_REDEEM is not declared by the deployed v1.10.0 controller.
         //       The dormant storage entry is zeroed defensively so a future controller
         //       reintroducing that constant cannot inherit a live unlimited limit.
-        rateLimits.setRateLimitData(keccak256("LIMIT_SUPERSTATE_REDEEM"), 0, 0);
+        rateLimits.setRateLimitData(keccak256("LIMIT_SUPERSTATE_REDEEM"),                                                      0, 0);
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDC, Ethereum.USCC_DEPOSIT), 0, 0);
         rateLimits.setRateLimitData(RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USCC, Ethereum.USCC),         0, 0);
 

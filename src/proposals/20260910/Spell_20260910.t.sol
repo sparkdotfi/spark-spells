@@ -35,6 +35,8 @@ interface IMorphoVaultV2ConfigLike {
 
     function absoluteCap(bytes32 id) external view returns (uint256);
 
+    function forceDeallocatePenalty(address adapter) external view returns (uint256);
+
     function relativeCap(bytes32 id) external view returns (uint256);
 
     function setSendAssetsGate(address newSendAssetsGate) external;
@@ -151,7 +153,8 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
         bytes32 burnKey     = controller.LIMIT_USDE_BURN();
         bytes32 cooldownKey = controller.LIMIT_SUSDE_COOLDOWN();
 
-        bytes32 susdeDepositKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_DEPOSIT(), Ethereum.SUSDE);
+        bytes32 susdeDepositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_DEPOSIT(),  Ethereum.SUSDE);
+        bytes32 susdeWithdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_4626_WITHDRAW(), Ethereum.SUSDE);
 
         _assertRateLimit(mintKey, 250_000_000e6,  100_000_000e6 / uint256(1 days));
         _assertRateLimit(burnKey, 500_000_000e18, 200_000_000e18 / uint256(1 days));
@@ -159,12 +162,15 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(susdeDepositKey, 250_000_000e18, 100_000_000e18 / uint256(1 days));
 
+        _assertRateLimit(susdeWithdrawKey, 0, 0);
+
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(mintKey,         0, 0);
-        _assertRateLimit(burnKey,         0, 0);
-        _assertRateLimit(cooldownKey,     0, 0);
-        _assertRateLimit(susdeDepositKey, 0, 0);
+        _assertRateLimit(mintKey,          0, 0);
+        _assertRateLimit(burnKey,          0, 0);
+        _assertRateLimit(cooldownKey,      0, 0);
+        _assertRateLimit(susdeDepositKey,  0, 0);
+        _assertRateLimit(susdeWithdrawKey, 0, 0);
     }
 
     function test_ETHEREUM_sll_deactivateMapleSyrupUsdt() external onChain(ChainIdUtils.Ethereum()) {
@@ -280,13 +286,20 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_sll_deactivateCurveWeethWethng() external onChain(ChainIdUtils.Ethereum()) {
         MainnetController controller = MainnetController(_getSparkLiquidityLayerContext().controller);
 
-        bytes32 swapKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_CURVE_SWAP(), Ethereum.CURVE_WEETHWETHNG);
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_CURVE_DEPOSIT(),  Ethereum.CURVE_WEETHWETHNG);
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_CURVE_WITHDRAW(), Ethereum.CURVE_WEETHWETHNG);
+        bytes32 swapKey     = RateLimitHelpers.makeAddressKey(controller.LIMIT_CURVE_SWAP(),     Ethereum.CURVE_WEETHWETHNG);
 
-        _assertRateLimit(swapKey, 1_000e18, 50_000e18 / uint256(1 days));
+        // The deposit and withdraw limits were never configured; only the swap leg is zeroed.
+        _assertRateLimit(depositKey,  0,        0);
+        _assertRateLimit(withdrawKey, 0,        0);
+        _assertRateLimit(swapKey,     1_000e18, 50_000e18 / uint256(1 days));
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(swapKey, 0, 0);
+        _assertRateLimit(depositKey,  0, 0);
+        _assertRateLimit(withdrawKey, 0, 0);
+        _assertRateLimit(swapKey,     0, 0);
     }
 
     function test_ETHEREUM_sll_deactivateSuperstate() external onChain(ChainIdUtils.Ethereum()) {
@@ -440,6 +453,10 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
         assertTrue(vault.isAdapter(SENTORA_RLUSD_VAULT_ADAPTER));
 
         assertEq(vault.liquidityAdapter(), SENTORA_RLUSD_VAULT_ADAPTER);
+
+        // Force-deallocating through the adapter carries no penalty, so the sentinel exit
+        // path costs depositors nothing.
+        assertEq(caps.forceDeallocatePenalty(SENTORA_RLUSD_VAULT_ADAPTER), 0);
 
         // Fees and rate cap.
         assertEq(vault.performanceFee(),          0.1e18);
