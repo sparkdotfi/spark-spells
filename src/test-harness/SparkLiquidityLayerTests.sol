@@ -1755,7 +1755,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount);
 
-        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue, 1);
+        assertApproxEqAbs(
+            p.ctx.rateLimits.getCurrentRateLimit(p.depositKey),
+            v.depositLimit - v.totalDepositValue,
+            _toNormalizedAmount(p.asset0, 1) + _toNormalizedAmount(p.asset1, 1)
+        );
 
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
 
@@ -1783,7 +1787,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).getPositionLiquidity(v.tokenId), v.liquidityAmount * 2);
 
-        assertApproxEqAbs(p.ctx.rateLimits.getCurrentRateLimit(p.depositKey), v.depositLimit - v.totalDepositValue * 2, 2);
+        assertApproxEqAbs(
+            p.ctx.rateLimits.getCurrentRateLimit(p.depositKey),
+            v.depositLimit - v.totalDepositValue * 2,
+            _toNormalizedAmount(p.asset0, 2) + _toNormalizedAmount(p.asset1, 2)
+        );
 
         assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
 
