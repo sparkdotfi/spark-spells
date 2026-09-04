@@ -30,7 +30,7 @@ contract SparkEthereum_20260910 is SparkPayloadEthereum {
     address internal constant SENTORA_RLUSD_VAULT = 0xFC8C624B6080a0a780583799f2A862DE936F6E22;
 
     constructor() {
-        // PAYLOAD_GNOSIS = 0x2222222222222222222222222222222222222222;
+        PAYLOAD_GNOSIS = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
     function collateralsUpdates()

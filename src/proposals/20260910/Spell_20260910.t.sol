@@ -112,11 +112,14 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260910;
-        _blockDate = 1788318977;  // 2026-09-02T03:16:17Z
+        _blockDate = 1788537647;  // Sep-04-2026 04:00:47 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0x7602cc457786c06778258A0b004f2D66c54386fC;
+        chainData[ChainIdUtils.Gnosis()].payload   = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
     function deal(address token, address to, uint256 amount) internal override {
@@ -586,11 +589,14 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260910;
-        _blockDate = 1788318977;  // 2026-09-02T03:16:17Z
+        _blockDate = 1788537647;  // Sep-04-2026 04:00:47 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0x7602cc457786c06778258A0b004f2D66c54386fC;
+        chainData[ChainIdUtils.Gnosis()].payload   = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
     function test_ETHEREUM_sparkLend_deprecateLbtcCollateral() external onChain(ChainIdUtils.Ethereum()) {
@@ -1158,11 +1164,14 @@ contract SparkEthereum_20260910_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20260910;
-        _blockDate = 1788318977;  // 2026-09-02T03:16:17Z
+        _blockDate = 1788537647;  // Sep-04-2026 04:00:47 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0x7602cc457786c06778258A0b004f2D66c54386fC;
+        chainData[ChainIdUtils.Gnosis()].payload   = 0x9A56C59453a2fBAe01Ba46045441490e5C7a664d;
     }
 
 }
