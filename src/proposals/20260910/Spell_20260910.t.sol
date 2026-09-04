@@ -34,7 +34,11 @@ import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTe
 import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-import { IMorphoVaultV2Like } from "src/interfaces/Interfaces.sol";
+import { 
+    IMorphoVaultV2Like,
+    IMorphoMarketV1AdapterV2FactoryLike,
+    ITreasuryControllerLike
+} from "src/interfaces/Interfaces.sol";
 
 interface IMorphoVaultV2ConfigLike {
 
@@ -423,7 +427,7 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
         IMorphoVaultV2Like       vault = IMorphoVaultV2Like(SENTORA_RLUSD_VAULT);
         IMorphoVaultV2ConfigLike caps  = IMorphoVaultV2ConfigLike(SENTORA_RLUSD_VAULT);
 
-        assertTrue(IVaultV2FactoryLike(Ethereum.MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)));
+        assertEq(IVaultV2FactoryLike(Ethereum.MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)), true);
 
         assertEq(vault.name(),   "Sentora x Spark RLUSD");
         assertEq(vault.symbol(), "sxsRLUSD");
@@ -435,16 +439,15 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(ISafeLike(SENTORA_SPARK_CURATOR).getThreshold(), 2);
 
-        assertTrue(ISafeLike(SENTORA_SPARK_CURATOR).isOwner(SAFE_SIGNER_1));
-        assertTrue(ISafeLike(SENTORA_SPARK_CURATOR).isOwner(SAFE_SIGNER_2));
+        assertEq(ISafeLike(SENTORA_SPARK_CURATOR).isOwner(SAFE_SIGNER_1), true);
+        assertEq(ISafeLike(SENTORA_SPARK_CURATOR).isOwner(SAFE_SIGNER_2), true);
 
-        assertTrue(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG));
-        assertTrue(vault.isSentinel(VAULT_SENTINEL));
-        assertTrue(vault.isSentinel(SENTORA_SENTINEL));
+        assertEq(vault.isSentinel(Ethereum.MORPHO_GUARDIAN_MULTISIG), true);
+        assertEq(vault.isSentinel(VAULT_SENTINEL),                    true);
+        assertEq(vault.isSentinel(SENTORA_SENTINEL),                  true);
 
-        assertTrue(vault.isAllocator(SENTORA_ALLOCATOR));
-        assertTrue(vault.isAllocator(SENTORA_SENTINEL));
-
+        assertEq(vault.isAllocator(SENTORA_ALLOCATOR),             true);
+        assertEq(vault.isAllocator(SENTORA_SENTINEL),              true);
         assertEq(vault.isAllocator(Ethereum.ALM_PROXY),            false);
         assertEq(vault.isAllocator(Ethereum.ALM_RELAYER_MULTISIG), false);
         assertEq(vault.isAllocator(Ethereum.SPARK_PROXY),          false);
@@ -452,11 +455,10 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
 
         // setAdapterRegistry and the three critical gate setters are permanently abdicated;
         // setSendAssetsGate is not abdicated but sits behind the 7-day timelock.
-        assertTrue(vault.abdicated(IMorphoVaultV2Like.setAdapterRegistry.selector));
-        assertTrue(vault.abdicated(IMorphoVaultV2Like.setReceiveSharesGate.selector));
-        assertTrue(vault.abdicated(IMorphoVaultV2Like.setSendSharesGate.selector));
-        assertTrue(vault.abdicated(IMorphoVaultV2Like.setReceiveAssetsGate.selector));
-
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setAdapterRegistry.selector),      true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setReceiveSharesGate.selector),    true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setSendSharesGate.selector),       true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setReceiveAssetsGate.selector),    true);
         assertEq(vault.abdicated(IMorphoVaultV2ConfigLike.setSendAssetsGate.selector), false);
 
         // Per-selector timelocks
@@ -479,9 +481,15 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
         assertEq(vault.adaptersLength(), 1);
         assertEq(vault.adapters(0),      SENTORA_RLUSD_VAULT_ADAPTER);
 
-        assertTrue(vault.isAdapter(SENTORA_RLUSD_VAULT_ADAPTER));
+        assertEq(vault.isAdapter(SENTORA_RLUSD_VAULT_ADAPTER), true);
 
         assertEq(vault.liquidityAdapter(), SENTORA_RLUSD_VAULT_ADAPTER);
+
+        // Check adapter and liquidity adapter are from factory
+        IMorphoMarketV1AdapterV2FactoryLike adapterFactory = IMorphoMarketV1AdapterV2FactoryLike(Ethereum.MORPHO_MARKET_V1_ADAPTER_V2_FACTORY);
+
+        assertEq(adapterFactory.isMorphoMarketV1AdapterV2(vault.adapters(0)),        true);
+        assertEq(adapterFactory.isMorphoMarketV1AdapterV2(vault.liquidityAdapter()), true);
 
         // Force-deallocating through the adapter carries no penalty, so the sentinel exit
         // path costs depositors nothing.
@@ -838,7 +846,7 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         super.deal(token, to, amount);
     }
 
-    function test_GNOSIS_sparkLend_liquidateTop50Borrowers() external onChain(ChainIdUtils.Gnosis()) {
+    function test_GNOSIS_sparkLend_liquidateTop50BorrowersAndWindDown() external onChain(ChainIdUtils.Gnosis()) {
         IPool pool = IPool(Gnosis.POOL);
 
         // Top 50 borrowers by outstanding debt, from the 2026-09-02 enumeration.
@@ -985,6 +993,69 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         for (uint256 k; k < collateralATokens.length; ++k) {
             assertEq(IAToken(collateralATokens[k]).scaledBalanceOf(Gnosis.TREASURY), treasuryScaledBefore[k]);
         }
+
+        // getReservesList() returns the underlying assets; resolve each reserve's aToken.
+        address[] memory assets  = pool.getReservesList();
+        address[] memory aTokens = new address[](assets.length);
+
+        for (uint256 i; i < assets.length; i++) {
+            aTokens[i] = pool.getReserveData(assets[i]).aTokenAddress;
+        }
+
+        // Permissionless: converts every reserve's accruedToTreasury into aTokens held by
+        // the treasury (collector).
+        pool.mintToTreasury(assets);
+
+        _logGnosisReserveState("after mintToTreasury");
+
+        address withdrawer = makeAddr("withdrawer");
+
+        // Move the treasury's aTokens to the withdrawer. The executor owns the treasury
+        // controller, which is the collector's funds admin — this is the call a subsequent
+        // spell payload would make.
+        vm.startPrank(Gnosis.AMB_EXECUTOR);
+        for (uint256 i; i < aTokens.length; i++) {
+            uint256 treasuryBalanceBefore   = IERC20(aTokens[i]).balanceOf(Gnosis.TREASURY);
+            uint256 withdrawerBalanceBefore = IERC20(aTokens[i]).balanceOf(withdrawer);
+
+            assertEq(withdrawerBalanceBefore, 0);
+
+            ITreasuryControllerLike(Gnosis.TREASURY_CONTROLLER).transfer({
+                collector: Gnosis.TREASURY,
+                token:     aTokens[i],
+                recipient: withdrawer,
+                amount:    treasuryBalanceBefore
+            });
+
+            uint256 treasuryBalanceAfter   = IERC20(aTokens[i]).balanceOf(Gnosis.TREASURY);
+            uint256 withdrawerBalanceAfter = IERC20(aTokens[i]).balanceOf(withdrawer);
+
+            assertEq(treasuryBalanceAfter,   0);
+            assertEq(withdrawerBalanceAfter, withdrawerBalanceBefore + treasuryBalanceBefore);
+
+            console2.log("transferred", IERC20Metadata(assets[i]).symbol(), treasuryBalanceBefore);
+        }
+        vm.stopPrank();
+
+        // Redeem the aTokens for underlying; with all fifty borrowers liquidated, reserve
+        // cash covers the full treasury claim in every reserve.
+        vm.startPrank(withdrawer);
+        for (uint256 i; i < aTokens.length; i++) {
+            uint256 aTokenBalanceBefore     = IERC20(aTokens[i]).balanceOf(withdrawer);
+            uint256 underlyingBalanceBefore = IERC20(assets[i]).balanceOf(withdrawer);
+
+            console2.log("redeeming", IERC20Metadata(assets[i]).symbol(), IERC20(aTokens[i]).balanceOf(withdrawer));
+            pool.withdraw(assets[i], type(uint256).max, withdrawer);
+
+            uint256 aTokenBalanceAfter     = IERC20(aTokens[i]).balanceOf(withdrawer);
+            uint256 underlyingBalanceAfter = IERC20(assets[i]).balanceOf(withdrawer);
+
+            assertEq(aTokenBalanceAfter,    0);
+            assertEq(underlyingBalanceAfter, underlyingBalanceBefore + aTokenBalanceBefore);
+        }
+        vm.stopPrank();
+
+        _logGnosisReserveState("after redeem");
     }
 
     function _logGnosisReserveState(string memory label) internal view {
@@ -997,10 +1068,14 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         for (uint256 i; i < reserves.length; ++i) {
             DataTypes.ReserveData memory data = pool.getReserveData(reserves[i]);
 
+            address underlying = IAToken(data.aTokenAddress).UNDERLYING_ASSET_ADDRESS();
+
             console2.log(IERC20Metadata(reserves[i]).symbol());
+            console2.log("  reserve cash             :", IERC20(underlying).balanceOf(data.aTokenAddress));
             console2.log("  variable debt totalSupply:", IERC20(data.variableDebtTokenAddress).totalSupply());
             console2.log("  aToken totalSupply       :", IERC20(data.aTokenAddress).totalSupply());
             console2.log("  accruedToTreasury        :", data.accruedToTreasury);
+            console2.log("  scaledBalanceOfTreasury  :", IAToken(data.aTokenAddress).scaledBalanceOf(Gnosis.TREASURY));
         }
     }
 
