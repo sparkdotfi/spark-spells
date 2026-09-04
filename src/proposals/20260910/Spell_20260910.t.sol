@@ -6,24 +6,17 @@ import { console2 } from "forge-std/console2.sol";
 import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { Ethereum }  from "spark-address-registry/Ethereum.sol";
-import { Gnosis }    from "spark-address-registry/Gnosis.sol";
-import { SparkLend } from "spark-address-registry/SparkLend.sol";
+import { Ethereum } from "spark-address-registry/Ethereum.sol";
+import { Gnosis }   from "spark-address-registry/Gnosis.sol";
 
 import { MarketParams } from "morpho-blue/src/interfaces/IMorpho.sol";
 
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import {
-    IPoolAddressesProvider,
-    RateTargetKinkInterestRateStrategy
-} from "sparklend-advanced/src/RateTargetKinkInterestRateStrategy.sol";
-
 import { DataTypes }            from "sparklend-v1-core/protocol/libraries/types/DataTypes.sol";
 import { IAToken }              from "sparklend-v1-core/interfaces/IAToken.sol";
 import { IPool }                from "sparklend-v1-core/interfaces/IPool.sol";
-import { IPoolConfigurator }    from "sparklend-v1-core/interfaces/IPoolConfigurator.sol";
 import { ReserveConfiguration } from "sparklend-v1-core/protocol/libraries/configuration/ReserveConfiguration.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
@@ -31,7 +24,6 @@ import { DealUtils }    from "src/libraries/DealUtils.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
-import { SpellRunner }              from "src/test-harness/SpellRunner.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
 import { 
@@ -95,6 +87,12 @@ interface ISafeLike {
     function getThreshold() external view returns (uint256);
 
     function isOwner(address owner) external view returns (bool);
+
+}
+
+interface IAaveOracleLike {
+
+    function getAssetPrice(address asset) external view returns (uint256);
 
 }
 
@@ -407,6 +405,29 @@ contract SparkEthereum_20260910_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(usdcKey, 50_000_000e6, 250_000_000e6 / uint256(1 days));
     }
 
+    function test_ETHEREUM_sll_offboardedIntegrationsBalances() external onChain(ChainIdUtils.Ethereum()) {
+        address proxy = address(_getSparkLiquidityLayerContext().proxy);
+
+        address[9] memory tokens = [
+            Ethereum.MORPHO_VAULT_DAI_1,
+            Ethereum.MORPHO_VAULT_USDS,
+            Ethereum.SUSDE,
+            Ethereum.ATOKEN_CORE_USDE,
+            Ethereum.SYRUP_USDT, 
+            Ethereum.SYRUP_USDC,
+            Ethereum.CURVE_PYUSDUSDS,
+            Ethereum.CURVE_SUSDSUSDT,
+            Ethereum.USTB
+        ];
+        uint256[9] memory maxBalances = [
+            uint256(1_000e18), 1_000e18, 1_000e18, 1_000e18, 1_000e6, 1_000e6, 1_000e18, 1_000e18, 1_000e6
+        ];
+
+        for (uint256 i; i < tokens.length; ++i) {
+            assertLe(IERC20(tokens[i]).balanceOf(proxy), maxBalances[i]);
+        }
+    }
+
     /**********************************************************************************************/
     /*** Ethereum - Onboard Sentora RLUSD Morpho Vaults V2                                      ***/
     /**********************************************************************************************/
@@ -557,7 +578,8 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
     using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
 
-    address internal constant GNOSIS_USER = 0x9b8eaBBCBE8D6b33037E85A515679D118039861e;
+    address internal constant GNOSIS_USER       = 0x9b8eaBBCBE8D6b33037E85A515679D118039861e;
+    address internal constant GNOSIS_EMODE_USER = 0x2002DbECC8E44386BcBfB96b50058C3cb08c49Bf;
 
     address internal constant OLD_USDT_IRM = 0x4E494988E68e6Fc52309BE4937869e27F0C304AC;
     address internal constant NEW_USDT_IRM = 0x4FA65B096681bD6FeecF78e5D83096bf4A5762A0;
@@ -836,6 +858,46 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         assertEq(IERC20(Gnosis.WSTETH_ATOKEN).balanceOf(GNOSIS_USER), 0);
     }
 
+    function test_GNOSIS_sparkLend_existingEModeBorrowerLiquidation() external onChain(ChainIdUtils.Gnosis()) {
+        IPool pool = IPool(Gnosis.POOL);
+
+        address liquidator = makeAddr("liquidator");
+
+        assertEq(pool.getUserEMode(GNOSIS_EMODE_USER), 1);
+
+        ( , , , , , uint256 healthFactorBefore ) = pool.getUserAccountData(GNOSIS_EMODE_USER);
+
+        assertEq(healthFactorBefore, 1.057242813755201797e18);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(pool.getUserEMode(GNOSIS_EMODE_USER), 1);
+
+        ( , , , , , uint256 healthFactorAfter ) = pool.getUserAccountData(GNOSIS_EMODE_USER);
+
+        assertEq(healthFactorAfter, 0.000117471423837581e18);
+
+        deal(Gnosis.WETH, liquidator, 15e18);
+
+        vm.startPrank(liquidator);
+
+        IERC20(Gnosis.WETH).approve(address(pool), type(uint256).max);
+
+        assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),                 0);
+        assertEq(IERC20(Gnosis.WETH_DEBT_TOKEN).balanceOf(GNOSIS_EMODE_USER), 14.468876241535203512e18);
+
+        pool.liquidationCall(Gnosis.WSTETH, Gnosis.WETH, GNOSIS_EMODE_USER, type(uint256).max, false);
+
+        assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),                 12.571216977174847084e18);
+        assertEq(IERC20(Gnosis.WETH_DEBT_TOKEN).balanceOf(GNOSIS_EMODE_USER), 0);
+
+        vm.stopPrank();
+
+        ( , , , , , uint256 healthFactorAfterLiquidation ) = pool.getUserAccountData(GNOSIS_EMODE_USER);
+
+        assertEq(healthFactorAfterLiquidation, type(uint256).max);
+    }
+
     // Standard deal does not work for EURe and USDC.e on Gnosis; same whale-transfer patch
     // as the January 29, 2026 spell tests.
     function deal(address token, address to, uint256 amount) internal override {
@@ -987,6 +1049,17 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
             assertEq(totalDebtBase, 0);
         }
+
+        // Total debt remaining after the liquidations is less than 150e8.
+        uint256 residualDebtBase;
+ 
+        for (uint256 j; j < debtAssets.length; ++j) {
+            residualDebtBase += IERC20(pool.getReserveData(debtAssets[j]).variableDebtTokenAddress).totalSupply()
+                * IAaveOracleLike(Gnosis.AAVE_ORACLE).getAssetPrice(debtAssets[j])
+                / 10 ** IERC20Metadata(debtAssets[j]).decimals();
+        }
+ 
+        assertLt(residualDebtBase, 150e8);
 
         // The liquidation protocol fee is zero, so the fifty liquidations mint nothing to
         // the treasury.
