@@ -777,13 +777,13 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
         ( , , , , , uint256 healthFactorBefore ) = pool.getUserAccountData(GNOSIS_USER);
 
-        assertEq(healthFactorBefore, 1.908347488618869521e18);
+        assertEq(healthFactorBefore, 1.936636638348082491e18);
 
         _executeAllPayloadsAndBridges();
 
         ( , , , , , uint256 healthFactorAfter ) = pool.getUserAccountData(GNOSIS_USER);
 
-        assertEq(healthFactorAfter, 0.000263147750686966e18);
+        assertEq(healthFactorAfter, 0.000267048626369337e18);
 
         deal(Gnosis.USDT, liquidator, 20_000e6);
         deal(Gnosis.USDC, liquidator, 5_000e6);
@@ -794,13 +794,13 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         IERC20(Gnosis.USDC).approve(address(pool), type(uint256).max);
 
         assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),           0);
-        assertEq(IERC20(Gnosis.USDT_DEBT_TOKEN).balanceOf(GNOSIS_USER), 15_069.309181e6);
-        assertEq(IERC20(Gnosis.USDC_DEBT_TOKEN).balanceOf(GNOSIS_USER), 4_098.992721e6);
+        assertEq(IERC20(Gnosis.USDT_DEBT_TOKEN).balanceOf(GNOSIS_USER), 15_077.354459e6);
+        assertEq(IERC20(Gnosis.USDC_DEBT_TOKEN).balanceOf(GNOSIS_USER), 4_109.625604e6);
 
         pool.liquidationCall(Gnosis.WSTETH, Gnosis.USDT, GNOSIS_USER, type(uint256).max, false);
         pool.liquidationCall(Gnosis.WSTETH, Gnosis.USDC, GNOSIS_USER, type(uint256).max, false);
 
-        assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),           6.893888881583246259e18);
+        assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),           6.793258257343884300e18);
         assertEq(IERC20(Gnosis.USDT_DEBT_TOKEN).balanceOf(GNOSIS_USER), 0);
         assertEq(IERC20(Gnosis.USDC_DEBT_TOKEN).balanceOf(GNOSIS_USER), 0);
 
@@ -816,13 +816,13 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
         ( , , , , , uint256 healthFactorBefore ) = pool.getUserAccountData(GNOSIS_USER);
 
-        assertEq(healthFactorBefore, 1.908347488618869521e18);
+        assertEq(healthFactorBefore, 1.936636638348082491e18);
 
         _executeAllPayloadsAndBridges();
 
         ( , , , , , uint256 healthFactorAfter ) = pool.getUserAccountData(GNOSIS_USER);
 
-        assertEq(healthFactorAfter, 0.000263147750686966e18);
+        assertEq(healthFactorAfter, 0.000267048626369337e18);
 
         vm.startPrank(GNOSIS_USER);
 
@@ -843,8 +843,8 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         IERC20(Gnosis.USDT).approve(address(pool), type(uint256).max);
         IERC20(Gnosis.USDC).approve(address(pool), type(uint256).max);
 
-        assertEq(IERC20(Gnosis.USDT_DEBT_TOKEN).balanceOf(GNOSIS_USER), 15_069.309181e6);
-        assertEq(IERC20(Gnosis.USDC_DEBT_TOKEN).balanceOf(GNOSIS_USER), 4_098.992721e6);
+        assertEq(IERC20(Gnosis.USDT_DEBT_TOKEN).balanceOf(GNOSIS_USER), 15_077.354459e6);
+        assertEq(IERC20(Gnosis.USDC_DEBT_TOKEN).balanceOf(GNOSIS_USER), 4_109.625604e6);
 
         pool.repay(Gnosis.USDT, type(uint256).max, 2, GNOSIS_USER);
         pool.repay(Gnosis.USDC, type(uint256).max, 2, GNOSIS_USER);
@@ -852,8 +852,8 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         assertEq(IERC20(Gnosis.USDT_DEBT_TOKEN).balanceOf(GNOSIS_USER), 0);
         assertEq(IERC20(Gnosis.USDC_DEBT_TOKEN).balanceOf(GNOSIS_USER), 0);
 
-        assertEq(IERC20(Gnosis.WETH_ATOKEN).balanceOf(GNOSIS_USER),   0.179319706726383979e18);
-        assertEq(IERC20(Gnosis.WSTETH_ATOKEN).balanceOf(GNOSIS_USER), 16.653067060541855467e18);
+        assertEq(IERC20(Gnosis.WETH_ATOKEN).balanceOf(GNOSIS_USER),   0.179558642422672044e18);
+        assertEq(IERC20(Gnosis.WSTETH_ATOKEN).balanceOf(GNOSIS_USER), 16.653067441504981275e18);
 
         pool.withdraw(Gnosis.WETH,   type(uint256).max, GNOSIS_USER);
         pool.withdraw(Gnosis.WSTETH, type(uint256).max, GNOSIS_USER);
@@ -873,7 +873,7 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
         ( , , , , , uint256 healthFactorBefore ) = pool.getUserAccountData(GNOSIS_EMODE_USER);
 
-        assertEq(healthFactorBefore, 1.057242813755201797e18);
+        assertEq(healthFactorBefore, 1.054132378389799318e18);
 
         _executeAllPayloadsAndBridges();
 
@@ -881,7 +881,7 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
 
         ( , , , , , uint256 healthFactorAfter ) = pool.getUserAccountData(GNOSIS_EMODE_USER);
 
-        assertEq(healthFactorAfter, 0.000117471423837581e18);
+        assertEq(healthFactorAfter, 0.000117125819839186e18);
 
         deal(Gnosis.WETH, liquidator, 15e18);
 
@@ -890,11 +890,11 @@ contract SparkEthereum_20260910_SparklendTests is SparklendTests {
         IERC20(Gnosis.WETH).approve(address(pool), type(uint256).max);
 
         assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),                 0);
-        assertEq(IERC20(Gnosis.WETH_DEBT_TOKEN).balanceOf(GNOSIS_EMODE_USER), 14.468876241535203512e18);
+        assertEq(IERC20(Gnosis.WETH_DEBT_TOKEN).balanceOf(GNOSIS_EMODE_USER), 14.513307876133317654e18);
 
         pool.liquidationCall(Gnosis.WSTETH, Gnosis.WETH, GNOSIS_EMODE_USER, type(uint256).max, false);
 
-        assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),                 12.571216977174847084e18);
+        assertEq(IERC20(Gnosis.WSTETH).balanceOf(liquidator),                 12.608311238503332947e18);
         assertEq(IERC20(Gnosis.WETH_DEBT_TOKEN).balanceOf(GNOSIS_EMODE_USER), 0);
 
         vm.stopPrank();
