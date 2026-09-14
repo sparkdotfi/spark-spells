@@ -41,15 +41,29 @@ jobs:
           forge test -vvv
         id: test
 
-      # --- Spell Caster, patched copy for this draft PR only ---------------------------------
-      # The upstream step (marsfoundation/spell-caster@action) cannot execute Gnosis spells: it
-      # reads SUBMISSION_ROLE() on the executor, but the Gnosis executor is the legacy AMB bridge
-      # executor and reverts. So instead of the action we check out spell-caster, drop in
-      # .github/spell-caster/castSpell.ts (same flow, Gnosis executed via impersonated
-      # executeDelegateCall like the forge harness does) and run it as a CLI.
-      # All steps run even when forge tests fail: the simulation is useful on its own.
+  # --- Spell Caster, patched copy for this draft PR only -----------------------------------
+  # Runs as its own job, in parallel with the tests, so the simulation links show up within a
+  # few minutes regardless of the test outcome.
+  #
+  # The upstream step (marsfoundation/spell-caster@action) cannot execute Gnosis spells: it
+  # reads SUBMISSION_ROLE() on the executor, but the Gnosis executor is the legacy AMB bridge
+  # executor and reverts. So instead of the action we check out spell-caster, drop in
+  # .github/spell-caster/castSpell.ts (same flow, Gnosis executed via impersonated
+  # executeDelegateCall like the forge harness does) and run it as a CLI.
+  spell-caster:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+
       - name: Checkout spell-caster
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         uses: actions/checkout@v4
         with:
           repository: marsfoundation/spell-caster
@@ -57,11 +71,9 @@ jobs:
           path: .spell-caster
 
       - name: Install bun
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         uses: oven-sh/setup-bun@v2
 
       - name: Spell Caster (patched for Gnosis)
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         working-directory: .spell-caster
         env:
           TENDERLY_API_KEY: ${{ secrets.TENDERLY_ACCESS_KEY }}
@@ -76,7 +88,7 @@ jobs:
             SparkEthereum_20260910 SparkGnosis_20260910
 
       - name: Post Spell Caster comment
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}

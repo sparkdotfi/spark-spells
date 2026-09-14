@@ -27,6 +27,8 @@ import { getChainIdFromSpellName } from '../utils/getChainIdFromSpellName'
 
 // Chains whose executor is the legacy AMB bridge executor (no SUBMISSION_ROLE).
 const LEGACY_EXECUTOR_CHAIN_IDS: number[] = [gnosis.id]
+// Well below Gnosis' ~17M block gas limit, far above what a payload needs.
+const LEGACY_EXECUTE_GAS = 10_000_000n
 
 const legacyExecutorAbi = [
   {
@@ -142,13 +144,25 @@ async function executeLegacyForeignDomainSpell({
 
   await client.setBalance(executor, parseEther('1'))
 
-  await client.assertWriteContract({
+  const call = {
     address: executor,
     abi: legacyExecutorAbi,
     functionName: 'executeDelegateCall',
     args: [spell, encodeFunctionData({ abi: spellAbi, functionName: 'execute' })],
     account: executor,
-  })
+    // The legacy executor swallows the inner delegatecall's failure and returns (false, data)
+    // instead of reverting. Gas estimation therefore settles on the smallest gas at which the
+    // OUTER call succeeds, i.e. one where execute() runs out of gas and silently does nothing
+    // (verified on an anvil fork: ~41k gas, 0 logs vs ~242k gas, 12 logs with explicit gas).
+    // So pin the gas and check the returned success flag explicitly.
+    gas: LEGACY_EXECUTE_GAS,
+  } as const
+
+  const { result } = await client.simulateContract(call)
+  const [success, returnData] = result
+  assert(success, `${spell} execute() reverted inside executeDelegateCall, return data: ${returnData}`)
+
+  await client.assertWriteContract(call)
 }
 
 async function main(): Promise<void> {
