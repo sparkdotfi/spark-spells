@@ -41,14 +41,62 @@ jobs:
           forge test -vvv
         id: test
 
-      # submits a PR comment with a spell simulation
-      - name: Spell Caster
-        uses: marsfoundation/spell-caster@action
-        # Run even when forge tests fail: the spell simulation is useful on its own
+      # --- Spell Caster, patched copy for this draft PR only ---------------------------------
+      # The upstream step (marsfoundation/spell-caster@action) cannot execute Gnosis spells: it
+      # reads SUBMISSION_ROLE() on the executor, but the Gnosis executor is the legacy AMB bridge
+      # executor and reverts. So instead of the action we check out spell-caster, drop in
+      # .github/spell-caster/castSpell.ts (same flow, Gnosis executed via impersonated
+      # executeDelegateCall like the forge harness does) and run it as a CLI.
+      # All steps run even when forge tests fail: the simulation is useful on its own.
+      - name: Checkout spell-caster
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: marsfoundation/spell-caster
+          ref: main
+          path: .spell-caster
+
+      - name: Install bun
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        uses: oven-sh/setup-bun@v2
+
+      - name: Spell Caster (patched for Gnosis)
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        working-directory: .spell-caster
+        env:
           TENDERLY_API_KEY: ${{ secrets.TENDERLY_ACCESS_KEY }}
           TENDERLY_PROJECT: ${{ secrets.TENDERLY_PROJECT }}
           TENDERLY_ACCOUNT: ${{ secrets.TENDERLY_USER }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL}}
+        run: |
+          bun install --frozen-lockfile
+          cp "$GITHUB_WORKSPACE/.github/spell-caster/castSpell.ts" src/bin/castSpell.ts
+          bun src/bin/castSpell.ts \
+            --root "$GITHUB_WORKSPACE" \
+            --out "$GITHUB_WORKSPACE/spell-caster-results.json" \
+            SparkEthereum_20260910 SparkGnosis_20260910
+
+      - name: Post Spell Caster comment
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -f spell-caster-results.json ]; then
+            echo "No spell-caster results to post"
+            exit 0
+          fi
+          {
+            echo "## Spell Caster (patched run from this PR)"
+            echo
+            echo "Inspect the impact of spell execution on forked networks:"
+            echo
+            echo "| Spell | App URL | RPC URL |"
+            echo "| --- | --- | --- |"
+            jq -r '.results[]  | "| \(.spellName) | [🎇 App](\(.appUrl)) | [🌎 RPC](\(.forkRpc)) |"' spell-caster-results.json
+            jq -r '.failures[] | "| \(.spellName) | ❌ failed | `\(.error | gsub("[\\n\\r|]"; " ") | .[0:200])` |"' spell-caster-results.json
+            echo
+            echo "<sub>Deployed from ${HEAD_SHA} on $(date -u +%Y-%m-%dT%H:%M:%SZ)</sub>"
+          } > spell-caster-comment.md
+          cat spell-caster-comment.md
+          gh pr comment "$PR_NUMBER" --body-file spell-caster-comment.md
