@@ -13,7 +13,7 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
  * @notice Spark Treasury:
  *         - Transfer the October 2026 monthly grants to the Spark Foundation and the Spark Assets Foundation.
  *         - Transfer USDS to the buyback executor to fund SPK buybacks.
- * Forum:
+ * Forum:  https://forum.skyeco.com/t/september-24-2026-proposed-changes-to-spark-for-upcoming-spell/28237
  */
 contract SparkEthereum_20260924 is SparkPayloadEthereum {
 
