@@ -51,7 +51,6 @@ import {
     IOracleLike,
     IProxyLike,
     IRateSourceLike,
-    ISparkProxyLike,
     ITargetBaseIRMLike,
     ITargetKinkIRMLike
 } from "../interfaces/Interfaces.sol";
