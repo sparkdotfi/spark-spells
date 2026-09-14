@@ -44,7 +44,8 @@ jobs:
       # submits a PR comment with a spell simulation
       - name: Spell Caster
         uses: marsfoundation/spell-caster@action
-        if: github.event_name == 'pull_request'
+        # Run even when forge tests fail: the spell simulation is useful on its own
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           TENDERLY_API_KEY: ${{ secrets.TENDERLY_ACCESS_KEY }}
