@@ -4766,51 +4766,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // 2026-09-10 spell: Item 1 offboards twenty integrations by zeroing their rate limits
-        // and Item 5 onboards the Sentora RLUSD Morpho Vaults V2 instance.
-        string[20] memory offboardedLabels = [
-            string("AAVE-USDE_ATOKEN"),
-            "CURVE_LP-PYUSDUSDS",
-            "CURVE_LP-SUSDSUSDT",
-            "CURVE_SWAP-PYUSDUSDC",
-            "CURVE_SWAP-PYUSDUSDS",
-            "CURVE_SWAP-SUSDSUSDT",
-            "CURVE_SWAP-USDCUSDT",
-            "CURVE_SWAP-WEETHWETHNG",
-            "ERC4626-MORPHO_VAULT_DAI_1",
-            "ERC4626-MORPHO_VAULT_USDS",
-            "ETHENA-SUSDE",
-            "MAPLE-SYRUP_USDC",
-            "MAPLE-SYRUP_USDT",
-            "SUPERSTATE-USTB",
-            "SUPERSTATE_TRANSFER-USCC",
-            "B2C2_TRANSFER-USDC",
-            "B2C2_TRANSFER-USDT",
-            "B2C2_TRANSFER-PYUSD",
-            "ANCHORAGE_TRANSFER-USAT",
-            "ANCHORAGE_TRANSFER-USDT"
-        ];
-
-        newIntegrations = new SLLIntegration[](integrations.length - offboardedLabels.length + 1);
-
-        uint256 index;
+        newIntegrations = new SLLIntegration[](integrations.length);
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            bool offboarded;
-
-            for (uint256 j = 0; j < offboardedLabels.length; ++j) {
-                if (_isEqual(integrations[i].label, offboardedLabels[j])) {
-                    offboarded = true;
-                    break;
-                }
-            }
-
-            if (offboarded) continue;
-
-            newIntegrations[index++] = integrations[i];
+            newIntegrations[i] = integrations[i];
         }
-
-        newIntegrations[index++] = _createERC4626Integration("ERC4626-SENTORA_RLUSD", SENTORA_RLUSD_VAULT);
     }
 
     function _getPostExecutionIntegrationsBase(
