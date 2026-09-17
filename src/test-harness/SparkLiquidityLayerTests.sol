@@ -477,7 +477,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SLLIntegration[] memory integrations  = _getPreExecutionIntegrations();
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            rateLimitKeys = _removeAll(rateLimitKeys, _runSLLE2ETests(ctx, integrations[i]));
+            bytes32[] memory usedRateLimitKeys = _runSLLE2ETests(ctx, integrations[i]);
+
+            rateLimitKeys = _removeAll(rateLimitKeys, usedRateLimitKeys);
         }
 
         assertEq(rateLimitKeys.length, 0, "Rate limit keys not fully covered");
@@ -492,7 +494,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            rateLimitKeys = _removeAll(rateLimitKeys, _runSLLE2ETests(ctx, integrations[i]));
+            bytes32[] memory usedRateLimitKeys = _runSLLE2ETests(ctx, integrations[i]);
+            
+            rateLimitKeys = _removeAll(rateLimitKeys, usedRateLimitKeys);
         }
 
         assertEq(rateLimitKeys.length, 0, "Rate limit keys not fully covered");
@@ -3248,7 +3252,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SLLIntegration[] memory integrations  = _getPreExecutionIntegrations();
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            rateLimitKeys = _removeAll(rateLimitKeys, _runSLLE2ETests(ctx, integrations[i]));
+            bytes32[] memory usedRateLimitKeys = _runSLLE2ETests(ctx, integrations[i]);
+
+            rateLimitKeys = _removeAll(rateLimitKeys, usedRateLimitKeys);
         }
 
         assertEq(rateLimitKeys.length, 0, "Rate limit keys not fully covered");
@@ -3265,7 +3271,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         ctx = _getSparkLiquidityLayerContext({ isPostExecution: true });
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            rateLimitKeys = _removeAll(rateLimitKeys, _runSLLE2ETests(ctx, integrations[i]));
+            bytes32[] memory usedRateLimitKeys = _runSLLE2ETests(ctx, integrations[i]);
+
+            rateLimitKeys = _removeAll(rateLimitKeys, usedRateLimitKeys);
         }
 
         assertEq(rateLimitKeys.length, 0, "Rate limit keys not fully covered");
