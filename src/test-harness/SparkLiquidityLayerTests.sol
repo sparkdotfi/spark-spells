@@ -150,7 +150,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         AAVE,
         CCTP_GENERAL,
         CCTP,
-        CENTRIFUGE,
         CORE,
         CURVE_SWAP,
         ERC4626,
@@ -160,7 +159,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         PSM,
         SPARK_VAULT_V2,
         PSM3,
-        TREASURY,
         TRANSFER_ASSET,
         UNISWAP_V4_LP,
         UNISWAP_V4_SWAP
@@ -3007,10 +3005,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 burnAmount: 50_000_000e6,
                 mintKey:    integration.entryId
             }));
-        }
-
-        else if (integration.category == Category.CENTRIFUGE) {
-            console2.log("Skipping SLL E2E test for", integration.label, "[DEPRECATED] due to protocol upgrade");
         }
 
         else if (integration.category == Category.TRANSFER_ASSET) {
