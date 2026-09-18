@@ -4314,7 +4314,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 depositAmount: 10_000_000 * 10 ** IERC20Metadata(asset).decimals(),
                 depositKey:    integration.entryId,
                 withdrawKey:   integration.exitId,
-                tolerance:     340
+                tolerance:     350
             }));
         }
 

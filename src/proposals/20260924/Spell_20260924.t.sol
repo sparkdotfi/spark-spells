@@ -56,7 +56,7 @@ contract SparkEthereum_20260924_SpellTests is SpellTests {
     uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
 
-    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;  // TODO: change this amount acc. to proposal passes/not.
+    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;
 
     constructor() {
         _spellId   = 20260924;

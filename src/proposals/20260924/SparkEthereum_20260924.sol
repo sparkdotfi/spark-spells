@@ -20,7 +20,7 @@ contract SparkEthereum_20260924 is SparkPayloadEthereum {
     uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
 
-    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;  // TODO: change this amount acc. to proposal passes/not.
+    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;
 
     function _postExecute() internal override {
         // 1. Transfer the October 2026 monthly grants to the Spark Foundation and the Spark Assets Foundation.
