@@ -3001,8 +3001,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             _testCoreIntegration(CoreE2ETestParams({
                 ctx:        ctx,
-                mintAmount: 100_000_000e6,
-                burnAmount: 50_000_000e6,
+                mintAmount: 100_000_000e18,
+                burnAmount: 50_000_000e18,
                 mintKey:    integration.entryId
             }));
         }
