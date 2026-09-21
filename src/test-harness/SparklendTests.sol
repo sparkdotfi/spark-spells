@@ -256,6 +256,14 @@ abstract contract SparklendTests is SpellRunner {
         _testAllReservesAreSeeded(ChainIdUtils.Gnosis());
     }
 
+    function test_ETHEREUM_EModePriceSources() external {
+        _validateEModePriceSources();
+
+        _executeAllPayloadsAndBridges();
+
+        _validateEModePriceSources();
+    }
+
     function test_ETHEREUM_FreezerMom() external onChain(ChainIdUtils.Ethereum()) {
         uint256 snapshot = vm.snapshot();
 
@@ -1998,6 +2006,17 @@ abstract contract SparklendTests is SpellRunner {
         for (uint256 i = 0; i < reserves.length; ++i) {
             require(ctx.priceOracle.getAssetPrice(reserves[i]) >= 0.5e8,      "_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_LOW");
             require(ctx.priceOracle.getAssetPrice(reserves[i]) <= 1_000_000e8,"_validateAssetSourceOnOracle() : INVALID_PRICE_TOO_HIGH");
+        }
+    }
+
+    function _validateEModePriceSources() internal view {
+        IPool pool = _getSparkLendContext().pool;
+
+        for (uint256 i = 0; i < 256; ++i) {
+            require(
+                pool.getEModeCategoryData(uint8(i)).priceSource == address(0),
+                string.concat("Non-zero eMode price source category: ", vm.toString(i))
+            );
         }
     }
 
