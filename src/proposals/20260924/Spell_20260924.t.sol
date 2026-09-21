@@ -17,13 +17,13 @@ contract SparkEthereum_20260924_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20260924;
-        _blockDate = 1789398591;  // 2026-09-14 15:09:51 UTC
+        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xbE35b15Cda9002C1719A9D254B158613BDdE72af;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
     }
 
     function deal(address token, address to, uint256 amount) internal override {
@@ -40,13 +40,13 @@ contract SparkEthereum_20260924_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20260924;
-        _blockDate = 1789398591;  // 2026-09-14 15:09:51 UTC
+        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xbE35b15Cda9002C1719A9D254B158613BDdE72af;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
     }
 
 }
@@ -56,17 +56,17 @@ contract SparkEthereum_20260924_SpellTests is SpellTests {
     uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
 
-    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;  // TODO: change this amount acc. to proposal passes/not.
+    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;
 
     constructor() {
         _spellId   = 20260924;
-        _blockDate = 1789398591;  // 2026-09-14 15:09:51 UTC
+        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xbE35b15Cda9002C1719A9D254B158613BDdE72af;
+        chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
     }
 
     function test_ETHEREUM_sparkTreasury() external onChain(ChainIdUtils.Ethereum()) {
