@@ -77,6 +77,12 @@ import {
 
 import { SpellRunner } from "./SpellRunner.sol";
 
+interface IAdministeredAgentLike {
+
+    function call(address target, bytes memory data) external payable returns (bytes memory result);
+
+}
+
 interface ILZEndpointExtended {
     function inboundPayloadHash(address _receiver, uint32 _srcEid, bytes32 _sender, uint64 _nonce) external view returns (bytes32);
     function lazyInboundNonce(address _receiver, uint32 _srcEid, bytes32 _sender) external view returns (uint64);
@@ -126,6 +132,15 @@ interface IMainnetControllerV9Like {
     function withdrawERC4626(address vault, uint256 amount) external returns (uint256 shares);
 
     function maxSlippages(address) external view returns (uint256);
+
+}
+
+interface IPAUControllerLike {
+
+    function cctp_transfer(uint256 usdcAmount, uint32 destinationDomain, uint64 feeCapRate)
+        external;
+
+    function proxy() external returns (address);
 
 }
 
@@ -314,6 +329,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address     freezer;
     }
 
+    struct SLLPAUContext {
+        address controller;
+        address administeredAgent;
+        address allocator;
+        address revoker;
+    }
+
     struct SparkVaultV2E2ETestParams {
         SparkLiquidityLayerContext ctx;
         address                    vault;
@@ -495,7 +517,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             bytes32[] memory usedRateLimitKeys = _runSLLE2ETests(ctx, integrations[i]);
-            
+
             rateLimitKeys = _removeAll(rateLimitKeys, usedRateLimitKeys);
         }
 
@@ -2653,37 +2675,42 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(maxTickSpacing, expectedMaxTickSpacing);
     }
 
-    function _testE2ESLLCCTPCrossChainForDomain(
-        uint256           domainId,
-        MainnetController mainnetController,
-        ForeignController foreignController
-    )
+    // Cross-chain E2E Steps
+
+    function _mintUSDSAndSwapToUSDC(uint256 usdcAmount, address controller)
         internal onChain(ChainIdUtils.Ethereum())
     {
-        IERC20  domainUsdc;
-        address domainPsm3;
-        uint32  domainCctpId;
+        IERC20 usdc = IERC20(Ethereum.USDC);
+
+        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
+
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
+        MainnetController(controller).mintUSDS(usdcAmount * 1e12);
+        MainnetController(controller).swapUSDSToUSDC(usdcAmount);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+    }
+
+    function _bridgeUSDCToDomain(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        IERC20 domainUsdc;
+        uint32 domainCctpId;
         Bridge storage bridge = chainData[domainId].bridges[1];
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc   = IERC20(Arbitrum.USDC);
-            domainPsm3   = Arbitrum.PSM3;
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE;
         } else if (domainId == ChainIdUtils.Base()) {
             domainUsdc   = IERC20(Base.USDC);
-            domainPsm3   = Base.PSM3;
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
         } else if (domainId == ChainIdUtils.Optimism()) {
             domainUsdc   = IERC20(Optimism.USDC);
-            domainPsm3   = Optimism.PSM3;
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
         } else if (domainId == ChainIdUtils.Unichain()) {
             domainUsdc   = IERC20(Unichain.USDC);
-            domainPsm3   = Unichain.PSM3;
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
         } else if (domainId == ChainIdUtils.Avalanche()) {
             domainUsdc   = IERC20(Avalanche.USDC);
-            domainPsm3   = address(0);
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE;
         } else {
             revert("SLL/unknown domain");
@@ -2693,18 +2720,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
-        // --- Step 1: Mint and bridge 1m USDC to Base ---
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        MainnetController(controller).transferUSDCToCCTP(usdcAmount, domainCctpId);
 
-        uint256 usdcAmount       = 1_000_000e6;
-        uint256 mainnetTimestamp = block.timestamp;
-
-        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
-        mainnetController.mintUSDS(usdcAmount * 1e12);
-        mainnetController.swapUSDSToUSDC(usdcAmount);
-        mainnetController.transferUSDCToCCTP(usdcAmount, domainCctpId);
-        vm.stopPrank();
-
-        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance - usdcAmount);
 
         chainData[domainId].domain.selectFork();
 
@@ -2721,37 +2740,94 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
+    }
 
-        if (domainPsm3 != address(0)) {
-            uint256 domainUsdcPsmBalance = domainUsdc.balanceOf(domainPsm3);
+    function _depositAndWithdrawFromPSM3(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        IERC20  domainUsdc;
+        address domainPsm3;
 
-            // --- Step 3: Deposit USDC into PSM3 ---
-
-            vm.prank(ctx.relayer);
-            foreignController.depositPSM(address(domainUsdc), usdcAmount);
-
-            assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
-            assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
-
-            // --- Step 4: Withdraw all assets from PSM3 ---
-
-            vm.prank(ctx.relayer);
-            foreignController.withdrawPSM(address(domainUsdc), usdcAmount);
-
-            assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
-            assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+        if (domainId == ChainIdUtils.ArbitrumOne()) {
+            domainUsdc = IERC20(Arbitrum.USDC);
+            domainPsm3 = Arbitrum.PSM3;
+        } else if (domainId == ChainIdUtils.Base()) {
+            domainUsdc = IERC20(Base.USDC);
+            domainPsm3 = Base.PSM3;
+        } else if (domainId == ChainIdUtils.Optimism()) {
+            domainUsdc = IERC20(Optimism.USDC);
+            domainPsm3 = Optimism.PSM3;
+        } else if (domainId == ChainIdUtils.Unichain()) {
+            domainUsdc = IERC20(Unichain.USDC);
+            domainPsm3 = Unichain.PSM3;
+        } else if (domainId == ChainIdUtils.Avalanche()) {
+            domainUsdc = IERC20(Avalanche.USDC);
+            domainPsm3 = address(0);
+        } else {
+            revert("SLL/unknown domain");
         }
 
-        // --- Step 5: Bridge USDC back to mainnet ---
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        address domainAlmProxy = address(ctx.proxy);
+
+        uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
+
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+
+        if (domainPsm3 == address(0)) return;
+
+        uint256 domainUsdcPsmBalance = domainUsdc.balanceOf(domainPsm3);
+
+        vm.prank(ctx.relayer);
+        ForeignController(controller).depositPSM(address(domainUsdc), usdcAmount);
+
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
+        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
+
+        vm.prank(ctx.relayer);
+        ForeignController(controller).withdrawPSM(address(domainUsdc), usdcAmount);
+
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+    }
+
+    function _bridgeUSDCToMainnet(uint256 usdcAmount, uint256 domainId, address controller) internal  {
+        IERC20 domainUsdc;
+        Bridge storage bridge = chainData[domainId].bridges[1];
+
+        if (domainId == ChainIdUtils.ArbitrumOne()) {
+            domainUsdc = IERC20(Arbitrum.USDC);
+        } else if (domainId == ChainIdUtils.Base()) {
+            domainUsdc = IERC20(Base.USDC);
+        } else if (domainId == ChainIdUtils.Optimism()) {
+            domainUsdc = IERC20(Optimism.USDC);
+        } else if (domainId == ChainIdUtils.Unichain()) {
+            domainUsdc = IERC20(Unichain.USDC);
+        } else if (domainId == ChainIdUtils.Avalanche()) {
+            domainUsdc = IERC20(Avalanche.USDC);
+        } else {
+            revert("SLL/unknown domain");
+        }
+
+        IERC20 usdc = IERC20(Ethereum.USDC);
+
+        SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
+
+        address domainAlmProxy = address(ctx.proxy);
+
+        uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
+
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
 
         skip(1 days);  // Skip 1 day to allow for the rate limit to be refilled
 
         vm.prank(ctx.relayer);
-        foreignController.transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        ForeignController(controller).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
-        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
 
@@ -2760,17 +2836,64 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         CCTPBridgeTesting.relayMessagesToSource(bridge, true);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+    }
 
-        // --- Step 6: Swap USDC to USDS and burn ---
+    function _bridgeUSDCToMainnet_pau(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        IERC20 domainUsdc;
+        Bridge storage bridge = chainData[domainId].bridges[1]; // TODO
 
-        if (block.timestamp < mainnetTimestamp) vm.warp(mainnetTimestamp);
+        if (domainId == ChainIdUtils.ArbitrumOne()) {
+            domainUsdc = IERC20(Arbitrum.USDC);
+        } else {
+            revert("SLL/unknown domain");
+        }
 
-        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
-        mainnetController.swapUSDCToUSDS(usdcAmount);
-        mainnetController.burnUSDS(usdcAmount * 1e12);
-        vm.stopPrank();
+        IERC20 usdc = IERC20(Ethereum.USDC);
+
+        SLLPAUContext memory ctx = _getSLLPAUContext(domainId);
+
+        address domainAlmProxy = IPAUControllerLike(controller).proxy();
+
+        uint256 domainUsdcProxyBalance = domainUsdc.balanceOf(domainAlmProxy);
+
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
+
+        skip(1 days);  // Skip 1 day to allow for the rate limit to be refilled
+
+        vm.prank(ctx.allocator);
+        IAdministeredAgentLike(ctx.administeredAgent).call(
+            controller,
+            abi.encodeCall(IPAUControllerLike.cctp_transfer, (usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0))
+        );
+
+        assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+
+        // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
+        //_relayMessageOverBridges();
+        CCTPBridgeTesting.relayMessagesToSource(bridge, true); // TODO
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+    }
+
+    function _swapUSDCToUSDSAndBurn(uint256 usdcAmount, address controller) internal {
+        IERC20 usdc = IERC20(Ethereum.USDC);
+
+        uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
+
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
+        MainnetController(controller).swapUSDCToUSDS(usdcAmount);
+        MainnetController(controller).burnUSDS(usdcAmount * 1e12);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance - usdcAmount);
     }
 
     function _testMorphoVaultCreation(
@@ -2945,7 +3068,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /**********************************************************************************************/
 
     function _runE2ESLLCrossChainTestForAllDomains(bool isPostExecution) internal {
-        SparkLiquidityLayerContext memory ctxMainnet = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum());
+        address legacyMainnetController = _getSparkLiquidityLayerContext(ChainIdUtils.Ethereum()).controller;
 
         string memory prefix = isPostExecution ? "POST EXECUTION" : "PRE EXECUTION";
 
@@ -2963,13 +3086,22 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             uint256 domainChainId = chainData[allChains[i]].domain.chain.chainId;
 
-            SparkLiquidityLayerContext memory domainCtx = _getSparkLiquidityLayerContext(domainChainId);
+            console2.log("domainChainId", domainChainId);
 
-            _testE2ESLLCCTPCrossChainForDomain(
-                domainChainId,
-                MainnetController(isPostExecution ? ctxMainnet.controller : ctxMainnet.prevController),
-                ForeignController(isPostExecution ? domainCtx.controller  : domainCtx.prevController)
-            );
+            address legacyDomainController = _getSparkLiquidityLayerContext(domainChainId, isPostExecution).controller;
+
+            _mintUSDSAndSwapToUSDC(1_000_000e6, legacyMainnetController);
+            _bridgeUSDCToDomain(1_000_000e6, domainChainId, legacyMainnetController);
+            _depositAndWithdrawFromPSM3(1_000_000e6, domainChainId, legacyDomainController);
+
+            if (domainChainId == ChainIdUtils.ArbitrumOne()) {
+                address pauController = _getSLLPAUContext(domainChainId).controller;
+                _bridgeUSDCToMainnet_pau(1_000_000e6, domainChainId, pauController);
+            } else {
+                _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
+            }
+
+            _swapUSDCToUSDSAndBurn(1_000_000e6, legacyMainnetController);
         }
     }
 
@@ -3893,7 +4025,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** View/Pure Functions                                                                     **/
     /**********************************************************************************************/
 
-    function _getSparkLiquidityLayerContext(uint256 chainId) internal view returns (SparkLiquidityLayerContext memory ctx) {
+    function _getSparkLiquidityLayerContext(uint256 chainId, bool isPostExecution) internal view returns (SparkLiquidityLayerContext memory ctx) {
         if (chainId == ChainIdUtils.Ethereum()) {
             ctx = SparkLiquidityLayerContext(
                 Ethereum.ALM_CONTROLLER,
@@ -3968,19 +4100,38 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             ctx.prevController = ctx.controller;
         }
-    }
-
-    function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
-        return _getSparkLiquidityLayerContext(block.chainid);
-    }
-
-    function _getSparkLiquidityLayerContext(bool isPostExecution) internal view returns (SparkLiquidityLayerContext memory ctx) {
-        ctx = _getSparkLiquidityLayerContext(block.chainid);
 
         // Use the existing controller for all tests if spell hasn't executed yet
         if (isPostExecution) return ctx;
 
         ctx.controller = ctx.prevController;
+    }
+
+    function _getSparkLiquidityLayerContext() internal view returns (SparkLiquidityLayerContext memory) {
+        return _getSparkLiquidityLayerContext(block.chainid, false);
+    }
+
+    function _getSparkLiquidityLayerContext(uint256 chainId) internal view returns (SparkLiquidityLayerContext memory ctx) {
+        return _getSparkLiquidityLayerContext(chainId, false);
+    }
+
+    function _getSparkLiquidityLayerContext(bool isPostExecution) internal view returns (SparkLiquidityLayerContext memory ctx) {
+        return _getSparkLiquidityLayerContext(block.chainid, isPostExecution);
+    }
+
+    function _getSLLPAUContext(uint256 chainId) internal view returns (SLLPAUContext memory ctx) {
+        console2.log("chainId", chainId);
+
+        if (chainId == ChainIdUtils.ArbitrumOne()) {
+            return SLLPAUContext({
+                controller        : Arbitrum.PAU_CONTROLLER,
+                administeredAgent : Arbitrum.PAU_ADMINISTERED_AGENT,
+                allocator         : Arbitrum.ALM_RELAYER_MULTISIG,
+                revoker           : Arbitrum.ALM_FREEZER_MULTISIG
+            });
+        }
+
+        revert("SLL/executing on unknown chain");
     }
 
     // TODO: MDL, seems like unnecessary overload bloat.
