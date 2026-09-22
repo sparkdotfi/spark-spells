@@ -2013,6 +2013,9 @@ abstract contract SparklendTests is SpellRunner {
         IPool pool = _getSparkLendContext().pool;
 
         for (uint256 i = 0; i < 256; ++i) {
+            // In eMode, a single shared priceSource is used to value all assets in the category for collateral, new borrows, and liquidation.
+            // If one in-category asset depegs while the priceSource remains stable, the depegged asset is overvalued on-chain.
+            // An attacker can supply the cheap asset, borrow a sound asset at elevated eMode LTV, and create bad debt for the protocol when pricing is corrected.
             require(
                 pool.getEModeCategoryData(uint8(i)).priceSource == address(0),
                 string.concat("Non-zero eMode price source category: ", vm.toString(i))
