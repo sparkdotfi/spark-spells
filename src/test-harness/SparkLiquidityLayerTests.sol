@@ -2809,6 +2809,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             revert("SLL/unknown domain");
         }
 
+        chainData[domainId].domain.selectFork();
+
         IERC20 usdc = IERC20(Ethereum.USDC);
 
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
@@ -2848,6 +2850,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         } else {
             revert("SLL/unknown domain");
         }
+
+        chainData[domainId].domain.selectFork();
 
         IERC20 usdc = IERC20(Ethereum.USDC);
 
@@ -3097,7 +3101,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
                 address pauController = _getSLLPAUContext(domainChainId).controller;
-                _bridgeUSDCToMainnet_pau(1_000_000e6, domainChainId, pauController);
+
+                _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
+                _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController);
             } else {
                 _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
             }
