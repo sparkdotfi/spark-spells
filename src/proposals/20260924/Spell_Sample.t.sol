@@ -17,7 +17,7 @@ contract SparkEthereum_11111_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 1111;
-        _blockDate = 1790060000;
+        _blockDate = 1790070959;
     }
 
     function deal(address token, address to, uint256 amount) internal override {
@@ -35,7 +35,7 @@ contract SparkEthereum_1111_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 1111;
-        _blockDate = 1790060000;
+        _blockDate = 1790070959;
     }
 
 }

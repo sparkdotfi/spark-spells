@@ -46,6 +46,7 @@ import { CCTPForwarder }         from "xchain-helpers/forwarders/CCTPForwarder.s
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { CCTPv2BridgeTesting }   from "xchain-helpers/testing/bridges/CCTPv2BridgeTesting.sol";
 import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
 
@@ -2840,7 +2841,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     function _bridgeUSDCToMainnet_pau(uint256 usdcAmount, uint256 domainId, address controller) internal {
         IERC20 domainUsdc;
-        Bridge storage bridge = chainData[domainId].bridges[1]; // TODO
+        Bridge storage bridge = chainData[domainId].bridges[3];
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc = IERC20(Arbitrum.USDC);
@@ -2876,7 +2877,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
-        CCTPBridgeTesting.relayMessagesToSource(bridge, true); // TODO
+        CCTPv2BridgeTesting.relayMessagesToSource(bridge, true);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
     }
@@ -3094,7 +3095,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _bridgeUSDCToDomain(1_000_000e6, domainChainId, legacyMainnetController);
             _depositAndWithdrawFromPSM3(1_000_000e6, domainChainId, legacyDomainController);
 
-            if (domainChainId == ChainIdUtils.ArbitrumOne()) {
+            if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
                 address pauController = _getSLLPAUContext(domainChainId).controller;
                 _bridgeUSDCToMainnet_pau(1_000_000e6, domainChainId, pauController);
             } else {

@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { ChainIdUtils }  from "../../libraries/ChainIdUtils.sol";
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
@@ -51,21 +51,21 @@ contract SparkArbitrumOne_1111 is SparkPayloadArbitrumOne {
 
         // Set domain parameters
         IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_setDomainParameters(
-            uint32(ChainIdUtils.Ethereum()),
+            CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
             bytes32(uint256(uint160(Ethereum.ALM_PROXY))),
             0,
             0 // no fee cap rate
         );
 
         // Set rate limits
-        IRateLimitsLike(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
+        IRateLimitsLike(Arbitrum.PAU_RATELIMITS).setRateLimitData(
             IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_toCCTPRateLimitKey(),
             100_000_000e6,
             uint256(500_000_000e6) / 1 days
         );
 
-        IRateLimitsLike(Ethereum.ALM_RATE_LIMITS).setRateLimitData(
-            IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(uint32(ChainIdUtils.Ethereum())),
+        IRateLimitsLike(Arbitrum.PAU_RATELIMITS).setRateLimitData(
+            IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
             10_000_000e6,
             uint256(250_000_000e6) / 1 days
         );
