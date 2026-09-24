@@ -305,7 +305,6 @@ abstract contract SpellRunner is Test {
             }))
         );
 
-        // TODO: Add CCTPv2 bridge for XLayer in xchain-helpers
         chainData[ChainIdUtils.XLayer()].bridges.push(
             CCTPv2BridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,

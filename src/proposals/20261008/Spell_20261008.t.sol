@@ -25,19 +25,19 @@ interface IAdministeredAgentLike {
 
 interface IForeignControllerFullLike {
 
-    function cctp_transfer(uint256 amount, uint256 domainId, uint256 nonce) external;
+    function cctp_transfer(uint256 usdcAmount, uint32 destinationDomain, uint64 feeCapRate) external;
 
     function cctp_toCCTPRateLimitKey() external view returns (bytes32);
 
-    function cctp_getToDomainRateLimitKey(uint256 domainId) external view returns (bytes32);
+    function cctp_getToDomainRateLimitKey(uint32 domainId) external view returns (bytes32);
 
-    function sparkVault_getTakeRateLimitKey(address vault) external view returns (bytes32);
+    function sparkVault_getTakeRateLimitKey(address sparkVault) external view returns (bytes32);
 
-    function sparkVault_take(address vault, uint256 amount) external;
+    function sparkVault_take(address sparkVault, uint256 assetAmount) external;
 
-    function transferAsset_getTransferRateLimitKey(address asset, address vault) external view returns (bytes32);
+    function transferAsset_getTransferRateLimitKey(address asset, address destination) external view returns (bytes32);
 
-    function transferAsset_transfer(address asset, address vault, uint256 amount) external;
+    function transferAsset_transfer(address asset, address destination, uint256 amount) external;
 
 }
 
@@ -79,19 +79,19 @@ interface IERC4626Like {
 
 interface IMainnetControllerFullLike {
 
-    function erc4626_deposit(address asset, uint256 assets, uint256 shares) external;
+    function erc4626_deposit(address token, uint256 amount, uint256 minSharesOut) external;
 
-    function erc4626_redeem(address asset, uint256 shares, uint256 assets) external;
+    function erc4626_redeem(address token, uint256 shares, uint256 minAssetsOut) external;
 
-    function erc4626_getDepositRateLimitKey(address asset, address underlying) external view returns (bytes32);
+    function erc4626_getDepositRateLimitKey(address token, address asset) external view returns (bytes32);
 
-    function erc4626_getWithdrawRateLimitKey(address asset) external view returns (bytes32);
+    function erc4626_getWithdrawRateLimitKey(address token) external view returns (bytes32);
 
-    function cctp_transfer(uint256 amount, uint256 domainId, uint256 nonce) external;
+    function cctp_transfer(uint256 usdcAmount, uint32 destinationDomain, uint64 feeCapRate) external;
 
     function cctp_toCCTPRateLimitKey() external view returns (bytes32);
 
-    function cctp_getToDomainRateLimitKey(uint256 domainId) external view returns (bytes32);
+    function cctp_getToDomainRateLimitKey(uint32 domainId) external view returns (bytes32);
 
 }
 
@@ -159,8 +159,6 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
 
     using DomainHelpers       for *;
     using CCTPv2BridgeTesting for Bridge;
-
-    uint32 internal constant XLAYER_CCTP_DOMAIN = 37;
 
     IAdministeredAgentLike     internal xlayerAgent;
     IForeignControllerFullLike internal xlayerController;
@@ -285,7 +283,7 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(usdc.balanceOf(Ethereum.SPUSDC_PAU_ALM_PROXY), 0);
 
-        bridge.relayMessagesToDestination(true);
+        bridge.relayMessagesToSource(true);
 
         assertEq(usdc.balanceOf(Ethereum.SPUSDC_PAU_ALM_PROXY), 1_000_000e6);
         assertEq(usdc.totalSupply(),                            mainnetUsdcSupply + 1_000_000e6);
@@ -345,7 +343,7 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
         // Step 8: Relayer bridges the USDC back to X Layer with CCTP V2 (burn on Ethereum).
 
         bytes32 mainnetCctpKey       = mainnetController.cctp_toCCTPRateLimitKey();
-        bytes32 mainnetCctpDomainKey = mainnetController.cctp_getToDomainRateLimitKey(XLAYER_CCTP_DOMAIN);
+        bytes32 mainnetCctpDomainKey = mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER);
 
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpKey),       type(uint256).max);
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpDomainKey), 10_000_000e6);
@@ -353,7 +351,7 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetAgent.call(
             address(mainnetController),
-            abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, XLAYER_CCTP_DOMAIN, 0))
+            abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER, 0))
         );
 
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpKey),       type(uint256).max);
@@ -368,7 +366,7 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(xlayerUsdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0);
 
-        bridge.relayMessagesToSource(true);
+        bridge.relayMessagesToDestination(true);
 
         assertEq(xlayerUsdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), usdcWithYield);
         assertEq(xlayerUsdc.totalSupply(),                          xlayerUsdcSupply - 1_000_000e6 + usdcWithYield);
