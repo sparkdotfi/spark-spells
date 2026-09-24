@@ -35,12 +35,12 @@ contract SparkXLayer_20261008 {
         );
 
         // Update vault config in savings intents to add spUSDC.abi
-        ISavingsIntentsLike(XLayer.SPARK_SAVINGS_INTENTS).updateVaultConfig(
-            XLayer.SPARK_VAULT_V2_SPUSDC,
-            true,
-            1_000_000e6,
-            10_000_000e6
-        );
+        ISavingsIntentsLike(XLayer.SPARK_SAVINGS_INTENTS).updateVaultConfig({
+            vault            : XLayer.SPARK_VAULT_V2_SPUSDC,
+            whitelisted_     : true,
+            minIntentAssets_ : 1_000_000e6,
+            maxIntentAssets_ : 10_000_000e6
+        });
     }
 
 }

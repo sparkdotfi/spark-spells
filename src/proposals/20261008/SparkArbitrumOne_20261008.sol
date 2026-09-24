@@ -125,17 +125,6 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
     function _transferAllDefaultAdminRolesToSkyL2GovernanceRelay() internal {
         IBeaconLike(Arbitrum.SPARK_BEACON).grantRole(IBeaconLike(Arbitrum.SPARK_BEACON).DEFAULT_ADMIN_ROLE(),  SKY_L2_GOVERANCE_RELAY);
         IBeaconLike(Arbitrum.SPARK_BEACON).revokeRole(IBeaconLike(Arbitrum.SPARK_BEACON).DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR);
-
-        // TODO: Ask Lucas if we have to keep this.
-
-        IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).grantRole(IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).DEFAULT_ADMIN_ROLE(),  SKY_L2_GOVERANCE_RELAY);
-        IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).revokeRole(IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR);
-
-        IRateLimitsLike(Arbitrum.PAU_RATELIMITS).grantRole(IRateLimitsLike(Arbitrum.PAU_RATELIMITS).DEFAULT_ADMIN_ROLE(),  SKY_L2_GOVERANCE_RELAY);
-        IRateLimitsLike(Arbitrum.PAU_RATELIMITS).revokeRole(IRateLimitsLike(Arbitrum.PAU_RATELIMITS).DEFAULT_ADMIN_ROLE(), Arbitrum.SPARK_EXECUTOR);
-
-        IAdministeredAgentLike(Arbitrum.PAU_ADMINISTERED_AGENT).addAdmin(SKY_L2_GOVERANCE_RELAY);
-        IAdministeredAgentLike(Arbitrum.PAU_ADMINISTERED_AGENT).removeAdmin(Arbitrum.SPARK_EXECUTOR);
     }
 
 }
