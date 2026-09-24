@@ -956,7 +956,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         });
     }
 
-    function _testCurveSwapIntegration(CurveSwapE2ETestParams memory p) internal {
+    function _testCurveSwapIntegration(CurveSwapE2ETestParams memory p) internal returns (bytes32[] memory usedRateLimitKeys) {
+        usedRateLimitKeys = new bytes32[](1);
+        usedRateLimitKeys[0] = p.swapKey;
+
         skip(10 days);  // Recharge rate limits
 
         // Check RateLimit
