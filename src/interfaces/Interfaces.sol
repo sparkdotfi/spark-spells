@@ -2,15 +2,12 @@
 
 pragma solidity >=0.7.5 <0.9.0;
 
-import { IERC20 }   from "forge-std/interfaces/IERC20.sol";
-import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
-import { IERC7540 } from "forge-std/interfaces/IERC7540.sol";
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 
 import { Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
-import { PoolId }       from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolId.sol";
-import { PoolKey }      from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
-import { PositionInfo } from "spark-alm-controller/lib/uniswap-v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { PoolId }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolId.sol";
+import { PoolKey } from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
 
 interface IALMProxyFreezableLike {
     function ALLOCATOR_ROLE() external returns (bytes32);
@@ -322,51 +319,9 @@ interface ICurvePoolLike is IERC20 {
 
 }
 
-interface IPoolManagerLike {
-
-    function poolPermissionManager() external view returns (address);
-
-    function poolDelegate() external view returns (address);
-
-    function strategyList(uint256 index) external view returns (address);
-
-    function strategyListLength() external view returns (uint256);
-
-    function withdrawalManager() external view returns (address);
-
-}
-
 interface IPSMLike {
 
     function pocket() external view returns (address);
-
-}
-
-interface IMapleStrategyLike {
-
-    function assetsUnderManagement() external view returns (uint256);
-
-    function withdrawFromStrategy(uint256 amount) external;
-
-}
-
-interface IWithdrawalManagerLike {
-
-    function processRedemptions(uint256 maxSharesToProcess) external;
-
-    function totalShares() external returns (uint256);
-
-}
-
-interface ISyrupLike is IERC4626 {
-
-    function manager() external view returns (address);
-
-}
-
-interface ISUSDELike is IERC4626 {
-
-    function silo() external view returns (address);
 
 }
 
@@ -386,86 +341,11 @@ interface IFarmLike {
 
 }
 
-interface ISuperstateTokenLike is IERC20 {
-
-    function calculateSuperstateTokenOut(uint256, address) external view returns (uint256, uint256, uint256);
-
-    function supportedStablecoins(address stablecoin) external view returns (address sweepDestination, uint256 fee);
-
-}
-
 interface ISSRedemptionLike {
 
     function calculateUsdcOut(uint256 ustbAmount) external view returns (uint256 usdcOutAmount, uint256 usdPerUstbChainlinkRaw);
 
     function calculateUstbIn(uint256 usdcOutAmount) external view returns (uint256 ustbInAmount, uint256 usdPerUstbChainlinkRaw);
-
-}
-
-interface IInvestmentManagerLike {
-
-    function fulfillCancelDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 fulfillment
-    ) external;
-
-    function fulfillCancelRedeemRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 shares
-    ) external;
-
-    function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-
-    function fulfillRedeemRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-
-    function escrow() external view returns (address);
-
-}
-
-interface ICentrifugeTokenLike is IERC7540 {
-
-    function claimableCancelDepositRequest(uint256 requestId, address controller)
-        external view returns (uint256 claimableAssets);
-
-    function claimableCancelRedeemRequest(uint256 requestId, address controller)
-        external view returns (uint256 claimableShares);
-
-    function pendingCancelDepositRequest(uint256 requestId, address controller)
-        external view returns (bool isPending);
-
-    function pendingCancelRedeemRequest(uint256 requestId, address controller)
-        external view returns (bool isPending);
-
-    function manager() external view returns (address);
-
-    function share() external view returns (address);
-
-    function root() external view returns (address);
-
-    function trancheId() external view returns (bytes16);
-
-    function poolId() external view returns (uint64);
 
 }
 
