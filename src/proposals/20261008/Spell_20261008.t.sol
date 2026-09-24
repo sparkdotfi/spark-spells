@@ -97,66 +97,6 @@ interface IMainnetControllerFullLike {
 
 contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
-    uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
-
-    constructor() {
-        _spellId   = 20261008;
-        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
-    }
-
-    function setUp() public override {
-        super.setUp();
-
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
-    }
-
-    function deal(address token, address to, uint256 amount) internal override {
-        if (token == Ethereum.USDG) {
-            vm.store(Ethereum.USDG, keccak256(abi.encode(to, USDG_BALANCES_SLOT_INDEX)), bytes32(amount));
-            return;
-        }
-        super.deal(token, to, amount);
-    }
-
-}
-
-contract SparkEthereum_20261008_SparklendTests is SparklendTests {
-
-    constructor() {
-        _spellId   = 20261008;
-        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
-    }
-
-    function setUp() public override {
-        super.setUp();
-
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
-    }
-
-}
-
-contract SparkEthereum_20261008_SpellTests is SpellTests {
-
-    uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
-    uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
-
-    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;
-
-    constructor() {
-        _spellId   = 20261008;
-        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
-    }
-
-    function setUp() public override {
-        super.setUp();
-
-        // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
-    }
-
-}
-
-contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
-
     using DomainHelpers       for *;
     using CCTPv2BridgeTesting for Bridge;
 
@@ -174,6 +114,8 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
 
     address internal user;
 
+    uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
+
     constructor() {
         _spellId   = 20261008;
         _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
@@ -182,6 +124,7 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
     function setUp() public override {
         super.setUp();
 
+        // XLayer CCTP round trip test setup
         xlayerAgent      = IAdministeredAgentLike(XLayer.SPUSDC_PAU_ADMINISTERED_AGENT);
         xlayerController = IForeignControllerFullLike(XLayer.SPUSDC_PAU_CONTROLLER);
         xlayerRateLimits = IRateLimitsLike(XLayer.SPUSDC_PAU_RATELIMITS);
@@ -196,10 +139,10 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
 
         user = makeAddr("user");
 
-        // chainData[ChainIdUtils.Ethereum()].payload = ;
+        // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
     }
 
-    function test_e2e_roundTrip() external {
+    function test_XLAYER_sll_cctp_e2e_roundTrip() external onChain(ChainIdUtils.XLayer()) {
         Bridge storage bridge = chainData[ChainIdUtils.XLayer()].bridges[2];
 
         chainData[ChainIdUtils.XLayer()].domain.selectFork();
@@ -400,6 +343,41 @@ contract SparkXLayer_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(spusdc.totalAssets(),   1e6 + 96);
         assertEq(spusdc.totalSupply(),   1e6);
         assertEq(spusdc.balanceOf(user), 0);
+    }
+
+}
+
+contract SparkEthereum_20261008_SparklendTests is SparklendTests {
+
+    constructor() {
+        _spellId   = 20261008;
+        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
+    }
+
+}
+
+contract SparkEthereum_20261008_SpellTests is SpellTests {
+
+    uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
+    uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
+
+    uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 972_485e18;
+
+    constructor() {
+        _spellId   = 20261008;
+        _blockDate = 1789710827;  // 2026-09-18 05:53:47 UTC
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
     }
 
 }
