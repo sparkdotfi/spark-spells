@@ -187,41 +187,40 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         chainData[ChainIdUtils.XLayer()].domain.selectFork();
 
-        // Step 0: Set VSR on spUSDC.
-        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
-        xlayerAgent.call(
-            address(spusdc),
-            abi.encodeCall(spusdc.setVsr, (1000000001121484774769253326))
-        );
-
         // Step 1: User deposits USDC into spUSDC on X Layer.
 
         deal(address(xlayerUsdc), user, 1_000_000e6);
 
-        assertEq(xlayerUsdc.balanceOf(user),            1_000_000e6);
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)), 1e6);
+        uint256 spUsdcBalanceBefore = xlayerUsdc.balanceOf(address(spusdc));
+        uint256 spUsdcSupplyBefore  = spusdc.totalSupply();
+        uint256 spUsdcAssetsBefore  = spusdc.totalAssets();
 
-        assertEq(spusdc.totalAssets(),   1e6);
-        assertEq(spusdc.totalSupply(),   1e6);
-        assertEq(spusdc.balanceOf(user), 0);
+        assertEq(spUsdcBalanceBefore, 6.699_882e6);
+        assertEq(spUsdcSupplyBefore,  6.699_823e6);
+        assertEq(spUsdcAssetsBefore,  6.701_006e6);
+
+        assertEq(xlayerUsdc.balanceOf(user), 1_000_000e6);
+        assertEq(spusdc.balanceOf(user),     0);
 
         vm.startPrank(user);
         xlayerUsdc.approve(address(spusdc), 1_000_000e6);
-        spusdc.deposit(1_000_000e6, user);
+        uint256 userShares = spusdc.deposit(1_000_000e6, user);
         vm.stopPrank();
 
-        assertEq(xlayerUsdc.balanceOf(user),            0);
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)), 1_000_000e6 + 1e6);
+        assertEq(userShares,             999_823.392_959e6);
+        assertEq(spusdc.balanceOf(user), userShares);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6 - 1); // Rounding
+        assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore + userShares);
 
-        assertEq(spusdc.totalAssets(),   1_000_000e6 + 1e6);
-        assertEq(spusdc.totalSupply(),   1_000_000e6 + 1e6);
-        assertEq(spusdc.balanceOf(user), 1_000_000e6);
+        assertEq(xlayerUsdc.balanceOf(user),            0);
+        assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1_000_000e6);
 
         // Step 2: Relayer takes the USDC out of spUSDC into the ALMProxy on X Layer.
 
-        bytes32 takeKey = xlayerController.sparkVault_getTakeRateLimitKey(address(spusdc));
-
-        assertEq(xlayerRateLimits.getCurrentRateLimit(takeKey), type(uint256).max);
+        assertEq(
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.sparkVault_getTakeRateLimitKey(address(spusdc))),
+            type(uint256).max
+        );
 
         assertEq(xlayerUsdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0);
 
@@ -231,18 +230,19 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
             abi.encodeCall(xlayerController.sparkVault_take, (address(spusdc), 1_000_000e6))
         );
 
-        assertEq(xlayerRateLimits.getCurrentRateLimit(takeKey), type(uint256).max);
+        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.sparkVault_getTakeRateLimitKey(address(spusdc))), type(uint256).max);
 
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)),             1e6);
+        assertEq(xlayerUsdc.balanceOf(address(spusdc)),             spUsdcBalanceBefore);
         assertEq(xlayerUsdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 1_000_000e6);
 
         // Step 3: Relayer bridges the USDC to Ethereum with CCTP V2 (burn on X Layer).
 
-        bytes32 xlayerCctpKey       = xlayerController.cctp_toCCTPRateLimitKey();
-        bytes32 xlayerCctpDomainKey = xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
-        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerCctpKey),       type(uint256).max);
-        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerCctpDomainKey), 10_000_000e6);
+        assertEq(
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM)),
+            10_000_000e6
+        );
 
         uint256 xlayerUsdcSupply = xlayerUsdc.totalSupply();
 
@@ -252,8 +252,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
             abi.encodeCall(xlayerController.cctp_transfer, (1_000_000e6, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0))
         );
 
-        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerCctpKey),       type(uint256).max);
-        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerCctpDomainKey), 9_000_000e6);
+        assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_toCCTPRateLimitKey()), type(uint256).max);
+
+        assertEq(
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM)),
+            9_000_000e6
+        );
 
         assertEq(xlayerUsdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0);
         assertEq(xlayerUsdc.totalSupply(),                          xlayerUsdcSupply - 1_000_000e6);
@@ -325,11 +329,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         // Step 8: Relayer bridges the USDC back to X Layer with CCTP V2 (burn on Ethereum).
 
-        bytes32 mainnetCctpKey       = mainnetController.cctp_toCCTPRateLimitKey();
-        bytes32 mainnetCctpDomainKey = mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER);
+        assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
-        assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpKey),       type(uint256).max);
-        assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpDomainKey), 10_000_000e6);
+        assertEq(
+            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER)),
+            10_000_000e6
+        );
 
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetAgent.call(
@@ -337,8 +342,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
             abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER, 0))
         );
 
-        assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpKey),       type(uint256).max);
-        assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetCctpDomainKey), 10_000_000e6 - usdcWithYield);
+        assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_toCCTPRateLimitKey()), type(uint256).max);
+
+        assertEq(
+            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER)),
+            10_000_000e6 - usdcWithYield
+        );
 
         assertEq(usdc.balanceOf(Ethereum.SPUSDC_PAU_ALM_PROXY), 0);
         assertEq(usdc.totalSupply(),                            mainnetUsdcSupply + 1_000_000e6 - usdcWithYield);
@@ -356,9 +365,10 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         // Step 10: Relayer transfers the USDC, yield included, back into spUSDC.
 
-        bytes32 transferKey = xlayerController.transferAsset_getTransferRateLimitKey(address(xlayerUsdc), address(spusdc));
-
-        assertEq(xlayerRateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+        assertEq(
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.transferAsset_getTransferRateLimitKey(address(xlayerUsdc), address(spusdc))),
+            type(uint256).max
+        );
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         xlayerAgent.call(
@@ -366,23 +376,26 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
             abi.encodeCall(xlayerController.transferAsset_transfer, (address(xlayerUsdc), address(spusdc), usdcWithYield))
         );
 
-        assertEq(xlayerRateLimits.getCurrentRateLimit(transferKey), type(uint256).max);
+        assertEq(
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.transferAsset_getTransferRateLimitKey(address(xlayerUsdc), address(spusdc))),
+            type(uint256).max
+        );
 
         assertEq(xlayerUsdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0);
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)),             usdcWithYield + 1e6);
+        assertEq(xlayerUsdc.balanceOf(address(spusdc)),             spUsdcBalanceBefore + usdcWithYield);
 
         // Step 11: User redeems.
-        assertEq(spusdc.totalAssets(), usdcWithYield + 1e6 + 96);  // 96 atoms accrued from yield on seeded balance
+        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 649);  // 649 atoms accrued from yield on seeded balance
 
         vm.prank(user);
-        spusdc.redeem(1_000_000e6, user, user);
+        spusdc.redeem(userShares, user, user);
 
-        assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield);
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)), 1e6);
-
-        assertEq(spusdc.totalAssets(),   1e6 + 96);
-        assertEq(spusdc.totalSupply(),   1e6);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 649);
+        assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore);
         assertEq(spusdc.balanceOf(user), 0);
+
+        assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield - 1); // Rounding
+        assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1); // Rounding
     }
 
 }
