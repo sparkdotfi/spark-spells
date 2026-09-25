@@ -49,6 +49,10 @@ interface IRateLimitsLike {
 
 interface ISavingsIntentsLike {
 
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
     function fulfill(address account, address vault, uint256 requestId) external;
 
     function request(
@@ -178,6 +182,11 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         user = makeAddr("user");
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
+    }
+
+    // Arbitrum tests
+
+    function test_ARBITRUM_sll_parallelPAU_roles() external onChain(ChainIdUtils.Arbitrum()) {
     }
 
     // XLayer tests
@@ -467,11 +476,41 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
     // XLayer tests
 
     function test_XLAYER_savingsIntents_grantRole() external onChain(ChainIdUtils.XLayer()) {
+        assertEq(savingsVaultIntents.getRoleMemberCount(savingsVaultIntents.RELAYER()), 1);
 
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ALM_RELAYER_MULTISIG), true);
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ADMINISTRATED_AGENT),  false);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(savingsVaultIntents.getRoleMemberCount(savingsVaultIntents.RELAYER()), 2);
+
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ALM_RELAYER_MULTISIG), true);
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ADMINISTRATED_AGENT),  true);
     }
 
     function test_XLAYER_savingsIntents_spUSDC_updateVaultConfig() external onChain(ChainIdUtils.XLayer()) {
+        (
+            bool    whitelisted,
+            uint256 minIntentAssets,
+            uint256 maxIntentAssets
+        ) = savingsVaultIntents.vaultConfig(address(spusdc));
 
+        assertEq(whitelisted,     false);
+        assertEq(minIntentAssets, 0);
+        assertEq(maxIntentAssets, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        (
+            whitelisted,
+            minIntentAssets,
+            maxIntentAssets
+        ) = savingsVaultIntents.vaultConfig(address(spusdc));
+
+        assertEq(whitelisted,     true);
+        assertEq(minIntentAssets, 1_000_000e6);
+        assertEq(maxIntentAssets, 10_000_000e6);
     }
 
     function test_XLAYER_savingsIntents_spUSDC_e2e() external onChain(ChainIdUtils.XLayer()) {

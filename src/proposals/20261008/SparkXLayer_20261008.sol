@@ -39,7 +39,7 @@ contract SparkXLayer_20261008 {
             vault            : XLayer.SPARK_VAULT_V2_SPUSDC,
             whitelisted_     : true,
             minIntentAssets_ : 1_000_000e6,
-            maxIntentAssets_ : 10_000_000e6
+            maxIntentAssets_ : 500_000_000e6
         });
     }
 

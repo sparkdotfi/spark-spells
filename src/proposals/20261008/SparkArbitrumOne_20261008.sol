@@ -78,7 +78,6 @@ interface IRateLimitsLike {
 
 }
 
-
 contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
 
     address internal constant PAS_CONFIGURATOR       = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
