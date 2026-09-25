@@ -20,9 +20,76 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
+interface IAccessControlsLike {
+
+    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
+
+    function grantRole(bytes32 role, address account) external;
+
+    function revokeRole(bytes32 role, address account) external;
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
+}
+
 interface IAdministeredAgentLike {
 
     function call(address target, bytes memory data) external;
+
+    function adminCount() external view returns (uint256);
+
+    function getActor(uint256 index) external view returns (address);
+
+    function getAdmin(uint256 index) external view returns (address);
+
+    function actorCount() external view returns (uint256);
+
+    function grantorCount() external view returns (uint256);
+
+    function getGrantor(uint256 index) external view returns (address);
+
+    function revokerCount() external view returns (uint256);
+
+    function getRevoker(uint256 index) external view returns (address);
+
+}
+
+interface IALMProxyLike {
+
+    function CONTROLLER() external returns (bytes32);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+}
+
+interface IBeaconLike {
+
+    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
+
+    function grantRole(bytes32 role, address account) external;
+
+    function revokeRole(bytes32 role, address account) external;
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
+
+}
+
+interface IControllerLike {
+
+    function cctp_getDomainParameters(uint32 destinationDomain)
+        external
+        view
+        returns (bytes32 recipient, uint32 minFeeCapRate, uint32 maxFeeCapRate);
+
+    function cctp_toCCTPRateLimitKey() external pure returns (bytes32 key);
+
+    function cctp_getToDomainRateLimitKey(uint32 destinationDomain)
+        external
+        pure
+        returns (bytes32 key);
 
 }
 
@@ -47,6 +114,8 @@ interface IForeignControllerFullLike {
 interface IRateLimitsLike {
 
     function getCurrentRateLimit(bytes32 key) external view returns (uint256);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
 
 }
 
@@ -145,6 +214,24 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     using DomainHelpers       for *;
     using CCTPv2BridgeTesting for Bridge;
 
+    bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
+
+    // Beacon addresses
+
+    address internal constant SKY_L2_GOVERANCE_RELAY = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
+
+    // PAS Configurator addreses
+
+    address internal constant PAS_CONFIGURATOR = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
+
+    // Arbitrum PAU Administered Agent addresses
+
+    address internal constant SPARK_HOT_WALLET       = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
+    address internal constant SOTER_GRANTOR_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
+    address internal constant SOTER_FREEZER_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
+
+    // XLayer CCTP round trip test setup
+
     IAdministeredAgentLike     internal xlayerAgent;
     IForeignControllerFullLike internal xlayerController;
     IRateLimitsLike            internal xlayerRateLimits;
@@ -221,6 +308,114 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_ARBITRUM_sll_parallelPAU_roles() external onChain(ChainIdUtils.ArbitrumOne()) {
+        bytes32 controllerRole = IALMProxyLike(Arbitrum.ALM_PROXY).CONTROLLER();
+
+        IAdministeredAgentLike administeredAgent = IAdministeredAgentLike(Arbitrum.PAU_ADMINISTERED_AGENT);
+        IAccessControlsLike    accessControls    = IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS);
+        IRateLimitsLike        rateLimits        = IRateLimitsLike(Arbitrum.PAU_RATELIMITS);
+        IBeaconLike            beacon            = IBeaconLike(Arbitrum.SPARK_BEACON);
+
+        // ALMProxy roles
+
+        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.ALM_CONTROLLER), true);
+        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), false);
+
+        // PAU Administered Agent roles
+
+        assertEq(administeredAgent.adminCount(), 1);
+        assertEq(administeredAgent.getAdmin(0),  Arbitrum.SPARK_EXECUTOR);
+
+        assertEq(administeredAgent.actorCount(), 1);
+        assertEq(administeredAgent.getActor(0),  Arbitrum.ALM_RELAYER_MULTISIG);
+
+        assertEq(administeredAgent.grantorCount(), 1);
+        assertEq(administeredAgent.getGrantor(0),  Arbitrum.PAU_GRANTOR_MULTISIG);
+
+        assertEq(administeredAgent.revokerCount(), 1);
+        assertEq(administeredAgent.getRevoker(0),  Arbitrum.ALM_FREEZER_MULTISIG);
+
+        // PAS Configurator roles
+
+        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
+
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR), false);
+
+        // Beacon
+
+        assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, SKY_L2_GOVERANCE_RELAY),  false);
+
+        _executeAllPayloadsAndBridges();
+
+        // ALMProxy roles
+
+        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.ALM_CONTROLLER), true);
+        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), true);
+
+        // PAU Administered Agent roles
+
+        assertEq(administeredAgent.adminCount(), 1);
+        assertEq(administeredAgent.getAdmin(0),  Arbitrum.SPARK_EXECUTOR);
+
+        assertEq(administeredAgent.actorCount(), 2);
+        assertEq(administeredAgent.getActor(0),  Arbitrum.ALM_RELAYER_MULTISIG);
+        assertEq(administeredAgent.getActor(1),  SPARK_HOT_WALLET);
+
+        assertEq(administeredAgent.grantorCount(), 1);
+        assertEq(administeredAgent.getGrantor(0),  SOTER_GRANTOR_MULTISIG);
+
+        assertEq(administeredAgent.revokerCount(), 2);
+        assertEq(administeredAgent.getRevoker(0),  Arbitrum.ALM_FREEZER_MULTISIG);
+        assertEq(administeredAgent.getRevoker(1),  SOTER_FREEZER_MULTISIG);
+
+        // PAS Configurator roles
+
+        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               2);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
+
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR), true);
+
+        // Beacon
+
+        assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), false);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, SKY_L2_GOVERANCE_RELAY),  true);
+    }
+
+    function test_ARBITRUM_sll_pauCctpV2_onboarding() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IControllerLike controller = IControllerLike(Arbitrum.PAU_CONTROLLER);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_toCCTPRateLimitKey(),                                               0, 0);
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM), 0, 0);
+
+        ( bytes32 mintRecipient, uint32 minFeeCapRate, uint32 maxFeeCapRate )
+            = controller.cctp_getDomainParameters(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        assertEq(mintRecipient, bytes32(0));
+        assertEq(minFeeCapRate, 0);
+        assertEq(maxFeeCapRate, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertUnlimitedRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_toCCTPRateLimitKey());
+
+        _assertRateLimit(
+            Arbitrum.PAU_RATELIMITS,
+            controller.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            5_000_000e6,
+            uint256(50_000_000e6) / 1 days
+        );
+
+        ( mintRecipient, minFeeCapRate, maxFeeCapRate )
+            = controller.cctp_getDomainParameters(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+
+        assertEq(mintRecipient, bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
+        assertEq(minFeeCapRate, 0);
+        assertEq(maxFeeCapRate, 0);
     }
 
     // XLayer tests

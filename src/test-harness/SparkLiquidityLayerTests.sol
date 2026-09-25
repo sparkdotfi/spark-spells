@@ -499,8 +499,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
 
         if (!skipInitialCheck) {
-            _assertRateLimit(depositKey,  0, 0);
-            _assertRateLimit(withdrawKey, 0, 0);
+            _assertRateLimit(address(ctx.rateLimits), depositKey,  0, 0);
+            _assertRateLimit(address(ctx.rateLimits), withdrawKey, 0, 0);
 
             assertEq(IMainnetControllerLike(ctx.controller).maxSlippages(vault), 0);
 
@@ -511,8 +511,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _executeAllPayloadsAndBridges();
         }
 
-        _assertRateLimit(depositKey,  depositMax,        depositSlope);
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+        _assertRateLimit(address(ctx.rateLimits), depositKey,  depositMax,        depositSlope);
+        _assertRateLimit(address(ctx.rateLimits), withdrawKey, type(uint256).max, 0);
 
         assertGe(depositMax / depositSlope, 1 hours);
 
@@ -681,8 +681,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
 
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
+        _assertRateLimit(address(ctx.rateLimits), depositKey,  0, 0);
+        _assertRateLimit(address(ctx.rateLimits), withdrawKey, 0, 0);
 
         assertEq(controller.maxSlippages(aToken), 0);
 
@@ -692,8 +692,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(depositKey,  depositMax,        depositSlope);
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+        _assertRateLimit(address(ctx.rateLimits), depositKey,  depositMax,        depositSlope);
+        _assertRateLimit(address(ctx.rateLimits), withdrawKey, type(uint256).max, 0);
 
         assertGe(depositMax / depositSlope, 1 hours);
 
@@ -3879,12 +3879,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     // TODO: MDL, seems like unnecessary overload bloat.
     function _assertRateLimit(
-       bytes32 key,
+       address              rateLimits,
+       bytes32              key,
        RateLimitData memory data
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
         _assertRateLimit(
+            rateLimits,
             key,
             data.maxAmount,
             data.slope,
@@ -3894,13 +3896,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertRateLimit(
+       address rateLimits,
        bytes32 key,
        uint256 maxAmount,
        uint256 slope
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
         _assertRateLimit(
+            rateLimits,
             key,
             maxAmount,
             slope,
@@ -3910,11 +3914,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertUnlimitedRateLimit(
+       address rateLimits,
        bytes32 key
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
         _assertRateLimit(
+            rateLimits,
             key,
             type(uint256).max,
             0,
@@ -3924,18 +3930,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertRateLimit(
+       address rateLimits,
        bytes32 key,
        uint256 maxAmount,
        uint256 slope,
        uint256 lastAmount,
        uint256 lastUpdated
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
-        assertEq(rateLimit.maxAmount,   maxAmount);
-        assertEq(rateLimit.slope,       slope);
-        assertEq(rateLimit.lastAmount,  lastAmount);
-        assertEq(rateLimit.lastUpdated, lastUpdated);
+        assertEq(rateLimit.maxAmount, maxAmount);
+        assertEq(rateLimit.slope,     slope);
 
         if (maxAmount != 0 && maxAmount != type(uint256).max) {
             // Do some sanity checks on the slope

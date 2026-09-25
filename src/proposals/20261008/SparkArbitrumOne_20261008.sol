@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
+import { CCTPv2Forwarder } from "xchain-helpers/forwarders/CCTPv2Forwarder.sol";
 
 import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
@@ -147,6 +147,7 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
         );
 
         // Add DEFAULT_ADMIN_ROLE to PAS Configurator in PAU Access Controls and Rate Limits
+        // TODO: Ask Lucas if we can to remove admin from Spark Executor.
         IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR);
         IRateLimitsLike(Arbitrum.PAU_RATELIMITS).grantRole(DEFAULT_ADMIN_ROLE,          PAS_CONFIGURATOR);
 
@@ -156,14 +157,14 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
         );
 
         IRateLimitsLike(Arbitrum.PAU_RATELIMITS).setRateLimitData(
-            IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
             5_000_000e6,
             uint256(50_000_000e6) / 1 days
         );
 
         // Set domain parameters
         IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_setDomainParameters(
-            CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
+            CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
             bytes32(uint256(uint160(Ethereum.ALM_PROXY))),
             0,
             0 // no fee cap rate
