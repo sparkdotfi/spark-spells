@@ -3,15 +3,18 @@ pragma solidity ^0.8.25;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 import { XLayer }   from "spark-address-registry/XLayer.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
-import { Bridge, BridgeType }  from "lib/xchain-helpers/src/testing/Bridge.sol";
-import { CCTPv2BridgeTesting } from "lib/xchain-helpers/src/testing/bridges/CCTPv2BridgeTesting.sol";
-import { CCTPv2Forwarder }     from "lib/xchain-helpers/src/forwarders/CCTPv2Forwarder.sol";
-import { DomainHelpers }       from "lib/xchain-helpers/src/testing/Domain.sol";
+import { Bridge, BridgeType }    from "lib/xchain-helpers/src/testing/Bridge.sol";
+import { CCTPv2BridgeTesting }   from "lib/xchain-helpers/src/testing/bridges/CCTPv2BridgeTesting.sol";
+import { CCTPv2Forwarder }       from "lib/xchain-helpers/src/forwarders/CCTPv2Forwarder.sol";
+import { DomainHelpers }         from "lib/xchain-helpers/src/testing/Domain.sol";
+import { RecordedLogs }          from "lib/xchain-helpers/src/testing/utils/RecordedLogs.sol";
+import { ArbitrumBridgeTesting } from "lib/xchain-helpers/src/testing/bridges/ArbitrumBridgeTesting.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
@@ -186,7 +189,38 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     // Arbitrum tests
 
-    function test_ARBITRUM_sll_parallelPAU_roles() external onChain(ChainIdUtils.Arbitrum()) {
+    function test_ARBITRUM_sll_removeExcessLiquidity() external onChain(ChainIdUtils.ArbitrumOne()) {
+        uint256 arbUsdsBalanceBefore = IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY);
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        uint256 ethUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+
+        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+
+        RecordedLogs.init();
+
+        assertEq(arbUsdsBalanceBefore, 90_000_000e18);
+        assertEq(ethUsdsBalanceBefore, 0);
+
+        assertEq(IERC20(Arbitrum.USDS).allowance(Arbitrum.ALM_PROXY, Arbitrum.TOKEN_BRIDGE), 0);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(IERC20(Arbitrum.USDS).allowance(Arbitrum.ALM_PROXY, Arbitrum.TOKEN_BRIDGE), 0);
+
+        // Arbitrum ALM proxy sent the tokens to the bridge (burned on L2)
+        assertEq(IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY), 0);
+
+        // Relay L2->L1
+        ArbitrumBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.ArbitrumOne()].bridges[0], false);
+
+        // Ethereum ALM proxy received the withdrawn tokens
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), ethUsdsBalanceBefore + arbUsdsBalanceBefore);
+    }
+
+    function test_ARBITRUM_sll_parallelPAU_roles() external onChain(ChainIdUtils.ArbitrumOne()) {
     }
 
     // XLayer tests
@@ -478,15 +512,15 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
     function test_XLAYER_savingsIntents_grantRole() external onChain(ChainIdUtils.XLayer()) {
         assertEq(savingsVaultIntents.getRoleMemberCount(savingsVaultIntents.RELAYER()), 1);
 
-        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ALM_RELAYER_MULTISIG), true);
-        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ADMINISTRATED_AGENT),  false);
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ALM_RELAYER_MULTISIG),          true);
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.SPUSDC_PAU_ADMINISTERED_AGENT), false);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(savingsVaultIntents.getRoleMemberCount(savingsVaultIntents.RELAYER()), 2);
 
-        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ALM_RELAYER_MULTISIG), true);
-        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ADMINISTRATED_AGENT),  true);
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.ALM_RELAYER_MULTISIG),          true);
+        assertEq(savingsVaultIntents.hasRole(savingsVaultIntents.RELAYER(), XLayer.SPUSDC_PAU_ADMINISTERED_AGENT), true);
     }
 
     function test_XLAYER_savingsIntents_spUSDC_updateVaultConfig() external onChain(ChainIdUtils.XLayer()) {
