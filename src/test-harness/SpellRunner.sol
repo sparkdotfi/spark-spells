@@ -304,6 +304,13 @@ abstract contract SpellRunner is Test {
                 extraData:                      abi.encode(LZForwarder.RECEIVE_LIBRARY_ETHEREUM, LZ_RECEIVE_LIBRARY_XLAYER)
             }))
         );
+
+        chainData[ChainIdUtils.XLayer()].bridges.push(
+            CCTPv2BridgeTesting.createCircleBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.XLayer()].domain
+            )
+        );
     }
 
     function _deployPayload(uint256 chainId) internal onChain(chainId) returns (address) {
