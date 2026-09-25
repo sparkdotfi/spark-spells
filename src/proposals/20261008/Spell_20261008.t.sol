@@ -739,7 +739,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
         assertEq(whitelisted,     true);
         assertEq(minIntentAssets, 1_000_000e6);
-        assertEq(maxIntentAssets, 10_000_000e6);
+        assertEq(maxIntentAssets, 500_000_000e6);
     }
 
     function test_XLAYER_savingsIntents_spUSDC_e2e() external onChain(ChainIdUtils.XLayer()) {
