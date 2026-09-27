@@ -147,7 +147,6 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
         );
 
         // Add DEFAULT_ADMIN_ROLE to PAS Configurator in PAU Access Controls and Rate Limits
-        // TODO: Ask Lucas if we can to remove admin from Spark Executor.
         IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR);
         IRateLimitsLike(Arbitrum.PAU_RATELIMITS).grantRole(DEFAULT_ADMIN_ROLE,          PAS_CONFIGURATOR);
 
