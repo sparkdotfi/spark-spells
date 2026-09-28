@@ -117,7 +117,6 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
     address internal constant PAS_CONFIGURATOR       = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
-    address internal constant SKY_L2_GOVERANCE_RELAY = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
     address internal constant SOTER_FREEZER_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
     address internal constant SOTER_GRANTOR_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
     address internal constant SPARK_HOT_WALLET       = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
@@ -170,7 +169,7 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
         );
 
         // Transfer Beacon DEFAULT_ADMIN_ROLE to Sky L2GovernanceRelay
-        IBeaconLike(Arbitrum.SPARK_BEACON).grantRole(DEFAULT_ADMIN_ROLE,  SKY_L2_GOVERANCE_RELAY);
+        IBeaconLike(Arbitrum.SPARK_BEACON).grantRole(DEFAULT_ADMIN_ROLE,  Arbitrum.SKY_GOV_RELAY);
         IBeaconLike(Arbitrum.SPARK_BEACON).revokeRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR);
     }
 

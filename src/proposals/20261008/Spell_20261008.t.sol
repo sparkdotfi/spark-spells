@@ -216,10 +216,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    // Beacon addresses
-
-    address internal constant SKY_L2_GOVERANCE_RELAY = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
-
     // PAS Configurator addreses
 
     address internal constant PAS_CONFIGURATOR = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
@@ -346,7 +342,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
         assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
-        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, SKY_L2_GOVERANCE_RELAY),  false);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  false);
 
         _executeAllPayloadsAndBridges();
 
@@ -383,7 +379,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
         assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), false);
-        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, SKY_L2_GOVERANCE_RELAY),  true);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  true);
     }
 
     function test_ARBITRUM_sll_pauCctpV2_onboarding() external onChain(ChainIdUtils.ArbitrumOne()) {
