@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
+
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
@@ -10,8 +12,8 @@ import { XLayer }   from "spark-address-registry/XLayer.sol";
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { Bridge, BridgeType }    from "lib/xchain-helpers/src/testing/Bridge.sol";
-import { CCTPv2BridgeTesting }   from "lib/xchain-helpers/src/testing/bridges/CCTPv2BridgeTesting.sol";
-import { CCTPv2Forwarder }       from "lib/xchain-helpers/src/forwarders/CCTPv2Forwarder.sol";
+import { CCTPV2BridgeTesting }   from "lib/xchain-helpers/src/testing/bridges/CCTPV2BridgeTesting.sol";
+import { CCTPForwarder }         from "lib/xchain-helpers/src/forwarders/CCTPForwarder.sol";
 import { DomainHelpers }         from "lib/xchain-helpers/src/testing/Domain.sol";
 import { RecordedLogs }          from "lib/xchain-helpers/src/testing/utils/RecordedLogs.sol";
 import { ArbitrumBridgeTesting } from "lib/xchain-helpers/src/testing/bridges/ArbitrumBridgeTesting.sol";
@@ -177,6 +179,12 @@ interface ISparkVaultV2Like {
 
 }
 
+interface ITokenBridgeLike {
+
+    function escrow() external returns (address);
+
+}
+
 interface IERC4626Like {
 
     function balanceOf(address account) external view returns (uint256);
@@ -212,9 +220,12 @@ interface IMainnetControllerFullLike {
 contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     using DomainHelpers       for *;
-    using CCTPv2BridgeTesting for Bridge;
+    using CCTPV2BridgeTesting for Bridge;
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
+
+    // SUSDS transfer amount
+    uint256 internal constant SUSDS_TRANSFER_AMOUNT = 100_000_000e18;
 
     // PAS Configurator addreses
 
@@ -227,6 +238,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     address internal constant SOTER_FREEZER_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
 
     // XLayer CCTP round trip test setup
+
+    uint32 internal constant CCTP_V2_DOMAIN_ID_ETHEREUM = CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM;
+    uint32 internal constant CCTP_V2_DOMAIN_ID_XLAYER   = 37;
 
     IAdministeredAgentLike     internal xlayerAgent;
     IForeignControllerFullLike internal xlayerController;
@@ -385,11 +399,11 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_sll_pauCctpV2_onboarding() external onChain(ChainIdUtils.ArbitrumOne()) {
         IControllerLike controller = IControllerLike(Arbitrum.PAU_CONTROLLER);
 
-        _assertRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_toCCTPRateLimitKey(),                                               0, 0);
-        _assertRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM), 0, 0);
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_toCCTPRateLimitKey(),                                0, 0);
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, controller.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM), 0, 0);
 
         ( bytes32 mintRecipient, uint32 minFeeCapRate, uint32 maxFeeCapRate )
-            = controller.cctp_getDomainParameters(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+            = controller.cctp_getDomainParameters(CCTP_V2_DOMAIN_ID_ETHEREUM);
 
         assertEq(mintRecipient, bytes32(0));
         assertEq(minFeeCapRate, 0);
@@ -401,13 +415,13 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(
             Arbitrum.PAU_RATELIMITS,
-            controller.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            controller.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM),
             5_000_000e6,
             uint256(50_000_000e6) / 1 days
         );
 
         ( mintRecipient, minFeeCapRate, maxFeeCapRate )
-            = controller.cctp_getDomainParameters(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
+            = controller.cctp_getDomainParameters(CCTP_V2_DOMAIN_ID_ETHEREUM);
 
         assertEq(mintRecipient, bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
         assertEq(minFeeCapRate, 0);
@@ -474,7 +488,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM)),
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM)),
             10_000_000e6
         );
 
@@ -483,13 +497,13 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         xlayerAgent.call(
             address(xlayerController),
-            abi.encodeCall(xlayerController.cctp_transfer, (1_000_000e6, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0))
+            abi.encodeCall(xlayerController.cctp_transfer, (1_000_000e6, CCTP_V2_DOMAIN_ID_ETHEREUM, 0))
         );
 
         assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM)),
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM)),
             9_000_000e6
         );
 
@@ -566,20 +580,20 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER)),
+            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_XLAYER)),
             10_000_000e6
         );
 
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetAgent.call(
             address(mainnetController),
-            abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER, 0))
+            abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, CCTP_V2_DOMAIN_ID_XLAYER, 0))
         );
 
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER)),
+            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_XLAYER)),
             10_000_000e6 - usdcWithYield
         );
 
@@ -632,6 +646,49 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1); // Rounding
     }
 
+    function test_ETHEREUM_ARBITRUM_sUsdsDistributions() public {
+        IERC4626 susds    = IERC4626(Ethereum.SUSDS);
+        IERC4626 arbSusds = IERC4626(Arbitrum.SUSDS);
+
+        address escrow = ITokenBridgeLike(Ethereum.ARBITRUM_TOKEN_BRIDGE).escrow();
+
+        uint256 ethFork = chainData[ChainIdUtils.Ethereum()].domain.forkId;
+        uint256 arbFork = chainData[ChainIdUtils.ArbitrumOne()].domain.forkId;
+
+        vm.selectFork(ethFork);
+
+        uint256 ethSusdsAlmProxyBalanceBefore = susds.balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethSUsdsEscrowBalanceBefore   = susds.balanceOf(escrow);
+        uint256 ethSusdsTotalSupplyBefore     = susds.totalSupply();
+
+        assertEq(ethSusdsAlmProxyBalanceBefore, 646_459_917.628883926940814843e18);
+        assertEq(ethSUsdsEscrowBalanceBefore,   326_995_432.173787510251504877e18);
+        assertEq(ethSusdsTotalSupplyBefore,     4_012_057_245.121133010948219671e18);
+
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
+
+        vm.selectFork(arbFork);
+
+        uint256 arbSUsdsAlmProxyBalanceBefore = arbSusds.balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbSUsdsTotalSupplyBefore  = arbSusds.totalSupply();
+
+        assertEq(arbSUsdsAlmProxyBalanceBefore, 0.637040980963212345e18);
+        assertEq(arbSUsdsTotalSupplyBefore,     326_995_432.173787510251504877e18);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(arbSusds.balanceOf(Arbitrum.ALM_PROXY), arbSUsdsAlmProxyBalanceBefore + SUSDS_TRANSFER_AMOUNT);
+        assertEq(arbSusds.totalSupply(),                 arbSUsdsTotalSupplyBefore + SUSDS_TRANSFER_AMOUNT);
+
+        vm.selectFork(ethFork);
+
+        assertEq(susds.balanceOf(Ethereum.ALM_PROXY), ethSusdsAlmProxyBalanceBefore - SUSDS_TRANSFER_AMOUNT);
+        assertEq(susds.balanceOf(escrow),             ethSUsdsEscrowBalanceBefore + SUSDS_TRANSFER_AMOUNT);
+        assertEq(susds.totalSupply(),                 ethSusdsTotalSupplyBefore);
+
+        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
+    }
+
 }
 
 contract SparkEthereum_20261008_SparklendTests is SparklendTests {
@@ -652,7 +709,10 @@ contract SparkEthereum_20261008_SparklendTests is SparklendTests {
 contract SparkEthereum_20261008_SpellTests is SpellTests {
 
     using DomainHelpers       for *;
-    using CCTPv2BridgeTesting for Bridge;
+    using CCTPV2BridgeTesting for Bridge;
+
+    uint32 internal constant CCTP_V2_DOMAIN_ID_ETHEREUM = CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM;
+    uint32 internal constant CCTP_V2_DOMAIN_ID_XLAYER   = 37;
 
     IAdministeredAgentLike     internal xlayerAgent;
     IForeignControllerFullLike internal xlayerController;
@@ -799,7 +859,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM)),
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM)),
             10_000_000e6
         );
 
@@ -808,13 +868,13 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         xlayerAgent.call(
             address(xlayerController),
-            abi.encodeCall(xlayerController.cctp_transfer, (1_000_000e6, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0))
+            abi.encodeCall(xlayerController.cctp_transfer, (1_000_000e6, CCTP_V2_DOMAIN_ID_ETHEREUM, 0))
         );
 
         assertEq(xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM)),
+            xlayerRateLimits.getCurrentRateLimit(xlayerController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM)),
             9_000_000e6
         );
 
@@ -916,20 +976,20 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER)),
+            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_XLAYER)),
             10_000_000e6
         );
 
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         mainnetAgent.call(
             address(mainnetController),
-            abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER, 0))
+            abi.encodeCall(mainnetController.cctp_transfer, (usdcWithYield, CCTP_V2_DOMAIN_ID_XLAYER, 0))
         );
 
         assertEq(mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_toCCTPRateLimitKey()), type(uint256).max);
 
         assertEq(
-            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_XLAYER)),
+            mainnetRateLimits.getCurrentRateLimit(mainnetController.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_XLAYER)),
             10_000_000e6 - usdcWithYield
         );
 

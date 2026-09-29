@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { CCTPv2Forwarder } from "xchain-helpers/forwarders/CCTPv2Forwarder.sol";
+import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
@@ -112,6 +112,20 @@ interface IArbitrumTokenBridge {
 
 }
 
+/**
+ * @title  October 8, 2026 Spark Arbitrum One Proposal
+ * @author Phoenix Labs
+ * @notice Spark Liquidity Layer:
+ *         - Onboard Parallel Diamond PAU with CCTP V2.
+ *         - Return idle USDS from Arbitrum to the Ethereum ALM Proxy.
+ *         - Grant the PAS Configurator admin over the Arbitrum Diamond PAU access controls and rate limits.
+ *         - Transfer admin of the Arbitrum Diamond PAU Beacon from the Spark Executor to the Sky governance relay.
+ * Forum:  https://forum.skyeco.com/t/october-8-2026-proposed-changes-to-spark-for-upcoming-spell/28265
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xff837d7434b33bc2d74a133e5c2acbcdf2ff17e6b76005621cfd43794f0d85cb
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0x93fd7352008805e27da235e51c02e7c987ff5d0ee3feccd3cd157e09a2e9adfe
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0x4680fb4b5717156b6e53f858ab6a267190deab0d51380b5fb9d27910e09d4e74
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0x84f74256a6f0e41078483b5c7ce8dad4b885f5bc656a5bcaccb84f36d74e536c
+ */
 contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
@@ -122,8 +136,7 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
     address internal constant SPARK_HOT_WALLET       = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
 
     function execute() external {
-        // Bridge excess USDS back from Arbitrum
-        _sendUSDSBackFromArbitrum(IERC20Like(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY));
+        // 1. Onboard Parallel Diamond PAU with CCTP V2.
 
         // Grant controller role to PAU Controller
         IALMProxyLike(Arbitrum.ALM_PROXY).grantRole(
@@ -145,30 +158,33 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
             SPARK_HOT_WALLET
         );
 
-        // Add DEFAULT_ADMIN_ROLE to PAS Configurator in PAU Access Controls and Rate Limits
-        IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR);
-        IRateLimitsLike(Arbitrum.PAU_RATELIMITS).grantRole(DEFAULT_ADMIN_ROLE,          PAS_CONFIGURATOR);
-
         // Set rate limits
         IRateLimitsLike(Arbitrum.PAU_RATELIMITS).setUnlimitedRateLimitData(
             IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_toCCTPRateLimitKey()
         );
 
         IRateLimitsLike(Arbitrum.PAU_RATELIMITS).setRateLimitData(
-            IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
+            IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
             5_000_000e6,
             uint256(50_000_000e6) / 1 days
         );
 
         // Set domain parameters
         IControllerLike(Arbitrum.PAU_CONTROLLER).cctp_setDomainParameters(
-            CCTPv2Forwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
+            CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM,
             bytes32(uint256(uint160(Ethereum.ALM_PROXY))),
             0,
             0 // no fee cap rate
         );
 
-        // Transfer Beacon DEFAULT_ADMIN_ROLE to Sky L2GovernanceRelay
+        // 3. Return idle USDS from Arbitrum to the Ethereum ALM Proxy.
+        _sendUSDSBackFromArbitrum(IERC20Like(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY));
+
+        // 5. Grant the PAS Configurator admin over the Arbitrum Diamond PAU access controls and rate limits.
+        IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR);
+        IRateLimitsLike(Arbitrum.PAU_RATELIMITS).grantRole(DEFAULT_ADMIN_ROLE,          PAS_CONFIGURATOR);
+
+        // 6. Transfer admin of the Arbitrum Diamond PAU Beacon from the Spark Executor to the Sky governance relay.
         IBeaconLike(Arbitrum.SPARK_BEACON).grantRole(DEFAULT_ADMIN_ROLE,  Arbitrum.SKY_GOV_RELAY);
         IBeaconLike(Arbitrum.SPARK_BEACON).revokeRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR);
     }
