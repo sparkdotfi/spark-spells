@@ -4139,4 +4139,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _toNormalizedAmount(address token, uint256 amount) internal view returns (uint256 normalizedAmount) {
         return amount * 1e18 / (10 ** IERC20Metadata(token).decimals());
     }
+
+    function deal(address token, address to, uint256 amount) internal override {
+        if (token == Ethereum.USDG) {
+            vm.store(Ethereum.USDG, keccak256(abi.encode(to, 1)), bytes32(amount));  // 1 is the USDG_BALANCES_SLOT_INDEX.
+            return;
+        }
+        super.deal(token, to, amount);
+    }
+
 }
