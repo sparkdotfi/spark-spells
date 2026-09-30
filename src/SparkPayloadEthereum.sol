@@ -42,7 +42,6 @@ import {
     ITreasuryControllerLike,
     IArbitrumTokenBridge,
     IOptimismTokenBridge,
-    IMorphoVaultV2FactoryLike,
     IMorphoVaultV2Like
 } from "./interfaces/Interfaces.sol";
 

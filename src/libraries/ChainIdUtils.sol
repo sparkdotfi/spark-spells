@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.23;
 
-import { Domain } from "xchain-helpers/testing/Domain.sol";
-
 library ChainIdUtils {
 
     function toDomainString(uint256 id) internal pure returns (string memory domainString) {
