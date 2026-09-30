@@ -2,8 +2,10 @@
 pragma solidity ^0.8.25;
 
 import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
+import { Vm }       from "forge-std/Vm.sol";
 
-import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IAccessControl } from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
@@ -387,13 +389,68 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
         assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
 
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
 
         // Beacon
 
         assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
         assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), false);
         assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  true);
+    }
+
+    function test_ARBITRUM_sll_parallelPAU_roles_events() external onChain(ChainIdUtils.ArbitrumOne()) {
+        bytes32 controllerRole = IALMProxyLike(Arbitrum.ALM_PROXY).CONTROLLER();
+
+        vm.recordLogs();
+
+        _executeAllPayloadsAndBridges();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        Vm.Log[] memory almProxyLogs   = new Vm.Log[](logs.length);
+        Vm.Log[] memory rateLimitsLogs = new Vm.Log[](logs.length);
+
+        // Get only the RoleGranted and RoleRevoked events from ALMProxy and PAU RateLimits
+        uint256 almProxyCount;
+        uint256 rateLimitsCount;
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics.length == 0) continue;
+            if (
+                logs[i].topics[0] != IAccessControl.RoleGranted.selector &&
+                logs[i].topics[0] != IAccessControl.RoleRevoked.selector
+            ) continue;
+
+            if      (logs[i].emitter == Arbitrum.ALM_PROXY)      almProxyLogs[almProxyCount++]     = logs[i];
+            else if (logs[i].emitter == Arbitrum.PAU_RATELIMITS) rateLimitsLogs[rateLimitsCount++] = logs[i];
+        }
+
+        assertEq(almProxyCount,   3);
+        assertEq(rateLimitsCount, 1);
+
+        assertEq(almProxyLogs[0].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(almProxyLogs[0].topics[1],                            controllerRole);
+        assertEq(address(uint160(uint256(almProxyLogs[0].topics[2]))), Arbitrum.PAU_CONTROLLER);
+        assertEq(address(uint160(uint256(almProxyLogs[0].topics[3]))), Arbitrum.SPARK_EXECUTOR);
+
+        assertEq(almProxyLogs[1].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(almProxyLogs[1].topics[1],                            controllerRole);
+        assertEq(address(uint160(uint256(almProxyLogs[1].topics[2]))), Arbitrum.SPARK_EXECUTOR);
+        assertEq(address(uint160(uint256(almProxyLogs[1].topics[3]))), Arbitrum.SPARK_EXECUTOR);
+
+        assertEq(almProxyLogs[2].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(almProxyLogs[2].topics[1],                            controllerRole);
+        assertEq(address(uint160(uint256(almProxyLogs[2].topics[2]))), Arbitrum.SPARK_EXECUTOR);
+        assertEq(address(uint160(uint256(almProxyLogs[2].topics[3]))), Arbitrum.SPARK_EXECUTOR);
+
+        assertEq(rateLimitsLogs[0].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(rateLimitsLogs[0].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(rateLimitsLogs[0].topics[2]))), PAS_CONFIGURATOR);
+        assertEq(address(uint160(uint256(rateLimitsLogs[0].topics[3]))), Arbitrum.SPARK_EXECUTOR);
+
+        assertEq(IAccessControl(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), true);
+        assertEq(IAccessControl(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.SPARK_EXECUTOR), false);
     }
 
     function test_ARBITRUM_sll_pauCctpV2_onboarding() external onChain(ChainIdUtils.ArbitrumOne()) {
