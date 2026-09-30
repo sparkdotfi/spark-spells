@@ -1102,11 +1102,13 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(timelock.paused(), false);
 
+        // The Core Council schedules the call through the Timelock
         vm.prank(PAS_CORE_COUNCIL);
         timelock.scheduleBatch(targets, values, payloads, bytes32(0), bytes32(0), TIMELOCK_MIN_DELAY);
 
         assertEq(timelock.isOperationReady(id), false);
 
+        // Skip to the end of the delay
         skip(TIMELOCK_MIN_DELAY);
 
         assertEq(timelock.isOperationReady(id), true);
@@ -1235,10 +1237,11 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(controller.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet, Arbitrum.CCTP_FACET);
         assertEq(beacon.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet,     Arbitrum.CCTP_FACET);
-
+        // Anyone can't call the controller action, only cBeam can
         vm.expectRevert("Configurator/not-authorized-controller-cBeam");
         configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
 
+        // Only whitelisted actions can be called by cBeam
         vm.expectRevert("Configurator/not-valid-data");
         vm.prank(PAS_CBEAM);
         configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, abi.encodeCall(controller.updateIntegrations, (ids)));
