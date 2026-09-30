@@ -60,7 +60,6 @@ import { SLLHelpers }    from "../libraries/SLLHelpers.sol";
 import {
     IATokenLike,
     ICurvePoolLike,
-    ICurveStableswapFactoryLike,
     IERC20Like,
     IFarmLike,
     IMorphoVaultV2Like,
@@ -3951,9 +3950,34 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _isDeployedByFactory(address pool) internal view returns (bool) {
-        address impl = ICurveStableswapFactoryLike(Ethereum.CURVE_STABLESWAP_FACTORY).get_implementation_address(pool);
-        return impl != address(0);
+    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal {
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            require(
+                integrations[i].entryId  != bytes32(0) ||
+                integrations[i].entryId2 != bytes32(0) ||
+                integrations[i].exitId   != bytes32(0) ||
+                integrations[i].exitId2  != bytes32(0),
+                "Empty integration"
+            );
+
+            if (integrations[i].entryId != bytes32(0)) {
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
+            }
+
+            if (integrations[i].entryId2 != bytes32(0)) {
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
+            }
+
+            if (integrations[i].exitId != bytes32(0)) {
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId);
+            }
+
+            if (integrations[i].exitId2 != bytes32(0)) {
+                rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId2);
+            }
+        }
+
+        assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
     }
 
     function _checkRateLimitValue(SparkLiquidityLayerContext memory ctx, bytes32 id, uint256 decimals) internal view {
