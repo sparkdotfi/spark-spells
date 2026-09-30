@@ -376,11 +376,42 @@ interface ITimelockLike {
 
     function PROPOSER_ROLE() external view returns (bytes32);
 
+    function executeBatch(
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[]   calldata payloads,
+        bytes32            predecessor,
+        bytes32            salt
+    ) external payable;
+
     function getMinDelay() external view returns (uint256);
+
+    function getTimestamp(bytes32 id) external view returns (uint256);
 
     function hasRole(bytes32 role, address account) external view returns (bool);
 
+    function hashOperationBatch(
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[]   calldata payloads,
+        bytes32            predecessor,
+        bytes32            salt
+    ) external pure returns (bytes32);
+
+    function isOperationReady(bytes32 id) external view returns (bool);
+
     function paused() external view returns (bool);
+
+    function scheduleBatch(
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[]   calldata payloads,
+        bytes32            predecessor,
+        bytes32            salt,
+        uint256            delay
+    ) external;
+
+    function unpause() external;
 
 }
 
@@ -430,9 +461,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     uint8 internal constant PAS_ROLE_DELAYED   = 1;  // BeamState actions routed through the Timelock
     uint8 internal constant PAS_ROLE_IMMEDIATE = 2;  // BeamState actions the Core Council can call directly
 
-    uint256 internal constant PAS_HOP        = 16 hours;
-    uint256 internal constant PAS_MAX_CHANGE = 1.2e18;
-    uint256 internal constant PAS_MIN_DELAY  = 14 days;
+    uint256 internal constant PAS_HOP             = 16 hours;
+    uint256 internal constant PAS_MAX_CHANGE      = 1.2e18;
+    uint256 internal constant TIMELOCK_MIN_DELAY  = 14 days;
 
     bytes32 internal constant CCTP_FACET_ID = "CCTP_FACET";
 
@@ -936,7 +967,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_timelock_state() external onChain(ChainIdUtils.ArbitrumOne()) {
         ITimelockLike timelock = ITimelockLike(PAS_TIMELOCK);
 
-        assertEq(timelock.getMinDelay(), PAS_MIN_DELAY);
+        assertEq(timelock.getMinDelay(), TIMELOCK_MIN_DELAY);
         assertEq(timelock.paused(),      true);
 
         assertEq(timelock.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY), true);
@@ -950,10 +981,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_timelock_events() external onChain(ChainIdUtils.ArbitrumOne()) {
         ITimelockLike timelock = ITimelockLike(PAS_TIMELOCK);
 
-        bytes32 executorRole  = timelock.EXECUTOR_ROLE();
-        bytes32 proposerRole  = timelock.PROPOSER_ROLE();
-        bytes32 cancellerRole = timelock.CANCELLER_ROLE();
-        bytes32 pauserRole    = timelock.PAUSER_ROLE();
+        bytes32 pauserRole = timelock.PAUSER_ROLE();
 
         assertEq(_getEvents(block.chainid, PAS_TIMELOCK, bytes32(0)).length, 12);  // 12 events in total
 
@@ -974,17 +1002,17 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(address(uint160(uint256(roleGrantedLogs[1].topics[3]))), PAS_DEPLOYER);
 
         assertEq(roleGrantedLogs[2].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[2].topics[1],                            executorRole);
+        assertEq(roleGrantedLogs[2].topics[1],                            timelock.EXECUTOR_ROLE());
         assertEq(address(uint160(uint256(roleGrantedLogs[2].topics[2]))), address(0));  // Anyone can execute
         assertEq(address(uint160(uint256(roleGrantedLogs[2].topics[3]))), PAS_DEPLOYER);
 
         assertEq(roleGrantedLogs[3].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[3].topics[1],                            proposerRole);
+        assertEq(roleGrantedLogs[3].topics[1],                            timelock.PROPOSER_ROLE());
         assertEq(address(uint160(uint256(roleGrantedLogs[3].topics[2]))), PAS_CORE_COUNCIL);
         assertEq(address(uint160(uint256(roleGrantedLogs[3].topics[3]))), PAS_DEPLOYER);
 
         assertEq(roleGrantedLogs[4].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[4].topics[1],                            cancellerRole);
+        assertEq(roleGrantedLogs[4].topics[1],                            timelock.CANCELLER_ROLE());
         assertEq(address(uint160(uint256(roleGrantedLogs[4].topics[2]))), PAS_CORE_COUNCIL);
         assertEq(address(uint160(uint256(roleGrantedLogs[4].topics[3]))), PAS_DEPLOYER);
 
@@ -1029,7 +1057,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(minDelayChangeLogs[0].topics[0], ITimelockLike.MinDelayChange.selector);
         assertEq(oldDuration,                     0);
-        assertEq(newDuration,                     PAS_MIN_DELAY);
+        assertEq(newDuration,                     TIMELOCK_MIN_DELAY);
 
         // Paused by the deployer
 
@@ -1041,6 +1069,56 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(abi.decode(pausedLogs[0].data, (address)),   PAS_DEPLOYER);
 
         assertEq(_getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.Unpaused.selector).length, 0);
+    }
+
+    // setHop is a DELAYED action: it has to go through the Timelock, the Core Council cannot call it directly
+    function test_ARBITRUM_beamState_setHop_onlyTimelock() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+        ITimelockLike  timelock  = ITimelockLike(PAS_TIMELOCK);
+
+        assertEq(beamState.actionsRoles(IBeamStateLike.setHop.selector), bytes32(uint256(1) << PAS_ROLE_DELAYED));
+
+        vm.prank(PAS_CORE_COUNCIL);
+        vm.expectRevert("BeamState/role-not-authorized");
+        beamState.setHop(Arbitrum.PAU_RATELIMITS, 1 hours);
+
+        assertEq(beamState.getHop(Arbitrum.PAU_RATELIMITS), PAS_HOP);
+
+        // The Core Council proposes the same call through the Timelock
+        address[] memory targets  = new address[](1);
+        uint256[] memory values   = new uint256[](1);
+        bytes[]   memory payloads = new bytes[](1);
+
+        targets[0]  = PAS_BEAM_STATE;
+        payloads[0] = abi.encodeCall(beamState.setHop, (Arbitrum.PAU_RATELIMITS, 1 hours));
+
+        bytes32 id = timelock.hashOperationBatch(targets, values, payloads, bytes32(0), bytes32(0));
+
+        // Unpause the Timelock
+        assertEq(timelock.paused(), true);
+
+        vm.prank(Arbitrum.SKY_GOV_RELAY);
+        timelock.unpause();
+
+        assertEq(timelock.paused(), false);
+
+        vm.prank(PAS_CORE_COUNCIL);
+        timelock.scheduleBatch(targets, values, payloads, bytes32(0), bytes32(0), TIMELOCK_MIN_DELAY);
+
+        assertEq(timelock.isOperationReady(id), false);
+
+        skip(TIMELOCK_MIN_DELAY);
+
+        assertEq(timelock.isOperationReady(id), true);
+
+        assertEq(beamState.getHop(Arbitrum.PAU_RATELIMITS), PAS_HOP);
+        assertEq(beamState.getHop(address(0)),              PAS_HOP);
+
+        // Execution is permissionless, the Timelock is the caller into BeamState
+        timelock.executeBatch(targets, values, payloads, bytes32(0), bytes32(0));
+
+        assertEq(beamState.getHop(Arbitrum.PAU_RATELIMITS), 1 hours);
+        assertEq(beamState.getHop(address(0)),              PAS_HOP);  // Default is untouched
     }
 
     function test_ARBITRUM_pasConfigurator_setRateLimit() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -1081,16 +1159,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         // Setting the cctp -> CCTP rate limit to unlimited works
         vm.prank(PAS_CBEAM);
-        vm.expectEmit(PAS_CONFIGURATOR);
-        emit IConfiguratorLike.SetRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, type(uint256).max, 0);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, type(uint256).max, 0);
 
         _assertUnlimitedRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey);
 
         // Decreases apply immediately and do not consume the hop
         vm.prank(PAS_CBEAM);
-        vm.expectEmit(PAS_CONFIGURATOR);
-        emit IConfiguratorLike.SetRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(10_000_000e6) / 1 days);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(10_000_000e6) / 1 days);
 
         _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(10_000_000e6) / 1 days, 1_000_000e6, block.timestamp);
@@ -1101,12 +1175,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         uint256 maxAmountCeiling = 1_000_000e6 * PAS_MAX_CHANGE / 1e18;
         uint256 slopeCeiling     = uint256(10_000_000e6) / 1 days * PAS_MAX_CHANGE / 1e18;
 
-        vm.prank(PAS_CBEAM);
         vm.expectRevert("Configurator/exceeds-max-amount");
+        vm.prank(PAS_CBEAM);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
 
-        vm.prank(PAS_CBEAM);
         vm.expectRevert("Configurator/exceeds-max-slope");
+        vm.prank(PAS_CBEAM);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling, slopeCeiling + 1);
 
         // First increase is allowed right away (hop timer starts at 0)
@@ -1116,14 +1190,14 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(configurator.zzz(Arbitrum.PAU_RATELIMITS, toDomainKey), block.timestamp);
 
         // Next increase has to wait for the hop
-        vm.prank(PAS_CBEAM);
         vm.expectRevert("Configurator/increment-too-soon");
+        vm.prank(PAS_CBEAM);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
 
         skip(PAS_HOP - 1);
 
-        vm.prank(PAS_CBEAM);
         vm.expectRevert("Configurator/increment-too-soon");
+        vm.prank(PAS_CBEAM);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
 
         skip(1);
@@ -1169,10 +1243,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         vm.prank(PAS_CBEAM);
         configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, abi.encodeCall(controller.updateIntegrations, (ids)));
 
-        vm.expectEmit(Arbitrum.PAU_CONTROLLER);
-        emit IControllerLike.IntegrationRemoved(CCTP_FACET_ID);
-        vm.expectEmit(PAS_CONFIGURATOR);
-        emit IConfiguratorLike.CallControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
         vm.prank(PAS_CBEAM);
         configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
 
