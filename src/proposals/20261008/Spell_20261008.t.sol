@@ -1123,6 +1123,28 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(beamState.getHop(address(0)),              PAS_HOP);  // Default is untouched
     }
 
+    function test_ARBITRUM_beamState_delCBeam_onlyCouncil() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        // delCBeam is an IMMEDIATE action: the Core Council calls it directly, the Timelock is not authorized
+        assertEq(beamState.actionsRoles(IBeamStateLike.delCBeam.selector), bytes32(uint256(1) << PAS_ROLE_IMMEDIATE));
+
+        assertEq(beamState.cBeams(PAS_CBEAM), 1);
+
+        // The Timelock only holds the DELAYED role, so it cannot call it
+        vm.prank(PAS_TIMELOCK);
+        vm.expectRevert("BeamState/role-not-authorized");
+        beamState.delCBeam(PAS_CBEAM);
+
+        assertEq(beamState.cBeams(PAS_CBEAM), 1);
+
+        // The Core Council removes the cBEAM directly, with no delay
+        vm.prank(PAS_CORE_COUNCIL);
+        beamState.delCBeam(PAS_CBEAM);
+
+        assertEq(beamState.cBeams(PAS_CBEAM), 0);
+    }
+
     function test_ARBITRUM_pasConfigurator_setRateLimit() external onChain(ChainIdUtils.ArbitrumOne()) {
         IConfiguratorLike configurator = IConfiguratorLike(PAS_CONFIGURATOR);
         IControllerLike   controller   = IControllerLike(Arbitrum.PAU_CONTROLLER);
