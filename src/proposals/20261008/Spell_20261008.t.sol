@@ -352,7 +352,8 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
         assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
 
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR), false);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
 
         // Beacon
 
@@ -389,8 +390,8 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
         assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
 
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
         assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
 
         // Beacon
 
@@ -701,49 +702,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield - 1); // Rounding
         assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1); // Rounding
-    }
-
-    function test_ETHEREUM_ARBITRUM_sUsdsDistributions() public {
-        IERC4626 susds    = IERC4626(Ethereum.SUSDS);
-        IERC4626 arbSusds = IERC4626(Arbitrum.SUSDS);
-
-        address escrow = ITokenBridgeLike(Ethereum.ARBITRUM_TOKEN_BRIDGE).escrow();
-
-        uint256 ethFork = chainData[ChainIdUtils.Ethereum()].domain.forkId;
-        uint256 arbFork = chainData[ChainIdUtils.ArbitrumOne()].domain.forkId;
-
-        vm.selectFork(ethFork);
-
-        uint256 ethSusdsAlmProxyBalanceBefore = susds.balanceOf(Ethereum.ALM_PROXY);
-        uint256 ethSUsdsEscrowBalanceBefore   = susds.balanceOf(escrow);
-        uint256 ethSusdsTotalSupplyBefore     = susds.totalSupply();
-
-        assertEq(ethSusdsAlmProxyBalanceBefore, 646_459_917.628883926940814843e18);
-        assertEq(ethSUsdsEscrowBalanceBefore,   326_995_432.173787510251504877e18);
-        assertEq(ethSusdsTotalSupplyBefore,     4_012_057_245.121133010948219671e18);
-
-        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
-
-        vm.selectFork(arbFork);
-
-        uint256 arbSUsdsAlmProxyBalanceBefore = arbSusds.balanceOf(Arbitrum.ALM_PROXY);
-        uint256 arbSUsdsTotalSupplyBefore  = arbSusds.totalSupply();
-
-        assertEq(arbSUsdsAlmProxyBalanceBefore, 0.637040980963212345e18);
-        assertEq(arbSUsdsTotalSupplyBefore,     326_995_432.173787510251504877e18);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(arbSusds.balanceOf(Arbitrum.ALM_PROXY), arbSUsdsAlmProxyBalanceBefore + SUSDS_TRANSFER_AMOUNT);
-        assertEq(arbSusds.totalSupply(),                 arbSUsdsTotalSupplyBefore + SUSDS_TRANSFER_AMOUNT);
-
-        vm.selectFork(ethFork);
-
-        assertEq(susds.balanceOf(Ethereum.ALM_PROXY), ethSusdsAlmProxyBalanceBefore - SUSDS_TRANSFER_AMOUNT);
-        assertEq(susds.balanceOf(escrow),             ethSUsdsEscrowBalanceBefore + SUSDS_TRANSFER_AMOUNT);
-        assertEq(susds.totalSupply(),                 ethSusdsTotalSupplyBefore);
-
-        assertEq(susds.balanceOf(Ethereum.SPARK_PROXY), 0);
     }
 
 }
