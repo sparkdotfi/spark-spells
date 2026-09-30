@@ -130,7 +130,7 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    address internal constant PAS_CONFIGURATOR       = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
+    address internal constant PAS_CONFIGURATOR       = 0xd11Dc57F3eF23bb7b3142588a461F68460a7C474;
     address internal constant SOTER_FREEZER_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
     address internal constant SOTER_GRANTOR_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
     address internal constant SPARK_HOT_WALLET       = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address

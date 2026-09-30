@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC4626 } from 'forge-std/interfaces/IERC4626.sol';
-import { Vm }       from "forge-std/Vm.sol";
+import { IERC4626 }   from 'forge-std/interfaces/IERC4626.sol';
+import { Vm, VmSafe } from "forge-std/Vm.sol";
 
 import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IAccessControl } from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -79,9 +79,162 @@ interface IBeaconLike {
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
 
+    function getDispatch(bytes4 callSelector) external view returns (IControllerLike.Dispatch memory);
+
+}
+
+interface IBeamStateLike {
+
+    event AddCBeam(address indexed cBeam);
+
+    event AddController(address indexed controller);
+
+    event AddInitControllerActions(bytes32 indexed key, address indexed controller);
+
+    event AddInitRateLimits(bytes32 indexed key, address indexed rateLimits, uint256 maxAmount, uint256 slope);
+
+    event AddRateLimits(address indexed rateLimits);
+
+    event DelCBeam(address indexed cBeam);
+
+    event DelController(address indexed controller);
+
+    event DelInitControllerActions(bytes32 indexed key, address indexed controller);
+
+    event DelInitRateLimits(bytes32 indexed key, address indexed rateLimits);
+
+    event DelRateLimits(address indexed rateLimits);
+
+    event Deny(address indexed usr);
+
+    event Rely(address indexed usr);
+
+    event SetCBeamForController(address indexed controller, address indexed cBeam);
+
+    event SetCBeamForRateLimits(address indexed rateLimits, address indexed cBeam);
+
+    event SetHop(address indexed rateLimits, uint256 value);
+
+    event SetMaxChange(address indexed rateLimits, uint256 value);
+
+    event SetRoleAction(uint8 indexed role, bytes4 indexed sig, bool enabled);
+
+    event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
+
+    event UnsetCBeamForController(address indexed controller, address indexed cBeam);
+
+    event UnsetCBeamForRateLimits(address indexed rateLimits, address indexed cBeam);
+
+    function actionsRoles(bytes4 sig) external view returns (bytes32);
+
+    function addCBeam(address cBeam) external;
+
+    function addController(address controller) external;
+
+    function addInitControllerActions(bytes calldata data, address controller) external returns (bytes32 key);
+
+    function addInitRateLimits(bytes32 key, address rateLimits, uint256 maxAmount, uint256 slope) external;
+
+    function addRateLimits(address rateLimits) external;
+
+    function cBeams(address cBeam) external view returns (uint256);
+
+    function controllers(address controller) external view returns (uint256);
+
+    function controllersCBeams(address controller, address cBeam) external view returns (uint256);
+
+    function delCBeam(address cBeam) external;
+
+    function delController(address controller) external;
+
+    function delInitControllerActions(bytes32 key, address controller) external;
+
+    function delInitRateLimits(bytes32 key, address rateLimits) external;
+
+    function delRateLimits(address rateLimits) external;
+
+    function getHop(address rateLimits) external view returns (uint256);
+
+    function getInitRateLimits(bytes32 key, address rateLimits)
+        external
+        view
+        returns (uint256 maxAmount, uint256 slope);
+
+    function getMaxChange(address rateLimits) external view returns (uint256);
+
+    function hasUserRole(address usr, uint8 role) external view returns (bool);
+
+    function isControllerActionEnabled(bytes32 key, address controller) external view returns (bool);
+
+    function rateLimits(address rateLimits) external view returns (uint256);
+
+    function rateLimitsCBeams(address rateLimits, address cBeam) external view returns (uint256);
+
+    function setCBeamForController(address controller, address cBeam) external;
+
+    function setCBeamForRateLimits(address rateLimits, address cBeam) external;
+
+    function setHop(address rateLimits, uint256 value) external;
+
+    function setMaxChange(address rateLimits, uint256 value) external;
+
+    function start() external;
+
+    function stop() external;
+
+    function stopped() external view returns (bool);
+
+    function unsetCBeamForController(address controller, address cBeam) external;
+
+    function unsetCBeamForRateLimits(address rateLimits, address cBeam) external;
+
+    function wards(address usr) external view returns (uint256);
+
+}
+
+interface IConfiguratorLike {
+
+    event CallControllerAction(address indexed controller, bytes data);
+
+    event SetRateLimit(address indexed rateLimits, bytes32 indexed key, uint256 maxAmount, uint256 slope);
+
+    function beamState() external view returns (address);
+
+    function callControllerAction(address controller, bytes calldata data) external returns (bytes memory);
+
+    function setRateLimit(address rateLimits, bytes32 key, uint256 maxAmount, uint256 slope) external;
+
+    function zzz(address rateLimits, bytes32 key) external view returns (uint256);
+
 }
 
 interface IControllerLike {
+
+    struct Wire {
+        bytes4 callSelector;
+        bytes4 delegateSelector;
+    }
+
+    struct Config {
+        address facet;
+        Wire[]  wires;
+    }
+
+    struct Dispatch {
+        address facet;
+        bytes4  delegateSelector;
+    }
+
+    struct Integration {
+        bytes32 id;
+        Config  config;
+    }
+
+    event IntegrationRemoved(bytes32 indexed id);
+
+    function accessControls() external view returns (address);
+
+    function beacon() external view returns (address);
 
     function cctp_getDomainParameters(uint32 destinationDomain)
         external
@@ -94,6 +247,32 @@ interface IControllerLike {
         external
         pure
         returns (bytes32 key);
+
+    function getConfig(bytes32 integrationId) external view returns (Config memory);
+
+    function getDispatch(bytes4 callSelector) external view returns (Dispatch memory);
+
+    function integrations() external view returns (Integration[] memory);
+
+    function rateLimits() external view returns (address);
+
+    function removeIntegrations(bytes32[] calldata ids) external;
+
+    function updateIntegrations(bytes32[] calldata ids) external;
+
+}
+
+interface IERC4626Like {
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
+
+    function convertToShares(uint256 assets) external view returns (uint256 shares);
+
+    function convertToAssets(uint256 shares) external view returns (uint256 assets);
 
 }
 
@@ -181,23 +360,33 @@ interface ISparkVaultV2Like {
 
 }
 
-interface ITokenBridgeLike {
+interface ITimelockLike {
 
-    function escrow() external returns (address);
+    event MinDelayChange(uint256 oldDuration, uint256 newDuration);
+
+    event Paused(address account);
+
+    event Unpaused(address account);
+
+    function CANCELLER_ROLE() external view returns (bytes32);
+
+    function EXECUTOR_ROLE() external view returns (bytes32);
+
+    function PAUSER_ROLE() external view returns (bytes32);
+
+    function PROPOSER_ROLE() external view returns (bytes32);
+
+    function getMinDelay() external view returns (uint256);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+    function paused() external view returns (bool);
 
 }
 
-interface IERC4626Like {
+interface ITokenBridgeLike {
 
-    function balanceOf(address account) external view returns (uint256);
-
-    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
-
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
-
-    function convertToShares(uint256 assets) external view returns (uint256 shares);
-
-    function convertToAssets(uint256 shares) external view returns (uint256 assets);
+    function escrow() external returns (address);
 
 }
 
@@ -229,9 +418,23 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     // SUSDS transfer amount
     uint256 internal constant SUSDS_TRANSFER_AMOUNT = 100_000_000e18;
 
-    // PAS Configurator addreses
+    // PAS
 
-    address internal constant PAS_CONFIGURATOR = 0x0000000000000000000000000000000000000000;  // TODO: Add actual address
+    address internal constant PAS_BEAM_STATE   = 0x11CFefeA67B18de9046a6250555D438854fFEEDa;
+    address internal constant PAS_CBEAM        = 0x492aae70E59551768BAF3c7159d3f951B6ed76Fe;
+    address internal constant PAS_CONFIGURATOR = 0xd11Dc57F3eF23bb7b3142588a461F68460a7C474;
+    address internal constant PAS_CORE_COUNCIL = 0x148eF923d764CBdc1597CcADBbbC66499C1A1432;
+    address internal constant PAS_DEPLOYER     = 0x6547c342ED83b6dEEf9Ac7525fc1196F7Bfa5A4D;
+    address internal constant PAS_TIMELOCK     = 0x66d3653e66F7edb973549CFA3b46F22298B8f983;
+
+    uint8 internal constant PAS_ROLE_DELAYED   = 1;  // BeamState actions routed through the Timelock
+    uint8 internal constant PAS_ROLE_IMMEDIATE = 2;  // BeamState actions the Core Council can call directly
+
+    uint256 internal constant PAS_HOP        = 16 hours;
+    uint256 internal constant PAS_MAX_CHANGE = 1.2e18;
+    uint256 internal constant PAS_MIN_DELAY  = 14 days;
+
+    bytes32 internal constant CCTP_FACET_ID = "CCTP_FACET";
 
     // Arbitrum PAU Administered Agent addresses
 
@@ -484,6 +687,500 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(mintRecipient, bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
         assertEq(minFeeCapRate, 0);
         assertEq(maxFeeCapRate, 0);
+    }
+
+    function test_ARBITRUM_pasConfigurator_state() external onChain(ChainIdUtils.ArbitrumOne()) {
+        assertEq(IConfiguratorLike(PAS_CONFIGURATOR).beamState(), PAS_BEAM_STATE);
+    }
+
+    function test_ARBITRUM_beamState_stopped() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.stopped(), false);
+    }
+
+    function test_ARBITRUM_beamState_wards() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        // BeamState admin: Sky governance only
+
+        assertEq(beamState.wards(Arbitrum.SKY_GOV_RELAY), 1);
+        assertEq(beamState.wards(PAS_DEPLOYER),           0);
+
+        VmSafe.EthGetLogs[] memory relyLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.Rely.selector);
+        VmSafe.EthGetLogs[] memory denyLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.Deny.selector);
+
+        assertEq(relyLogs.length, 2);
+        assertEq(denyLogs.length, 1);
+
+        assertEq(relyLogs[0].topics[0],                            IBeamStateLike.Rely.selector);
+        assertEq(address(uint160(uint256(relyLogs[0].topics[1]))), PAS_DEPLOYER);
+
+        assertEq(relyLogs[1].topics[0],                            IBeamStateLike.Rely.selector);
+        assertEq(address(uint160(uint256(relyLogs[1].topics[1]))), Arbitrum.SKY_GOV_RELAY);
+
+        assertEq(denyLogs[0].topics[0],                            IBeamStateLike.Deny.selector);
+        assertEq(address(uint160(uint256(denyLogs[0].topics[1]))), PAS_DEPLOYER);
+    }
+
+    function test_ARBITRUM_beamState_userRoles() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        // BeamState user roles: Timelock has delayed role, Core Council has immediate role.
+
+        assertEq(beamState.hasUserRole(PAS_TIMELOCK,     PAS_ROLE_DELAYED),   true);
+        assertEq(beamState.hasUserRole(PAS_CORE_COUNCIL, PAS_ROLE_DELAYED),   false);
+
+        assertEq(beamState.hasUserRole(PAS_TIMELOCK,     PAS_ROLE_IMMEDIATE), false);
+        assertEq(beamState.hasUserRole(PAS_CORE_COUNCIL, PAS_ROLE_IMMEDIATE), true);
+
+        VmSafe.EthGetLogs[] memory userRoleLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetUserRole.selector);
+
+        assertEq(userRoleLogs.length, 2);
+
+        assertEq(userRoleLogs[0].topics[0],                            IBeamStateLike.SetUserRole.selector);
+        assertEq(address(uint160(uint256(userRoleLogs[0].topics[1]))), PAS_TIMELOCK);
+        assertEq(uint8(uint256(userRoleLogs[0].topics[2])),            PAS_ROLE_DELAYED);
+        assertEq(abi.decode(userRoleLogs[0].data, (bool)),             true);
+
+        assertEq(userRoleLogs[1].topics[0],                            IBeamStateLike.SetUserRole.selector);
+        assertEq(address(uint160(uint256(userRoleLogs[1].topics[1]))), PAS_CORE_COUNCIL);
+        assertEq(uint8(uint256(userRoleLogs[1].topics[2])),            PAS_ROLE_IMMEDIATE);
+        assertEq(abi.decode(userRoleLogs[1].data, (bool)),             true);
+    }
+
+    function test_ARBITRUM_beamState_actionRoles() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        // BeamState action roles
+
+        bytes4[18] memory actionSigs = [  // First 8 are for DELAYED role, next 10 are for IMMEDIATE role.
+            IBeamStateLike.start.selector,
+            IBeamStateLike.setHop.selector,
+            IBeamStateLike.setMaxChange.selector,
+            IBeamStateLike.addRateLimits.selector,
+            IBeamStateLike.addController.selector,
+            IBeamStateLike.addCBeam.selector,
+            IBeamStateLike.addInitRateLimits.selector,
+            IBeamStateLike.addInitControllerActions.selector,
+            IBeamStateLike.stop.selector,
+            IBeamStateLike.delRateLimits.selector,
+            IBeamStateLike.delController.selector,
+            IBeamStateLike.delCBeam.selector,
+            IBeamStateLike.setCBeamForRateLimits.selector,
+            IBeamStateLike.unsetCBeamForRateLimits.selector,
+            IBeamStateLike.setCBeamForController.selector,
+            IBeamStateLike.unsetCBeamForController.selector,
+            IBeamStateLike.delInitRateLimits.selector,
+            IBeamStateLike.delInitControllerActions.selector
+        ];
+
+        VmSafe.EthGetLogs[] memory roleActionLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetRoleAction.selector);
+
+        assertEq(roleActionLogs.length, 18);
+
+        // First 8 actions are for DELAYED role
+        for (uint256 i = 0; i < 8; i++) {
+            assertEq(beamState.actionsRoles(actionSigs[i]), bytes32(uint256(1) << PAS_ROLE_DELAYED));
+
+            assertEq(roleActionLogs[i].topics[0],                 IBeamStateLike.SetRoleAction.selector);
+            assertEq(uint8(uint256(roleActionLogs[i].topics[1])), PAS_ROLE_DELAYED);
+            assertEq(roleActionLogs[i].topics[2],                 bytes32(actionSigs[i]));
+            assertEq(abi.decode(roleActionLogs[i].data, (bool)),  true);
+        }
+
+        // Next 10 actions are for IMMEDIATE role
+        for (uint256 i = 8; i < 18; i++) {
+            assertEq(beamState.actionsRoles(actionSigs[i]), bytes32(uint256(1) << PAS_ROLE_IMMEDIATE));
+
+            assertEq(roleActionLogs[i].topics[0],                 IBeamStateLike.SetRoleAction.selector);
+            assertEq(uint8(uint256(roleActionLogs[i].topics[1])), PAS_ROLE_IMMEDIATE);
+            assertEq(roleActionLogs[i].topics[2],                 bytes32(actionSigs[i]));
+            assertEq(abi.decode(roleActionLogs[i].data, (bool)),  true);
+        }
+    }
+
+    function test_ARBITRUM_beamState_rateLimits() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.rateLimits(Arbitrum.PAU_RATELIMITS), 1);
+
+        VmSafe.EthGetLogs[] memory addRateLimitsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.AddRateLimits.selector);
+        VmSafe.EthGetLogs[] memory delRateLimitsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.DelRateLimits.selector);
+
+        assertEq(addRateLimitsLogs.length, 1);
+        assertEq(delRateLimitsLogs.length, 0);
+
+        assertEq(addRateLimitsLogs[0].topics[0],                            IBeamStateLike.AddRateLimits.selector);
+        assertEq(address(uint160(uint256(addRateLimitsLogs[0].topics[1]))), Arbitrum.PAU_RATELIMITS);
+    }
+
+    function test_ARBITRUM_beamState_controllers() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.controllers(Arbitrum.PAU_CONTROLLER), 1);
+
+        VmSafe.EthGetLogs[] memory addControllerLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.AddController.selector);
+        VmSafe.EthGetLogs[] memory delControllerLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.DelController.selector);
+
+        assertEq(addControllerLogs.length, 1);
+        assertEq(delControllerLogs.length, 0);
+
+        assertEq(addControllerLogs[0].topics[0],                            IBeamStateLike.AddController.selector);
+        assertEq(address(uint160(uint256(addControllerLogs[0].topics[1]))), Arbitrum.PAU_CONTROLLER);
+    }
+
+    function test_ARBITRUM_beamState_cBeams() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+         assertEq(beamState.cBeams(PAS_CBEAM), 1);
+
+        VmSafe.EthGetLogs[] memory addCBeamLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.AddCBeam.selector);
+        VmSafe.EthGetLogs[] memory delCBeamLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.DelCBeam.selector);
+
+        assertEq(addCBeamLogs.length, 1);
+        assertEq(delCBeamLogs.length, 0);
+
+        assertEq(addCBeamLogs[0].topics[0],                            IBeamStateLike.AddCBeam.selector);
+        assertEq(address(uint160(uint256(addCBeamLogs[0].topics[1]))), PAS_CBEAM);
+    }
+
+    function test_ARBITRUM_beamState_rateLimitsCBeams() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.rateLimitsCBeams(Arbitrum.PAU_RATELIMITS, PAS_CBEAM), 1);
+
+        VmSafe.EthGetLogs[] memory setCBeamForRateLimitsLogs   = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetCBeamForRateLimits.selector);
+        VmSafe.EthGetLogs[] memory unsetCBeamForRateLimitsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.UnsetCBeamForRateLimits.selector);
+
+        assertEq(setCBeamForRateLimitsLogs.length,   1);
+        assertEq(unsetCBeamForRateLimitsLogs.length, 0);
+
+        assertEq(setCBeamForRateLimitsLogs[0].topics[0],                            IBeamStateLike.SetCBeamForRateLimits.selector);
+        assertEq(address(uint160(uint256(setCBeamForRateLimitsLogs[0].topics[1]))), Arbitrum.PAU_RATELIMITS);
+        assertEq(address(uint160(uint256(setCBeamForRateLimitsLogs[0].topics[2]))), PAS_CBEAM);
+    }
+
+    function test_ARBITRUM_beamState_controllersCBeams() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.controllersCBeams(Arbitrum.PAU_CONTROLLER, PAS_CBEAM), 1);
+
+        VmSafe.EthGetLogs[] memory setCBeamForControllerLogs   = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetCBeamForController.selector);
+        VmSafe.EthGetLogs[] memory unsetCBeamForControllerLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.UnsetCBeamForController.selector);
+
+        assertEq(setCBeamForControllerLogs.length,   1);
+        assertEq(unsetCBeamForControllerLogs.length, 0);
+
+        assertEq(setCBeamForControllerLogs[0].topics[0],                            IBeamStateLike.SetCBeamForController.selector);
+        assertEq(address(uint160(uint256(setCBeamForControllerLogs[0].topics[1]))), Arbitrum.PAU_CONTROLLER);
+        assertEq(address(uint160(uint256(setCBeamForControllerLogs[0].topics[2]))), PAS_CBEAM);
+    }
+
+    function test_ARBITRUM_beamState_initRateLimits() external onChain(ChainIdUtils.ArbitrumOne()) {
+        VmSafe.EthGetLogs[] memory addInitRateLimitsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.AddInitRateLimits.selector);
+        VmSafe.EthGetLogs[] memory delInitRateLimitsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.DelInitRateLimits.selector);
+
+        assertEq(addInitRateLimitsLogs.length, 0);
+        assertEq(delInitRateLimitsLogs.length, 0);
+    }
+
+    function test_ARBITRUM_beamState_initControllerActions() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike  beamState  = IBeamStateLike(PAS_BEAM_STATE);
+        IControllerLike controller = IControllerLike(Arbitrum.PAU_CONTROLLER);
+        ITimelockLike   timelock   = ITimelockLike(PAS_TIMELOCK);
+
+        // The only pre-approved controller action is removing the CCTP facet
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = CCTP_FACET_ID;
+
+        assertEq(beamState.isControllerActionEnabled(keccak256(abi.encodeCall(controller.removeIntegrations, (ids))), Arbitrum.PAU_CONTROLLER), true);
+
+        VmSafe.EthGetLogs[] memory addInitControllerActionsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.AddInitControllerActions.selector);
+        VmSafe.EthGetLogs[] memory delInitControllerActionsLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.DelInitControllerActions.selector);
+
+        assertEq(addInitControllerActionsLogs.length, 1);
+        assertEq(delInitControllerActionsLogs.length, 0);
+
+        assertEq(addInitControllerActionsLogs[0].topics[0],                            IBeamStateLike.AddInitControllerActions.selector);
+        assertEq(addInitControllerActionsLogs[0].topics[1],                            bytes32(keccak256(abi.encodeCall(controller.removeIntegrations, (ids)))));
+        assertEq(address(uint160(uint256(addInitControllerActionsLogs[0].topics[2]))), Arbitrum.PAU_CONTROLLER);
+    }
+
+    function test_ARBITRUM_beamState_hop() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.getHop(Arbitrum.PAU_RATELIMITS), PAS_HOP);
+
+        VmSafe.EthGetLogs[] memory setHopLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetHop.selector);
+
+        assertEq(setHopLogs.length, 1);
+        assertEq(setHopLogs[0].topics[0],                            IBeamStateLike.SetHop.selector);
+        assertEq(address(uint160(uint256(setHopLogs[0].topics[1]))), address(0));  // Zero address for default
+        assertEq(abi.decode(setHopLogs[0].data, (uint256)),          PAS_HOP);
+    }
+
+    function test_ARBITRUM_beamState_maxChange() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
+
+        assertEq(beamState.getMaxChange(Arbitrum.PAU_RATELIMITS), PAS_MAX_CHANGE);
+
+        VmSafe.EthGetLogs[] memory setMaxChangeLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetMaxChange.selector);
+
+        assertEq(setMaxChangeLogs.length, 1);
+        assertEq(setMaxChangeLogs[0].topics[0],                            IBeamStateLike.SetMaxChange.selector);
+        assertEq(address(uint160(uint256(setMaxChangeLogs[0].topics[1]))), address(0));  // Zero address for default
+        assertEq(abi.decode(setMaxChangeLogs[0].data, (uint256)),          PAS_MAX_CHANGE);
+    }
+
+    function test_ARBITRUM_timelock_state() external onChain(ChainIdUtils.ArbitrumOne()) {
+        ITimelockLike timelock = ITimelockLike(PAS_TIMELOCK);
+
+        assertEq(timelock.getMinDelay(), PAS_MIN_DELAY);
+        assertEq(timelock.paused(),      true);
+
+        assertEq(timelock.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY), true);
+        assertEq(timelock.hasRole(DEFAULT_ADMIN_ROLE, PAS_DEPLOYER),           false);
+
+        assertEq(timelock.hasRole(timelock.PROPOSER_ROLE(),  PAS_CORE_COUNCIL), true);
+        assertEq(timelock.hasRole(timelock.CANCELLER_ROLE(), PAS_CORE_COUNCIL), true);
+        assertEq(timelock.hasRole(timelock.EXECUTOR_ROLE(),  address(0)),       true);  // Anyone can execute
+    }
+
+    function test_ARBITRUM_timelock_events() external onChain(ChainIdUtils.ArbitrumOne()) {
+        ITimelockLike timelock = ITimelockLike(PAS_TIMELOCK);
+
+        bytes32 executorRole  = timelock.EXECUTOR_ROLE();
+        bytes32 proposerRole  = timelock.PROPOSER_ROLE();
+        bytes32 cancellerRole = timelock.CANCELLER_ROLE();
+        bytes32 pauserRole    = timelock.PAUSER_ROLE();
+
+        assertEq(_getEvents(block.chainid, PAS_TIMELOCK, bytes32(0)).length, 12);  // 12 events in total
+
+        // Role grants
+
+        VmSafe.EthGetLogs[] memory roleGrantedLogs = _getEvents(block.chainid, PAS_TIMELOCK, IAccessControl.RoleGranted.selector);
+
+        assertEq(roleGrantedLogs.length, 7);
+
+        assertEq(roleGrantedLogs[0].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[0].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(roleGrantedLogs[0].topics[2]))), PAS_TIMELOCK);
+        assertEq(address(uint160(uint256(roleGrantedLogs[0].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleGrantedLogs[1].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[1].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(roleGrantedLogs[1].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(roleGrantedLogs[1].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleGrantedLogs[2].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[2].topics[1],                            executorRole);
+        assertEq(address(uint160(uint256(roleGrantedLogs[2].topics[2]))), address(0));  // Anyone can execute
+        assertEq(address(uint160(uint256(roleGrantedLogs[2].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleGrantedLogs[3].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[3].topics[1],                            proposerRole);
+        assertEq(address(uint160(uint256(roleGrantedLogs[3].topics[2]))), PAS_CORE_COUNCIL);
+        assertEq(address(uint160(uint256(roleGrantedLogs[3].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleGrantedLogs[4].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[4].topics[1],                            cancellerRole);
+        assertEq(address(uint160(uint256(roleGrantedLogs[4].topics[2]))), PAS_CORE_COUNCIL);
+        assertEq(address(uint160(uint256(roleGrantedLogs[4].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleGrantedLogs[5].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[5].topics[1],                            pauserRole);
+        assertEq(address(uint160(uint256(roleGrantedLogs[5].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(roleGrantedLogs[5].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleGrantedLogs[6].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(roleGrantedLogs[6].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(roleGrantedLogs[6].topics[2]))), Arbitrum.SKY_GOV_RELAY);
+        assertEq(address(uint160(uint256(roleGrantedLogs[6].topics[3]))), PAS_DEPLOYER);
+
+        // Role revocations
+
+        VmSafe.EthGetLogs[] memory roleRevokedLogs = _getEvents(block.chainid, PAS_TIMELOCK, IAccessControl.RoleRevoked.selector);
+
+        assertEq(roleRevokedLogs.length, 3);
+
+        assertEq(roleRevokedLogs[0].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(roleRevokedLogs[0].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(roleRevokedLogs[0].topics[2]))), PAS_TIMELOCK);
+        assertEq(address(uint160(uint256(roleRevokedLogs[0].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleRevokedLogs[1].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(roleRevokedLogs[1].topics[1],                            pauserRole);
+        assertEq(address(uint160(uint256(roleRevokedLogs[1].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(roleRevokedLogs[1].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(roleRevokedLogs[2].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(roleRevokedLogs[2].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(roleRevokedLogs[2].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(roleRevokedLogs[2].topics[3]))), PAS_DEPLOYER);
+
+        // Min delay set once by the constructor
+
+        VmSafe.EthGetLogs[] memory minDelayChangeLogs = _getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.MinDelayChange.selector);
+
+        assertEq(minDelayChangeLogs.length, 1);
+
+        ( uint256 oldDuration, uint256 newDuration ) = abi.decode(minDelayChangeLogs[0].data, (uint256, uint256));
+
+        assertEq(minDelayChangeLogs[0].topics[0], ITimelockLike.MinDelayChange.selector);
+        assertEq(oldDuration,                     0);
+        assertEq(newDuration,                     PAS_MIN_DELAY);
+
+        // Paused by the deployer
+
+        VmSafe.EthGetLogs[] memory pausedLogs = _getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.Paused.selector);
+
+        assertEq(pausedLogs.length, 1);
+
+        assertEq(pausedLogs[0].topics[0],                     ITimelockLike.Paused.selector);
+        assertEq(abi.decode(pausedLogs[0].data, (address)),   PAS_DEPLOYER);
+
+        assertEq(_getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.Unpaused.selector).length, 0);
+    }
+
+    function test_ARBITRUM_pasConfigurator_setRateLimit() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IConfiguratorLike configurator = IConfiguratorLike(PAS_CONFIGURATOR);
+        IControllerLike   controller   = IControllerLike(Arbitrum.PAU_CONTROLLER);
+
+        bytes32 toCctpKey   = controller.cctp_toCCTPRateLimitKey();
+        bytes32 toDomainKey = controller.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM);
+
+        // PAS Configurator is not admin on the PAU RateLimits, therfore this reverts
+        vm.expectRevert(abi.encodeWithSelector(
+            IAccessControl.AccessControlUnauthorizedAccount.selector,
+            PAS_CONFIGURATOR,
+            DEFAULT_ADMIN_ROLE
+        ));
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertUnlimitedRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 5_000_000e6, uint256(50_000_000e6) / 1 days);
+
+        // Only the cBEAM can go through the Configurator
+        vm.expectRevert("Configurator/not-authorized-ratelimits-cBeam");
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 0, 0);
+
+        // CBeam can only set rate limits for keys that are already registered
+        vm.expectRevert("Configurator/exceeds-max-amount");
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, keccak256("NEW_KEY"), 1, 0);
+
+        // If the key is unlimited, the configurator cannot set it to a limited amount
+        vm.expectRevert("Configurator/unlimited-incorrect-params");
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, 1_000_000e6, 0);
+
+        // Setting the cctp -> CCTP rate limit to unlimited works
+        vm.prank(PAS_CBEAM);
+        vm.expectEmit(PAS_CONFIGURATOR);
+        emit IConfiguratorLike.SetRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, type(uint256).max, 0);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, type(uint256).max, 0);
+
+        _assertUnlimitedRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey);
+
+        // Decreases apply immediately and do not consume the hop
+        vm.prank(PAS_CBEAM);
+        vm.expectEmit(PAS_CONFIGURATOR);
+        emit IConfiguratorLike.SetRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(10_000_000e6) / 1 days);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(10_000_000e6) / 1 days);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(10_000_000e6) / 1 days, 1_000_000e6, block.timestamp);
+
+        assertEq(configurator.zzz(Arbitrum.PAU_RATELIMITS, toDomainKey), 0);
+
+        // Increases are capped at maxChange (1.2x) of the current values
+        uint256 maxAmountCeiling = 1_000_000e6 * PAS_MAX_CHANGE / 1e18;
+        uint256 slopeCeiling     = uint256(10_000_000e6) / 1 days * PAS_MAX_CHANGE / 1e18;
+
+        vm.prank(PAS_CBEAM);
+        vm.expectRevert("Configurator/exceeds-max-amount");
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
+
+        vm.prank(PAS_CBEAM);
+        vm.expectRevert("Configurator/exceeds-max-slope");
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling, slopeCeiling + 1);
+
+        // First increase is allowed right away (hop timer starts at 0)
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling, slopeCeiling);
+
+        assertEq(configurator.zzz(Arbitrum.PAU_RATELIMITS, toDomainKey), block.timestamp);
+
+        // Next increase has to wait for the hop
+        vm.prank(PAS_CBEAM);
+        vm.expectRevert("Configurator/increment-too-soon");
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
+
+        skip(PAS_HOP - 1);
+
+        vm.prank(PAS_CBEAM);
+        vm.expectRevert("Configurator/increment-too-soon");
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
+
+        skip(1);
+
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, maxAmountCeiling + 1, slopeCeiling);
+
+        assertEq(configurator.zzz(Arbitrum.PAU_RATELIMITS, toDomainKey), block.timestamp);
+    }
+
+    function test_ARBITRUM_sll_pasConfigurator_callControllerAction() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IConfiguratorLike configurator = IConfiguratorLike(PAS_CONFIGURATOR);
+        IControllerLike   controller   = IControllerLike(Arbitrum.PAU_CONTROLLER);
+        IBeaconLike       beacon       = IBeaconLike(Arbitrum.SPARK_BEACON);
+
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = CCTP_FACET_ID;
+
+        // The only pre-approved action is removing the CCTP facet from the PAU Controller (emergency stop)
+        bytes memory removeCctpFacet = abi.encodeCall(controller.removeIntegrations, (ids));
+
+        // Configurator is not admin on the PAU AccessControls yet, so the controller rejects it
+        vm.expectRevert("Configurator/call-failed");
+        vm.prank(PAS_CBEAM);
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+
+        _executeAllPayloadsAndBridges();
+
+        IControllerLike.Integration[] memory integrations = controller.integrations();
+
+        assertEq(integrations.length,                 1);
+        assertEq(integrations[0].id,                  CCTP_FACET_ID);
+        assertEq(integrations[0].config.facet,        Arbitrum.CCTP_FACET);
+        assertEq(integrations[0].config.wires.length, 10);
+
+        assertEq(controller.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet, Arbitrum.CCTP_FACET);
+        assertEq(beacon.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet,     Arbitrum.CCTP_FACET);
+
+        vm.expectRevert("Configurator/not-authorized-controller-cBeam");
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+
+        vm.expectRevert("Configurator/not-valid-data");
+        vm.prank(PAS_CBEAM);
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, abi.encodeCall(controller.updateIntegrations, (ids)));
+
+        vm.expectEmit(Arbitrum.PAU_CONTROLLER);
+        emit IControllerLike.IntegrationRemoved(CCTP_FACET_ID);
+        vm.expectEmit(PAS_CONFIGURATOR);
+        emit IConfiguratorLike.CallControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+        vm.prank(PAS_CBEAM);
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+
+        assertEq(controller.integrations().length,                 0);
+        assertEq(controller.getConfig(CCTP_FACET_ID).facet,        address(0));
+        assertEq(controller.getConfig(CCTP_FACET_ID).wires.length, 0);
+
+        assertEq(controller.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet, address(0));
     }
 
     // XLayer tests
