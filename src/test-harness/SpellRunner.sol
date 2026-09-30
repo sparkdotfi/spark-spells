@@ -25,7 +25,7 @@ import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBr
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
 import { ArbitrumBridgeTesting } from "xchain-helpers/testing/bridges/ArbitrumBridgeTesting.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
-import { CCTPv2BridgeTesting }   from "xchain-helpers/testing/bridges/CCTPv2BridgeTesting.sol";
+import { CCTPV2BridgeTesting }   from "xchain-helpers/testing/bridges/CCTPV2BridgeTesting.sol";
 import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
@@ -200,7 +200,7 @@ abstract contract SpellRunner is Test {
         );
 
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
-            CCTPv2BridgeTesting.createCircleBridge(
+            CCTPV2BridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.ArbitrumOne()].domain
             )
