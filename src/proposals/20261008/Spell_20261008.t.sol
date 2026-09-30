@@ -262,7 +262,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261008;
-        _blockDate = 1790264363;  // Sep-24-2026 03:39:23 PM +UTC
+        _blockDate = 1790753409;  // Sep-30-2026 07:30:09 PM +UTC
     }
 
     function setUp() public override {
@@ -299,8 +299,8 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         RecordedLogs.init();
 
-        assertEq(arbUsdsBalanceBefore, 90_000_000e18);
-        assertEq(ethUsdsBalanceBefore, 0);
+        assertEq(arbUsdsBalanceBefore, 99_326_272.779060900054294080e18);
+        assertEq(ethUsdsBalanceBefore, 2.028165914747884461e18);
 
         assertEq(IERC20(Arbitrum.USDS).allowance(Arbitrum.ALM_PROXY, Arbitrum.TOKEN_BRIDGE), 0);
 
@@ -501,9 +501,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         uint256 spUsdcSupplyBefore  = spusdc.totalSupply();
         uint256 spUsdcAssetsBefore  = spusdc.totalAssets();
 
-        assertEq(spUsdcBalanceBefore, 6.699_882e6);
-        assertEq(spUsdcSupplyBefore,  6.699_823e6);
-        assertEq(spUsdcAssetsBefore,  6.701_006e6);
+        assertEq(spUsdcBalanceBefore, 1_834_873.434447e6);
+        assertEq(spUsdcSupplyBefore,  1_834_010.235962e6);
+        assertEq(spUsdcAssetsBefore,  1_835_340.522841e6);
 
         assertEq(xlayerUsdc.balanceOf(user), 1_000_000e6);
         assertEq(spusdc.balanceOf(user),     0);
@@ -513,9 +513,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         uint256 userShares = spusdc.deposit(1_000_000e6, user);
         vm.stopPrank();
 
-        assertEq(userShares,             999_823.392_959e6);
+        assertEq(userShares,             999_275.182527e6);
         assertEq(spusdc.balanceOf(user), userShares);
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6 - 1); // Rounding
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore + userShares);
 
         assertEq(xlayerUsdc.balanceOf(user),            0);
@@ -691,12 +691,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(xlayerUsdc.balanceOf(address(spusdc)),             spUsdcBalanceBefore + usdcWithYield);
 
         // Step 11: User redeems.
-        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 649);  // 649 atoms accrued from yield on seeded balance
+        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 177.846293e6);  // 177.846293e6 accrued from yield on existing balance
 
         vm.prank(user);
         spusdc.redeem(userShares, user, user);
 
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 649);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 177.846294e6);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore);
         assertEq(spusdc.balanceOf(user), 0);
 
@@ -710,7 +710,7 @@ contract SparkEthereum_20261008_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261008;
-        _blockDate = 1790264363;  // Sep-24-2026 03:39:23 PM +UTC
+        _blockDate = 1790753409;  // Sep-30-2026 07:30:09 PM +UTC
     }
 
     function setUp() public override {
@@ -747,7 +747,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20261008;
-        _blockDate = 1790264363;  // Sep-24-2026 03:39:23 PM +UTC
+        _blockDate = 1790753409;  // Sep-30-2026 07:30:09 PM +UTC
     }
 
     function setUp() public override {
@@ -829,9 +829,9 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         uint256 spUsdcSupplyBefore  = spusdc.totalSupply();
         uint256 spUsdcAssetsBefore  = spusdc.totalAssets();
 
-        assertEq(spUsdcBalanceBefore, 6.699_882e6);
-        assertEq(spUsdcSupplyBefore,  6.699_823e6);
-        assertEq(spUsdcAssetsBefore,  6.701_006e6);
+        assertEq(spUsdcBalanceBefore, 1_834_873.434447e6);
+        assertEq(spUsdcSupplyBefore,  1_834_010.235962e6);
+        assertEq(spUsdcAssetsBefore,  1_835_340.522841e6);
 
         assertEq(xlayerUsdc.balanceOf(user), 1_000_000e6);
         assertEq(spusdc.balanceOf(user),     0);
@@ -841,9 +841,9 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         uint256 userShares = spusdc.deposit(1_000_000e6, user);
         vm.stopPrank();
 
-        assertEq(userShares,             999_823.392_959e6);
+        assertEq(userShares,             999_275.182527e6);
         assertEq(spusdc.balanceOf(user), userShares);
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6 - 1); // Rounding
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore + userShares);
 
         assertEq(xlayerUsdc.balanceOf(user),            0);
@@ -1049,7 +1049,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
         assertEq(savingsVaultIntents.vaultRequestCount(address(spusdc)), 1);
 
-        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 649);  // 649 atoms accrued from yield on seeded balance
+        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 177.846293e6);  // 177.846293e6 accrued from yield on existing balance
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         xlayerAgent.call(
@@ -1061,7 +1061,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
         assertEq(savingsVaultIntents.vaultRequestCount(address(spusdc)), 1);
 
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 649);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 177.846294e6);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore);
         assertEq(spusdc.balanceOf(user), 0);
 
