@@ -1054,8 +1054,8 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         ( uint256 oldDuration, uint256 newDuration ) = abi.decode(allEvents[2].data, (uint256, uint256));
 
         assertEq(allEvents[2].topics[0], ITimelockLike.MinDelayChange.selector);
-        assertEq(oldDuration,                     0);
-        assertEq(newDuration,                     TIMELOCK_MIN_DELAY);
+        assertEq(oldDuration,            0);
+        assertEq(newDuration,            TIMELOCK_MIN_DELAY);
 
         assertEq(allEvents[3].topics[0],                            IAccessControl.RoleRevoked.selector);
         assertEq(allEvents[3].topics[1],                            DEFAULT_ADMIN_ROLE);
