@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { IERC4626 }   from 'forge-std/interfaces/IERC4626.sol';
 import { Vm, VmSafe } from "forge-std/Vm.sol";
 
 import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,7 +12,7 @@ import { XLayer }   from "spark-address-registry/XLayer.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
-import { Bridge, BridgeType }    from "lib/xchain-helpers/src/testing/Bridge.sol";
+import { Bridge }                from "lib/xchain-helpers/src/testing/Bridge.sol";
 import { CCTPV2BridgeTesting }   from "lib/xchain-helpers/src/testing/bridges/CCTPV2BridgeTesting.sol";
 import { CCTPForwarder }         from "lib/xchain-helpers/src/forwarders/CCTPForwarder.sol";
 import { DomainHelpers }         from "lib/xchain-helpers/src/testing/Domain.sol";
@@ -121,6 +120,10 @@ interface IBeamStateLike {
 
     event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
 
+    event Start();
+
+    event Stop();
+
     event UnsetCBeamForController(address indexed controller, address indexed cBeam);
 
     event UnsetCBeamForRateLimits(address indexed rateLimits, address indexed cBeam);
@@ -164,7 +167,11 @@ interface IBeamStateLike {
 
     function hasUserRole(address usr, uint8 role) external view returns (bool);
 
+    function hop(address rateLimits) external view returns (uint256);
+
     function isControllerActionEnabled(bytes32 key, address controller) external view returns (bool);
+
+    function maxChange(address rateLimits) external view returns (uint256);
 
     function rateLimits(address rateLimits) external view returns (uint256);
 
@@ -362,6 +369,8 @@ interface ISparkVaultV2Like {
 
 interface ITimelockLike {
 
+    error EnforcedPause();
+
     event MinDelayChange(uint256 oldDuration, uint256 newDuration);
 
     event Paused(address account);
@@ -385,6 +394,8 @@ interface ITimelockLike {
     ) external payable;
 
     function getMinDelay() external view returns (uint256);
+
+    function getOperationsCount() external view returns (uint256);
 
     function getTimestamp(bytes32 id) external view returns (uint256);
 
@@ -412,12 +423,6 @@ interface ITimelockLike {
     ) external;
 
     function unpause() external;
-
-}
-
-interface ITokenBridgeLike {
-
-    function escrow() external returns (address);
 
 }
 
@@ -518,24 +523,32 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     // Arbitrum tests
 
     function test_ARBITRUM_sll_removeExcessLiquidity() external onChain(ChainIdUtils.ArbitrumOne()) {
-        uint256 arbUsdsBalanceBefore = IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbUsdsAlmProxyBalanceBefore = IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY);
+        uint256 arbUsdstotalSupplyBefore     = IERC20(Arbitrum.USDS).totalSupply();
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 ethUsdsBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethUsdsAlmProxyBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
+        uint256 ethUsdstotalSupplyBefore     = IERC20(Ethereum.USDS).totalSupply();
 
         chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
 
         RecordedLogs.init();
 
-        assertEq(arbUsdsBalanceBefore, 99_326_272.779060900054294080e18);
-        assertEq(ethUsdsBalanceBefore, 2.028165914747884461e18);
+        assertEq(arbUsdstotalSupplyBefore, 99_766_513.932485333089074921e18);
+        assertEq(ethUsdstotalSupplyBefore, 6_922_257_944.094990356280430538e18);
+
+        assertEq(arbUsdsAlmProxyBalanceBefore, 99_326_272.779060900054294080e18);
+        assertEq(ethUsdsAlmProxyBalanceBefore, 2.028165914747884461e18);
 
         assertEq(IERC20(Arbitrum.USDS).allowance(Arbitrum.ALM_PROXY, Arbitrum.TOKEN_BRIDGE), 0);
 
         _executeAllPayloadsAndBridges();
 
         assertEq(IERC20(Arbitrum.USDS).allowance(Arbitrum.ALM_PROXY, Arbitrum.TOKEN_BRIDGE), 0);
+
+        // On Arbitrum burn happens so totalSupply decreases.
+        assertEq(IERC20(Arbitrum.USDS).totalSupply(), arbUsdstotalSupplyBefore - arbUsdsAlmProxyBalanceBefore);
 
         // Arbitrum ALM proxy sent the tokens to the bridge (burned on L2)
         assertEq(IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY), 0);
@@ -544,22 +557,61 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         ArbitrumBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.ArbitrumOne()].bridges[0], false);
 
         // Ethereum ALM proxy received the withdrawn tokens
+
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
-        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), ethUsdsBalanceBefore + arbUsdsBalanceBefore);
+
+        // On Ethereum release happens so no change in supply.
+        assertEq(IERC20(Ethereum.USDS).totalSupply(), ethUsdstotalSupplyBefore);
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), ethUsdsAlmProxyBalanceBefore + arbUsdsAlmProxyBalanceBefore);
+    }
+
+    function test_ARBITRUM_sll_beaconRoleTransfer() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeaconLike beacon = IBeaconLike(Arbitrum.SPARK_BEACON);
+
+        assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  false);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), false);
+        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  true);
+    }
+
+    function test_ARBITRUM_sll_parallelPAU_grantPASConfigurator() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IAccessControlsLike accessControls = IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS);
+        IRateLimitsLike     rateLimits     = IRateLimitsLike(Arbitrum.PAU_RATELIMITS);
+
+        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
+
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               2);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
+
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
     }
 
     function test_ARBITRUM_sll_parallelPAU_roles() external onChain(ChainIdUtils.ArbitrumOne()) {
-        bytes32 controllerRole = IALMProxyLike(Arbitrum.ALM_PROXY).CONTROLLER();
 
         IAdministeredAgentLike administeredAgent = IAdministeredAgentLike(Arbitrum.PAU_ADMINISTERED_AGENT);
-        IAccessControlsLike    accessControls    = IAccessControlsLike(Arbitrum.PAU_ACCESS_CONTROLS);
-        IRateLimitsLike        rateLimits        = IRateLimitsLike(Arbitrum.PAU_RATELIMITS);
-        IBeaconLike            beacon            = IBeaconLike(Arbitrum.SPARK_BEACON);
+        IALMProxyLike          almProxy          = IALMProxyLike(Arbitrum.ALM_PROXY);
+
+        bytes32 controllerRole = almProxy.CONTROLLER();
 
         // ALMProxy roles
 
-        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.ALM_CONTROLLER), true);
-        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), false);
+        assertEq(almProxy.hasRole(controllerRole, Arbitrum.ALM_CONTROLLER), true);
+        assertEq(almProxy.hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), false);
 
         // PAU Administered Agent roles
 
@@ -575,27 +627,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(administeredAgent.revokerCount(), 1);
         assertEq(administeredAgent.getRevoker(0),  Arbitrum.ALM_FREEZER_MULTISIG);
 
-        // PAS Configurator roles
-
-        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
-        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
-        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
-
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        false);
-
-        // Beacon
-
-        assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
-        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
-        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  false);
-
         _executeAllPayloadsAndBridges();
 
         // ALMProxy roles
 
-        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.ALM_CONTROLLER), true);
-        assertEq(IALMProxyLike(Arbitrum.ALM_PROXY).hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), true);
+        assertEq(almProxy.hasRole(controllerRole, Arbitrum.ALM_CONTROLLER), true);
+        assertEq(almProxy.hasRole(controllerRole, Arbitrum.PAU_CONTROLLER), true);
 
         // PAU Administered Agent roles
 
@@ -612,21 +649,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(administeredAgent.revokerCount(), 2);
         assertEq(administeredAgent.getRevoker(0),  Arbitrum.ALM_FREEZER_MULTISIG);
         assertEq(administeredAgent.getRevoker(1),  SOTER_FREEZER_MULTISIG);
-
-        // PAS Configurator roles
-
-        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               2);
-        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
-        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
-
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), true);
-        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, PAS_CONFIGURATOR),        true);
-
-        // Beacon
-
-        assertEq(beacon.getRoleMemberCount(DEFAULT_ADMIN_ROLE),               1);
-        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SPARK_EXECUTOR), false);
-        assertEq(beacon.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY),  true);
     }
 
     function test_ARBITRUM_sll_parallelPAU_roles_events() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -734,6 +756,12 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
 
         assertEq(beamState.stopped(), false);
+
+        VmSafe.EthGetLogs[] memory startLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.Start.selector);
+        VmSafe.EthGetLogs[] memory stopLogs  = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.Stop.selector);
+
+        assertEq(startLogs.length, 0);
+        assertEq(stopLogs.length,  0);
     }
 
     function test_ARBITRUM_beamState_wards() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -870,7 +898,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_beamState_cBeams() external onChain(ChainIdUtils.ArbitrumOne()) {
         IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
 
-         assertEq(beamState.cBeams(PAS_CBEAM), 1);
+        assertEq(beamState.cBeams(PAS_CBEAM), 1);
 
         VmSafe.EthGetLogs[] memory addCBeamLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.AddCBeam.selector);
         VmSafe.EthGetLogs[] memory delCBeamLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.DelCBeam.selector);
@@ -925,7 +953,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_beamState_initControllerActions() external onChain(ChainIdUtils.ArbitrumOne()) {
         IBeamStateLike  beamState  = IBeamStateLike(PAS_BEAM_STATE);
         IControllerLike controller = IControllerLike(Arbitrum.PAU_CONTROLLER);
-        ITimelockLike   timelock   = ITimelockLike(PAS_TIMELOCK);
 
         // The only pre-approved controller action is removing the CCTP facet
         bytes32[] memory ids = new bytes32[](1);
@@ -947,6 +974,10 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_beamState_hop() external onChain(ChainIdUtils.ArbitrumOne()) {
         IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
 
+        assertEq(beamState.hop(address(0)),              PAS_HOP);
+        assertEq(beamState.hop(Arbitrum.PAU_RATELIMITS), 0);
+
+        assertEq(beamState.getHop(address(0)),              PAS_HOP);
         assertEq(beamState.getHop(Arbitrum.PAU_RATELIMITS), PAS_HOP);
 
         VmSafe.EthGetLogs[] memory setHopLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetHop.selector);
@@ -960,6 +991,10 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_beamState_maxChange() external onChain(ChainIdUtils.ArbitrumOne()) {
         IBeamStateLike beamState = IBeamStateLike(PAS_BEAM_STATE);
 
+        assertEq(beamState.maxChange(address(0)),              PAS_MAX_CHANGE);
+        assertEq(beamState.maxChange(Arbitrum.PAU_RATELIMITS), 0);
+
+        assertEq(beamState.getMaxChange(address(0)),              PAS_MAX_CHANGE);
         assertEq(beamState.getMaxChange(Arbitrum.PAU_RATELIMITS), PAS_MAX_CHANGE);
 
         VmSafe.EthGetLogs[] memory setMaxChangeLogs = _getEvents(block.chainid, PAS_BEAM_STATE, IBeamStateLike.SetMaxChange.selector);
@@ -973,8 +1008,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     function test_ARBITRUM_timelock_state() external onChain(ChainIdUtils.ArbitrumOne()) {
         ITimelockLike timelock = ITimelockLike(PAS_TIMELOCK);
 
-        assertEq(timelock.getMinDelay(), TIMELOCK_MIN_DELAY);
-        assertEq(timelock.paused(),      true);
+        assertEq(timelock.getMinDelay(),        TIMELOCK_MIN_DELAY);
+        assertEq(timelock.paused(),             true);
+        assertEq(timelock.getOperationsCount(), 0);
 
         assertEq(timelock.hasRole(DEFAULT_ADMIN_ROLE, Arbitrum.SKY_GOV_RELAY), true);
         assertEq(timelock.hasRole(DEFAULT_ADMIN_ROLE, PAS_DEPLOYER),           false);
@@ -982,6 +1018,8 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(timelock.hasRole(timelock.PROPOSER_ROLE(),  PAS_CORE_COUNCIL), true);
         assertEq(timelock.hasRole(timelock.CANCELLER_ROLE(), PAS_CORE_COUNCIL), true);
         assertEq(timelock.hasRole(timelock.EXECUTOR_ROLE(),  address(0)),       true);  // Anyone can execute
+
+        assertEq(timelock.hasRole(timelock.PAUSER_ROLE(), PAS_DEPLOYER), false);
     }
 
     function test_ARBITRUM_timelock_events() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -989,92 +1027,68 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         bytes32 pauserRole = timelock.PAUSER_ROLE();
 
-        assertEq(_getEvents(block.chainid, PAS_TIMELOCK, bytes32(0)).length, 12);  // 12 events in total
+        VmSafe.EthGetLogs[] memory allEvents = _getEvents(block.chainid, PAS_TIMELOCK, bytes32(0));
 
-        // Role grants
+        assertEq(allEvents.length, 12);
 
-        VmSafe.EthGetLogs[] memory roleGrantedLogs = _getEvents(block.chainid, PAS_TIMELOCK, IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[0].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[0].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(allEvents[0].topics[2]))), PAS_TIMELOCK);
+        assertEq(address(uint160(uint256(allEvents[0].topics[3]))), PAS_DEPLOYER);
 
-        assertEq(roleGrantedLogs.length, 7);
+        assertEq(allEvents[1].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[1].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(allEvents[1].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(allEvents[1].topics[3]))), PAS_DEPLOYER);
 
-        assertEq(roleGrantedLogs[0].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[0].topics[1],                            DEFAULT_ADMIN_ROLE);
-        assertEq(address(uint160(uint256(roleGrantedLogs[0].topics[2]))), PAS_TIMELOCK);
-        assertEq(address(uint160(uint256(roleGrantedLogs[0].topics[3]))), PAS_DEPLOYER);
+        ( uint256 oldDuration, uint256 newDuration ) = abi.decode(allEvents[2].data, (uint256, uint256));
 
-        assertEq(roleGrantedLogs[1].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[1].topics[1],                            DEFAULT_ADMIN_ROLE);
-        assertEq(address(uint160(uint256(roleGrantedLogs[1].topics[2]))), PAS_DEPLOYER);
-        assertEq(address(uint160(uint256(roleGrantedLogs[1].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleGrantedLogs[2].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[2].topics[1],                            timelock.EXECUTOR_ROLE());
-        assertEq(address(uint160(uint256(roleGrantedLogs[2].topics[2]))), address(0));  // Anyone can execute
-        assertEq(address(uint160(uint256(roleGrantedLogs[2].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleGrantedLogs[3].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[3].topics[1],                            timelock.PROPOSER_ROLE());
-        assertEq(address(uint160(uint256(roleGrantedLogs[3].topics[2]))), PAS_CORE_COUNCIL);
-        assertEq(address(uint160(uint256(roleGrantedLogs[3].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleGrantedLogs[4].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[4].topics[1],                            timelock.CANCELLER_ROLE());
-        assertEq(address(uint160(uint256(roleGrantedLogs[4].topics[2]))), PAS_CORE_COUNCIL);
-        assertEq(address(uint160(uint256(roleGrantedLogs[4].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleGrantedLogs[5].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[5].topics[1],                            pauserRole);
-        assertEq(address(uint160(uint256(roleGrantedLogs[5].topics[2]))), PAS_DEPLOYER);
-        assertEq(address(uint160(uint256(roleGrantedLogs[5].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleGrantedLogs[6].topics[0],                            IAccessControl.RoleGranted.selector);
-        assertEq(roleGrantedLogs[6].topics[1],                            DEFAULT_ADMIN_ROLE);
-        assertEq(address(uint160(uint256(roleGrantedLogs[6].topics[2]))), Arbitrum.SKY_GOV_RELAY);
-        assertEq(address(uint160(uint256(roleGrantedLogs[6].topics[3]))), PAS_DEPLOYER);
-
-        // Role revocations
-
-        VmSafe.EthGetLogs[] memory roleRevokedLogs = _getEvents(block.chainid, PAS_TIMELOCK, IAccessControl.RoleRevoked.selector);
-
-        assertEq(roleRevokedLogs.length, 3);
-
-        assertEq(roleRevokedLogs[0].topics[0],                            IAccessControl.RoleRevoked.selector);
-        assertEq(roleRevokedLogs[0].topics[1],                            DEFAULT_ADMIN_ROLE);
-        assertEq(address(uint160(uint256(roleRevokedLogs[0].topics[2]))), PAS_TIMELOCK);
-        assertEq(address(uint160(uint256(roleRevokedLogs[0].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleRevokedLogs[1].topics[0],                            IAccessControl.RoleRevoked.selector);
-        assertEq(roleRevokedLogs[1].topics[1],                            pauserRole);
-        assertEq(address(uint160(uint256(roleRevokedLogs[1].topics[2]))), PAS_DEPLOYER);
-        assertEq(address(uint160(uint256(roleRevokedLogs[1].topics[3]))), PAS_DEPLOYER);
-
-        assertEq(roleRevokedLogs[2].topics[0],                            IAccessControl.RoleRevoked.selector);
-        assertEq(roleRevokedLogs[2].topics[1],                            DEFAULT_ADMIN_ROLE);
-        assertEq(address(uint160(uint256(roleRevokedLogs[2].topics[2]))), PAS_DEPLOYER);
-        assertEq(address(uint160(uint256(roleRevokedLogs[2].topics[3]))), PAS_DEPLOYER);
-
-        // Min delay set once by the constructor
-
-        VmSafe.EthGetLogs[] memory minDelayChangeLogs = _getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.MinDelayChange.selector);
-
-        assertEq(minDelayChangeLogs.length, 1);
-
-        ( uint256 oldDuration, uint256 newDuration ) = abi.decode(minDelayChangeLogs[0].data, (uint256, uint256));
-
-        assertEq(minDelayChangeLogs[0].topics[0], ITimelockLike.MinDelayChange.selector);
+        assertEq(allEvents[2].topics[0], ITimelockLike.MinDelayChange.selector);
         assertEq(oldDuration,                     0);
         assertEq(newDuration,                     TIMELOCK_MIN_DELAY);
 
-        // Paused by the deployer
+        assertEq(allEvents[3].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(allEvents[3].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(allEvents[3].topics[2]))), PAS_TIMELOCK);
+        assertEq(address(uint160(uint256(allEvents[3].topics[3]))), PAS_DEPLOYER);
 
-        VmSafe.EthGetLogs[] memory pausedLogs = _getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.Paused.selector);
+        assertEq(allEvents[4].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[4].topics[1],                            timelock.EXECUTOR_ROLE());
+        assertEq(address(uint160(uint256(allEvents[4].topics[2]))), address(0));  // Anyone can execute
+        assertEq(address(uint160(uint256(allEvents[4].topics[3]))), PAS_DEPLOYER);
 
-        assertEq(pausedLogs.length, 1);
+        assertEq(allEvents[5].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[5].topics[1],                            timelock.PROPOSER_ROLE());
+        assertEq(address(uint160(uint256(allEvents[5].topics[2]))), PAS_CORE_COUNCIL);
+        assertEq(address(uint160(uint256(allEvents[5].topics[3]))), PAS_DEPLOYER);
 
-        assertEq(pausedLogs[0].topics[0],                     ITimelockLike.Paused.selector);
-        assertEq(abi.decode(pausedLogs[0].data, (address)),   PAS_DEPLOYER);
+        assertEq(allEvents[6].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[6].topics[1],                            timelock.CANCELLER_ROLE());
+        assertEq(address(uint160(uint256(allEvents[6].topics[2]))), PAS_CORE_COUNCIL);
+        assertEq(address(uint160(uint256(allEvents[6].topics[3]))), PAS_DEPLOYER);
 
-        assertEq(_getEvents(block.chainid, PAS_TIMELOCK, ITimelockLike.Unpaused.selector).length, 0);
+        assertEq(allEvents[7].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[7].topics[1],                            pauserRole);
+        assertEq(address(uint160(uint256(allEvents[7].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(allEvents[7].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(allEvents[8].topics[0],                   ITimelockLike.Paused.selector);
+        assertEq(abi.decode(allEvents[8].data, (address)), PAS_DEPLOYER);
+
+        assertEq(allEvents[9].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(allEvents[9].topics[1],                            pauserRole);
+        assertEq(address(uint160(uint256(allEvents[9].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(allEvents[9].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(allEvents[10].topics[0],                            IAccessControl.RoleGranted.selector);
+        assertEq(allEvents[10].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(allEvents[10].topics[2]))), Arbitrum.SKY_GOV_RELAY);
+        assertEq(address(uint160(uint256(allEvents[10].topics[3]))), PAS_DEPLOYER);
+
+        assertEq(allEvents[11].topics[0],                            IAccessControl.RoleRevoked.selector);
+        assertEq(allEvents[11].topics[1],                            DEFAULT_ADMIN_ROLE);
+        assertEq(address(uint160(uint256(allEvents[11].topics[2]))), PAS_DEPLOYER);
+        assertEq(address(uint160(uint256(allEvents[11].topics[3]))), PAS_DEPLOYER);
     }
 
     // setHop is a DELAYED action: it has to go through the Timelock, the Core Council cannot call it directly
@@ -1099,6 +1113,11 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         payloads[0] = abi.encodeCall(beamState.setHop, (Arbitrum.PAU_RATELIMITS, 1 hours));
 
         bytes32 id = timelock.hashOperationBatch(targets, values, payloads, bytes32(0), bytes32(0));
+
+        // Assert scheduleBatch reverts before unpausing.
+        vm.expectRevert(ITimelockLike.EnforcedPause.selector);
+        vm.prank(PAS_CORE_COUNCIL);
+        timelock.scheduleBatch(targets, values, payloads, bytes32(0), bytes32(0), TIMELOCK_MIN_DELAY);
 
         // Unpause the Timelock
         assertEq(timelock.paused(), true);
@@ -1188,10 +1207,14 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, 1_000_000e6, 0);
 
         // Setting the cctp -> CCTP rate limit to unlimited works
+        vm.expectEmit(address(configurator));
+        emit IConfiguratorLike.SetRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, type(uint256).max, 0);
         vm.prank(PAS_CBEAM);
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey, type(uint256).max, 0);
 
         _assertUnlimitedRateLimit(Arbitrum.PAU_RATELIMITS, toCctpKey);
+
+        assertEq(configurator.zzz(Arbitrum.PAU_RATELIMITS, toDomainKey), 0);
 
         // Decreases apply immediately and do not consume the hop
         vm.prank(PAS_CBEAM);
