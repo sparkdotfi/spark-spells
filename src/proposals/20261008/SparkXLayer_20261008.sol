@@ -23,7 +23,7 @@ interface ISavingsIntentsLike {
  * @author Phoenix Labs
  * @notice Spark Savings Intents:
  *         - Add spUSDC to the X Layer Savings Vault Intents contract.
- *         - Make the spUSDC PAU Administered Agent a relaye on Savings Intents contract.
+ *         - Make the spUSDC PAU Administered Agent a relayer on Savings Intents contract.
  * Forum:  https://forum.skyeco.com/t/october-8-2026-proposed-changes-to-spark-for-upcoming-spell/28265
  * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0xeaab1672f63e49d6075eefbede7cab3fac3db3bba3c2f486eee7bb492d82ff3e
  */
@@ -38,7 +38,7 @@ contract SparkXLayer_20261008 {
             maxIntentAssets_ : 500_000_000e6
         });
 
-        // Make the spUSDC PAU Administered Agent a relaye on Savings Intents contract.
+        // Make the spUSDC PAU Administered Agent a relayer on Savings Intents contract.
         ISavingsIntentsLike(XLayer.SPARK_SAVINGS_INTENTS).grantRole(
             ISavingsIntentsLike(XLayer.SPARK_SAVINGS_INTENTS).RELAYER(),
             XLayer.SPUSDC_PAU_ADMINISTERED_AGENT

@@ -446,9 +446,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    // SUSDS transfer amount
-    uint256 internal constant SUSDS_TRANSFER_AMOUNT = 100_000_000e18;
-
     // PAS
 
     address internal constant PAS_BEAM_STATE   = 0x11CFefeA67B18de9046a6250555D438854fFEEDa;
@@ -491,8 +488,6 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     IERC20                     internal usdc;
 
     address internal user;
-
-    uint256 internal constant USDG_BALANCES_SLOT_INDEX = 1;
 
     constructor() {
         _spellId   = 20261008;
@@ -718,6 +713,17 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(mintRecipient, bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
         assertEq(minFeeCapRate, 0);
         assertEq(maxFeeCapRate, 0);
+    }
+
+    function test_ARBITRUM_sll_pauCctpV2_rateLimitEnforced() external onChain(ChainIdUtils.ArbitrumOne()) {
+        _executeAllPayloadsAndBridges();
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        vm.expectRevert("RateLimits/rate-limit-exceeded");
+        IAdministeredAgentLike(Arbitrum.PAU_ADMINISTERED_AGENT).call(
+            Arbitrum.PAU_CONTROLLER,
+            abi.encodeCall(IForeignControllerFullLike.cctp_transfer, (5_000_000e6 + 1, CCTP_V2_DOMAIN_ID_ETHEREUM, 0))
+        );
     }
 
     function test_ARBITRUM_pasConfigurator_state() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -1152,7 +1158,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         bytes32 toCctpKey   = controller.cctp_toCCTPRateLimitKey();
         bytes32 toDomainKey = controller.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM);
 
-        // PAS Configurator is not admin on the PAU RateLimits, therfore this reverts
+        // PAS Configurator is not admin on the PAU RateLimits, therefore this reverts
         vm.expectRevert(abi.encodeWithSelector(
             IAccessControl.AccessControlUnauthorizedAccount.selector,
             PAS_CONFIGURATOR,
