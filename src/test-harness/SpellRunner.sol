@@ -500,7 +500,7 @@ abstract contract SpellRunner is Test {
         for (uint256 i; i < allChains.length; ++i) {
             // TODO: Remove this once Robinhood and XLayer are added https://api.etherscan.io/v2/chainlist
             if (allChains[i] == ChainIdUtils.Robinhood() || allChains[i] == ChainIdUtils.XLayer()) {
-                blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
+                blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 10_000_000);
                 continue;
             }
 

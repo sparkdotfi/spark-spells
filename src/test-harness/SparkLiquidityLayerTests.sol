@@ -1730,10 +1730,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(10 days);  // Recharge rate limits
 
+        uint256 sourceTimestamp = block.timestamp;
+
         IERC20 asset = IERC20(ILayerZero(p.oftAddress).token());
 
-        uint256 transferLimit  = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
-        uint256 transferAmount = p.transferAmount;
+        uint256 transferLimit = p.ctx.rateLimits.getCurrentRateLimit(p.transferKey);
 
         // Drain stale PacketSent logs (e.g. from a previous run of this integration whose bridge
         // cursor was rolled back by the snapshot/revert in _runSLLE2ETests) so that only the
@@ -1751,7 +1752,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         chainData[p.sourceChainId].domain.selectFork();
 
-        deal(address(asset), address(p.ctx.proxy), transferAmount);
+        deal(address(asset), address(p.ctx.proxy), p.transferAmount);
         deal(p.ctx.relayer, 1 ether);  // For LayerZero fees
 
         /********************************/
@@ -1768,15 +1769,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         SendParam memory sendParams = SendParam({
             dstEid       : p.destinationEndpointId,
             to           : controller.layerZeroRecipients(p.destinationEndpointId),
-            amountLD     : transferAmount,
-            minAmountLD  : transferAmount,
+            amountLD     : p.transferAmount,
+            minAmountLD  : p.transferAmount,
             extraOptions : options,
             composeMsg   : "",
             oftCmd       : ""
         });
         MessagingFee memory fee = ILayerZero(p.oftAddress).quoteSend(sendParams, false);
 
-        assertEq(asset.balanceOf(address(p.ctx.proxy)),               transferAmount);
+        assertEq(asset.balanceOf(address(p.ctx.proxy)),               p.transferAmount);
         assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
 
         uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(
@@ -1788,7 +1789,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.prank(p.ctx.relayer);
         controller.transferTokenLayerZero{value: fee.nativeFee}(
             p.oftAddress,
-            transferAmount,
+            p.transferAmount,
             p.destinationEndpointId
         );
 
@@ -1797,7 +1798,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         if (transferLimit == type(uint256).max) {
             assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit);
         } else {
-            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - transferAmount);
+            assertEq(p.ctx.rateLimits.getCurrentRateLimit(p.transferKey), transferLimit - p.transferAmount);
         }
 
         /****************************************************************/
@@ -1829,13 +1830,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             LZBridgeTesting.relayMessagesToDestination(bridge, true, p.oftAddress, p.destinationOftAddress);
 
             // `LZBridgeTesting.relayMessagesToDestination` ends on `destinationChain` selected as fork.
-            assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore + transferAmount);
+            assertEq(IERC20(p.destinationAsset).balanceOf(p.destinationReceiver), destinationBalanceBefore + p.transferAmount);
         }
 
         // Remove all destination-fork state changes made by this test (see snapshot above).
         vm.revertTo(destinationSnapshot);
 
         chainData[p.sourceChainId].domain.selectFork();
+
+        vm.warp(sourceTimestamp);
 
         /********************************************/
         /*** Step 4: Warp to recharge rate limits ***/
@@ -2394,23 +2397,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
     }
 
-    function _checkUniswapV4TickLimits(MainnetController oldController, MainnetController newController, bytes32 poolId) internal {
-        ( int24 tickLower,    int24 tickUpper,    uint24 maxTickSpacing )    = oldController.uniswapV4TickLimits(poolId);
-        ( int24 newTickLower, int24 newTickUpper, uint24 newMaxTickSpacing ) = newController.uniswapV4TickLimits(poolId);
-
-        assertEq(tickLower,      newTickLower);
-        assertEq(tickUpper,      newTickUpper);
-        assertEq(maxTickSpacing, newMaxTickSpacing);
-    }
-
-    function _checkUniswapV4TickLimits(MainnetController controller, bytes32 poolId, int24 expectedTickLower, int24 expectedTickUpper, uint24 expectedMaxTickSpacing) internal {
-        ( int24 tickLower, int24 tickUpper, uint24 maxTickSpacing ) = controller.uniswapV4TickLimits(poolId);
-
-        assertEq(tickLower,      expectedTickLower);
-        assertEq(tickUpper,      expectedTickUpper);
-        assertEq(maxTickSpacing, expectedMaxTickSpacing);
-    }
-
     // Cross-chain E2E Steps
 
     function _mintUSDSAndSwapToUSDC(uint256 usdcAmount, address controller)
@@ -2501,6 +2487,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             revert("SLL/unknown domain");
         }
 
+        chainData[domainId].domain.selectFork();
+
         SparkLiquidityLayerContext memory ctx = _getSparkLiquidityLayerContext();
 
         address domainAlmProxy = address(ctx.proxy);
@@ -2565,6 +2553,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
+        uint256 mainnetTimestamp        = block.timestamp;
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
@@ -2572,6 +2561,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPBridgeTesting.relayMessagesToSource(bridge, true);
+
+        // Relaying switches forks, so mainnet can end up behind its pre-bridge timestamp (#91).
+        if (block.timestamp < mainnetTimestamp) vm.warp(mainnetTimestamp);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
     }
@@ -2610,6 +2602,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
+        uint256 mainnetTimestamp        = block.timestamp;
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
@@ -2617,6 +2610,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
         CCTPV2BridgeTesting.relayMessagesToSource(bridge, true);
+
+        // Relaying switches forks, so mainnet can end up behind its pre-bridge timestamp (#91).
+        if (block.timestamp < mainnetTimestamp) vm.warp(mainnetTimestamp);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
     }
@@ -2822,11 +2818,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 allChains[i] == ChainIdUtils.Robinhood()
             ) continue;
 
-            console2.log("Testing cross chain setup for", ChainIdUtils.toDomainString(allChains[i]));
-
             uint256 domainChainId = chainData[allChains[i]].domain.chain.chainId;
-
-            console2.log("domainChainId", domainChainId);
 
             address legacyDomainController = _getSparkLiquidityLayerContext(domainChainId, isPostExecution).controller;
 
@@ -3867,8 +3859,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getSLLPAUContext(uint256 chainId) internal view returns (SLLPAUContext memory ctx) {
-        console2.log("chainId", chainId);
-
         if (chainId == ChainIdUtils.ArbitrumOne()) {
             return SLLPAUContext({
                 controller        : Arbitrum.PAU_CONTROLLER,
@@ -3953,36 +3943,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             uint256 monthlySlope = slope * 30 days;
             assertGe(monthlySlope, maxAmount, "slope range sanity check failed");
         }
-    }
-
-    function _checkRateLimitKeys(SLLIntegration[] memory integrations, bytes32[] memory rateLimitKeys) internal {
-        for (uint256 i = 0; i < integrations.length; ++i) {
-            require(
-                integrations[i].entryId  != bytes32(0) ||
-                integrations[i].entryId2 != bytes32(0) ||
-                integrations[i].exitId   != bytes32(0) ||
-                integrations[i].exitId2  != bytes32(0),
-                "Empty integration"
-            );
-
-            if (integrations[i].entryId != bytes32(0)) {
-                rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId);
-            }
-
-            if (integrations[i].entryId2 != bytes32(0)) {
-                rateLimitKeys = _remove(rateLimitKeys, integrations[i].entryId2);
-            }
-
-            if (integrations[i].exitId != bytes32(0)) {
-                rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId);
-            }
-
-            if (integrations[i].exitId2 != bytes32(0)) {
-                rateLimitKeys = _remove(rateLimitKeys, integrations[i].exitId2);
-            }
-        }
-
-        assertTrue(rateLimitKeys.length == 0, "Rate limit keys not fully covered");
     }
 
     function _checkRateLimitValue(SparkLiquidityLayerContext memory ctx, bytes32 id, uint256 decimals) internal view {
