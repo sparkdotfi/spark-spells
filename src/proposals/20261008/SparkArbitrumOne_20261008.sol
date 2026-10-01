@@ -131,9 +131,9 @@ contract SparkArbitrumOne_20261008 is SparkPayloadArbitrumOne {
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
     address internal constant PAS_CONFIGURATOR       = 0xd11Dc57F3eF23bb7b3142588a461F68460a7C474;
-    address internal constant SOTER_FREEZER_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
-    address internal constant SOTER_GRANTOR_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
-    address internal constant SPARK_HOT_WALLET       = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
+    address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
+    address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
+    address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
 
     function execute() external {
         // 1. Onboard Parallel Diamond PAU with CCTP V2.

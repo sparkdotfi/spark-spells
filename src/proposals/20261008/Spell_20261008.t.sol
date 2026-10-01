@@ -466,9 +466,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     // Arbitrum PAU Administered Agent addresses
 
-    address internal constant SPARK_HOT_WALLET       = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
-    address internal constant SOTER_GRANTOR_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
-    address internal constant SOTER_FREEZER_MULTISIG = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // TODO: Add actual address
+    address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
+    address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
+    address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
 
     // XLayer CCTP round trip test setup
 
