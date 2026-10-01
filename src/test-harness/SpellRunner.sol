@@ -25,6 +25,7 @@ import { OptimismBridgeTesting } from "xchain-helpers/testing/bridges/OptimismBr
 import { AMBBridgeTesting }      from "xchain-helpers/testing/bridges/AMBBridgeTesting.sol";
 import { ArbitrumBridgeTesting } from "xchain-helpers/testing/bridges/ArbitrumBridgeTesting.sol";
 import { CCTPBridgeTesting }     from "xchain-helpers/testing/bridges/CCTPBridgeTesting.sol";
+import { CCTPV2BridgeTesting }   from "xchain-helpers/testing/bridges/CCTPV2BridgeTesting.sol";
 import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
 import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
 import { RecordedLogs }          from "xchain-helpers/testing/utils/RecordedLogs.sol";
@@ -193,6 +194,13 @@ abstract contract SpellRunner is Test {
 
         chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
             LZBridgeTesting.createLZBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.ArbitrumOne()].domain
+            )
+        );
+
+        chainData[ChainIdUtils.ArbitrumOne()].bridges.push(
+            CCTPV2BridgeTesting.createCircleBridge(
                 chainData[ChainIdUtils.Ethereum()].domain,
                 chainData[ChainIdUtils.ArbitrumOne()].domain
             )
@@ -492,7 +500,7 @@ abstract contract SpellRunner is Test {
         for (uint256 i; i < allChains.length; ++i) {
             // TODO: Remove this once Robinhood and XLayer are added https://api.etherscan.io/v2/chainlist
             if (allChains[i] == ChainIdUtils.Robinhood() || allChains[i] == ChainIdUtils.XLayer()) {
-                blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 1_000_000);
+                blocks[i] = _getBlockFromTimestampBinarySearch(allChains[i], date, 10_000_000);
                 continue;
             }
 
