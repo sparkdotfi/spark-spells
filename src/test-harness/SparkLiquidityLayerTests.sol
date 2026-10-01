@@ -2830,17 +2830,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             _depositAndWithdrawFromPSM3(1_000_000e6, domainChainId, legacyDomainController);
 
-            _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);  // TODO: Remove this in feat/sc-1721-spell-20261008
+            if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
+                address pauController = _getSLLPAUContext(domainChainId).controller;
 
-            // TODO: Uncomment this in feat/sc-1721-spell-20261008
-            // if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
-            //     address pauController = _getSLLPAUContext(domainChainId).controller;
-
-            //     _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
-            //     _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController);
-            // } else {
-            //     _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
-            // }
+                _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
+                _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController);
+            } else {
+                _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
+            }
 
             _swapUSDCToUSDSAndBurn(1_000_000e6, legacyMainnetController);
         }
