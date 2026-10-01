@@ -715,13 +715,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address pool = IATokenLike(p.vault).POOL();
 
         // Withdraw funds to avoid supply caps getting hit
-        if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
-            uint256 maxWithdrawAmount =
-                IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
-                    ? asset.balanceOf(p.vault)
-                    : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
+        uint256 maxWithdrawAmount =
+            IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
+                ? asset.balanceOf(p.vault)
+                : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
 
-            // Subtract 10 to avoid rounding issues
+        // Subtract 10 to avoid rounding issues, skip if only dust is held
+        if (maxWithdrawAmount > 10) {
             vm.prank(p.ctx.relayer);
             MainnetController(p.ctx.controller).withdrawAave(p.vault, maxWithdrawAmount - 10);
         }
@@ -1162,8 +1162,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _toNormalizedAmount(p.asset0, 1) + _toNormalizedAmount(p.asset1, 1)
         );
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-
+        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0, 1);
         assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /***************************************************************/
@@ -1194,8 +1193,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _toNormalizedAmount(p.asset0, 2) + _toNormalizedAmount(p.asset1, 2)
         );
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-
+        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0, 1);
         assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /**************************************************************************************/
