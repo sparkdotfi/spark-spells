@@ -23,6 +23,8 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
+import { console2 } from "forge-std/console2.sol";
+
 interface IAccessControlsLike {
 
     function DEFAULT_ADMIN_ROLE() external returns (bytes32);
@@ -309,6 +311,14 @@ interface IRateLimitsLike {
 
 }
 
+interface ISafeLike {
+
+    function getOwners() external view returns (address[] memory);
+
+    function getThreshold() external view returns (uint256);
+
+}
+
 interface ISavingsIntentsLike {
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
@@ -496,7 +506,7 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261008;
-        _blockDate = 1790753409;  // Sep-30-2026 07:30:09 PM +UTC
+        _blockDate = 1790874879;  // Oct-01-2026 17:14:39 +UTC
     }
 
     function setUp() public override {
@@ -536,10 +546,10 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         RecordedLogs.init();
 
         assertEq(arbUsdstotalSupplyBefore, 99_766_513.932485333089074921e18);
-        assertEq(ethUsdstotalSupplyBefore, 6_922_257_944.094990356280430538e18);
+        assertEq(ethUsdstotalSupplyBefore, 6_832_532_002.531914245921299446e18);
 
         assertEq(arbUsdsAlmProxyBalanceBefore, 99_326_272.779060900054294080e18);
-        assertEq(ethUsdsAlmProxyBalanceBefore, 2.028165914747884461e18);
+        assertEq(ethUsdsAlmProxyBalanceBefore, 0);
 
         assertEq(IERC20(Arbitrum.USDS).allowance(Arbitrum.ALM_PROXY, Arbitrum.TOKEN_BRIDGE), 0);
 
@@ -1322,9 +1332,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         uint256 spUsdcSupplyBefore  = spusdc.totalSupply();
         uint256 spUsdcAssetsBefore  = spusdc.totalAssets();
 
-        assertEq(spUsdcBalanceBefore, 1_834_873.434447e6);
-        assertEq(spUsdcSupplyBefore,  1_834_010.235962e6);
-        assertEq(spUsdcAssetsBefore,  1_835_340.522841e6);
+        assertEq(spUsdcBalanceBefore, 342_214.838089e6);
+        assertEq(spUsdcSupplyBefore,  342_543.957959e6);
+        assertEq(spUsdcAssetsBefore,  342_839.120574e6);
 
         assertEq(xlayerUsdc.balanceOf(user), 1_000_000e6);
         assertEq(spusdc.balanceOf(user),     0);
@@ -1334,9 +1344,9 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         uint256 userShares = spusdc.deposit(1_000_000e6, user);
         vm.stopPrank();
 
-        assertEq(userShares,             999_275.182527e6);
+        assertEq(userShares,             999_139.063782e6);
         assertEq(spusdc.balanceOf(user), userShares);
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6 - 1);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore + userShares);
 
         assertEq(xlayerUsdc.balanceOf(user),            0);
@@ -1512,17 +1522,17 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(xlayerUsdc.balanceOf(address(spusdc)),             spUsdcBalanceBefore + usdcWithYield);
 
         // Step 11: User redeems.
-        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 177.846293e6);  // 177.846293e6 accrued from yield on existing balance
+        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 33.221446e6);  // 33.221446e6 accrued from yield on existing balance
 
         vm.prank(user);
         spusdc.redeem(userShares, user, user);
 
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 177.846294e6);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 33.221446e6);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore);
         assertEq(spusdc.balanceOf(user), 0);
 
-        assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield - 1); // Rounding
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1); // Rounding
+        assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield - 1);        // Rounding
+        assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1);  // Rounding
     }
 
 }
@@ -1531,7 +1541,7 @@ contract SparkEthereum_20261008_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261008;
-        _blockDate = 1790753409;  // Sep-30-2026 07:30:09 PM +UTC
+        _blockDate = 1790874879;  // Oct-01-2026 17:14:39 +UTC
     }
 
     function setUp() public override {
@@ -1549,6 +1559,21 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
     uint32 internal constant CCTP_V2_DOMAIN_ID_ETHEREUM = CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM;
     uint32 internal constant CCTP_V2_DOMAIN_ID_XLAYER   = 37;
+
+    address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
+    address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
+
+    address internal constant SOTER_FREEZER_OWNER_1 = 0x4d30c1B366d0dEeb82F55503c334156FeC543B17;
+    address internal constant SOTER_FREEZER_OWNER_2 = 0x3481E4035409fC3a033c07D5461BED853207F517;
+    address internal constant SOTER_FREEZER_OWNER_3 = 0x1aF016f8286F55E241Efd52Cf0FEEDbB257169C9;
+    address internal constant SOTER_FREEZER_OWNER_4 = 0xB1aD1F6A80051658C2ba938621A7a83DEB0d324C;
+    address internal constant SOTER_FREEZER_OWNER_5 = 0x52A8305f29f85bEc5fa6eE78B87Ddd2218d8E12E;
+
+    address internal constant SOTER_GRANTOR_OWNER_1 = 0xd144625c5B1b261c7E7468dbae442088B9dAee65;
+    address internal constant SOTER_GRANTOR_OWNER_2 = 0x30634F700B4C281AfbB956e77f5E189f6f49bD2A;
+    address internal constant SOTER_GRANTOR_OWNER_3 = 0xd96FA1087f0CddC8dCbA53E96afBcc83cc6c82B7;
+    address internal constant SOTER_GRANTOR_OWNER_4 = 0x99E4A36dA8c62a6bEACe0BAaa6cdB042a5EaB58d;
+    address internal constant SOTER_GRANTOR_OWNER_5 = 0x0457f48919816092E5ba57f0014a104b085EC837;
 
     IAdministeredAgentLike     internal xlayerAgent;
     IForeignControllerFullLike internal xlayerController;
@@ -1568,7 +1593,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20261008;
-        _blockDate = 1790753409;  // Sep-30-2026 07:30:09 PM +UTC
+        _blockDate = 1790874879;  // Oct-01-2026 17:14:39 +UTC
     }
 
     function setUp() public override {
@@ -1592,6 +1617,32 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         user = makeAddr("user");
 
         // chainData[ChainIdUtils.Ethereum()].payload = 0xdE40689816DA168b0A56f8F22CBD7FfCFA403E6B;
+    }
+
+    // Arbitrum tests
+
+    function test_ARBITRUM_sll_soterMultisigs_threshold() external onChain(ChainIdUtils.ArbitrumOne()) {
+        assertEq(ISafeLike(SOTER_FREEZER_MULTISIG).getThreshold(), 2);
+
+        address[] memory freezerOwners = ISafeLike(SOTER_FREEZER_MULTISIG).getOwners();
+
+        assertEq(freezerOwners.length, 5);
+        assertEq(freezerOwners[0],     SOTER_FREEZER_OWNER_1);
+        assertEq(freezerOwners[1],     SOTER_FREEZER_OWNER_2);
+        assertEq(freezerOwners[2],     SOTER_FREEZER_OWNER_3);
+        assertEq(freezerOwners[3],     SOTER_FREEZER_OWNER_4);
+        assertEq(freezerOwners[4],     SOTER_FREEZER_OWNER_5);
+
+        assertEq(ISafeLike(SOTER_GRANTOR_MULTISIG).getThreshold(), 3);
+
+        address[] memory grantorOwners = ISafeLike(SOTER_GRANTOR_MULTISIG).getOwners();
+
+        assertEq(grantorOwners.length, 5);
+        assertEq(grantorOwners[0],     SOTER_GRANTOR_OWNER_1);
+        assertEq(grantorOwners[1],     SOTER_GRANTOR_OWNER_2);
+        assertEq(grantorOwners[2],     SOTER_GRANTOR_OWNER_3);
+        assertEq(grantorOwners[3],     SOTER_GRANTOR_OWNER_4);
+        assertEq(grantorOwners[4],     SOTER_GRANTOR_OWNER_5);
     }
 
     // XLayer tests
@@ -1650,9 +1701,9 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         uint256 spUsdcSupplyBefore  = spusdc.totalSupply();
         uint256 spUsdcAssetsBefore  = spusdc.totalAssets();
 
-        assertEq(spUsdcBalanceBefore, 1_834_873.434447e6);
-        assertEq(spUsdcSupplyBefore,  1_834_010.235962e6);
-        assertEq(spUsdcAssetsBefore,  1_835_340.522841e6);
+        assertEq(spUsdcBalanceBefore, 342_214.838089e6);
+        assertEq(spUsdcSupplyBefore,  342_543.957959e6);
+        assertEq(spUsdcAssetsBefore,  342_839.120574e6);
 
         assertEq(xlayerUsdc.balanceOf(user), 1_000_000e6);
         assertEq(spusdc.balanceOf(user),     0);
@@ -1662,9 +1713,9 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
         uint256 userShares = spusdc.deposit(1_000_000e6, user);
         vm.stopPrank();
 
-        assertEq(userShares,             999_275.182527e6);
+        assertEq(userShares,             999_139.063782e6);
         assertEq(spusdc.balanceOf(user), userShares);
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 1_000_000e6 - 1);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore + userShares);
 
         assertEq(xlayerUsdc.balanceOf(user),            0);
@@ -1870,7 +1921,7 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
         assertEq(savingsVaultIntents.vaultRequestCount(address(spusdc)), 1);
 
-        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 177.846293e6);  // 177.846293e6 accrued from yield on existing balance
+        assertEq(spusdc.totalAssets(), spUsdcAssetsBefore + usdcWithYield + 33.221446e6);  // 33.221446e6 accrued from yield on existing balance
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         xlayerAgent.call(
@@ -1882,12 +1933,12 @@ contract SparkEthereum_20261008_SpellTests is SpellTests {
 
         assertEq(savingsVaultIntents.vaultRequestCount(address(spusdc)), 1);
 
-        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 177.846294e6);
+        assertEq(spusdc.totalAssets(),   spUsdcAssetsBefore + 33.221446e6);
         assertEq(spusdc.totalSupply(),   spUsdcSupplyBefore);
         assertEq(spusdc.balanceOf(user), 0);
 
-        assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield - 1); // Rounding
-        assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1); // Rounding
+        assertEq(xlayerUsdc.balanceOf(user),            usdcWithYield - 1);        // Rounding
+        assertEq(xlayerUsdc.balanceOf(address(spusdc)), spUsdcBalanceBefore + 1);  // Rounding
     }
 
     function _assertWithdrawRequests(
