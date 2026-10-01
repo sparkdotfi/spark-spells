@@ -437,6 +437,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertEq(rateLimitKeys.length, 0, "Rate limit keys not fully covered");
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // NOTE: These tests only work with legacy SLL currently.
+    // ----------------------------------------------------------------------------------------------
+
     function test_ARBITRUM_E2E_sparkLiquidityLayer() external {
         _runSLLE2ETestsForDomain(ChainIdUtils.ArbitrumOne());
     }
