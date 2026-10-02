@@ -8,6 +8,8 @@ import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
+import { IERC20Like } from "../../interfaces/Interfaces.sol";
+
 interface IAccessControlsLike {
 
     function grantRole(bytes32 role, address account) external;
@@ -66,14 +68,6 @@ interface IControllerLike {
         external
         pure
         returns (bytes32 key);
-
-}
-
-interface IERC20Like {
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function balanceOf(address account) external view returns (uint256);
 
 }
 

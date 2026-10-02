@@ -500,14 +500,17 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         uint256 ethUsdsAlmProxyBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
-        uint256 ethUsdstotalSupplyBefore     = IERC20(Ethereum.USDS).totalSupply();
+        uint256 ethUsdsTotalSupplyBefore     = IERC20(Ethereum.USDS).totalSupply();
+        uint256 ethUsdsEscrowBalanceBefore   = IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW);
 
         chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
 
         RecordedLogs.init();
 
         assertEq(arbUsdstotalSupplyBefore, 99_766_513.932485333089074921e18);
-        assertEq(ethUsdstotalSupplyBefore, 6_832_532_002.531914245921299446e18);
+        assertEq(ethUsdsTotalSupplyBefore, 6_832_532_002.531914245921299446e18);
+
+        assertEq(ethUsdsEscrowBalanceBefore, 99_816_977.997434192938475265e18);
 
         assertEq(arbUsdsAlmProxyBalanceBefore, 99_326_272.779060900054294080e18);
         assertEq(ethUsdsAlmProxyBalanceBefore, 0);
@@ -525,15 +528,15 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(IERC20(Arbitrum.USDS).balanceOf(Arbitrum.ALM_PROXY), 0);
 
         // Relay L2->L1
-        ArbitrumBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.ArbitrumOne()].bridges[0], false);
-
-        // Ethereum ALM proxy received the withdrawn tokens
-
-        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+        ArbitrumBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.ArbitrumOne()].bridges[0], true);
 
         // On Ethereum release happens so no change in supply.
-        assertEq(IERC20(Ethereum.USDS).totalSupply(), ethUsdstotalSupplyBefore);
+        assertEq(IERC20(Ethereum.USDS).totalSupply(), ethUsdsTotalSupplyBefore);
 
+        // Ethereum USDS escrow releases the withdrawn tokens
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW), ethUsdsEscrowBalanceBefore - arbUsdsAlmProxyBalanceBefore);
+
+        // Ethereum ALM proxy received the withdrawn tokens
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), ethUsdsAlmProxyBalanceBefore + arbUsdsAlmProxyBalanceBefore);
     }
 
@@ -1457,6 +1460,21 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     }
 
     // XLayer tests
+
+    function test_XLAYER_spUsdcAdministeredAgent_roles() external onChain(ChainIdUtils.XLayer()) {
+        assertEq(xlayerAgent.adminCount(), 1);
+        assertEq(xlayerAgent.getAdmin(0),  XLayer.SPARK_EXECUTOR);
+
+        assertEq(xlayerAgent.actorCount(), 2);
+        assertEq(xlayerAgent.getActor(0),  XLayer.ALM_RELAYER_MULTISIG);
+        assertEq(xlayerAgent.getActor(1),  SPARK_HOT_WALLET);
+
+        assertEq(xlayerAgent.grantorCount(), 1);
+        assertEq(xlayerAgent.getGrantor(0),  XLayer.PAU_GRANTOR_MULTISIG);
+
+        assertEq(xlayerAgent.revokerCount(), 1);
+        assertEq(xlayerAgent.getRevoker(0),  XLayer.ALM_FREEZER_MULTISIG);
+    }
 
     function test_XLAYER_sll_cctp_e2e_roundTrip() external onChain(ChainIdUtils.XLayer()) {
         Bridge storage bridge = chainData[ChainIdUtils.XLayer()].bridges[2];
