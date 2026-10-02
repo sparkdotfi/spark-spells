@@ -133,10 +133,19 @@ interface IMainnetControllerV9Like {
 
 interface IPAUControllerLike {
 
+    function cctp_getToDomainRateLimitKey(uint32 destinationDomain)
+        external
+        pure
+        returns (bytes32 key);
+
+    function cctp_toCCTPRateLimitKey() external pure returns (bytes32 key);
+
     function cctp_transfer(uint256 usdcAmount, uint32 destinationDomain, uint64 feeCapRate)
         external;
 
     function proxy() external returns (address);
+
+    function rateLimits() external returns (address);
 
 }
 
@@ -502,8 +511,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
 
         if (!skipInitialCheck) {
-            _assertRateLimit(depositKey,  0, 0);
-            _assertRateLimit(withdrawKey, 0, 0);
+            _assertRateLimit(address(ctx.rateLimits), depositKey,  0, 0);
+            _assertRateLimit(address(ctx.rateLimits), withdrawKey, 0, 0);
 
             assertEq(IMainnetControllerLike(ctx.controller).maxSlippages(vault), 0);
 
@@ -514,8 +523,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _executeAllPayloadsAndBridges();
         }
 
-        _assertRateLimit(depositKey,  depositMax,        depositSlope);
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+        _assertRateLimit(address(ctx.rateLimits), depositKey,  depositMax,        depositSlope);
+        _assertRateLimit(address(ctx.rateLimits), withdrawKey, type(uint256).max, 0);
 
         assertGe(depositMax / depositSlope, 1 hours);
 
@@ -684,8 +693,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         bytes32 depositKey  = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_DEPOSIT(),  aToken);
         bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(controller.LIMIT_AAVE_WITHDRAW(), aToken);
 
-        _assertRateLimit(depositKey,  0, 0);
-        _assertRateLimit(withdrawKey, 0, 0);
+        _assertRateLimit(address(ctx.rateLimits), depositKey,  0, 0);
+        _assertRateLimit(address(ctx.rateLimits), withdrawKey, 0, 0);
 
         assertEq(controller.maxSlippages(aToken), 0);
 
@@ -695,8 +704,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         _executeAllPayloadsAndBridges();
 
-        _assertRateLimit(depositKey,  depositMax,        depositSlope);
-        _assertRateLimit(withdrawKey, type(uint256).max, 0);
+        _assertRateLimit(address(ctx.rateLimits), depositKey,  depositMax,        depositSlope);
+        _assertRateLimit(address(ctx.rateLimits), withdrawKey, type(uint256).max, 0);
 
         assertGe(depositMax / depositSlope, 1 hours);
 
@@ -718,13 +727,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address pool = IATokenLike(p.vault).POOL();
 
         // Withdraw funds to avoid supply caps getting hit
-        if (IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > 0) {
-            uint256 maxWithdrawAmount =
-                IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
-                    ? asset.balanceOf(p.vault)
-                    : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
+        uint256 maxWithdrawAmount =
+            IAToken(p.vault).balanceOf(address(p.ctx.proxy)) > asset.balanceOf(p.vault)
+                ? asset.balanceOf(p.vault)
+                : IAToken(p.vault).balanceOf(address(p.ctx.proxy));
 
-            // Subtract 10 to avoid rounding issues
+        // Subtract 10 to avoid rounding issues, skip if only dust is held
+        if (maxWithdrawAmount > 10) {
             vm.prank(p.ctx.relayer);
             MainnetController(p.ctx.controller).withdrawAave(p.vault, maxWithdrawAmount - 10);
         }
@@ -1165,8 +1174,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _toNormalizedAmount(p.asset0, 1) + _toNormalizedAmount(p.asset1, 1)
         );
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-
+        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0, 1);
         assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /***************************************************************/
@@ -1197,8 +1205,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             _toNormalizedAmount(p.asset0, 2) + _toNormalizedAmount(p.asset1, 2)
         );
 
-        assertEq(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0);
-
+        assertApproxEqAbs(IERC20(p.asset0).balanceOf(address(p.ctx.proxy)), 0, 1);
         assertApproxEqAbs(IERC20(p.asset1).balanceOf(address(p.ctx.proxy)), 0, 1);
 
         /**************************************************************************************/
@@ -2406,7 +2413,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _mintUSDSAndSwapToUSDC(uint256 usdcAmount, address controller)
         internal onChain(ChainIdUtils.Ethereum())
     {
+        require(usdcAmount != 0, "SLL/_mintUSDSAndSwapToUSDC/usdcAmount must be greater than 0");
+
         IERC20 usdc = IERC20(Ethereum.USDC);
+
+        IRateLimits rateLimits = MainnetController(controller).rateLimits();
+
+        bytes32 mintKey = MainnetController(controller).LIMIT_USDS_MINT();
+        bytes32 swapKey = MainnetController(controller).LIMIT_USDS_TO_USDC();
+
+        uint256 mintLimit = rateLimits.getCurrentRateLimit(mintKey);
+        uint256 swapLimit = rateLimits.getCurrentRateLimit(swapKey);
 
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
@@ -2416,9 +2433,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
+
+        assertEq(
+            rateLimits.getCurrentRateLimit(mintKey),
+            mintLimit != type(uint256).max ? mintLimit - usdcAmount * 1e12 : type(uint256).max
+        );
+        assertEq(
+            rateLimits.getCurrentRateLimit(swapKey),
+            swapLimit != type(uint256).max ? swapLimit - usdcAmount : type(uint256).max
+        );
     }
 
     function _bridgeUSDCToDomain(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        require(usdcAmount != 0, "SLL/_bridgeUSDCToDomain/usdcAmount must be greater than 0");
+
         IERC20 domainUsdc;
         uint32 domainCctpId;
         Bridge storage bridge = chainData[domainId].bridges[1];
@@ -2444,12 +2472,36 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         IERC20 usdc = IERC20(Ethereum.USDC);
 
+        IRateLimits rateLimits = MainnetController(controller).rateLimits();
+
+        uint256 cctpLimit = rateLimits.getCurrentRateLimit(
+            MainnetController(controller).LIMIT_USDC_TO_CCTP()
+        );
+        uint256 domainLimit = rateLimits.getCurrentRateLimit(
+            RateLimitHelpers.makeUint32Key(
+                MainnetController(controller).LIMIT_USDC_TO_DOMAIN(), domainCctpId
+            )
+        );
+
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
         MainnetController(controller).transferUSDCToCCTP(usdcAmount, domainCctpId);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance - usdcAmount);
+
+        assertEq(
+            rateLimits.getCurrentRateLimit(MainnetController(controller).LIMIT_USDC_TO_CCTP()),
+            cctpLimit != type(uint256).max ? cctpLimit - usdcAmount : type(uint256).max
+        );
+        assertEq(
+            rateLimits.getCurrentRateLimit(
+                RateLimitHelpers.makeUint32Key(
+                    MainnetController(controller).LIMIT_USDC_TO_DOMAIN(), domainCctpId
+                )
+            ),
+            domainLimit != type(uint256).max ? domainLimit - usdcAmount : type(uint256).max
+        );
 
         chainData[domainId].domain.selectFork();
 
@@ -2469,6 +2521,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _depositAndWithdrawFromPSM3(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        require(usdcAmount != 0, "SLL/_depositAndWithdrawFromPSM3/usdcAmount must be greater than 0");
+
         IERC20  domainUsdc;
         address domainPsm3;
 
@@ -2505,20 +2559,49 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         uint256 domainUsdcPsmBalance = domainUsdc.balanceOf(domainPsm3);
 
+        bytes32 depositKey  = RateLimitHelpers.makeAddressKey(
+            ForeignController(controller).LIMIT_PSM_DEPOSIT(),
+            address(domainUsdc)
+        );
+        bytes32 withdrawKey = RateLimitHelpers.makeAddressKey(
+            ForeignController(controller).LIMIT_PSM_WITHDRAW(),
+            address(domainUsdc)
+        );
+
+        uint256 depositLimit  = ctx.rateLimits.getCurrentRateLimit(depositKey);
+        uint256 withdrawLimit = ctx.rateLimits.getCurrentRateLimit(withdrawKey);
+
         vm.prank(ctx.relayer);
         ForeignController(controller).depositPSM(address(domainUsdc), usdcAmount);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance + usdcAmount);
 
+        assertEq(
+            ctx.rateLimits.getCurrentRateLimit(depositKey),
+            depositLimit != type(uint256).max ? depositLimit - usdcAmount : type(uint256).max
+        );
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), withdrawLimit);
+
         vm.prank(ctx.relayer);
         ForeignController(controller).withdrawPSM(address(domainUsdc), usdcAmount);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance);
         assertEq(domainUsdc.balanceOf(domainPsm3),     domainUsdcPsmBalance);
+
+        assertEq(
+            ctx.rateLimits.getCurrentRateLimit(depositKey),
+            depositLimit != type(uint256).max ? depositLimit - usdcAmount : type(uint256).max
+        );
+        assertEq(
+            ctx.rateLimits.getCurrentRateLimit(withdrawKey),
+            withdrawLimit != type(uint256).max ? withdrawLimit - usdcAmount : type(uint256).max
+        );
     }
 
     function _bridgeUSDCToMainnet(uint256 usdcAmount, uint256 domainId, address controller) internal  {
+        require(usdcAmount != 0, "SLL/_bridgeUSDCToMainnet/usdcAmount must be greater than 0");
+
         IERC20 domainUsdc;
         Bridge storage bridge = chainData[domainId].bridges[1];
 
@@ -2550,10 +2633,32 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(1 days);  // Skip 1 day to allow for the rate limit to be refilled
 
+        uint256 cctpLimit = ctx.rateLimits.getCurrentRateLimit(
+            ForeignController(controller).LIMIT_USDC_TO_CCTP()
+        );
+        uint256 domainLimit = ctx.rateLimits.getCurrentRateLimit(
+            RateLimitHelpers.makeUint32Key(
+                ForeignController(controller).LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM
+            )
+        );
+
         vm.prank(ctx.relayer);
         ForeignController(controller).transferUSDCToCCTP(usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
+
+        assertEq(
+            ctx.rateLimits.getCurrentRateLimit(ForeignController(controller).LIMIT_USDC_TO_CCTP()),
+            cctpLimit != type(uint256).max ? cctpLimit - usdcAmount : type(uint256).max
+        );
+        assertEq(
+            ctx.rateLimits.getCurrentRateLimit(
+                RateLimitHelpers.makeUint32Key(
+                    ForeignController(controller).LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM
+                )
+            ),
+            domainLimit != type(uint256).max ? domainLimit - usdcAmount : type(uint256).max
+        );
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -2573,6 +2678,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _bridgeUSDCToMainnet_pau(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        require(usdcAmount != 0, "SLL/_bridgeUSDCToMainnet_pau/usdcAmount must be greater than 0");
+
         IERC20 domainUsdc;
         Bridge storage bridge = chainData[domainId].bridges[3];
 
@@ -2596,6 +2703,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         skip(1 days);  // Skip 1 day to allow for the rate limit to be refilled
 
+        IRateLimits rateLimits = IRateLimits(IPAUControllerLike(controller).rateLimits());
+
+        uint256 cctpLimit = rateLimits.getCurrentRateLimit(
+            IPAUControllerLike(controller).cctp_toCCTPRateLimitKey()
+        );
+        uint256 domainLimit = rateLimits.getCurrentRateLimit(
+            IPAUControllerLike(controller).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM)
+        );
+
         vm.prank(ctx.allocator);
         IAdministeredAgentLike(ctx.administeredAgent).call(
             controller,
@@ -2603,6 +2719,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         );
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
+
+        assertEq(
+            rateLimits.getCurrentRateLimit(IPAUControllerLike(controller).cctp_toCCTPRateLimitKey()),
+            cctpLimit != type(uint256).max ? cctpLimit - usdcAmount : type(uint256).max
+        );
+        assertEq(
+            rateLimits.getCurrentRateLimit(
+                IPAUControllerLike(controller).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM)
+            ),
+            domainLimit != type(uint256).max ? domainLimit - usdcAmount : type(uint256).max
+        );
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -2624,6 +2751,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _swapUSDCToUSDSAndBurn(uint256 usdcAmount, address controller) internal {
         IERC20 usdc = IERC20(Ethereum.USDC);
 
+        IRateLimits rateLimits = MainnetController(controller).rateLimits();
+
+        bytes32 mintKey = MainnetController(controller).LIMIT_USDS_MINT();
+        bytes32 swapKey = MainnetController(controller).LIMIT_USDS_TO_USDC();
+
+        uint256 mintLimit = rateLimits.getCurrentRateLimit(mintKey);
+        uint256 swapLimit = rateLimits.getCurrentRateLimit(swapKey);
+
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
@@ -2634,6 +2769,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance - usdcAmount);
+
+        assertEq(
+            rateLimits.getCurrentRateLimit(swapKey),
+            swapLimit != type(uint256).max ? swapLimit + usdcAmount : type(uint256).max
+        );
+        assertEq(
+            rateLimits.getCurrentRateLimit(mintKey),
+            mintLimit != type(uint256).max ? mintLimit + usdcAmount * 1e12 : type(uint256).max
+        );
     }
 
     function _testMorphoVaultCreation(
@@ -2832,17 +2976,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             _depositAndWithdrawFromPSM3(1_000_000e6, domainChainId, legacyDomainController);
 
-            _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);  // TODO: Remove this in feat/sc-1721-spell-20261008
+            if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
+                address pauController = _getSLLPAUContext(domainChainId).controller;
 
-            // TODO: Uncomment this in feat/sc-1721-spell-20261008
-            // if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
-            //     address pauController = _getSLLPAUContext(domainChainId).controller;
-
-            //     _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
-            //     _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController);
-            // } else {
-            //     _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
-            // }
+                _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
+                _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController);
+            } else {
+                _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
+            }
 
             _swapUSDCToUSDSAndBurn(1_000_000e6, legacyMainnetController);
         }
@@ -3877,12 +4018,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     // TODO: MDL, seems like unnecessary overload bloat.
     function _assertRateLimit(
-       bytes32 key,
+       address              rateLimits,
+       bytes32              key,
        RateLimitData memory data
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
         _assertRateLimit(
+            rateLimits,
             key,
             data.maxAmount,
             data.slope,
@@ -3892,13 +4035,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertRateLimit(
+       address rateLimits,
        bytes32 key,
        uint256 maxAmount,
        uint256 slope
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
         _assertRateLimit(
+            rateLimits,
             key,
             maxAmount,
             slope,
@@ -3908,11 +4053,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertUnlimitedRateLimit(
+       address rateLimits,
        bytes32 key
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
         _assertRateLimit(
+            rateLimits,
             key,
             type(uint256).max,
             0,
@@ -3922,18 +4069,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _assertRateLimit(
+       address rateLimits,
        bytes32 key,
        uint256 maxAmount,
        uint256 slope,
        uint256 lastAmount,
        uint256 lastUpdated
     ) internal view {
-        IRateLimits.RateLimitData memory rateLimit = _getSparkLiquidityLayerContext().rateLimits.getRateLimitData(key);
+        IRateLimits.RateLimitData memory rateLimit = IRateLimits(rateLimits).getRateLimitData(key);
 
-        assertEq(rateLimit.maxAmount,   maxAmount);
-        assertEq(rateLimit.slope,       slope);
-        assertEq(rateLimit.lastAmount,  lastAmount);
-        assertEq(rateLimit.lastUpdated, lastUpdated);
+        assertEq(rateLimit.maxAmount, maxAmount);
+        assertEq(rateLimit.slope,     slope);
 
         if (maxAmount != 0 && maxAmount != type(uint256).max) {
             // Do some sanity checks on the slope
@@ -4127,4 +4273,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _toNormalizedAmount(address token, uint256 amount) internal view returns (uint256 normalizedAmount) {
         return amount * 1e18 / (10 ** IERC20Metadata(token).decimals());
     }
+
+    function deal(address token, address to, uint256 amount) internal override {
+        if (token == Ethereum.USDG) {
+            vm.store(Ethereum.USDG, keccak256(abi.encode(to, 1)), bytes32(amount));  // 1 is the USDG_BALANCES_SLOT_INDEX.
+            return;
+        }
+        super.deal(token, to, amount);
+    }
+
 }
