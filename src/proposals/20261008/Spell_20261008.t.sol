@@ -1482,6 +1482,17 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 3_000_000e6, uint256(30_000_000e6) / 1 days);
 
         _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 3_000_000e6, uint256(30_000_000e6) / 1 days);
+
+        assertEq(controller.integrations().length,                                                1);
+        assertEq(controller.getConfig(CCTP_FACET_ID).facet,                                       Arbitrum.CCTP_FACET);
+        assertEq(controller.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet, Arbitrum.CCTP_FACET);
+
+        vm.prank(PAS_CBEAM);
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+
+        assertEq(controller.integrations().length,                                                0);
+        assertEq(controller.getConfig(CCTP_FACET_ID).facet,                                       address(0));
+        assertEq(controller.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet, address(0));
     }
 
     // XLayer tests
