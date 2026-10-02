@@ -23,15 +23,7 @@ import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
 interface IAccessControlsLike {
-
-    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
-
-    function grantRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
 
     function hasRole(bytes32 role, address account) external view returns (bool);
 
@@ -69,12 +61,6 @@ interface IALMProxyLike {
 }
 
 interface IBeaconLike {
-
-    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
-
-    function grantRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
 
     function hasRole(bytes32 role, address account) external view returns (bool);
 
@@ -160,11 +146,6 @@ interface IBeamStateLike {
 
     function getHop(address rateLimits) external view returns (uint256);
 
-    function getInitRateLimits(bytes32 key, address rateLimits)
-        external
-        view
-        returns (uint256 maxAmount, uint256 slope);
-
     function getMaxChange(address rateLimits) external view returns (uint256);
 
     function hasUserRole(address usr, uint8 role) external view returns (bool);
@@ -203,8 +184,6 @@ interface IBeamStateLike {
 
 interface IConfiguratorLike {
 
-    event CallControllerAction(address indexed controller, bytes data);
-
     event SetRateLimit(address indexed rateLimits, bytes32 indexed key, uint256 maxAmount, uint256 slope);
 
     function beamState() external view returns (address);
@@ -239,12 +218,6 @@ interface IControllerLike {
         Config  config;
     }
 
-    event IntegrationRemoved(bytes32 indexed id);
-
-    function accessControls() external view returns (address);
-
-    function beacon() external view returns (address);
-
     function cctp_getDomainParameters(uint32 destinationDomain)
         external
         view
@@ -263,8 +236,6 @@ interface IControllerLike {
 
     function integrations() external view returns (Integration[] memory);
 
-    function rateLimits() external view returns (address);
-
     function removeIntegrations(bytes32[] calldata ids) external;
 
     function updateIntegrations(bytes32[] calldata ids) external;
@@ -274,10 +245,6 @@ interface IControllerLike {
 interface IERC4626Like {
 
     function balanceOf(address account) external view returns (uint256);
-
-    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
-
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     function convertToShares(uint256 assets) external view returns (uint256 shares);
 
@@ -373,8 +340,6 @@ interface ISparkVaultV2Like {
 
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
-    function setVsr(uint256 vsr) external;
-
 }
 
 interface ITimelockLike {
@@ -384,8 +349,6 @@ interface ITimelockLike {
     event MinDelayChange(uint256 oldDuration, uint256 newDuration);
 
     event Paused(address account);
-
-    event Unpaused(address account);
 
     function CANCELLER_ROLE() external view returns (bytes32);
 
@@ -406,8 +369,6 @@ interface ITimelockLike {
     function getMinDelay() external view returns (uint256);
 
     function getOperationsCount() external view returns (uint256);
-
-    function getTimestamp(bytes32 id) external view returns (uint256);
 
     function hasRole(bytes32 role, address account) external view returns (bool);
 

@@ -10,8 +10,6 @@ import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
 
 interface IAccessControlsLike {
 
-    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
-
     function grantRole(bytes32 role, address account) external;
 
     function revokeRole(bytes32 role, address account) external;
@@ -22,17 +20,11 @@ interface IAdministeredAgentLike {
 
     function addActor(address actor) external;
 
-    function addAdmin(address admin) external;
-
     function addGrantor(address grantor) external;
 
     function addRevoker(address revoker) external;
 
-    function removeAdmin(address admin) external;
-
     function removeGrantor(address grantor) external;
-
-    function removeRevoker(address revoker) external;
 
 }
 
@@ -52,8 +44,6 @@ interface IALMProxyLike {
 }
 
 interface IBeaconLike {
-
-    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
 
     function grantRole(bytes32 role, address account) external;
 
@@ -89,11 +79,7 @@ interface IERC20Like {
 
 interface IRateLimitsLike {
 
-    function DEFAULT_ADMIN_ROLE() external returns (bytes32);
-
     function grantRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
 
     function setRateLimitData(bytes32 key, uint256 maxAmount, uint256 slope) external;
 
