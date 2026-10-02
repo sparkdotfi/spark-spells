@@ -1398,6 +1398,92 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(controller.getDispatch(IForeignControllerFullLike.cctp_transfer.selector).facet, address(0));
     }
 
+    function test_ARBITRUM_beamState_stop() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike    beamState    = IBeamStateLike(PAS_BEAM_STATE);
+        IConfiguratorLike configurator = IConfiguratorLike(PAS_CONFIGURATOR);
+        IControllerLike   controller   = IControllerLike(Arbitrum.PAU_CONTROLLER);
+
+        bytes32 toDomainKey = controller.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM);
+
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = CCTP_FACET_ID;
+
+        bytes memory removeCctpFacet = abi.encodeCall(controller.removeIntegrations, (ids));
+
+        _executeAllPayloadsAndBridges();
+
+        // stop() is IMMEDIATE (Core Council), start() is DELAYED (Timelock)
+
+        assertEq(beamState.actionsRoles(IBeamStateLike.stop.selector),  bytes32(uint256(1) << PAS_ROLE_IMMEDIATE));
+        assertEq(beamState.actionsRoles(IBeamStateLike.start.selector), bytes32(uint256(1) << PAS_ROLE_DELAYED));
+
+        assertEq(beamState.stopped(), false);
+
+        // Configurator works while not stopped
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 5_000_000e6, uint256(50_000_000e6) / 1 days);
+
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 4_000_000e6, uint256(40_000_000e6) / 1 days);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 4_000_000e6, uint256(40_000_000e6) / 1 days);
+
+        // The Timelock cannot stop
+
+        assertEq(beamState.stopped(), false);
+
+        vm.prank(PAS_TIMELOCK);
+        vm.expectRevert("BeamState/role-not-authorized");
+        beamState.stop();
+
+        assertEq(beamState.stopped(), false);
+
+        // The Core Council stops directly, with no delay
+
+        vm.expectEmit(PAS_BEAM_STATE);
+        emit IBeamStateLike.Stop();
+        vm.prank(PAS_CORE_COUNCIL);
+        beamState.stop();
+
+        assertEq(beamState.stopped(), true);
+
+        // Both Configurator entry points are blocked
+
+        vm.expectRevert("Configurator/stopped");
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 3_000_000e6, uint256(30_000_000e6) / 1 days);
+
+        vm.expectRevert("Configurator/stopped");
+        vm.prank(PAS_CBEAM);
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+
+        // The Core Council cannot start again: that goes through the Timelock or a BeamState ward
+
+        assertEq(beamState.stopped(), true);
+
+        vm.expectRevert("BeamState/role-not-authorized");
+        vm.prank(PAS_CORE_COUNCIL);
+        beamState.start();
+
+        assertEq(beamState.stopped(), true);
+
+        vm.expectEmit(PAS_BEAM_STATE);
+        emit IBeamStateLike.Start();
+        vm.prank(PAS_TIMELOCK);
+        beamState.start();
+
+        assertEq(beamState.stopped(), false);
+
+        // Configurator works again
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 4_000_000e6, uint256(40_000_000e6) / 1 days);
+
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 3_000_000e6, uint256(30_000_000e6) / 1 days);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 3_000_000e6, uint256(30_000_000e6) / 1 days);
+    }
+
     // XLayer tests
 
     function test_XLAYER_sll_cctp_e2e_roundTrip() external onChain(ChainIdUtils.XLayer()) {
