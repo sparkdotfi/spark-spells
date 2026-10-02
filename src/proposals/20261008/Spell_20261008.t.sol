@@ -1180,6 +1180,87 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
         assertEq(beamState.cBeams(PAS_CBEAM), 0);
     }
 
+    function test_ARBITRUM_beamState_unsetCBeam_revokesConfiguratorAccess() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IBeamStateLike    beamState    = IBeamStateLike(PAS_BEAM_STATE);
+        IConfiguratorLike configurator = IConfiguratorLike(PAS_CONFIGURATOR);
+        IControllerLike   controller   = IControllerLike(Arbitrum.PAU_CONTROLLER);
+
+        bytes32 toDomainKey = controller.cctp_getToDomainRateLimitKey(CCTP_V2_DOMAIN_ID_ETHEREUM);
+
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = CCTP_FACET_ID;
+
+        bytes memory removeCctpFacet = abi.encodeCall(controller.removeIntegrations, (ids));
+
+        _executeAllPayloadsAndBridges();
+
+        // Assert both unsetCBeamForRateLimits and unsetCBeamForController are IMMEDIATE and that the Timelock's calls to each revert
+
+        assertEq(beamState.actionsRoles(IBeamStateLike.unsetCBeamForRateLimits.selector), bytes32(uint256(1) << PAS_ROLE_IMMEDIATE));
+        assertEq(beamState.actionsRoles(IBeamStateLike.unsetCBeamForController.selector), bytes32(uint256(1) << PAS_ROLE_IMMEDIATE));
+
+        vm.expectRevert("BeamState/role-not-authorized");
+        vm.prank(PAS_TIMELOCK);
+        beamState.unsetCBeamForRateLimits(Arbitrum.PAU_RATELIMITS, PAS_CBEAM);
+
+        vm.expectRevert("BeamState/role-not-authorized");
+        vm.prank(PAS_TIMELOCK);
+        beamState.unsetCBeamForController(Arbitrum.PAU_CONTROLLER, PAS_CBEAM);
+
+        // cBEAM still succeeds with setRateLimit after delCBeam
+
+        assertEq(beamState.cBeams(PAS_CBEAM),                                     1);
+        assertEq(beamState.rateLimitsCBeams(Arbitrum.PAU_RATELIMITS, PAS_CBEAM),  1);
+        assertEq(beamState.controllersCBeams(Arbitrum.PAU_CONTROLLER, PAS_CBEAM), 1);
+
+        vm.prank(PAS_CORE_COUNCIL);
+        beamState.delCBeam(PAS_CBEAM);
+
+        assertEq(beamState.cBeams(PAS_CBEAM),                                     0);
+        assertEq(beamState.rateLimitsCBeams(Arbitrum.PAU_RATELIMITS, PAS_CBEAM),  1);
+        assertEq(beamState.controllersCBeams(Arbitrum.PAU_CONTROLLER, PAS_CBEAM), 1);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 5_000_000e6, uint256(50_000_000e6) / 1 days);
+
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(1_000_000e6) / 1 days);
+
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(1_000_000e6) / 1 days);
+
+        // The Core Council unsets the cBEAM on the rate limits: setRateLimit is rejected
+
+        assertEq(beamState.rateLimitsCBeams(Arbitrum.PAU_RATELIMITS, PAS_CBEAM), 1);
+
+        vm.expectEmit(PAS_BEAM_STATE);
+        emit IBeamStateLike.UnsetCBeamForRateLimits(Arbitrum.PAU_RATELIMITS, PAS_CBEAM);
+        vm.prank(PAS_CORE_COUNCIL);
+        beamState.unsetCBeamForRateLimits(Arbitrum.PAU_RATELIMITS, PAS_CBEAM);
+
+        assertEq(beamState.rateLimitsCBeams(Arbitrum.PAU_RATELIMITS, PAS_CBEAM), 0);
+
+        vm.expectRevert("Configurator/not-authorized-ratelimits-cBeam");
+        vm.prank(PAS_CBEAM);
+        configurator.setRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 500_000e6, uint256(500_000e6) / 1 days);
+
+        // Rate limit left as the cBEAM last set it
+        _assertRateLimit(Arbitrum.PAU_RATELIMITS, toDomainKey, 1_000_000e6, uint256(1_000_000e6) / 1 days);
+
+        // The Core Council unsets the cBEAM on the controller: callControllerAction is rejected
+
+        assertEq(beamState.controllersCBeams(Arbitrum.PAU_CONTROLLER, PAS_CBEAM), 1);
+
+        vm.expectEmit(PAS_BEAM_STATE);
+        emit IBeamStateLike.UnsetCBeamForController(Arbitrum.PAU_CONTROLLER, PAS_CBEAM);
+        vm.prank(PAS_CORE_COUNCIL);
+        beamState.unsetCBeamForController(Arbitrum.PAU_CONTROLLER, PAS_CBEAM);
+
+        assertEq(beamState.controllersCBeams(Arbitrum.PAU_CONTROLLER, PAS_CBEAM), 0);
+
+        vm.expectRevert("Configurator/not-authorized-controller-cBeam");
+        vm.prank(PAS_CBEAM);
+        configurator.callControllerAction(Arbitrum.PAU_CONTROLLER, removeCctpFacet);
+    }
+
     function test_ARBITRUM_pasConfigurator_setRateLimit() external onChain(ChainIdUtils.ArbitrumOne()) {
         IConfiguratorLike configurator = IConfiguratorLike(PAS_CONFIGURATOR);
         IControllerLike   controller   = IControllerLike(Arbitrum.PAU_CONTROLLER);
