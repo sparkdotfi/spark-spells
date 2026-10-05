@@ -346,6 +346,8 @@ interface ITimelockLike {
 
     error EnforcedPause();
 
+    error TimelockUnexpectedOperationState(bytes32 id, bytes32 state);
+
     event MinDelayChange(uint256 oldDuration, uint256 newDuration);
 
     event Paused(address account);
@@ -1107,8 +1109,19 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(timelock.isOperationReady(id), false);
 
+        // Skip to just before the delay. The operation is still Waiting.
+        skip(TIMELOCK_MIN_DELAY - 1);
+
+        // Still Waiting. execute requires Ready, encoded as bit 2 (1 << OperationState.Ready).
+        vm.expectRevert(abi.encodeWithSelector(
+            ITimelockLike.TimelockUnexpectedOperationState.selector,
+            id,
+            bytes32(uint256(1 << 2))
+        ));
+        timelock.executeBatch(targets, values, payloads, bytes32(0), bytes32(0));
+
         // Skip to the end of the delay
-        skip(TIMELOCK_MIN_DELAY);
+        skip(1);
 
         assertEq(timelock.isOperationReady(id), true);
 
