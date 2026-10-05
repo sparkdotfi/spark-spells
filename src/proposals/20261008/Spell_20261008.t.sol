@@ -60,6 +60,52 @@ interface IALMProxyLike {
 
 }
 
+interface IArbitrumL1TokenGatewayLike {
+
+    event WithdrawalFinalized(address l1Token, address indexed _from, address indexed _to, uint256 indexed _exitNum, uint256 _amount);
+
+    function finalizeInboundTransfer(address l1Token, address from, address to, uint256 amount, bytes memory data) external payable;
+
+}
+
+interface IArbitrumOutboxLike {
+
+    event OutBoxTransactionExecuted(address indexed to, address indexed l2Sender, uint256 indexed zero, uint256 transactionIndex);
+
+    error AlreadySpent(uint256 index);
+
+    function calculateItemHash(
+        address l2Sender,
+        address to,
+        uint256 l2Block,
+        uint256 l1Block,
+        uint256 l2Timestamp,
+        uint256 value,
+        bytes memory data
+    ) external pure returns (bytes32);
+
+    function executeTransaction(
+        bytes32[] memory proof,
+        uint256 index,
+        address l2Sender,
+        address to,
+        uint256 l2Block,
+        uint256 l1Block,
+        uint256 l2Timestamp,
+        uint256 value,
+        bytes memory data
+    ) external;
+
+    function isSpent(uint256 index) external view returns (bool);
+
+    function rollup() external view returns (address);
+
+    function roots(bytes32 root) external view returns (bytes32);
+
+    function updateSendRoot(bytes32 root, bytes32 l2BlockHash) external;
+
+}
+
 interface IBeaconLike {
 
     function hasRole(bytes32 role, address account) external view returns (bool);
@@ -448,6 +494,24 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
     address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
 
+    // Arbitrum -> Ethereum USDS withdrawal dry run: 1 USDS sent to the Ethereum ALM Proxy through the token bridge,
+    // pending in the Arbitrum Outbox at the fork block.
+    // https://arbiscan.io/tx/0x45f159903aa31cd40fdf91219f05c2a839ed75f6139e97c937987d8ecce15d78
+
+    address internal constant ARBITRUM_OUTBOX = 0x0B9857ae2D4A3DBe74ffE1d7DF045bb7F96E4840;
+
+    address internal constant USDS_WITHDRAWAL_FROM = 0xE0E6f7b5DD2FBd9601e61cD2aEDb79d4910B87eF;  // L2 contract that called the token bridge
+
+    uint256 internal constant USDS_WITHDRAWAL_AMOUNT       = 1e18;
+    uint256 internal constant USDS_WITHDRAWAL_INDEX        = 166656;
+    uint256 internal constant USDS_WITHDRAWAL_L2_BLOCK     = 511952606;
+    uint256 internal constant USDS_WITHDRAWAL_L1_BLOCK     = 26126827;
+    uint256 internal constant USDS_WITHDRAWAL_L2_TIMESTAMP = 1791211298;  // Oct-05-2026 14:41:38 +UTC
+
+    bytes32 internal constant USDS_WITHDRAWAL_ITEM_HASH     = 0x2068c0fc9ed0c0366660fbe1fadb1aec4ca7a0a07ad905a3cf2eb5dfad1d6d7b;
+    bytes32 internal constant USDS_WITHDRAWAL_L2_BLOCK_HASH = 0xf957cab4066087ad982b8c278d253b0789ea7152b649cd76f37c0c7fe74670f0;
+    bytes32 internal constant USDS_WITHDRAWAL_SEND_ROOT     = 0xa1130e6165b7fed6a705aedddc50471de6d44f01e2516b90e23e60aa59f1d3c9;  // ArbSys send root with this message as the last leaf
+
     // XLayer CCTP round trip test setup
 
     uint32 internal constant CCTP_V2_DOMAIN_ID_ETHEREUM = CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM;
@@ -542,6 +606,92 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         // Ethereum ALM proxy received the withdrawn tokens
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), ethUsdsAlmProxyBalanceBefore + arbUsdsAlmProxyBalanceBefore);
+    }
+
+    function test_ETHEREUM_sll_removeExcessLiquidity_dryRunOutboxExecution() external onChain(ChainIdUtils.Ethereum()) {
+        IArbitrumOutboxLike outbox = IArbitrumOutboxLike(ARBITRUM_OUTBOX);
+
+        // Calldata the L2 token bridge queued for the L1 token bridge (exitNum 0, no call hook data)
+        bytes memory data = abi.encodeCall(
+            IArbitrumL1TokenGatewayLike.finalizeInboundTransfer,
+            (Ethereum.USDS, USDS_WITHDRAWAL_FROM, Ethereum.ALM_PROXY, USDS_WITHDRAWAL_AMOUNT, abi.encode(uint256(0), bytes("")))
+        );
+
+        // NodeInterface.constructOutboxProof(166657, 166656) on Arbitrum
+        bytes32[] memory proof = new bytes32[](18);
+        proof[8]  = 0xa541feeeedadaa832c210be19e86cdd0988cf3a1d37e54868af369abcf3122fb;
+        proof[9]  = 0x4f2209fe045da74cb675e6e2c4afde9630142779c742d9b43bbbff1db013bd70;
+        proof[11] = 0x69d8205feccedfbd40c37d6cee8843c9113954f8501a182e9ffd3fe1477c2ed2;
+        proof[15] = 0x945d56661ece9531516b2ea547e4e61d1115d39273cee57682f7ffcd11a99aba;
+        proof[17] = 0x823b0cf89df544d51c06d647911719752aadbac27b07c3b38a619fdd41fcc517;
+
+        assertEq(
+            outbox.calculateItemHash(
+                Arbitrum.TOKEN_BRIDGE,
+                Ethereum.ARBITRUM_TOKEN_BRIDGE,
+                USDS_WITHDRAWAL_L2_BLOCK,
+                USDS_WITHDRAWAL_L1_BLOCK,
+                USDS_WITHDRAWAL_L2_TIMESTAMP,
+                0,
+                data
+            ),
+            USDS_WITHDRAWAL_ITEM_HASH
+        );
+
+        assertEq(outbox.roots(USDS_WITHDRAWAL_SEND_ROOT), bytes32(0));
+        assertEq(outbox.isSpent(USDS_WITHDRAWAL_INDEX),   false);
+
+        uint256 usdsEscrowBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW);
+
+        assertEq(usdsEscrowBalanceBefore,                             99_816_977.997434192938475265e18);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), 0);
+
+        // Wait out the challenge period
+        skip(7 days);
+
+        // The fork never sees the rollup confirm the assertion containing this message, so post its send root as the rollup would
+        vm.prank(outbox.rollup());
+        outbox.updateSendRoot(USDS_WITHDRAWAL_SEND_ROOT, USDS_WITHDRAWAL_L2_BLOCK_HASH);
+
+        assertEq(outbox.roots(USDS_WITHDRAWAL_SEND_ROOT), USDS_WITHDRAWAL_L2_BLOCK_HASH);
+
+        vm.expectEmit(ARBITRUM_OUTBOX);
+        emit IArbitrumOutboxLike.OutBoxTransactionExecuted(Ethereum.ARBITRUM_TOKEN_BRIDGE, Arbitrum.TOKEN_BRIDGE, 0, USDS_WITHDRAWAL_INDEX);
+        vm.expectEmit(Ethereum.USDS);
+        emit IERC20.Transfer(Ethereum.ARBITRUM_ESCROW, Ethereum.ALM_PROXY, USDS_WITHDRAWAL_AMOUNT);
+        vm.expectEmit(Ethereum.ARBITRUM_TOKEN_BRIDGE);
+        emit IArbitrumL1TokenGatewayLike.WithdrawalFinalized(Ethereum.USDS, USDS_WITHDRAWAL_FROM, Ethereum.ALM_PROXY, 0, USDS_WITHDRAWAL_AMOUNT);
+
+        outbox.executeTransaction(
+            proof,
+            USDS_WITHDRAWAL_INDEX,
+            Arbitrum.TOKEN_BRIDGE,
+            Ethereum.ARBITRUM_TOKEN_BRIDGE,
+            USDS_WITHDRAWAL_L2_BLOCK,
+            USDS_WITHDRAWAL_L1_BLOCK,
+            USDS_WITHDRAWAL_L2_TIMESTAMP,
+            0,
+            data
+        );
+
+        assertEq(outbox.isSpent(USDS_WITHDRAWAL_INDEX), true);
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW), usdsEscrowBalanceBefore - 1e18);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),       1e18);
+
+        // Message cannot be replayed
+        vm.expectRevert(abi.encodeWithSelector(IArbitrumOutboxLike.AlreadySpent.selector, USDS_WITHDRAWAL_INDEX));
+        outbox.executeTransaction(
+            proof,
+            USDS_WITHDRAWAL_INDEX,
+            Arbitrum.TOKEN_BRIDGE,
+            Ethereum.ARBITRUM_TOKEN_BRIDGE,
+            USDS_WITHDRAWAL_L2_BLOCK,
+            USDS_WITHDRAWAL_L1_BLOCK,
+            USDS_WITHDRAWAL_L2_TIMESTAMP,
+            0,
+            data
+        );
     }
 
     function test_ARBITRUM_sll_beaconRoleTransfer() external onChain(ChainIdUtils.ArbitrumOne()) {
