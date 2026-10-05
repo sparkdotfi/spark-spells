@@ -11,8 +11,8 @@ import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 contract SparkEthereum_20261008 is SparkPayloadEthereum {
 
     constructor() {
-        // PAYLOAD_ARBITRUM = 0x930e7EFC310F1E62ff3DfC7b60A8FF06d4046887;
-        // PAYLOAD_XLAYER   = 0x930e7EFC310F1E62ff3DfC7b60A8FF06d4046887;
+        PAYLOAD_ARBITRUM = 0xb037C43b433964A2017cd689f535BEb6B0531473;
+        PAYLOAD_XLAYER   = 0x3c2B7d559Fd4bd17827B49278FCe1c7d55f39311;
     }
 
 }
