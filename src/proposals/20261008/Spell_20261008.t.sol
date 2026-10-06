@@ -60,6 +60,129 @@ interface IALMProxyLike {
 
 }
 
+interface IArbitrumL1TokenGatewayLike {
+
+    event WithdrawalFinalized(address l1Token, address indexed _from, address indexed _to, uint256 indexed _exitNum, uint256 _amount);
+
+    function finalizeInboundTransfer(address l1Token, address from, address to, uint256 amount, bytes memory data) external payable;
+
+}
+
+interface IArbitrumOutboxLike {
+
+    event OutBoxTransactionExecuted(address indexed to, address indexed l2Sender, uint256 indexed zero, uint256 transactionIndex);
+
+    event SendRootUpdated(bytes32 indexed outputRoot, bytes32 indexed l2BlockHash);
+
+    error AlreadySpent(uint256 index);
+
+    function calculateItemHash(
+        address l2Sender,
+        address to,
+        uint256 l2Block,
+        uint256 l1Block,
+        uint256 l2Timestamp,
+        uint256 value,
+        bytes memory data
+    ) external pure returns (bytes32);
+
+    function executeTransaction(
+        bytes32[] memory proof,
+        uint256 index,
+        address l2Sender,
+        address to,
+        uint256 l2Block,
+        uint256 l1Block,
+        uint256 l2Timestamp,
+        uint256 value,
+        bytes memory data
+    ) external;
+
+    function isSpent(uint256 index) external view returns (bool);
+
+    function rollup() external view returns (address);
+
+    function roots(bytes32 root) external view returns (bytes32);
+
+    function updateSendRoot(bytes32 root, bytes32 l2BlockHash) external;
+
+}
+
+interface IArbitrumRollupLike {
+
+    struct GlobalState {
+        bytes32[2] bytes32Vals;  // [blockHash, sendRoot]
+        uint64[2]  u64Vals;      // [inboxPosition, positionInMessage]
+    }
+
+    struct AssertionState {
+        GlobalState globalState;
+        uint8       machineStatus;
+        bytes32     endHistoryRoot;
+    }
+
+    struct ConfigData {
+        bytes32 wasmModuleRoot;
+        uint256 requiredStake;
+        address challengeManager;
+        uint64  confirmPeriodBlocks;
+        uint64  nextInboxPosition;
+    }
+
+    struct BeforeStateData {
+        bytes32    prevPrevAssertionHash;
+        bytes32    sequencerBatchAcc;
+        ConfigData configData;  // the parent's config, validated against the parent's configHash on confirm
+    }
+
+    struct AssertionInputs {
+        BeforeStateData beforeStateData;
+        AssertionState  beforeState;
+        AssertionState  afterState;
+    }
+
+    struct AssertionNode {
+        uint64  firstChildBlock;
+        uint64  secondChildBlock;  // non-zero means a rival assertion exists (challenge)
+        uint64  createdAtBlock;
+        bool    isFirstChild;
+        uint8   status;            // 0 NoAssertion, 1 Pending, 2 Confirmed
+        bytes32 configHash;
+    }
+
+    event AssertionConfirmed(bytes32 indexed assertionHash, bytes32 blockHash, bytes32 sendRoot);
+
+    event AssertionCreated(
+        bytes32 indexed assertionHash,
+        bytes32 indexed parentAssertionHash,
+        AssertionInputs assertion,
+        bytes32 afterInboxBatchAcc,
+        uint256 inboxMaxCount,
+        bytes32 wasmModuleRoot,
+        uint256 requiredStake,
+        address challengeManager,
+        uint64  confirmPeriodBlocks
+    );
+
+    function confirmAssertion(
+        bytes32 assertionHash,
+        bytes32 prevAssertionHash,
+        AssertionState calldata confirmState,
+        bytes32 winningEdgeId,
+        ConfigData calldata prevConfig,
+        bytes32 inboxAcc
+    ) external;
+
+    function confirmPeriodBlocks() external view returns (uint64);
+
+    function getAssertion(bytes32 assertionHash) external view returns (AssertionNode memory);
+
+    function latestConfirmed() external view returns (bytes32);
+
+    function validatorWhitelistDisabled() external view returns (bool);
+
+}
+
 interface IBeaconLike {
 
     function hasRole(bytes32 role, address account) external view returns (bool);
@@ -448,6 +571,43 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
     address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
     address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
 
+    // Arbitrum -> Ethereum USDS withdrawal dry run: 1 USDS sent to the Ethereum ALM Proxy through the token bridge,
+    // pending in the Arbitrum Outbox at the fork block.
+    // https://arbiscan.io/tx/0x45f159903aa31cd40fdf91219f05c2a839ed75f6139e97c937987d8ecce15d78
+
+    address internal constant ARBITRUM_OUTBOX = 0x0B9857ae2D4A3DBe74ffE1d7DF045bb7F96E4840;
+
+    address internal constant USDS_WITHDRAWAL_FROM = 0xE0E6f7b5DD2FBd9601e61cD2aEDb79d4910B87eF;  // L2 contract that called the token bridge
+
+    uint256 internal constant USDS_WITHDRAWAL_AMOUNT       = 1e18;
+    uint256 internal constant USDS_WITHDRAWAL_INDEX        = 166656;
+    uint256 internal constant USDS_WITHDRAWAL_L2_BLOCK     = 511952606;
+    uint256 internal constant USDS_WITHDRAWAL_L1_BLOCK     = 26126827;
+    uint256 internal constant USDS_WITHDRAWAL_L2_TIMESTAMP = 1791211298;  // Oct-05-2026 14:41:38 +UTC
+
+    bytes32 internal constant USDS_WITHDRAWAL_ITEM_HASH     = 0x2068c0fc9ed0c0366660fbe1fadb1aec4ca7a0a07ad905a3cf2eb5dfad1d6d7b;
+    bytes32 internal constant USDS_WITHDRAWAL_L2_BLOCK_HASH = 0xf957cab4066087ad982b8c278d253b0789ea7152b649cd76f37c0c7fe74670f0;
+    bytes32 internal constant USDS_WITHDRAWAL_SEND_ROOT     = 0xa1130e6165b7fed6a705aedddc50471de6d44f01e2516b90e23e60aa59f1d3c9;  // ArbSys send root with this message as the last leaf
+
+    // Real rollup confirmation replay: the first validator assertion whose range includes the withdrawal was created at
+    // L1 block 26,127,226 and asserts L2 block 511,956,752 with sendCount 166,658, so its send root contains leaf
+    // 166,656. Confirmable from L1 block 26,127,226 + 45,818.
+
+    uint256 internal constant ROLLUP_REPLAY_FORK_BLOCK = 26127560;  // mainnet block after the covering assertion was created
+
+    bytes32 internal constant USDS_WITHDRAWAL_ASSERTION             = 0xc831e52518314953d875ecf733376e44af57910ed8ae7a3022824d8084a405c3;
+    bytes32 internal constant USDS_WITHDRAWAL_ASSERTED_L2_BLOCK_HASH = 0x436ab16ca096367792379913beb26a5209f647bb24e0b78405eaf261c3d6ff02;  // L2 block 511,956,752
+    bytes32 internal constant USDS_WITHDRAWAL_ASSERTED_SEND_ROOT     = 0x1f217600112ffbe304c3d9233835d07d13dd7ff91bb8475738403cdf4d6a49e2;  // its send root, sendCount 166,658
+
+    struct PendingAssertion {
+        bytes32                            hash;
+        IArbitrumRollupLike.AssertionInputs inputs;
+        bytes32                            afterInboxBatchAcc;
+        bool                               exists;
+    }
+
+    mapping(bytes32 parentAssertionHash => PendingAssertion) internal _pendingChildOf;
+
     // XLayer CCTP round trip test setup
 
     uint32 internal constant CCTP_V2_DOMAIN_ID_ETHEREUM = CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM;
@@ -542,6 +702,237 @@ contract SparkEthereum_20261008_SLLTests is SparkLiquidityLayerTests {
 
         // Ethereum ALM proxy received the withdrawn tokens
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), ethUsdsAlmProxyBalanceBefore + arbUsdsAlmProxyBalanceBefore);
+    }
+
+    function test_ETHEREUM_sll_removeExcessLiquidity_dryRunOutboxExecution() external onChain(ChainIdUtils.Ethereum()) {
+        IArbitrumOutboxLike outbox = IArbitrumOutboxLike(ARBITRUM_OUTBOX);
+
+        // Calldata the L2 token bridge queued for the L1 token bridge (exitNum 0, no call hook data)
+        bytes memory data = abi.encodeCall(
+            IArbitrumL1TokenGatewayLike.finalizeInboundTransfer,
+            (Ethereum.USDS, USDS_WITHDRAWAL_FROM, Ethereum.ALM_PROXY, USDS_WITHDRAWAL_AMOUNT, abi.encode(uint256(0), bytes("")))
+        );
+
+        // NodeInterface.constructOutboxProof(166657, 166656) on Arbitrum
+        bytes32[] memory proof = new bytes32[](18);
+        proof[8]  = 0xa541feeeedadaa832c210be19e86cdd0988cf3a1d37e54868af369abcf3122fb;
+        proof[9]  = 0x4f2209fe045da74cb675e6e2c4afde9630142779c742d9b43bbbff1db013bd70;
+        proof[11] = 0x69d8205feccedfbd40c37d6cee8843c9113954f8501a182e9ffd3fe1477c2ed2;
+        proof[15] = 0x945d56661ece9531516b2ea547e4e61d1115d39273cee57682f7ffcd11a99aba;
+        proof[17] = 0x823b0cf89df544d51c06d647911719752aadbac27b07c3b38a619fdd41fcc517;
+
+        assertEq(
+            outbox.calculateItemHash(
+                Arbitrum.TOKEN_BRIDGE,
+                Ethereum.ARBITRUM_TOKEN_BRIDGE,
+                USDS_WITHDRAWAL_L2_BLOCK,
+                USDS_WITHDRAWAL_L1_BLOCK,
+                USDS_WITHDRAWAL_L2_TIMESTAMP,
+                0,
+                data
+            ),
+            USDS_WITHDRAWAL_ITEM_HASH
+        );
+
+        assertEq(outbox.roots(USDS_WITHDRAWAL_SEND_ROOT), bytes32(0));
+        assertEq(outbox.isSpent(USDS_WITHDRAWAL_INDEX),   false);
+
+        uint256 usdsEscrowBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW);
+
+        assertEq(usdsEscrowBalanceBefore,                             99_816_977.997434192938475265e18);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), 0);
+
+        // Wait out the challenge period
+        skip(7 days);
+
+        // The fork never sees the rollup confirm the assertion containing this message, so post its send root as the rollup would
+        vm.prank(outbox.rollup());
+        outbox.updateSendRoot(USDS_WITHDRAWAL_SEND_ROOT, USDS_WITHDRAWAL_L2_BLOCK_HASH);
+
+        assertEq(outbox.roots(USDS_WITHDRAWAL_SEND_ROOT), USDS_WITHDRAWAL_L2_BLOCK_HASH);
+
+        vm.expectEmit(ARBITRUM_OUTBOX);
+        emit IArbitrumOutboxLike.OutBoxTransactionExecuted(Ethereum.ARBITRUM_TOKEN_BRIDGE, Arbitrum.TOKEN_BRIDGE, 0, USDS_WITHDRAWAL_INDEX);
+        vm.expectEmit(Ethereum.USDS);
+        emit IERC20.Transfer(Ethereum.ARBITRUM_ESCROW, Ethereum.ALM_PROXY, USDS_WITHDRAWAL_AMOUNT);
+        vm.expectEmit(Ethereum.ARBITRUM_TOKEN_BRIDGE);
+        emit IArbitrumL1TokenGatewayLike.WithdrawalFinalized(Ethereum.USDS, USDS_WITHDRAWAL_FROM, Ethereum.ALM_PROXY, 0, USDS_WITHDRAWAL_AMOUNT);
+
+        outbox.executeTransaction(
+            proof,
+            USDS_WITHDRAWAL_INDEX,
+            Arbitrum.TOKEN_BRIDGE,
+            Ethereum.ARBITRUM_TOKEN_BRIDGE,
+            USDS_WITHDRAWAL_L2_BLOCK,
+            USDS_WITHDRAWAL_L1_BLOCK,
+            USDS_WITHDRAWAL_L2_TIMESTAMP,
+            0,
+            data
+        );
+
+        assertEq(outbox.isSpent(USDS_WITHDRAWAL_INDEX), true);
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW), usdsEscrowBalanceBefore - 1e18);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),       1e18);
+
+        // Message cannot be replayed
+        vm.expectRevert(abi.encodeWithSelector(IArbitrumOutboxLike.AlreadySpent.selector, USDS_WITHDRAWAL_INDEX));
+        outbox.executeTransaction(
+            proof,
+            USDS_WITHDRAWAL_INDEX,
+            Arbitrum.TOKEN_BRIDGE,
+            Ethereum.ARBITRUM_TOKEN_BRIDGE,
+            USDS_WITHDRAWAL_L2_BLOCK,
+            USDS_WITHDRAWAL_L1_BLOCK,
+            USDS_WITHDRAWAL_L2_TIMESTAMP,
+            0,
+            data
+        );
+    }
+
+    // Same dry run, but without pranking the rollup: every pending assertion since the latest confirmed one is confirmed
+    // through the real `confirmAssertion`, in order, with the data the validators published in `AssertionCreated`, after
+    // rolling the fork past the covering assertion's deadline. The last confirmation is what writes the send root into the
+    // Outbox. The only synthetic input is `block.number`.
+    function test_ETHEREUM_sll_removeExcessLiquidity_dryRunOutboxExecution_replayRollupConfirmations()
+        external onChain(ChainIdUtils.Ethereum())
+    {
+        // The covering assertion does not exist at _blockDate; move the mainnet fork past its creation.
+        chainData[ChainIdUtils.Ethereum()].domain.rollFork(ROLLUP_REPLAY_FORK_BLOCK);
+
+        IArbitrumOutboxLike outbox = IArbitrumOutboxLike(ARBITRUM_OUTBOX);
+        IArbitrumRollupLike rollup = IArbitrumRollupLike(outbox.rollup());
+
+        assertEq(IArbitrumRollupLike.AssertionCreated.selector, 0x901c3aee23cf4478825462caaab375c606ab83516060388344f0650340753630);
+        assertEq(rollup.validatorWhitelistDisabled(), true);  // anyone may call confirmAssertion
+        assertEq(rollup.confirmPeriodBlocks(),        45_818);
+
+        bytes32 latestConfirmed = rollup.latestConfirmed();
+
+        IArbitrumRollupLike.AssertionNode memory covering = rollup.getAssertion(USDS_WITHDRAWAL_ASSERTION);
+
+        assertEq(covering.status,         1);  // Pending
+        assertEq(covering.createdAtBlock, 26127226);
+
+        // 1. Collect every AssertionCreated since the latest confirmed assertion was created (RPC allows 10k blocks per query).
+        bytes32[] memory topics = new bytes32[](1);
+        topics[0] = IArbitrumRollupLike.AssertionCreated.selector;
+
+        uint256 from = rollup.getAssertion(latestConfirmed).createdAtBlock;
+        uint256 created;
+
+        while (from <= ROLLUP_REPLAY_FORK_BLOCK) {
+            uint256 to = from + 9_999 < ROLLUP_REPLAY_FORK_BLOCK ? from + 9_999 : ROLLUP_REPLAY_FORK_BLOCK;
+
+            VmSafe.EthGetLogs[] memory logs = vm.eth_getLogs(from, to, address(rollup), topics);
+
+            for (uint256 i = 0; i < logs.length; i++) {
+                ( IArbitrumRollupLike.AssertionInputs memory inputs, bytes32 afterInboxBatchAcc,,,,, )
+                    = abi.decode(logs[i].data, (IArbitrumRollupLike.AssertionInputs, bytes32, uint256, bytes32, uint256, address, uint64));
+
+                bytes32 parent = logs[i].topics[2];
+
+                assertEq(_pendingChildOf[parent].exists, false, "rival assertion found");
+
+                _pendingChildOf[parent] = PendingAssertion({
+                    hash:               logs[i].topics[1],
+                    inputs:             inputs,
+                    afterInboxBatchAcc: afterInboxBatchAcc,
+                    exists:             true
+                });
+
+                created++;
+            }
+
+            from = to + 1;
+        }
+
+        // 2. Past the deadline of the covering assertion, which is the latest deadline in the chain.
+        vm.roll(covering.createdAtBlock + rollup.confirmPeriodBlocks());
+
+        assertEq(outbox.roots(USDS_WITHDRAWAL_ASSERTED_SEND_ROOT), bytes32(0));
+        assertEq(outbox.isSpent(USDS_WITHDRAWAL_INDEX),              false);
+
+        // 3. Confirm the chain in order, exactly as validators will, until the covering assertion is confirmed.
+        bytes32 current = latestConfirmed;
+        uint256 confirmed;
+
+        while (current != USDS_WITHDRAWAL_ASSERTION) {
+            PendingAssertion storage child = _pendingChildOf[current];
+
+            assertEq(child.exists,                                 true, "gap in assertion chain");
+            assertEq(rollup.getAssertion(current).secondChildBlock, 0,   "unexpected challenge");
+
+            if (child.hash == USDS_WITHDRAWAL_ASSERTION) {
+                // The validator committed to exactly the block hash and send root the proof below was built against.
+                assertEq(child.inputs.afterState.globalState.bytes32Vals[0], USDS_WITHDRAWAL_ASSERTED_L2_BLOCK_HASH);
+                assertEq(child.inputs.afterState.globalState.bytes32Vals[1], USDS_WITHDRAWAL_ASSERTED_SEND_ROOT);
+
+                vm.expectEmit(ARBITRUM_OUTBOX);
+                emit IArbitrumOutboxLike.SendRootUpdated(USDS_WITHDRAWAL_ASSERTED_SEND_ROOT, USDS_WITHDRAWAL_ASSERTED_L2_BLOCK_HASH);
+                vm.expectEmit(address(rollup));
+                emit IArbitrumRollupLike.AssertionConfirmed(USDS_WITHDRAWAL_ASSERTION, USDS_WITHDRAWAL_ASSERTED_L2_BLOCK_HASH, USDS_WITHDRAWAL_ASSERTED_SEND_ROOT);
+            }
+
+            rollup.confirmAssertion(
+                child.hash,
+                current,
+                child.inputs.afterState,
+                bytes32(0),  // no rival, so no winning edge
+                child.inputs.beforeStateData.configData,
+                child.afterInboxBatchAcc
+            );
+
+            assertEq(rollup.latestConfirmed(), child.hash);
+
+            current = child.hash;
+            confirmed++;
+        }
+
+        assertGt(confirmed, 100);           // ~6.4 days of hourly assertions
+        assertLe(confirmed, created);
+
+        assertEq(rollup.getAssertion(USDS_WITHDRAWAL_ASSERTION).status, 2);  // Confirmed
+        assertEq(outbox.roots(USDS_WITHDRAWAL_ASSERTED_SEND_ROOT),       USDS_WITHDRAWAL_ASSERTED_L2_BLOCK_HASH);
+
+        // 4. The claim, against the root the validators put there. NodeInterface.constructOutboxProof(166658, 166656) on Arbitrum.
+        bytes32[] memory proof = new bytes32[](18);
+        proof[0]  = 0x7f954d609deafa7e2cb7e72842bde281b273138c53111bc4a31b2f7018be400d;
+        proof[8]  = 0xa541feeeedadaa832c210be19e86cdd0988cf3a1d37e54868af369abcf3122fb;
+        proof[9]  = 0x4f2209fe045da74cb675e6e2c4afde9630142779c742d9b43bbbff1db013bd70;
+        proof[11] = 0x69d8205feccedfbd40c37d6cee8843c9113954f8501a182e9ffd3fe1477c2ed2;
+        proof[15] = 0x945d56661ece9531516b2ea547e4e61d1115d39273cee57682f7ffcd11a99aba;
+        proof[17] = 0x823b0cf89df544d51c06d647911719752aadbac27b07c3b38a619fdd41fcc517;
+
+        bytes memory data = abi.encodeCall(
+            IArbitrumL1TokenGatewayLike.finalizeInboundTransfer,
+            (Ethereum.USDS, USDS_WITHDRAWAL_FROM, Ethereum.ALM_PROXY, USDS_WITHDRAWAL_AMOUNT, abi.encode(uint256(0), bytes("")))
+        );
+
+        uint256 usdsEscrowBalanceBefore = IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW);
+
+        assertEq(usdsEscrowBalanceBefore,                             99_816_977.997434192938475265e18);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY), 0);
+
+        vm.expectEmit(Ethereum.ARBITRUM_TOKEN_BRIDGE);
+        emit IArbitrumL1TokenGatewayLike.WithdrawalFinalized(Ethereum.USDS, USDS_WITHDRAWAL_FROM, Ethereum.ALM_PROXY, 0, USDS_WITHDRAWAL_AMOUNT);
+
+        outbox.executeTransaction(
+            proof,
+            USDS_WITHDRAWAL_INDEX,
+            Arbitrum.TOKEN_BRIDGE,
+            Ethereum.ARBITRUM_TOKEN_BRIDGE,
+            USDS_WITHDRAWAL_L2_BLOCK,
+            USDS_WITHDRAWAL_L1_BLOCK,
+            USDS_WITHDRAWAL_L2_TIMESTAMP,
+            0,
+            data
+        );
+
+        assertEq(outbox.isSpent(USDS_WITHDRAWAL_INDEX), true);
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ARBITRUM_ESCROW), usdsEscrowBalanceBefore - USDS_WITHDRAWAL_AMOUNT);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),       USDS_WITHDRAWAL_AMOUNT);
     }
 
     function test_ARBITRUM_sll_beaconRoleTransfer() external onChain(ChainIdUtils.ArbitrumOne()) {
