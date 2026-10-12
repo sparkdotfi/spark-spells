@@ -402,6 +402,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     //   1.000000003022265980097387650
     uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
 
+    // Latest mainnet timestamp seen by the cross-chain E2E steps. Switching forks can move the
+    // mainnet clock backwards (#91), which underflows `block.timestamp - lastUpdated` in RateLimits.
+    uint256 internal _lastMainnetTimestamp;
+
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
@@ -2410,10 +2414,28 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     // Cross-chain E2E Steps
 
+    function _syncMainnetTimestamp() internal {
+        if (block.timestamp < _lastMainnetTimestamp) vm.warp(_lastMainnetTimestamp);
+
+        _lastMainnetTimestamp = block.timestamp;
+    }
+
+    function _increasedRateLimit(IRateLimits rateLimits, bytes32 key, uint256 limitBefore, uint256 amount)
+        internal view returns (uint256)
+    {
+        if (limitBefore == type(uint256).max) return type(uint256).max;
+
+        uint256 maxAmount = rateLimits.getRateLimitData(key).maxAmount;
+
+        return limitBefore + amount > maxAmount ? maxAmount : limitBefore + amount;
+    }
+
     function _mintUSDSAndSwapToUSDC(uint256 usdcAmount, address controller)
         internal onChain(ChainIdUtils.Ethereum())
     {
         require(usdcAmount != 0, "SLL/_mintUSDSAndSwapToUSDC/usdcAmount must be greater than 0");
+
+        _syncMainnetTimestamp();
 
         IERC20 usdc = IERC20(Ethereum.USDC);
 
@@ -2662,7 +2684,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 mainnetTimestamp        = block.timestamp;
+        _syncMainnetTimestamp();
+
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
@@ -2672,7 +2695,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         CCTPBridgeTesting.relayMessagesToSource(bridge, true);
 
         // Relaying switches forks, so mainnet can end up behind its pre-bridge timestamp (#91).
-        if (block.timestamp < mainnetTimestamp) vm.warp(mainnetTimestamp);
+        _syncMainnetTimestamp();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
     }
@@ -2733,7 +2756,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 mainnetTimestamp        = block.timestamp;
+        _syncMainnetTimestamp();
+
         uint256 mainnetUsdcProxyBalance = usdc.balanceOf(Ethereum.ALM_PROXY);
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance);
@@ -2743,12 +2767,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         CCTPV2BridgeTesting.relayMessagesToSource(bridge, true);
 
         // Relaying switches forks, so mainnet can end up behind its pre-bridge timestamp (#91).
-        if (block.timestamp < mainnetTimestamp) vm.warp(mainnetTimestamp);
+        _syncMainnetTimestamp();
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance + usdcAmount);
     }
 
     function _swapUSDCToUSDSAndBurn(uint256 usdcAmount, address controller) internal {
+        _syncMainnetTimestamp();
+
         IERC20 usdc = IERC20(Ethereum.USDC);
 
         IRateLimits rateLimits = MainnetController(controller).rateLimits();
@@ -2770,14 +2796,9 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), mainnetUsdcProxyBalance - usdcAmount);
 
-        assertEq(
-            rateLimits.getCurrentRateLimit(swapKey),
-            swapLimit != type(uint256).max ? swapLimit + usdcAmount : type(uint256).max
-        );
-        assertEq(
-            rateLimits.getCurrentRateLimit(mintKey),
-            mintLimit != type(uint256).max ? mintLimit + usdcAmount * 1e12 : type(uint256).max
-        );
+        // Increases are capped at maxAmount.
+        assertEq(rateLimits.getCurrentRateLimit(swapKey), _increasedRateLimit(rateLimits, swapKey, swapLimit, usdcAmount));
+        assertEq(rateLimits.getCurrentRateLimit(mintKey), _increasedRateLimit(rateLimits, mintKey, mintLimit, usdcAmount * 1e12));
     }
 
     function _testMorphoVaultCreation(
