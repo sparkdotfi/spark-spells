@@ -463,9 +463,13 @@ abstract contract SparkPayloadEthereum is AaveV3PayloadBase(SparkLend.CONFIG_ENG
         uint256 maxSubmission = ICrossDomainArbitrum(ArbitrumForwarder.L1_CROSS_DOMAIN_ARBITRUM_ONE).calculateRetryableSubmissionFee(finalizeDepositCalldata.length, baseFee);
         uint256 maxRedemption = gasLimit * maxFeePerGas;
 
+        // The Inbox aliases the refund address if it has code on Ethereum. Arbitrum.ALM_PROXY has code on
+        // Ethereum, so refunds sent to it land on an L2 alias nobody controls. Arbitrum.SPARK_EXECUTOR has no
+        // code on Ethereum, so it is not aliased and an Arbitrum spell can recover any refunded ETH.
         IERC20(token).approve(Ethereum.ARBITRUM_TOKEN_BRIDGE, amount);
-        IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).outboundTransfer{value: maxSubmission + maxRedemption}({
+        IArbitrumTokenBridge(Ethereum.ARBITRUM_TOKEN_BRIDGE).outboundTransferCustomRefund{value: maxSubmission + maxRedemption}({
             l1Token     : token,
+            refundTo    : Arbitrum.SPARK_EXECUTOR,
             to          : Arbitrum.ALM_PROXY,
             amount      : amount,
             maxGas      : gasLimit,

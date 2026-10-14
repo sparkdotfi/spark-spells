@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
+import { VmSafe } from "forge-std/Vm.sol";
+
 import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IAccessControl } from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
-import { IALMProxy }         from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IALMProxy } from "spark-alm-controller/src/interfaces/IALMProxy.sol";
 
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { DomainHelpers } from "lib/xchain-helpers/src/testing/Domain.sol";
+import { RecordedLogs }  from "lib/xchain-helpers/src/testing/utils/RecordedLogs.sol";
 
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
@@ -78,6 +80,50 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
         assertEq(IERC20(Ethereum.SUSDS).allowance(Ethereum.SPARK_PROXY, Ethereum.ARBITRUM_TOKEN_BRIDGE), 0);
 
         assertEq(IAccessControl(Ethereum.ALM_PROXY).hasRole(almProxy.CONTROLLER(), Ethereum.SPARK_PROXY), false);
+    }
+
+    function test_ARBITRUM_sll_bridgeSusdsToArbitrum_retryableTicketRefunds() external onChain(ChainIdUtils.ArbitrumOne()) {
+        _executeAllPayloadsAndBridges();
+
+        // The Inbox emits InboxMessageDelivered(uint256 indexed messageNum, bytes data) with the retryable ticket
+        // fields packed as: to, l2CallValue, msg.value, maxSubmissionCost, excessFeeRefundAddress,
+        // callValueRefundAddress, gasLimit, maxFeePerGas, data.length, data
+        VmSafe.Log[] memory logs = RecordedLogs.getLogs();
+
+        uint256 ticketCount;
+        bytes memory ticket;
+        for (uint256 i = 0; i < logs.length; ++i) {
+            if (logs[i].emitter != Ethereum.ARBITRUM_INBOX) continue;
+            if (logs[i].topics[0] != keccak256("InboxMessageDelivered(uint256,bytes)")) continue;
+            ticketCount++;
+            ticket = abi.decode(logs[i].data, (bytes));
+        }
+
+        assertEq(ticketCount, 1);
+
+        (
+            address to,
+            uint256 l2CallValue,
+            ,
+            ,
+            address excessFeeRefundAddress,
+            ,
+            uint256 gasLimit,
+            uint256 maxFeePerGas,
+        ) = abi.decode(ticket, (address, uint256, uint256, uint256, address, address, uint256, uint256, uint256));
+
+        assertEq(to,           Arbitrum.TOKEN_BRIDGE);
+        assertEq(l2CallValue,  0);
+        assertEq(gasLimit,     1_000_000);
+        assertEq(maxFeePerGas, 50e9);
+
+        // Arbitrum.SPARK_EXECUTOR has no code on Ethereum, so the Inbox does not alias it and the excess gas
+        // refund is credited to the Arbitrum Executor itself, which can spend it in an Arbitrum spell.
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        assertEq(Arbitrum.SPARK_EXECUTOR.code.length, 0);
+
+        assertEq(excessFeeRefundAddress, Arbitrum.SPARK_EXECUTOR);
     }
 
 }
