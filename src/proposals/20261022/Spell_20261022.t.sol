@@ -28,7 +28,7 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261022;
-        _blockDate = 1791807184;  // Oct-12-2026 12:13:04 PM UTC
+        _blockDate = 1792049646;  // Oct-15-2026 07:34:06 AM UTC
     }
 
     function setUp() public override {
@@ -47,9 +47,9 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
         uint256 ethSusdsEscrowBalanceBefore   = IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ARBITRUM_ESCROW);
         uint256 ethSusdsTotalSupplyBefore     = IERC20(Ethereum.SUSDS).totalSupply();
 
-        assertEq(ethSusdsAlmProxyBalanceBefore, 930_833_705.556070473646736249e18);
+        assertEq(ethSusdsAlmProxyBalanceBefore, 936_233_716.796138913901679160e18);
         assertEq(ethSusdsEscrowBalanceBefore,   326_995_432.173787510251504877e18);
-        assertEq(ethSusdsTotalSupplyBefore,     4_496_332_974.991860568077227989e18);
+        assertEq(ethSusdsTotalSupplyBefore,     4_439_226_069.068350122865940504e18);
 
         assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 0);
 
@@ -139,7 +139,7 @@ contract SparkEthereum_20261022_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261022;
-        _blockDate = 1791807184;  // Oct-12-2026 12:13:04 PM UTC
+        _blockDate = 1792049646;  // Oct-15-2026 07:34:06 AM UTC
     }
 
     function setUp() public override {
@@ -229,7 +229,7 @@ contract SparkEthereum_20261022_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20261022;
-        _blockDate = 1791807184;  // Oct-12-2026 12:13:04 PM UTC
+        _blockDate = 1792049646;  // Oct-15-2026 07:34:06 AM UTC
     }
 
     function setUp() public override {
@@ -244,8 +244,8 @@ contract SparkEthereum_20261022_SpellTests is SpellTests {
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
         uint256 almOpsBalanceBefore          = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
-        assertEq(sparkProxyBalanceBefore,      46_028_943.205806286854722044e18);
-        assertEq(foundationBalanceBefore,      3_482_220.8122e18);
+        assertEq(sparkProxyBalanceBefore,      50_247_064.205806286854722044e18);
+        assertEq(foundationBalanceBefore,      2_932_220.8122e18);
         assertEq(assetFoundationBalanceBefore, 200_000e18);
         assertEq(almOpsBalanceBefore,          648_323.342558330054342171e18);
 
