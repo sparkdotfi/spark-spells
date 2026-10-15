@@ -39,6 +39,9 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
         uint256 arbSusdsAlmProxyBalanceBefore = IERC20(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY);
         uint256 arbSusdsTotalSupplyBefore     = IERC20(Arbitrum.SUSDS).totalSupply();
 
+        assertEq(arbSusdsAlmProxyBalanceBefore, 0.637040980963212345e18);
+        assertEq(arbSusdsTotalSupplyBefore,     326_995_432.173787510251504877e18);
+
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         IALMProxy almProxy = IALMProxy(Ethereum.ALM_PROXY);
@@ -57,12 +60,9 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(IAccessControl(Ethereum.ALM_PROXY).hasRole(almProxy.CONTROLLER(), Ethereum.SPARK_PROXY), false);
 
-        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
-
-        assertEq(arbSusdsAlmProxyBalanceBefore, 0.637040980963212345e18);
-        assertEq(arbSusdsTotalSupplyBefore,     326_995_432.173787510251504877e18);
-
         _executeAllPayloadsAndBridges();
+
+        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
 
         // Arbitrum sUSDS is minted to the Arbitrum ALM Proxy once the retryable ticket redeems.
         assertEq(IERC20(Arbitrum.SUSDS).balanceOf(Arbitrum.ALM_PROXY), arbSusdsAlmProxyBalanceBefore + ARBITRUM_SUSDS_AMOUNT);
