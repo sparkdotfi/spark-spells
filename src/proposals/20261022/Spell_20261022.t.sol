@@ -28,11 +28,13 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261022;
-        _blockDate = 1792049646;  // Oct-15-2026 07:34:06 AM UTC
+        _blockDate = 1792137026;  // Oct-16-2026 07:50:26 AM UTC
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0x78E4439ae74447992b111A73556a188229D34C37;
     }
 
     function test_ARBITRUM_sll_bridgeSusdsToArbitrum() external onChain(ChainIdUtils.ArbitrumOne()) {
@@ -50,9 +52,9 @@ contract SparkEthereum_20261022_SLLTests is SparkLiquidityLayerTests {
         uint256 ethSusdsEscrowBalanceBefore   = IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ARBITRUM_ESCROW);
         uint256 ethSusdsTotalSupplyBefore     = IERC20(Ethereum.SUSDS).totalSupply();
 
-        assertEq(ethSusdsAlmProxyBalanceBefore, 936_233_716.796138913901679160e18);
+        assertEq(ethSusdsAlmProxyBalanceBefore, 928_885_496.794923278047824950e18);
         assertEq(ethSusdsEscrowBalanceBefore,   326_995_432.173787510251504877e18);
-        assertEq(ethSusdsTotalSupplyBefore,     4_439_226_069.068350122865940504e18);
+        assertEq(ethSusdsTotalSupplyBefore,     4_456_145_109.266627130509217021e18);
 
         assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.SPARK_PROXY), 0);
 
@@ -139,11 +141,13 @@ contract SparkEthereum_20261022_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261022;
-        _blockDate = 1792049646;  // Oct-15-2026 07:34:06 AM UTC
+        _blockDate = 1792137026;  // Oct-16-2026 07:50:26 AM UTC
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0x78E4439ae74447992b111A73556a188229D34C37;
     }
 
     function test_ETHEREUM_sparkLend_wethIrmUpdate() external onChain(ChainIdUtils.Ethereum()) {
@@ -229,11 +233,13 @@ contract SparkEthereum_20261022_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20261022;
-        _blockDate = 1792049646;  // Oct-15-2026 07:34:06 AM UTC
+        _blockDate = 1792137026;  // Oct-16-2026 07:50:26 AM UTC
     }
 
     function setUp() public override {
         super.setUp();
+
+        chainData[ChainIdUtils.Ethereum()].payload = 0x78E4439ae74447992b111A73556a188229D34C37;
     }
 
     function test_ETHEREUM_sparkTreasury() external onChain(ChainIdUtils.Ethereum()) {
