@@ -18,8 +18,9 @@ interface IALMProxyFreezableLike {
 }
 
 interface IArbitrumTokenBridge {
-    function outboundTransfer(
+    function outboundTransferCustomRefund(
         address l1Token,
+        address refundTo,
         address to,
         uint256 amount,
         uint256 maxGas,
