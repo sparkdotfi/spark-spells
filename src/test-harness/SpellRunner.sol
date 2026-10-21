@@ -221,6 +221,13 @@ abstract contract SpellRunner is Test {
             )
         );
 
+        chainData[ChainIdUtils.Base()].bridges.push(
+            CCTPV2BridgeTesting.createCircleBridge(
+                chainData[ChainIdUtils.Ethereum()].domain,
+                chainData[ChainIdUtils.Base()].domain
+            )
+        );
+
         // Gnosis
         chainData[ChainIdUtils.Gnosis()].bridges.push(
             AMBBridgeTesting.createGnosisBridge(
