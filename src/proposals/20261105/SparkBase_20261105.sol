@@ -97,13 +97,16 @@ interface IArbitrumTokenBridge {
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer:
  *         - Onboard Parallel Diamond PAU with CCTP V2.
- * Forum:
+ * Forum:  https://forum.skyeco.com/t/november-5-2026-proposed-changes-to-spark-for-upcoming-spell/28351
  */
 contract SparkBase_20261105 is SparkPayloadBase {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    address internal constant PAS_CONFIGURATOR = 0x458Acd38fD749F6325039e63e8Bc496dBc286D11;
+    address internal constant PAS_CONFIGURATOR       = 0x458Acd38fD749F6325039e63e8Bc496dBc286D11;
+    address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
+    address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
+    address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
 
     function execute() external {
         // 1. Onboard Parallel Diamond PAU with CCTP V2.
@@ -112,6 +115,20 @@ contract SparkBase_20261105 is SparkPayloadBase {
         IALMProxyLike(Base.ALM_PROXY).grantRole(
             IALMProxyLike(Base.ALM_PROXY).CONTROLLER(),
             Base.PAU_CONTROLLER
+        );
+
+        // Setup administered agent for PAU
+        IAdministeredAgentLike(Base.PAU_ADMINISTERED_AGENT).addRevoker(
+            SOTER_FREEZER_MULTISIG
+        );
+        IAdministeredAgentLike(Base.PAU_ADMINISTERED_AGENT).addGrantor(
+            SOTER_GRANTOR_MULTISIG
+        );
+        IAdministeredAgentLike(Base.PAU_ADMINISTERED_AGENT).removeGrantor(
+            Base.PAU_GRANTOR_MULTISIG
+        );
+        IAdministeredAgentLike(Base.PAU_ADMINISTERED_AGENT).addActor(
+            SPARK_HOT_WALLET
         );
 
         // Set rate limits

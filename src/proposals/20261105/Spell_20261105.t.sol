@@ -9,6 +9,13 @@ import { IAccessControl } from "openzeppelin-contracts/contracts/access/IAccessC
 import { Base }     from "spark-address-registry/Base.sol";
 import { Ethereum } from "spark-address-registry/Ethereum.sol";
 
+import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { UniswapV4Lib }      from "spark-alm-controller/src/libraries/UniswapV4Lib.sol";
+
+import { Currency } from "spark-alm-controller/lib/uniswap-v4-core/src/types/Currency.sol";
+import { PoolKey }  from "spark-alm-controller/lib/uniswap-v4-core/src/types/PoolKey.sol";
+
 import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
 
 import { Bridge }                from "lib/xchain-helpers/src/testing/Bridge.sol";
@@ -21,6 +28,8 @@ import { ArbitrumBridgeTesting } from "lib/xchain-helpers/src/testing/bridges/Ar
 import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
 import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
+
+import { IPositionManagerLike } from "src/interfaces/Interfaces.sol";
 
 interface IAccessControlsLike {
 
@@ -367,6 +376,12 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
+    // Base PAU Administered Agent addresses
+
+    address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
+    address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
+    address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
+
     // PAS
 
     address internal constant PAS_BEAM_STATE   = 0x29840a8519013F483d94781b5C1671b552A109e1;
@@ -387,7 +402,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261105;
-        _blockDate = 1792570512;  // Oct-21-2026 08:15:12 +UTC
+        _blockDate = 1792997027;  // Oct-26-2026 06:43:47 +UTC
     }
 
     function setUp() public override {
@@ -395,6 +410,124 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
         // chainData[ChainIdUtils.Base()].payload     = 0xb037C43b433964A2017cd689f535BEb6B0531473;
         // chainData[ChainIdUtils.Ethereum()].payload = 0x796eE21eb57C8BE71be7F75770f534D249bC555b;
+    }
+
+    // Ethereum tests
+
+    function test_ETHEREUM_sll_onboardBridgeUSDC_OUSD() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            Ethereum.USDC,
+            BRIDGE_USDC_DEPOSIT
+        );
+
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 5_000_000e6, 50_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : Ethereum.USDC,
+            destination    : BRIDGE_USDC_DEPOSIT,
+            transferKey    : transferKey,
+            transferAmount : 5_000_000e6
+        }));
+    }
+
+    function test_ETHEREUM_sll_onboardBridgeOUSD_USDC() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
+            MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
+            OUSD,
+            BRIDGE_OUSD_DEPOSIT
+        );
+
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 0, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 5_000_000e6, 200_000_000e6 / uint256(1 days));
+
+        _testTransferAssetIntegration(TransferAssetE2ETestParams({
+            ctx            : _getSparkLiquidityLayerContext(),
+            asset          : OUSD,
+            destination    : BRIDGE_OUSD_DEPOSIT,
+            transferKey    : transferKey,
+            transferAmount : 5_000_000e6
+        }));
+    }
+
+    function test_ETHEREUM_sll_onboardUniswapV4OUSDUSDS() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController controller = MainnetController(Ethereum.ALM_CONTROLLER);
+
+        bytes32 depositKey  = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_DEPOSIT(),  OUSD_USDS_POOL_ID));
+        bytes32 withdrawKey = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_WITHDRAW(), OUSD_USDS_POOL_ID));
+        bytes32 swapKey     = keccak256(abi.encode(controller.LIMIT_UNISWAP_V4_SWAP(),     OUSD_USDS_POOL_ID));
+
+        assertEq(controller.maxSlippages(address(uint160(uint256(OUSD_USDS_POOL_ID)))), 0);
+
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, depositKey,  0, 0);
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, withdrawKey, 0, 0);
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, swapKey,     0, 0);
+
+        ( int24 _tickLowerMin, int24 _tickUpperMax, uint24 _maxTickSpacing ) = controller.uniswapV4TickLimits(OUSD_USDS_POOL_ID);
+
+        assertEq(_tickLowerMin,   0);
+        assertEq(_tickUpperMax,   0);
+        assertEq(_maxTickSpacing, 0);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(controller.maxSlippages(address(uint160(uint256(OUSD_USDS_POOL_ID)))), 0.999e18);
+
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, depositKey,  10_000_000e18,     50_000_000e18 / uint256(1 days));
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, withdrawKey, type(uint256).max, 0);
+        _assertRateLimit(Ethereum.ALM_RATE_LIMITS, swapKey,     5_000_000e18,      100_000_000e18 / uint256(1 days));
+
+        ( _tickLowerMin, _tickUpperMax, _maxTickSpacing ) = controller.uniswapV4TickLimits(OUSD_USDS_POOL_ID);
+
+        assertEq(_tickLowerMin,   276_314);
+        assertEq(_tickUpperMax,   276_334);
+        assertEq(_maxTickSpacing, 10);
+
+        _testUniswapV4LPIntegration(UniswapV4LPE2ETestParams({
+            ctx           : _getSparkLiquidityLayerContext(),
+            poolId        : OUSD_USDS_POOL_ID,
+            asset0        : OUSD,
+            asset1        : Ethereum.USDS,
+            depositAmount : 1_000_000e18,
+            depositKey    : depositKey,
+            withdrawKey   : withdrawKey
+        }));
+    }
+
+    function test_ETHEREUM_sll_uniswapV4OUSDUSDS_swap() external onChain(ChainIdUtils.Ethereum()) {
+        bytes32 swapKey = keccak256(abi.encode(MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_UNISWAP_V4_SWAP(), OUSD_USDS_POOL_ID));
+
+        _executeAllPayloadsAndBridges();
+
+        _testUniswapV4SwapIntegration(UniswapV4SwapE2ETestParams({
+            ctx           : _getSparkLiquidityLayerContext(),
+            poolId        : OUSD_USDS_POOL_ID,
+            asset0        : OUSD,
+            asset1        : Ethereum.USDS,
+            seedLiquidity : 2_000_000e18,
+            swapAmount    : 1_000_000e18,
+            swapKey       : swapKey
+        }));
+    }
+
+    function test_ETHEREUM_sll_uniswapV4OUSDUSDS_poolKey() external onChain(ChainIdUtils.Ethereum()) {
+        PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(OUSD_USDS_POOL_ID));
+
+        assertEq(Currency.unwrap(poolKey.currency0), OUSD);
+        assertEq(Currency.unwrap(poolKey.currency1), Ethereum.USDS);
+        assertEq(poolKey.fee,                        5);  // 0.0005%
+        assertEq(poolKey.tickSpacing,                1);
+        assertEq(address(poolKey.hooks),             address(0));
+
+        assertEq(keccak256(abi.encode(poolKey)), OUSD_USDS_POOL_ID);
     }
 
     // Base tests
@@ -435,7 +568,8 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_BASE_sll_parallelPAU_roles() external onChain(ChainIdUtils.Base()) {
-        IALMProxyLike almProxy = IALMProxyLike(Base.ALM_PROXY);
+        IAdministeredAgentLike administeredAgent = IAdministeredAgentLike(Base.PAU_ADMINISTERED_AGENT);
+        IALMProxyLike          almProxy          = IALMProxyLike(Base.ALM_PROXY);
 
         bytes32 controllerRole = almProxy.CONTROLLER();
 
@@ -444,12 +578,42 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         assertEq(almProxy.hasRole(controllerRole, Base.ALM_CONTROLLER), true);
         assertEq(almProxy.hasRole(controllerRole, Base.PAU_CONTROLLER), false);
 
+        // PAU Administered Agent roles
+
+        assertEq(administeredAgent.adminCount(), 1);
+        assertEq(administeredAgent.getAdmin(0),  Base.SPARK_EXECUTOR);
+
+        assertEq(administeredAgent.actorCount(), 1);
+        assertEq(administeredAgent.getActor(0),  Base.ALM_RELAYER_MULTISIG);
+
+        assertEq(administeredAgent.grantorCount(), 1);
+        assertEq(administeredAgent.getGrantor(0),  Base.PAU_GRANTOR_MULTISIG);
+
+        assertEq(administeredAgent.revokerCount(), 1);
+        assertEq(administeredAgent.getRevoker(0),  Base.ALM_FREEZER_MULTISIG);
+
         _executeAllPayloadsAndBridges();
 
         // ALMProxy roles
 
         assertEq(almProxy.hasRole(controllerRole, Base.ALM_CONTROLLER), true);
         assertEq(almProxy.hasRole(controllerRole, Base.PAU_CONTROLLER), true);
+
+        // PAU Administered Agent roles
+
+        assertEq(administeredAgent.adminCount(), 1);
+        assertEq(administeredAgent.getAdmin(0),  Base.SPARK_EXECUTOR);
+
+        assertEq(administeredAgent.actorCount(), 2);
+        assertEq(administeredAgent.getActor(0),  Base.ALM_RELAYER_MULTISIG);
+        assertEq(administeredAgent.getActor(1),  SPARK_HOT_WALLET);
+
+        assertEq(administeredAgent.grantorCount(), 1);
+        assertEq(administeredAgent.getGrantor(0),  SOTER_GRANTOR_MULTISIG);
+
+        assertEq(administeredAgent.revokerCount(), 2);
+        assertEq(administeredAgent.getRevoker(0),  Base.ALM_FREEZER_MULTISIG);
+        assertEq(administeredAgent.getRevoker(1),  SOTER_FREEZER_MULTISIG);
     }
 
     function test_BASE_sll_parallelPAU_roles_events() external onChain(ChainIdUtils.Base()) {
@@ -1300,7 +1464,7 @@ contract SparkEthereum_20261105_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261105;
-        _blockDate = 1792570512;  // Oct-21-2026 08:15:12 +UTC
+        _blockDate = 1792997027;  // Oct-26-2026 06:43:47 +UTC
     }
 
     function setUp() public override {
@@ -1314,9 +1478,24 @@ contract SparkEthereum_20261105_SparklendTests is SparklendTests {
 
 contract SparkEthereum_20261105_SpellTests is SpellTests {
 
+    address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
+    address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
+
+    address internal constant SOTER_FREEZER_OWNER_1 = 0x4d30c1B366d0dEeb82F55503c334156FeC543B17;
+    address internal constant SOTER_FREEZER_OWNER_2 = 0x3481E4035409fC3a033c07D5461BED853207F517;
+    address internal constant SOTER_FREEZER_OWNER_3 = 0x1aF016f8286F55E241Efd52Cf0FEEDbB257169C9;
+    address internal constant SOTER_FREEZER_OWNER_4 = 0xB1aD1F6A80051658C2ba938621A7a83DEB0d324C;
+    address internal constant SOTER_FREEZER_OWNER_5 = 0x52A8305f29f85bEc5fa6eE78B87Ddd2218d8E12E;
+
+    address internal constant SOTER_GRANTOR_OWNER_1 = 0xd144625c5B1b261c7E7468dbae442088B9dAee65;
+    address internal constant SOTER_GRANTOR_OWNER_2 = 0x30634F700B4C281AfbB956e77f5E189f6f49bD2A;
+    address internal constant SOTER_GRANTOR_OWNER_3 = 0xd96FA1087f0CddC8dCbA53E96afBcc83cc6c82B7;
+    address internal constant SOTER_GRANTOR_OWNER_4 = 0x99E4A36dA8c62a6bEACe0BAaa6cdB042a5EaB58d;
+    address internal constant SOTER_GRANTOR_OWNER_5 = 0x0457f48919816092E5ba57f0014a104b085EC837;
+
     constructor() {
         _spellId   = 20261105;
-        _blockDate = 1792570512;  // Oct-21-2026 08:15:12 +UTC
+        _blockDate = 1792997027;  // Oct-26-2026 06:43:47 +UTC
     }
 
     function setUp() public override {
@@ -1324,6 +1503,32 @@ contract SparkEthereum_20261105_SpellTests is SpellTests {
 
         // chainData[ChainIdUtils.Base()].payload     = 0xb037C43b433964A2017cd689f535BEb6B0531473;
         // chainData[ChainIdUtils.Ethereum()].payload = 0x796eE21eb57C8BE71be7F75770f534D249bC555b;
+    }
+
+    // Base tests
+
+    function test_BASE_sll_soterMultisigs_threshold() external onChain(ChainIdUtils.Base()) {
+        assertEq(ISafeLike(SOTER_FREEZER_MULTISIG).getThreshold(), 2);
+
+        address[] memory freezerOwners = ISafeLike(SOTER_FREEZER_MULTISIG).getOwners();
+
+        assertEq(freezerOwners.length, 5);
+        assertEq(freezerOwners[0],     SOTER_FREEZER_OWNER_1);
+        assertEq(freezerOwners[1],     SOTER_FREEZER_OWNER_2);
+        assertEq(freezerOwners[2],     SOTER_FREEZER_OWNER_3);
+        assertEq(freezerOwners[3],     SOTER_FREEZER_OWNER_4);
+        assertEq(freezerOwners[4],     SOTER_FREEZER_OWNER_5);
+
+        assertEq(ISafeLike(SOTER_GRANTOR_MULTISIG).getThreshold(), 3);
+
+        address[] memory grantorOwners = ISafeLike(SOTER_GRANTOR_MULTISIG).getOwners();
+
+        assertEq(grantorOwners.length, 5);
+        assertEq(grantorOwners[0],     SOTER_GRANTOR_OWNER_1);
+        assertEq(grantorOwners[1],     SOTER_GRANTOR_OWNER_2);
+        assertEq(grantorOwners[2],     SOTER_GRANTOR_OWNER_3);
+        assertEq(grantorOwners[3],     SOTER_GRANTOR_OWNER_4);
+        assertEq(grantorOwners[4],     SOTER_GRANTOR_OWNER_5);
     }
 
 }

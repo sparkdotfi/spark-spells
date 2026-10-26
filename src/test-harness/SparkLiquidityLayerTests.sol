@@ -382,6 +382,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant CURVE_USDC_RLUSD = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
 
+    bytes32 internal constant OUSD_USDS_POOL_ID = 0x710254704dfff19aee863a784a36823eb9c926cae8d3d425080d7c88c144a9c7;
+
+    address internal constant OUSD                = 0x9f6F3991D525015a6F8CaF062C83b62fD3AC4436;
+    address internal constant BRIDGE_USDC_DEPOSIT = 0xCeB913e6CB36651af7FA4585F6C8F0e81C015A5F;  // Bridge deposit that mints OUSD to the ALM Proxy
+    address internal constant BRIDGE_OUSD_DEPOSIT = 0x3539f3f7F3A368EAf87315cE56ea2834a6e6a195;  // Bridge deposit that redeems OUSD to USDC to the ALM Proxy
+
     address internal constant USDG_SPTOKEN  = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
     address internal constant RLUSD_SPTOKEN = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
 
@@ -3611,11 +3617,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        newIntegrations = new SLLIntegration[](integrations.length + 4);
+
+        uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
+            newIntegrations[index++] = integrations[i];
         }
+
+        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, BRIDGE_USDC_DEPOSIT);
+        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", OUSD,          BRIDGE_OUSD_DEPOSIT);
+
+        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
+
+        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-OUSD_USDS", OUSD_USDS_POOL_ID, 2_000_000e18);
     }
 
     function _getPostExecutionIntegrationsBase(
