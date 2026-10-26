@@ -439,7 +439,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_sll_onboardBridgeOUSD_USDC() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
-            OUSD,
+            Ethereum.OUSD,
             BRIDGE_OUSD_DEPOSIT
         );
 
@@ -451,7 +451,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
-            asset          : OUSD,
+            asset          : Ethereum.OUSD,
             destination    : BRIDGE_OUSD_DEPOSIT,
             transferKey    : transferKey,
             transferAmount : 5_000_000e6
@@ -494,7 +494,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         _testUniswapV4LPIntegration(UniswapV4LPE2ETestParams({
             ctx           : _getSparkLiquidityLayerContext(),
             poolId        : OUSD_USDS_POOL_ID,
-            asset0        : OUSD,
+            asset0        : Ethereum.OUSD,
             asset1        : Ethereum.USDS,
             depositAmount : 1_000_000e18,
             depositKey    : depositKey,
@@ -510,7 +510,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         _testUniswapV4SwapIntegration(UniswapV4SwapE2ETestParams({
             ctx           : _getSparkLiquidityLayerContext(),
             poolId        : OUSD_USDS_POOL_ID,
-            asset0        : OUSD,
+            asset0        : Ethereum.OUSD,
             asset1        : Ethereum.USDS,
             seedLiquidity : 2_000_000e18,
             swapAmount    : 1_000_000e18,
@@ -521,7 +521,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_sll_uniswapV4OUSDUSDS_poolKey() external onChain(ChainIdUtils.Ethereum()) {
         PoolKey memory poolKey = IPositionManagerLike(UniswapV4Lib._POSITION_MANAGER).poolKeys(bytes25(OUSD_USDS_POOL_ID));
 
-        assertEq(Currency.unwrap(poolKey.currency0), OUSD);
+        assertEq(Currency.unwrap(poolKey.currency0), Ethereum.OUSD);
         assertEq(Currency.unwrap(poolKey.currency1), Ethereum.USDS);
         assertEq(poolKey.fee,                        5);  // 0.0005%
         assertEq(poolKey.tickSpacing,                1);

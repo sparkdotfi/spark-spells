@@ -8,13 +8,9 @@ import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
 
 import { SparkPayloadBase } from "../../SparkPayloadBase.sol";
 
-import { IERC20Like } from "../../interfaces/Interfaces.sol";
-
 interface IAccessControlsLike {
 
     function grantRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
 
 }
 
@@ -34,14 +30,7 @@ interface IALMProxyLike {
 
     function CONTROLLER() external returns (bytes32);
 
-    function doCall(
-        address        target,
-        bytes   memory data
-    ) external returns (bytes memory);
-
     function grantRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
 
 }
 
@@ -81,22 +70,13 @@ interface IRateLimitsLike {
 
 }
 
-interface IArbitrumTokenBridge {
-
-    function outboundTransfer(
-        address        l1Token,
-        address        to,
-        uint256        amount,
-        bytes calldata data
-    ) external payable returns (bytes memory res);
-
-}
-
 /**
  * @title  November 5, 2026 Spark Base Proposal
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer:
  *         - Onboard Parallel Diamond PAU with CCTP V2.
+ *         - Grant the PAS Configurator admin over the Base Diamond PAU access controls and rate limits.
+ *         - Transfer admin of the Base Diamond PAU Beacon from the Spark Executor to the Sky governance relay.
  * Forum:  https://forum.skyeco.com/t/november-5-2026-proposed-changes-to-spark-for-upcoming-spell/28351
  */
 contract SparkBase_20261105 is SparkPayloadBase {

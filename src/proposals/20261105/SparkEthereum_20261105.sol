@@ -18,7 +18,6 @@ import { SLLHelpers, SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol
  */
 contract SparkEthereum_20261105 is SparkPayloadEthereum {
 
-    address internal constant OUSD                = 0x9f6F3991D525015a6F8CaF062C83b62fD3AC4436;
     address internal constant BRIDGE_USDC_DEPOSIT = 0xCeB913e6CB36651af7FA4585F6C8F0e81C015A5F;
     address internal constant BRIDGE_OUSD_DEPOSIT = 0x3539f3f7F3A368EAf87315cE56ea2834a6e6a195;
 
@@ -33,7 +32,7 @@ contract SparkEthereum_20261105 is SparkPayloadEthereum {
         bytes32 transferKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER();
 
         bytes32 BRIDGE_USDC_OUSD_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDC, BRIDGE_USDC_DEPOSIT);
-        bytes32 BRIDGE_OUSD_USDC_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, OUSD,          BRIDGE_OUSD_DEPOSIT);
+        bytes32 BRIDGE_OUSD_USDC_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.OUSD, BRIDGE_OUSD_DEPOSIT);
 
         SLLHelpers.setRateLimitData({
             key        : BRIDGE_USDC_OUSD_KEY,
