@@ -380,7 +380,6 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
     address internal constant SOTER_FREEZER_MULTISIG = 0x747BF29B189e2a070a921Af7Cf65681E3d5F5967;
     address internal constant SOTER_GRANTOR_MULTISIG = 0x97EC6398e5dD047BA3223cFC017bFC6436Ac3Fe7;
-    address internal constant SPARK_HOT_WALLET       = 0x062cE42caE04c51D04E77e3D64cc8953a2296FfE;
 
     // PAS
 
@@ -418,7 +417,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Ethereum.USDC,
-            BRIDGE_USDC_DEPOSIT
+            Ethereum.BRIDGE_USDC_DEPOSIT
         );
 
         _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 0, 0);
@@ -430,7 +429,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
             asset          : Ethereum.USDC,
-            destination    : BRIDGE_USDC_DEPOSIT,
+            destination    : Ethereum.BRIDGE_USDC_DEPOSIT,
             transferKey    : transferKey,
             transferAmount : 5_000_000e6
         }));
@@ -440,7 +439,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         bytes32 transferKey = RateLimitHelpers.makeAddressAddressKey(
             MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER(),
             Ethereum.OUSD,
-            BRIDGE_OUSD_DEPOSIT
+            Ethereum.BRIDGE_OUSD_DEPOSIT
         );
 
         _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 0, 0);
@@ -452,7 +451,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
         _testTransferAssetIntegration(TransferAssetE2ETestParams({
             ctx            : _getSparkLiquidityLayerContext(),
             asset          : Ethereum.OUSD,
-            destination    : BRIDGE_OUSD_DEPOSIT,
+            destination    : Ethereum.BRIDGE_OUSD_DEPOSIT,
             transferKey    : transferKey,
             transferAmount : 5_000_000e6
         }));
@@ -606,7 +605,7 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(administeredAgent.actorCount(), 2);
         assertEq(administeredAgent.getActor(0),  Base.ALM_RELAYER_MULTISIG);
-        assertEq(administeredAgent.getActor(1),  SPARK_HOT_WALLET);
+        assertEq(administeredAgent.getActor(1),  Base.PLANNER_WALLET);
 
         assertEq(administeredAgent.grantorCount(), 1);
         assertEq(administeredAgent.getGrantor(0),  SOTER_GRANTOR_MULTISIG);
@@ -756,8 +755,8 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
         // BeamState user roles: Timelock has delayed role, Core Council has immediate role.
 
-        assertEq(beamState.hasUserRole(PAS_TIMELOCK,     PAS_ROLE_DELAYED),   true);
-        assertEq(beamState.hasUserRole(PAS_CORE_COUNCIL, PAS_ROLE_DELAYED),   false);
+        assertEq(beamState.hasUserRole(PAS_TIMELOCK,     PAS_ROLE_DELAYED), true);
+        assertEq(beamState.hasUserRole(PAS_CORE_COUNCIL, PAS_ROLE_DELAYED), false);
 
         assertEq(beamState.hasUserRole(PAS_TIMELOCK,     PAS_ROLE_IMMEDIATE), false);
         assertEq(beamState.hasUserRole(PAS_CORE_COUNCIL, PAS_ROLE_IMMEDIATE), true);

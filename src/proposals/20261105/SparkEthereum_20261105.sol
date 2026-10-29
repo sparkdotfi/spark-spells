@@ -15,11 +15,10 @@ import { SLLHelpers, SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol
  *         - Onboard OUSD mint and redeem.
  *         - Onboard the Uniswap v4 OUSD/USDS pool.
  * Forum:  https://forum.skyeco.com/t/november-5-2026-proposed-changes-to-spark-for-upcoming-spell/28351
+ * Vote:   https://snapshot.box/#/s:sparkfi.eth/proposal/0x49ea98e37b49e441c62a5747225794d7351624af28e7ab3a52d18ededde95263
+ *         https://snapshot.box/#/s:sparkfi.eth/proposal/0xb74887a3c9d89ce3d72b97b8e10f1e2ee4588115e65755e09b3117c9e31a6ce0
  */
 contract SparkEthereum_20261105 is SparkPayloadEthereum {
-
-    address internal constant BRIDGE_USDC_DEPOSIT = 0xCeB913e6CB36651af7FA4585F6C8F0e81C015A5F;
-    address internal constant BRIDGE_OUSD_DEPOSIT = 0x3539f3f7F3A368EAf87315cE56ea2834a6e6a195;
 
     bytes32 internal constant OUSD_USDS_POOL_ID = 0x710254704dfff19aee863a784a36823eb9c926cae8d3d425080d7c88c144a9c7;
 
@@ -31,8 +30,8 @@ contract SparkEthereum_20261105 is SparkPayloadEthereum {
         // 4. Onboard OUSD mint and redeem.
         bytes32 transferKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_ASSET_TRANSFER();
 
-        bytes32 BRIDGE_USDC_OUSD_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDC, BRIDGE_USDC_DEPOSIT);
-        bytes32 BRIDGE_OUSD_USDC_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.OUSD, BRIDGE_OUSD_DEPOSIT);
+        bytes32 BRIDGE_USDC_OUSD_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
+        bytes32 BRIDGE_OUSD_USDC_KEY = RateLimitHelpers.makeAddressAddressKey(transferKey, Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
 
         SLLHelpers.setRateLimitData({
             key        : BRIDGE_USDC_OUSD_KEY,

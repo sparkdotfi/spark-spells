@@ -384,9 +384,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     bytes32 internal constant OUSD_USDS_POOL_ID = 0x710254704dfff19aee863a784a36823eb9c926cae8d3d425080d7c88c144a9c7;
 
-    address internal constant BRIDGE_USDC_DEPOSIT = 0xCeB913e6CB36651af7FA4585F6C8F0e81C015A5F;  // Bridge deposit that mints OUSD to the ALM Proxy
-    address internal constant BRIDGE_OUSD_DEPOSIT = 0x3539f3f7F3A368EAf87315cE56ea2834a6e6a195;  // Bridge deposit that redeems OUSD to USDC to the ALM Proxy
-
     address internal constant USDG_SPTOKEN  = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
     address internal constant RLUSD_SPTOKEN = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
 
@@ -3624,8 +3621,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             newIntegrations[index++] = integrations[i];
         }
 
-        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, BRIDGE_USDC_DEPOSIT);
-        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, BRIDGE_OUSD_DEPOSIT);
+        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
+        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
 
         newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
 
