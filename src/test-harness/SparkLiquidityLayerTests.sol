@@ -382,6 +382,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     address internal constant CURVE_USDC_RLUSD = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
 
+    bytes32 internal constant OUSD_USDS_POOL_ID = 0x710254704dfff19aee863a784a36823eb9c926cae8d3d425080d7c88c144a9c7;
+
     address internal constant USDG_SPTOKEN  = 0x6f335538257ef440F3c51e925a5C820f722a1F9F;
     address internal constant RLUSD_SPTOKEN = 0x59275Fb72c8004F44BA44432e25082932Fd677f1;
 
@@ -2704,10 +2706,14 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         require(usdcAmount != 0, "SLL/_bridgeUSDCToMainnet_pau/usdcAmount must be greater than 0");
 
         IERC20 domainUsdc;
-        Bridge storage bridge = chainData[domainId].bridges[3];
+        Bridge storage bridge;
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc = IERC20(Arbitrum.USDC);
+            bridge = chainData[domainId].bridges[3];
+        } else if (domainId == ChainIdUtils.Base()) {
+            domainUsdc = IERC20(Base.USDC);
+            bridge = chainData[domainId].bridges[2];
         } else {
             revert("SLL/unknown domain");
         }
@@ -2997,7 +3003,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
             _depositAndWithdrawFromPSM3(1_000_000e6, domainChainId, legacyDomainController);
 
-            if (isPostExecution && domainChainId == ChainIdUtils.ArbitrumOne()) {
+            if (
+                domainChainId == ChainIdUtils.ArbitrumOne() ||
+                (isPostExecution && domainChainId == ChainIdUtils.Base())
+            ) {
                 address pauController = _getSLLPAUContext(domainChainId).controller;
 
                 _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
@@ -3604,11 +3613,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        newIntegrations = new SLLIntegration[](integrations.length + 4);
+
+        uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
+            newIntegrations[index++] = integrations[i];
         }
+
+        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
+        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
+
+        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
+
+        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-OUSD_USDS", OUSD_USDS_POOL_ID, 2_000_000e18);
     }
 
     function _getPostExecutionIntegrationsBase(
@@ -4031,6 +4049,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 administeredAgent : Arbitrum.PAU_ADMINISTERED_AGENT,
                 allocator         : Arbitrum.ALM_RELAYER_MULTISIG,
                 revoker           : Arbitrum.ALM_FREEZER_MULTISIG
+            });
+        } else if (chainId == ChainIdUtils.Base()) {
+            return SLLPAUContext({
+                controller        : Base.PAU_CONTROLLER,
+                administeredAgent : Base.PAU_ADMINISTERED_AGENT,
+                allocator         : Base.ALM_RELAYER_MULTISIG,
+                revoker           : Base.ALM_FREEZER_MULTISIG
             });
         }
 
