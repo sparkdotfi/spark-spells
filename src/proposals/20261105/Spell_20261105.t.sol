@@ -401,14 +401,14 @@ contract SparkEthereum_20261105_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261105;
-        _blockDate = 1792997027;  // Oct-26-2026 06:43:47 +UTC
+        _blockDate = 1793262597;  // Oct-29-2026 08:29:57 +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0xb037C43b433964A2017cd689f535BEb6B0531473;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x796eE21eb57C8BE71be7F75770f534D249bC555b;
+        chainData[ChainIdUtils.Base()].payload     = 0x9D65941254A167B844F48FA29fa987783886D82a;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x9C3991A36aE899c7b267208bad2cC1237BE36F5b;
     }
 
     // Ethereum tests
@@ -1463,14 +1463,14 @@ contract SparkEthereum_20261105_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261105;
-        _blockDate = 1792997027;  // Oct-26-2026 06:43:47 +UTC
+        _blockDate = 1793262597;  // Oct-29-2026 08:29:57 +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0xb037C43b433964A2017cd689f535BEb6B0531473;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x796eE21eb57C8BE71be7F75770f534D249bC555b;
+        chainData[ChainIdUtils.Base()].payload     = 0x9D65941254A167B844F48FA29fa987783886D82a;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x9C3991A36aE899c7b267208bad2cC1237BE36F5b;
     }
 
 }
@@ -1494,14 +1494,14 @@ contract SparkEthereum_20261105_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20261105;
-        _blockDate = 1792997027;  // Oct-26-2026 06:43:47 +UTC
+        _blockDate = 1793262597;  // Oct-29-2026 08:29:57 +UTC
     }
 
     function setUp() public override {
         super.setUp();
 
-        // chainData[ChainIdUtils.Base()].payload     = 0xb037C43b433964A2017cd689f535BEb6B0531473;
-        // chainData[ChainIdUtils.Ethereum()].payload = 0x796eE21eb57C8BE71be7F75770f534D249bC555b;
+        chainData[ChainIdUtils.Base()].payload     = 0x9D65941254A167B844F48FA29fa987783886D82a;
+        chainData[ChainIdUtils.Ethereum()].payload = 0x9C3991A36aE899c7b267208bad2cC1237BE36F5b;
     }
 
     // Base tests

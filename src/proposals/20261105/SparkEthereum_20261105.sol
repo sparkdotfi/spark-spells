@@ -23,7 +23,7 @@ contract SparkEthereum_20261105 is SparkPayloadEthereum {
     bytes32 internal constant OUSD_USDS_POOL_ID = 0x710254704dfff19aee863a784a36823eb9c926cae8d3d425080d7c88c144a9c7;
 
     constructor() {
-        // PAYLOAD_BASE = 0xb037C43b433964A2017cd689f535BEb6B0531473;
+        PAYLOAD_BASE = 0x9D65941254A167B844F48FA29fa987783886D82a;
     }
 
     function _postExecute() internal override {
