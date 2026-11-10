@@ -412,7 +412,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     /*** Tests                                                                                  ***/
     /**********************************************************************************************/
 
-    function test_E2E_sparkLiquidityLayerCCTPCrossChainSetup() external {
+    function test_E2E_sparkLiquidityLayerCCTPCrossChainSetup() external virtual {
         _runE2ESLLCrossChainTestForAllDomains({ isPostExecution: false });
 
         _executeAllPayloadsAndBridges();
@@ -460,7 +460,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _runSLLE2ETestsForDomain(ChainIdUtils.ArbitrumOne());
     }
 
-    function test_AVALANCHE_E2E_sparkLiquidityLayer() external {
+    function test_AVALANCHE_E2E_sparkLiquidityLayer() external virtual {
         _runSLLE2ETestsForDomain(ChainIdUtils.Avalanche());
     }
 
@@ -468,11 +468,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _runSLLE2ETestsForDomain(ChainIdUtils.Base());
     }
 
-    function test_OPTIMISM_E2E_sparkLiquidityLayer() external {
+    function test_OPTIMISM_E2E_sparkLiquidityLayer() external virtual {
         _runSLLE2ETestsForDomain(ChainIdUtils.Optimism());
     }
 
-    function test_UNICHAIN_E2E_sparkLiquidityLayer() external {
+    function test_UNICHAIN_E2E_sparkLiquidityLayer() external virtual {
         _runSLLE2ETestsForDomain(ChainIdUtils.Unichain());
     }
 
@@ -1741,8 +1741,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _runLayerZeroTransferE2E(LayerZeroTransferE2ETestParams memory p) internal {
         chainData[p.sourceChainId].domain.selectFork();
 
-        p.ctx = _getSparkLiquidityLayerContext(p.sourceChainId);
-
+        // `p.ctx` is the caller's context for the source chain: after a controller upgrade it holds the new
+        // controller, which `_getSparkLiquidityLayerContext(p.sourceChainId)` (pre-execution) would not.
         MainnetController controller = MainnetController(p.ctx.controller);
 
         skip(10 days);  // Recharge rate limits
@@ -3372,7 +3372,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](46);
+        integrations = new SLLIntegration[](50);
 
         integrations[0] = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[1] = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
@@ -3459,6 +3459,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[44] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
 
         integrations[45] = _createCurveSwapIntegration("CURVE_SWAP-USDCRLUSD", CURVE_USDC_RLUSD);
+
+        integrations[46] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
+        integrations[47] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
+
+        integrations[48] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
+
+        integrations[49] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-OUSD_USDS", OUSD_USDS_POOL_ID, 2_000_000e18);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3613,20 +3620,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length + 4);
+        // The 2026-11-19 spell zeroes the Ethereum USDC routes to OP Mainnet, Unichain and Avalanche.
+        newIntegrations = new SLLIntegration[](integrations.length - 3);
 
         uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
+            if (
+                _isEqual(integrations[i].label, "CCTP-AVALANCHE") ||
+                _isEqual(integrations[i].label, "CCTP-OPTIMISM")  ||
+                _isEqual(integrations[i].label, "CCTP-UNICHAIN")
+            ) continue;
+
             newIntegrations[index++] = integrations[i];
         }
-
-        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
-        newIntegrations[index++] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
-
-        newIntegrations[index++] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
-
-        newIntegrations[index++] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-OUSD_USDS", OUSD_USDS_POOL_ID, 2_000_000e18);
     }
 
     function _getPostExecutionIntegrationsBase(
