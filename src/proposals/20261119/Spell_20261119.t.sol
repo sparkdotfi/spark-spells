@@ -90,6 +90,18 @@ interface IControllerLike {
 
 }
 
+interface ICCTPV2MessengerLike {
+
+    function localMinter() external view returns (address);
+
+}
+
+interface ICCTPV2MinterLike {
+
+    function burnLimitsPerMessage(address token) external view returns (uint256);
+
+}
+
 interface IPSM3Like {
 
     function convertToAssetValue(uint256 shares) external view returns (uint256);
@@ -134,6 +146,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
     using DomainHelpers for Domain;
 
     bytes32 internal constant ERC4626_FACET_ID = "ERC4626_FACET";
+
+    address internal constant NEW_CONTROLLER_DEPLOYER = 0xC758519Ace14E884fdbA9ccE25F2DbE81b7e136f;  // EOA that sent the creation tx of NEW_ALM_CONTROLLER
+
+    bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
+
 
     mapping(uint256 chainId => uint256 timestamp) internal forkTimestamp;
 
@@ -961,6 +978,314 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         _assertCctpRouteClosed(mainnetController, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
         _assertCctpRouteClosed(mainnetController, CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
     }
+
+    /**********************************************************************************************/
+    /*** Item 1: Controller-upgrade edge cases (roles, lock-out, OTC accounting, CCTP V2)        ***/
+    /**********************************************************************************************/
+
+    // Enumerates every role holder on both controllers (AccessControlEnumerable) before and after,
+    // so no unexpected grantee (deployer, test addresses, stale relayers) can hide behind hasRole spot checks.
+    function test_ETHEREUM_controllerUpgrade_exhaustiveRoleMembership() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController oldController = MainnetController(Ethereum.ALM_CONTROLLER);
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+        IALMProxy         almProxy      = IALMProxy(Ethereum.ALM_PROXY);
+        IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+
+        bytes32 relayerRole = newController.RELAYER();
+        bytes32 freezerRole = newController.FREEZER();
+
+        // New controller, as deployed: only DEFAULT_ADMIN_ROLE -> Spark Proxy. Deployer holds nothing.
+        _assertOnlyMembers(newController, DEFAULT_ADMIN_ROLE, _single(Ethereum.SPARK_PROXY));
+        _assertOnlyMembers(newController, relayerRole,        new address[](0));
+        _assertOnlyMembers(newController, freezerRole,        new address[](0));
+
+        assertEq(newController.hasRole(DEFAULT_ADMIN_ROLE, NEW_CONTROLLER_DEPLOYER), false);
+        assertEq(newController.hasRole(relayerRole,        NEW_CONTROLLER_DEPLOYER), false);
+        assertEq(newController.hasRole(freezerRole,        NEW_CONTROLLER_DEPLOYER), false);
+
+        // Old controller, as currently configured.
+        _assertOnlyMembers(oldController, DEFAULT_ADMIN_ROLE, _single(Ethereum.SPARK_PROXY));
+        _assertOnlyMembers(oldController, relayerRole,        _pair(Ethereum.ALM_RELAYER_MULTISIG, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG));
+        _assertOnlyMembers(oldController, freezerRole,        _single(Ethereum.ALM_FREEZER_MULTISIG));
+
+        _executeAllPayloadsAndBridges();
+
+        // New controller after the spell: exactly the production role set, nothing more.
+        _assertOnlyMembers(newController, DEFAULT_ADMIN_ROLE, _single(Ethereum.SPARK_PROXY));
+        _assertOnlyMembers(newController, relayerRole,        _pair(Ethereum.ALM_RELAYER_MULTISIG, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG));
+        _assertOnlyMembers(newController, freezerRole,        _single(Ethereum.ALM_FREEZER_MULTISIG));
+
+        assertEq(newController.hasRole(DEFAULT_ADMIN_ROLE, NEW_CONTROLLER_DEPLOYER), false);
+        assertEq(newController.hasRole(relayerRole,        NEW_CONTROLLER_DEPLOYER), false);
+        assertEq(newController.hasRole(freezerRole,        NEW_CONTROLLER_DEPLOYER), false);
+
+        // The old controller keeps its own (now inert) roles; the spell only touches CONTROLLER on the proxy and rate limits.
+        _assertOnlyMembers(oldController, DEFAULT_ADMIN_ROLE, _single(Ethereum.SPARK_PROXY));
+        _assertOnlyMembers(oldController, relayerRole,        _pair(Ethereum.ALM_RELAYER_MULTISIG, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG));
+        _assertOnlyMembers(oldController, freezerRole,        _single(Ethereum.ALM_FREEZER_MULTISIG));
+
+        // CONTROLLER on proxy and rate limits moved from old to new; the Spark Proxy itself did not keep CONTROLLER.
+        bytes32 controllerRole = almProxy.CONTROLLER();
+
+        assertEq(almProxy.hasRole(controllerRole,   address(oldController)), false);
+        assertEq(almProxy.hasRole(controllerRole,   address(newController)), true);
+        assertEq(almProxy.hasRole(controllerRole,   Ethereum.SPARK_PROXY),   false);
+        assertEq(rateLimits.hasRole(controllerRole, address(oldController)), false);
+        assertEq(rateLimits.hasRole(controllerRole, address(newController)), true);
+        assertEq(rateLimits.hasRole(controllerRole, Ethereum.SPARK_PROXY),   false);
+    }
+
+    // After the upgrade the old controller must be unable to move funds or touch rate limits, even for a relayer.
+    function test_ETHEREUM_controllerUpgrade_oldControllerIsLockedOut() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController oldController = MainnetController(Ethereum.ALM_CONTROLLER);
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+        IALMProxy         almProxy      = IALMProxy(Ethereum.ALM_PROXY);
+
+        bytes32 controllerRole = almProxy.CONTROLLER();
+
+        deal(Ethereum.USDC, Ethereum.ALM_PROXY, 1_000_000e6);
+
+        // Before: the old controller works.
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        oldController.mintUSDS(1e18);
+
+        _executeAllPayloadsAndBridges();
+
+        // Rate-limited actions fail at the rate limits contract (first external call).
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(oldController), controllerRole));
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        oldController.mintUSDS(1e18);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(oldController), controllerRole));
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        oldController.transferUSDCToCCTP(1e6, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+
+        // Proxy calls fail at the proxy for actions that do not hit the rate limits first (burn cancels a limit: proxy is first).
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(oldController), controllerRole));
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        oldController.otcClaim(BINANCE_EXCHANGE, Ethereum.USDT);
+
+        // The same actions work on the new controller.
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.mintUSDS(1e18);
+        newController.burnUSDS(1e18);
+        vm.stopPrank();
+    }
+
+    /**********************************************************************************************/
+    /*** OTC                                                                                    ***/
+    /**********************************************************************************************/
+
+    // The OTC buffer approves the ALM Proxy (not the controller), so residual balances sitting in the
+    // buffer at upgrade time remain claimable through the new controller without any re-approval.
+    function test_ETHEREUM_controllerUpgrade_otcResidualBufferBalancesClaimableAfterUpgrade() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+
+        IERC20 usdc = IERC20(Ethereum.USDC);
+        IERC20 usdt = IERC20(Ethereum.USDT);
+
+        // Real residual balances at the fork block (not zeroed on purpose).
+        uint256 bufferUsdc = usdc.balanceOf(Ethereum.BINANCE_OTC_BUFFER);
+        uint256 bufferUsdt = usdt.balanceOf(Ethereum.BINANCE_OTC_BUFFER);
+
+        assertGt(bufferUsdc, 0);
+        assertGt(bufferUsdt, 0);
+
+        assertEq(usdc.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+        assertEq(usdt.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+
+        _executeAllPayloadsAndBridges();
+
+        // Allowances are untouched by the upgrade.
+        assertEq(usdc.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+        assertEq(usdt.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+
+        uint256 proxyUsdc = usdc.balanceOf(Ethereum.ALM_PROXY);
+        uint256 proxyUsdt = usdt.balanceOf(Ethereum.ALM_PROXY);
+
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.otcClaim(BINANCE_EXCHANGE, Ethereum.USDC);
+        newController.otcClaim(BINANCE_EXCHANGE, Ethereum.USDT);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(Ethereum.BINANCE_OTC_BUFFER), 0);
+        assertEq(usdt.balanceOf(Ethereum.BINANCE_OTC_BUFFER), 0);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY),          proxyUsdc + bufferUsdc);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),          proxyUsdt + bufferUsdt);
+
+        ( , , , , uint256 claimed18 ) = newController.otcs(BINANCE_EXCHANGE);
+
+        assertEq(claimed18, bufferUsdc * 1e12 + bufferUsdt * 1e12);
+    }
+
+    // Documents the one piece of controller state that is NOT migrated: OTC swap accounting
+    // (sent18, sentTimestamp, claimed18). A swap in flight on the old controller at execution time is
+    // invisible to the new controller, which starts "ready" and accepts a second send immediately.
+    // Operational requirement: confirm isOtcSwapReady(BINANCE_EXCHANGE) on the old controller right
+    // before the executive spell is cast, and avoid otcSend in the execution window.
+    function test_ETHEREUM_controllerUpgrade_otcSwapInFlightAccountingIsDropped() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController oldController = MainnetController(Ethereum.ALM_CONTROLLER);
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+        IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+
+        uint256 amount = 1_000e6;
+
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, amount);
+
+        assertEq(oldController.isOtcSwapReady(BINANCE_EXCHANGE), true);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        oldController.otcSend(BINANCE_EXCHANGE, Ethereum.USDT, amount);
+
+        ( , , uint256 sent18, uint256 sentTimestamp, uint256 claimed18 ) = oldController.otcs(BINANCE_EXCHANGE);
+
+        assertEq(sent18,        amount * 1e12);
+        assertEq(sentTimestamp, block.timestamp);
+        assertEq(claimed18,     0);
+
+        assertEq(oldController.isOtcSwapReady(BINANCE_EXCHANGE), false);  // Swap in flight, nothing returned yet
+
+        _executeAllPayloadsAndBridges();
+
+        // Old controller still shows the swap as not returned; the new controller has no record of it.
+        assertEq(oldController.isOtcSwapReady(BINANCE_EXCHANGE), false);
+
+        ( , , sent18, sentTimestamp, claimed18 ) = newController.otcs(BINANCE_EXCHANGE);
+
+        assertEq(sent18,        0);
+        assertEq(sentTimestamp, 0);
+        assertEq(claimed18,     0);
+
+        assertEq(newController.isOtcSwapReady(BINANCE_EXCHANGE), true);
+
+        // A second send goes through although the first was never returned: exposure to the exchange
+        // is now two swaps, bounded only by LIMIT_OTC_SWAP.
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, amount);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.otcSend(BINANCE_EXCHANGE, Ethereum.USDT, amount);
+
+        assertEq(newController.isOtcSwapReady(BINANCE_EXCHANGE), false);
+
+        // The rate limit is shared state and did carry over: both sends were charged against it.
+        bytes32 key = RateLimitHelpers.makeAddressKey(newController.LIMIT_OTC_SWAP(), BINANCE_EXCHANGE);
+
+        assertEq(rateLimits.getCurrentRateLimit(key), rateLimits.getRateLimitData(key).maxAmount - 2 * amount * 1e12);
+    }
+
+    /**********************************************************************************************/
+    /*** CCTP V2                                                                                ***/
+    /**********************************************************************************************/
+
+    // V2 transfer: burns through TokenMessengerV2 only, splits at the V2 burn limit, resets the proxy's
+    // USDC approval to zero afterwards (ChainSecurity #002 fix) and never touches the V1 messenger.
+    function test_ETHEREUM_controllerUpgrade_cctpV2TransferApprovalResetAndSplit() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+        IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+
+        IERC20 usdc = IERC20(Ethereum.USDC);
+
+        uint256 burnLimit = ICCTPV2MinterLike(ICCTPV2MessengerLike(Ethereum.CCTP_TOKEN_MESSENGER).localMinter()).burnLimitsPerMessage(Ethereum.USDC);
+
+        assertEq(burnLimit, 10_000_000e6);
+
+        _executeAllPayloadsAndBridges();
+
+        uint256 amount = burnLimit + 1e6;  // Forces two depositForBurn calls
+
+        deal(Ethereum.USDC, Ethereum.ALM_PROXY, amount);
+
+        bytes32 domainKey = RateLimitHelpers.makeUint32Key(newController.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+
+        skip(10 days);  // Recharge the Base route
+
+        assertGe(rateLimits.getCurrentRateLimit(domainKey), amount);
+
+        uint256 supply = usdc.totalSupply();
+
+        vm.recordLogs();
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.transferUSDCToCCTP(amount, CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
+
+        VmSafe.Log[] memory logs = vm.getRecordedLogs();
+
+        // Two V2 DepositForBurn events from the V2 messenger, none from the V1 messenger.
+        bytes32 depositForBurnV2 = keccak256("DepositForBurn(address,uint256,address,bytes32,uint32,bytes32,bytes32,uint256,uint32,bytes)");
+
+        uint256 v2Burns;
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].emitter != Ethereum.CCTP_TOKEN_MESSENGER_V1, "V1 messenger touched");
+            if (logs[i].emitter == Ethereum.CCTP_TOKEN_MESSENGER && logs[i].topics[0] == depositForBurnV2) v2Burns++;
+        }
+        assertEq(v2Burns, 2);
+
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY), 0);
+        assertEq(usdc.totalSupply(),                 supply - amount);
+
+        assertEq(usdc.allowance(Ethereum.ALM_PROXY, Ethereum.CCTP_TOKEN_MESSENGER),    0);
+        assertEq(usdc.allowance(Ethereum.ALM_PROXY, Ethereum.CCTP_TOKEN_MESSENGER_V1), 0);
+    }
+
+    // Governance keeps a lever if Circle starts charging for standard transfers: setCCTPMaxFeeRate is
+    // admin-only, bounded below 100%, and a non-zero rate is accepted by TokenMessengerV2.
+    function test_ETHEREUM_controllerUpgrade_cctpMaxFeeRateLever() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(newController.cctpMaxFeeRate(), 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, Ethereum.ALM_RELAYER_MULTISIG, DEFAULT_ADMIN_ROLE));
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.setCCTPMaxFeeRate(1);
+
+        vm.expectRevert("MC/cctp-max-fee-rate-too-high");
+        vm.prank(Ethereum.SPARK_PROXY);
+        newController.setCCTPMaxFeeRate(10_000);
+
+        vm.prank(Ethereum.SPARK_PROXY);
+        newController.setCCTPMaxFeeRate(10);  // 0.10%
+
+        assertEq(newController.cctpMaxFeeRate(), 10);
+
+        deal(Ethereum.USDC, Ethereum.ALM_PROXY, 1_000e6);
+
+        skip(10 days);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.transferUSDCToCCTP(1_000e6, CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
+
+        assertEq(IERC20(Ethereum.USDC).balanceOf(Ethereum.ALM_PROXY), 0);
+    }
+
+    /**********************************************************************************************/
+    /*** Helpers                                                                                ***/
+    /**********************************************************************************************/
+
+    function _assertOnlyMembers(MainnetController controller, bytes32 role, address[] memory expected) internal view {
+        assertEq(controller.getRoleMemberCount(role), expected.length, "role member count");
+
+        for (uint256 i; i < expected.length; ++i) {
+            bool found;
+            for (uint256 j; j < expected.length; ++j) {
+                if (controller.getRoleMember(role, j) == expected[i]) found = true;
+            }
+            assertTrue(found, "expected role member missing");
+        }
+    }
+
+    function _single(address a) internal pure returns (address[] memory arr) {
+        arr = new address[](1);
+        arr[0] = a;
+    }
+
+    function _pair(address a, address b) internal pure returns (address[] memory arr) {
+        arr = new address[](2);
+        arr[0] = a;
+        arr[1] = b;
+    }
+
 
     /**********************************************************************************************/
     /*** Helpers                                                                                ***/
