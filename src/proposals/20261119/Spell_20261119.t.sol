@@ -21,10 +21,7 @@ import { ForeignController } from "spark-alm-controller/src/ForeignController.so
 import { MainnetController } from "spark-alm-controller/src/MainnetController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
-
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
-import { LZForwarder }   from "xchain-helpers/forwarders/LZForwarder.sol";
 
 import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
 import { CCTPV2BridgeTesting }   from "xchain-helpers/testing/bridges/CCTPV2BridgeTesting.sol";
@@ -90,28 +87,6 @@ interface IControllerLike {
     function getConfig(bytes32 integrationId) external view returns (Config memory);
 
     function getDispatch(bytes4 callSelector) external view returns (Dispatch memory);
-
-}
-
-interface ILZReceiverLike {
-
-    struct Origin {
-        uint32  srcEid;
-        bytes32 sender;
-        uint64  nonce;
-    }
-
-    function endpoint() external view returns (address);
-
-    function lzReceive(
-        Origin   calldata origin,
-        bytes32           guid,
-        bytes    calldata message,
-        address           executor,
-        bytes    calldata extraData
-    ) external payable;
-
-    function peers(uint32 eid) external view returns (bytes32);
 
 }
 
@@ -827,64 +802,6 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(spUsdc.balanceOf(user), 0);
         assertEq(usdc.balanceOf(user),   1e6 + userAssets);
-    }
-
-    function test_AVALANCHE_governanceBridgeRetired() external onChain(ChainIdUtils.Avalanche()) {
-        IExecutor       executor = IExecutor(Avalanche.SPARK_EXECUTOR);
-        ILZReceiverLike receiver = ILZReceiverLike(Avalanche.SPARK_RECEIVER);
-
-        bytes32 submissionRole = executor.SUBMISSION_ROLE();
-        bytes32 sparkProxy     = SLLHelpers.addrToBytes32(Ethereum.SPARK_PROXY);
-
-        assertEq(receiver.peers(LZForwarder.ENDPOINT_ID_ETHEREUM), sparkProxy);
-
-        assertEq(executor.hasRole(submissionRole,           Avalanche.SPARK_RECEIVER),   true);
-        assertEq(executor.hasRole(executor.GUARDIAN_ROLE(), Avalanche.ALM_OPS_MULTISIG), true);
-
-        assertEq(executor.delay(),       3 days);
-        assertEq(executor.gracePeriod(), 7 days);
-
-        uint256 actionsSetCount = executor.actionsSetCount();
-
-        assertEq(actionsSetCount, 9);
-
-        _executeAllPayloadsAndBridges();
-
-        assertEq(receiver.peers(LZForwarder.ENDPOINT_ID_ETHEREUM), bytes32(0));
-
-        assertEq(executor.hasRole(submissionRole,           Avalanche.SPARK_RECEIVER),   false);
-        assertEq(executor.hasRole(executor.GUARDIAN_ROLE(), Avalanche.ALM_OPS_MULTISIG), true);
-
-        assertEq(executor.delay(),           3 days);
-        assertEq(executor.gracePeriod(),     7 days);
-        assertEq(executor.actionsSetCount(), actionsSetCount);  // Simulated execution does not queue
-
-        // A further message from the Spark SubProxy is rejected by the receiver...
-        address endpoint = receiver.endpoint();
-
-        vm.expectRevert(abi.encodeWithSignature("NoPeer(uint32)", LZForwarder.ENDPOINT_ID_ETHEREUM));
-        vm.prank(endpoint);
-        receiver.lzReceive(
-            ILZReceiverLike.Origin({ srcEid: LZForwarder.ENDPOINT_ID_ETHEREUM, sender: sparkProxy, nonce: 1 }),
-            bytes32(0),
-            "",
-            address(0),
-            ""
-        );
-
-        // The receiver can no longer queue anything on the executor.
-        address[] memory targets           = new address[](1);
-        uint256[] memory values            = new uint256[](1);
-        string[]  memory signatures        = new string[](1);
-        bytes[]   memory calldatas         = new bytes[](1);
-        bool[]    memory withDelegatecalls = new bool[](1);
-
-        targets[0]    = address(executor);
-        signatures[0] = "receiveFunds()";
-
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, Avalanche.SPARK_RECEIVER, submissionRole));
-        vm.prank(Avalanche.SPARK_RECEIVER);
-        executor.queue(targets, values, signatures, calldatas, withDelegatecalls);
     }
 
     /**********************************************************************************************/

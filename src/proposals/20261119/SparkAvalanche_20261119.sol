@@ -7,11 +7,7 @@ import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimi
 import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
 import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { IExecutor } from "spark-gov-relay/src/interfaces/IExecutor.sol";
-
 import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
-import { LZForwarder }   from "xchain-helpers/forwarders/LZForwarder.sol";
-import { LZReceiver }    from "xchain-helpers/receivers/LZReceiver.sol";
 
 import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
 
@@ -30,7 +26,6 @@ contract SparkAvalanche_20261119 is SparkPayloadAvalanche {
         ISparkVaultV2Like spUsdc     = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
         ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
         IRateLimits       rateLimits = IRateLimits(Avalanche.ALM_RATE_LIMITS);
-        IExecutor         executor   = IExecutor(Avalanche.SPARK_EXECUTOR);
 
         // 4. Deprecate Avalanche.
 
@@ -49,12 +44,6 @@ contract SparkAvalanche_20261119 is SparkPayloadAvalanche {
             0,
             0
         );
-
-        // Retire the Avalanche governance bridge. This payload was delivered through it, so after these two calls
-        // no further message from the Spark SubProxy can reach the Avalanche Spark Executor.
-        LZReceiver(Avalanche.SPARK_RECEIVER).setPeer(LZForwarder.ENDPOINT_ID_ETHEREUM, bytes32(0));
-
-        executor.revokeRole(executor.SUBMISSION_ROLE(), Avalanche.SPARK_RECEIVER);
     }
 
 }
