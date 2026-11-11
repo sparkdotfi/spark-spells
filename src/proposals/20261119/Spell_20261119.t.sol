@@ -512,6 +512,103 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(newBuffer != address(0), true);
     }
 
+    // The OTC buffer approves the ALM Proxy (not the controller), so residual balances sitting in the
+    // buffer at upgrade time remain claimable through the new controller without any re-approval.
+    function test_ETHEREUM_controllerUpgrade_otcResidualBufferBalancesClaimableAfterUpgrade() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+
+        IERC20 usdc = IERC20(Ethereum.USDC);
+        IERC20 usdt = IERC20(Ethereum.USDT);
+
+        // Real residual balances at the fork block (not zeroed on purpose).
+        uint256 bufferUsdc = usdc.balanceOf(Ethereum.BINANCE_OTC_BUFFER);
+        uint256 bufferUsdt = usdt.balanceOf(Ethereum.BINANCE_OTC_BUFFER);
+
+        assertGt(bufferUsdc, 0);
+        assertGt(bufferUsdt, 0);
+
+        assertEq(usdc.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+        assertEq(usdt.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+
+        _executeAllPayloadsAndBridges();
+
+        // Allowances are untouched by the upgrade.
+        assertEq(usdc.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+        assertEq(usdt.allowance(Ethereum.BINANCE_OTC_BUFFER, Ethereum.ALM_PROXY), type(uint256).max);
+
+        uint256 proxyUsdc = usdc.balanceOf(Ethereum.ALM_PROXY);
+        uint256 proxyUsdt = usdt.balanceOf(Ethereum.ALM_PROXY);
+
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.otcClaim(BINANCE_EXCHANGE, Ethereum.USDC);
+        newController.otcClaim(BINANCE_EXCHANGE, Ethereum.USDT);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(Ethereum.BINANCE_OTC_BUFFER), 0);
+        assertEq(usdt.balanceOf(Ethereum.BINANCE_OTC_BUFFER), 0);
+        assertEq(usdc.balanceOf(Ethereum.ALM_PROXY),          proxyUsdc + bufferUsdc);
+        assertEq(usdt.balanceOf(Ethereum.ALM_PROXY),          proxyUsdt + bufferUsdt);
+
+        ( , , , , uint256 claimed18 ) = newController.otcs(BINANCE_EXCHANGE);
+
+        assertEq(claimed18, bufferUsdc * 1e12 + bufferUsdt * 1e12);
+    }
+
+    // Documents the one piece of controller state that is NOT migrated: OTC swap accounting
+    // (sent18, sentTimestamp, claimed18). A swap in flight on the old controller at execution time is
+    // invisible to the new controller, which starts "ready" and accepts a second send immediately.
+    // Operational requirement: confirm isOtcSwapReady(BINANCE_EXCHANGE) on the old controller right
+    // before the executive spell is cast, and avoid otcSend in the execution window.
+    function test_ETHEREUM_controllerUpgrade_otcSwapInFlightAccountingIsDropped() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController oldController = MainnetController(Ethereum.ALM_CONTROLLER);
+        MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
+        IRateLimits       rateLimits    = IRateLimits(Ethereum.ALM_RATE_LIMITS);
+
+        uint256 amount = 1_000e6;
+
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, amount);
+
+        assertEq(oldController.isOtcSwapReady(BINANCE_EXCHANGE), true);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        oldController.otcSend(BINANCE_EXCHANGE, Ethereum.USDT, amount);
+
+        ( , , uint256 sent18, uint256 sentTimestamp, uint256 claimed18 ) = oldController.otcs(BINANCE_EXCHANGE);
+
+        assertEq(sent18,        amount * 1e12);
+        assertEq(sentTimestamp, block.timestamp);
+        assertEq(claimed18,     0);
+
+        assertEq(oldController.isOtcSwapReady(BINANCE_EXCHANGE), false);  // Swap in flight, nothing returned yet
+
+        _executeAllPayloadsAndBridges();
+
+        // Old controller still shows the swap as not returned; the new controller has no record of it.
+        assertEq(oldController.isOtcSwapReady(BINANCE_EXCHANGE), false);
+
+        ( , , sent18, sentTimestamp, claimed18 ) = newController.otcs(BINANCE_EXCHANGE);
+
+        assertEq(sent18,        0);
+        assertEq(sentTimestamp, 0);
+        assertEq(claimed18,     0);
+
+        assertEq(newController.isOtcSwapReady(BINANCE_EXCHANGE), true);
+
+        // A second send goes through although the first was never returned: exposure to the exchange
+        // is now two swaps, bounded only by LIMIT_OTC_SWAP.
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, amount);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        newController.otcSend(BINANCE_EXCHANGE, Ethereum.USDT, amount);
+
+        assertEq(newController.isOtcSwapReady(BINANCE_EXCHANGE), false);
+
+        // The rate limit is shared state and did carry over: both sends were charged against it.
+        bytes32 key = RateLimitHelpers.makeAddressKey(newController.LIMIT_OTC_SWAP(), BINANCE_EXCHANGE);
+
+        assertEq(rateLimits.getCurrentRateLimit(key), rateLimits.getRateLimitData(key).maxAmount - 2 * amount * 1e12);
+    }
+
     /**********************************************************************************************/
     /*** Items 2, 3 and 4: Ethereum USDC routes to OP Mainnet, Unichain and Avalanche           ***/
     /**********************************************************************************************/
