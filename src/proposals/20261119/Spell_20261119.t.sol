@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.25;
 
-import { Vm, VmSafe } from "forge-std/Vm.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 
 import { IERC20 }         from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IAccessControl } from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
+
+import { Id, IMorpho, MarketParams } from "morpho-blue/src/interfaces/IMorpho.sol";
+import { MarketParamsLib }          from "morpho-blue/src/libraries/MarketParamsLib.sol";
 
 import { Arbitrum }  from "spark-address-registry/Arbitrum.sol";
 import { Avalanche } from "spark-address-registry/Avalanche.sol";
@@ -36,6 +39,7 @@ import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTe
 import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
 import {
+    IMorphoMarketV1AdapterV2FactoryLike,
     IMorphoVaultV2FactoryLike,
     IMorphoVaultV2Like,
     ISparkVaultV2Like
@@ -90,6 +94,64 @@ interface IControllerLike {
 
 }
 
+interface IMorphoVaultV2ConfigLike {
+
+    function absoluteCap(bytes32 id) external view returns (uint256);
+
+    function forceDeallocatePenalty(address adapter) external view returns (uint256);
+
+    function receiveAssetsGate() external view returns (address);
+
+    function receiveSharesGate() external view returns (address);
+
+    function relativeCap(bytes32 id) external view returns (uint256);
+
+    function sendAssetsGate() external view returns (address);
+
+    function sendSharesGate() external view returns (address);
+
+    function setManagementFee(uint256 newManagementFee) external;
+
+    function setManagementFeeRecipient(address newManagementFeeRecipient) external;
+
+    function setPerformanceFee(uint256 newPerformanceFee) external;
+
+    function setPerformanceFeeRecipient(address newPerformanceFeeRecipient) external;
+
+    function setSendAssetsGate(address newSendAssetsGate) external;
+
+}
+
+interface IMorphoMarketV1AdapterLike {
+
+    function abdicate(bytes4 selector) external;
+
+    function abdicated(bytes4 selector) external view returns (bool);
+
+    function adaptiveCurveIrm() external view returns (address);
+
+    function asset() external view returns (address);
+
+    function burnShares(bytes32 marketId) external;
+
+    function factory() external view returns (address);
+
+    function increaseTimelock(bytes4 selector, uint256 newDuration) external;
+
+    function marketIdsLength() external view returns (uint256);
+
+    function morpho() external view returns (address);
+
+    function parentVault() external view returns (address);
+
+    function setSkimRecipient(address newSkimRecipient) external;
+
+    function skimRecipient() external view returns (address);
+
+    function timelock(bytes4 selector) external view returns (uint256);
+
+}
+
 interface IPSM3Like {
 
     function convertToAssetValue(uint256 shares) external view returns (uint256);
@@ -100,32 +162,22 @@ interface IPSM3Like {
 
 }
 
+interface ISafeLike {
+
+    function getOwners() external view returns (address[] memory);
+
+    function getThreshold() external view returns (uint256);
+
+    function isOwner(address owner) external view returns (bool);
+
+}
+
 abstract contract Spell_20261119_Common {
 
-    using DomainHelpers for Domain;
-
-    Vm private constant VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
-
     address internal constant NEW_ALM_CONTROLLER       = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
-    address internal constant XLAYER_MORPHO_VAULT_USDC = 0x3F2C1Abd139ECc99892034edCCBbcF5e1696a1bE;  // TODO deploy
+    address internal constant XLAYER_MORPHO_VAULT_USDC = 0xDb6C283f8026a2D1D69b90464011baFB0A1090F4;
 
     address internal constant XLAYER_MORPHO_VAULT_V2_FACTORY = 0x63D6eAc0d16D57dd131D9023ADb060277d3237d7;
-
-    function _deployStandIns(Domain memory ethereum, Domain memory xlayer) internal {
-        xlayer.selectFork();
-
-        if (XLAYER_MORPHO_VAULT_USDC.code.length == 0) {
-            address vault = IMorphoVaultV2FactoryLike(XLAYER_MORPHO_VAULT_V2_FACTORY).createVaultV2(
-                XLayer.SPARK_EXECUTOR,
-                XLayer.USDC,
-                bytes32(0)
-            );
-
-            require(vault == XLAYER_MORPHO_VAULT_USDC, "UNEXPECTED STAND-IN VAULT ADDRESS");
-        }
-
-        ethereum.selectFork();
-    }
 
 }
 
@@ -135,17 +187,36 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
     bytes32 internal constant ERC4626_FACET_ID = "ERC4626_FACET";
 
+    // Morpho contracts on X-Layer.
+    address internal constant XLAYER_MORPHO                              = 0xeb00C490E888286357dC5B0a35D37D9260D11Ab5;
+    address internal constant XLAYER_MORPHO_DEFAULT_IRM                  = 0x5688FF1aBC4089cB69dC0F56727E696A49D77E24;  // AdaptiveCurveIrm
+    address internal constant XLAYER_MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0xDD0FC0c74bd89A9C6623202473E75CbF472b33A4;
+    address internal constant XLAYER_MORPHO_VAULT_V2_ADAPTER_REGISTRY    = 0xe9F2A824Eb33B97D0F7b3266A569d71342104829;
+
+    // Spark Blue Chip USDC (sparkUSDCbc) Morpho vault on X-Layer.
+    address internal constant MORPHO_VAULT_USDC_ADAPTER  = 0x85FF182e263c1EbeE4dbd7FF021484fdf69fEAa1;  // MorphoMarketV1AdapterV2
+    address internal constant MORPHO_VAULT_USDC_CURATOR  = 0x0f963A8A8c01042B69054e787E5763ABbB0646A3;  // Safe, to become 2/2 of SAFE_SIGNER_1 and SAFE_SIGNER_2
+    address internal constant MORPHO_VAULT_USDC_DEPLOYER = 0x95293975f62eBa19CE873BcDE0f21de2Cc32f16a;  // spark-ops
+    address internal constant SAFE_SIGNER_1              = 0x50c770E6dC6CfdEE33509273FA9a215bfAffF9B2;  // Spark, same as SPARK_SENTINEL
+    address internal constant SAFE_SIGNER_2              = 0xAB5710211458FC8d7E0Be628202F47DdbD3F38Eb;  // Soter Labs owned multisig
+    address internal constant SOTER_SENTINEL             = 0xf5748bBeFa17505b2F7222B23ae11584932C908B;
+    address internal constant SPARK_SENTINEL             = 0x50c770E6dC6CfdEE33509273FA9a215bfAffF9B2;
+    address internal constant SPUSDC_USDC_ORACLE         = 0xDe060edE08aDf62E923ef5861dBA115520980a5D;
+    address internal constant XBTC                       = 0xb7C00000bcDEeF966b20B3D884B98E64d2b06b4f;
+    address internal constant XBTC_USDC_ORACLE           = 0x0ADB0ed5404025f4542ffB1c1Ef2693a27b727F6;
+
+    bytes32 internal constant SPUSDC_USDC_MARKET_ID = 0xcae5fa2ca2120afae0d7c509932289b2f7cee74d5f5ff038e5774a2fe23d2727;
+    bytes32 internal constant XBTC_USDC_MARKET_ID   = 0xe84aeeff81816c52935ccd94da8b4c9b517fda33862d41e39a8180ee21f68cf8;
+
     mapping(uint256 chainId => uint256 timestamp) internal forkTimestamp;
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794235200;  // Nov-09-2026 02:40:00 PM +UTC
+        _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
-
-        _deployStandIns(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.XLayer()].domain);
 
         _recordForkTimestamps();
 
@@ -517,7 +588,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY),  0);
         assertEq(IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY), 0);
 
-        assertEq(psm3.shares(Optimism.ALM_PROXY), 2_404_434.857373491180842050e18);
+        assertEq(psm3.shares(Optimism.ALM_PROXY), 2_427_805.141415515847653705e18);
 
         vm.startPrank(Optimism.ALM_RELAYER_MULTISIG);
 
@@ -537,10 +608,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY), 0);
         assertEq(optimismUsdsBalanceBefore,                           1.518165e18);
-        assertEq(optimismSusdsBalanceBefore,                          1_342_240.2227999340820027e18);
+        assertEq(optimismSusdsBalanceBefore,                          1_357_285.762051717161395459e18);
 
         assertEq(psm3.shares(Optimism.ALM_PROXY),              0);
-        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.035666343713915981e18);
+        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.035805164163993401e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -632,10 +703,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(IERC20(Unichain.USDC).balanceOf(Unichain.ALM_PROXY), 0);
 
         assertEq(unichainUsdsBalanceBefore,  0.02e18);
-        assertEq(unichainSusdsBalanceBefore, 66_802.321075043559685732e18);
+        assertEq(unichainSusdsBalanceBefore, 66_891.930216457461245304e18);
 
         assertEq(psm3.shares(Unichain.ALM_PROXY),              0);
-        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.039935169166606327e18);
+        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.040086088670463747e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -732,7 +803,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         // USDC can still be moved into spUSDC for its holders.
         uint256 vaultBalanceBefore = usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
-        assertEq(vaultBalanceBefore,                  443_205.909611e6);
+        assertEq(vaultBalanceBefore,                  443_859.474741e6);
         assertEq(usdc.balanceOf(Avalanche.ALM_PROXY), 100e6);
 
         vm.prank(Avalanche.ALM_RELAYER_MULTISIG);
@@ -751,7 +822,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(spUsdc.depositCap(), 500_000_000e6);
         assertEq(spUsdc.minVsr(),     1e27);
         assertEq(spUsdc.maxVsr(),     TEN_PCT_APY);
-        assertEq(spUsdc.vsr(),        1.000000001182641576793209935e27);
+        assertEq(spUsdc.vsr(),        1e27);  // Already set to 0% by the setter
 
         // The setter fixes the rate at 0%.
         vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
@@ -907,6 +978,193 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(rateLimits.getCurrentRateLimit(depositKey),  15_000_000e6);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+    }
+
+    function test_XLAYER_morphoVaultV2Config() external onChain(ChainIdUtils.XLayer()) {
+        IMorphoVaultV2Like       vault = IMorphoVaultV2Like(XLAYER_MORPHO_VAULT_USDC);
+        IMorphoVaultV2ConfigLike caps  = IMorphoVaultV2ConfigLike(XLAYER_MORPHO_VAULT_USDC);
+
+        assertEq(IMorphoVaultV2FactoryLike(XLAYER_MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)), true);
+
+        assertEq(vault.name(),     "Spark Blue Chip USDC");
+        assertEq(vault.symbol(),   "sparkUSDCbc");
+        assertEq(vault.decimals(), 18);
+        assertEq(vault.asset(),    XLayer.USDC);
+        assertEq(vault.owner(),    XLayer.SPARK_EXECUTOR);
+
+        assertEq(vault.curator(), MORPHO_VAULT_USDC_CURATOR);
+
+        // TODO: The curator Safe is to become a 2-of-2 of SAFE_SIGNER_1 and SAFE_SIGNER_2, but the batch
+        //       (safeTxHash 0xc3e4a38d...b738) is not executed yet, so it is still the 3-of-5 it was created
+        //       as. Once it executes, bump `_blockDate` and replace these four assertions with:
+        //           assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).getThreshold(),          2);
+        //           assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).getOwners().length,      2);
+        //           assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).isOwner(SAFE_SIGNER_1), true);
+        //           assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).isOwner(SAFE_SIGNER_2), true);
+        assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).getThreshold(),          3);
+        assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).getOwners().length,      5);
+        assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).isOwner(SAFE_SIGNER_1), false);
+        assertEq(ISafeLike(MORPHO_VAULT_USDC_CURATOR).isOwner(SAFE_SIGNER_2), false);
+
+        assertEq(vault.isSentinel(SOTER_SENTINEL),             true);
+        assertEq(vault.isSentinel(SPARK_SENTINEL),             true);
+        assertEq(vault.isSentinel(MORPHO_VAULT_USDC_DEPLOYER), false);
+
+        assertEq(vault.isAllocator(XLayer.ALM_RELAYER_MULTISIG), true);
+        assertEq(vault.isAllocator(XLayer.SPUSDC_PAU_ALM_PROXY), false);
+        assertEq(vault.isAllocator(XLayer.SPARK_EXECUTOR),       false);
+        assertEq(vault.isAllocator(MORPHO_VAULT_USDC_CURATOR),   false);
+        assertEq(vault.isAllocator(MORPHO_VAULT_USDC_DEPLOYER),  false);
+
+        // setAdapterRegistry and the three critical gate setters are permanently abdicated;
+        // setSendAssetsGate is not abdicated but sits behind the 7-day timelock.
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setAdapterRegistry.selector),      true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setReceiveSharesGate.selector),    true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setSendSharesGate.selector),       true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setReceiveAssetsGate.selector),    true);
+        assertEq(vault.abdicated(IMorphoVaultV2ConfigLike.setSendAssetsGate.selector), false);
+
+        // No gates are set.
+        assertEq(caps.receiveSharesGate(), address(0));
+        assertEq(caps.sendSharesGate(),    address(0));
+        assertEq(caps.receiveAssetsGate(), address(0));
+        assertEq(caps.sendAssetsGate(),    address(0));
+
+        // Per-selector timelocks
+        assertEq(vault.timelock(IMorphoVaultV2Like.increaseAbsoluteCap.selector),              7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.increaseRelativeCap.selector),              7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.abdicate.selector),                         7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.addAdapter.selector),                       7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.removeAdapter.selector),                    7 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.increaseTimelock.selector),                 7 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setSendAssetsGate.selector),          7 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setPerformanceFee.selector),          3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setManagementFee.selector),           3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setPerformanceFeeRecipient.selector), 3 days);
+        assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setManagementFeeRecipient.selector),  3 days);
+        assertEq(vault.timelock(IMorphoVaultV2Like.setIsAllocator.selector),                   0);
+        assertEq(vault.timelock(IMorphoVaultV2Like.setForceDeallocatePenalty.selector),        0);
+
+        assertEq(vault.adapterRegistry(), XLAYER_MORPHO_VAULT_V2_ADAPTER_REGISTRY);
+
+        assertEq(vault.adaptersLength(), 1);
+        assertEq(vault.adapters(0),      MORPHO_VAULT_USDC_ADAPTER);
+
+        assertEq(vault.isAdapter(MORPHO_VAULT_USDC_ADAPTER), true);
+
+        // No liquidity adapter, so deposits stay idle until the allocator allocates them.
+        assertEq(vault.liquidityAdapter(),     address(0));
+        assertEq(vault.liquidityData().length, 0);
+
+        // Check adapter is from factory
+        IMorphoMarketV1AdapterV2FactoryLike adapterFactory = IMorphoMarketV1AdapterV2FactoryLike(XLAYER_MORPHO_MARKET_V1_ADAPTER_V2_FACTORY);
+
+        assertEq(adapterFactory.isMorphoMarketV1AdapterV2(vault.adapters(0)), true);
+
+        // Force-deallocating through the adapter carries no penalty, so the sentinel exit
+        // path costs depositors nothing.
+        assertEq(caps.forceDeallocatePenalty(MORPHO_VAULT_USDC_ADAPTER), 0);
+
+        // Fees and rate cap.
+        assertEq(vault.performanceFee(),          0.1e18);
+        assertEq(vault.performanceFeeRecipient(), XLayer.SPUSDC_PAU_ALM_PROXY);
+        assertEq(vault.managementFee(),           0);
+        assertEq(vault.managementFeeRecipient(),  XLayer.SPUSDC_PAU_ALM_PROXY);
+
+        assertEq(vault.maxRate(), 2e18 / uint256(365 days));  // 200% APR cap
+        assertEq(vault.maxRate(), 63_419_583_967);
+
+        MarketParams memory spUsdcMarket = MarketParams({
+            loanToken:       XLayer.USDC,
+            collateralToken: XLayer.SPARK_VAULT_V2_SPUSDC,
+            oracle:          SPUSDC_USDC_ORACLE,
+            irm:             XLAYER_MORPHO_DEFAULT_IRM,
+            lltv:            0.965e18
+        });
+
+        MarketParams memory xbtcMarket = MarketParams({
+            loanToken:       XLayer.USDC,
+            collateralToken: XBTC,
+            oracle:          XBTC_USDC_ORACLE,
+            irm:             XLAYER_MORPHO_DEFAULT_IRM,
+            lltv:            0.86e18
+        });
+
+        assertEq(Id.unwrap(MarketParamsLib.id(spUsdcMarket)), SPUSDC_USDC_MARKET_ID);
+        assertEq(Id.unwrap(MarketParamsLib.id(xbtcMarket)),   XBTC_USDC_MARKET_ID);
+
+        bytes32 adapterId          = keccak256(abi.encode("this", MORPHO_VAULT_USDC_ADAPTER));
+        bytes32 spUsdcCollateralId = keccak256(abi.encode("collateralToken", XLayer.SPARK_VAULT_V2_SPUSDC));
+        bytes32 spUsdcMarketId     = keccak256(abi.encode("this/marketParams", MORPHO_VAULT_USDC_ADAPTER, spUsdcMarket));
+        bytes32 xbtcCollateralId   = keccak256(abi.encode("collateralToken", XBTC));
+        bytes32 xbtcMarketId       = keccak256(abi.encode("this/marketParams", MORPHO_VAULT_USDC_ADAPTER, xbtcMarket));
+
+        assertEq(caps.absoluteCap(adapterId),          type(uint128).max);
+        assertEq(caps.relativeCap(adapterId),          1e18);
+        assertEq(caps.absoluteCap(spUsdcCollateralId), 100_000_000e6);
+        assertEq(caps.relativeCap(spUsdcCollateralId), 1e18);
+        assertEq(caps.absoluteCap(spUsdcMarketId),     100_000_000e6);
+        assertEq(caps.relativeCap(spUsdcMarketId),     1e18);
+        assertEq(caps.absoluteCap(xbtcCollateralId),   10_000_000e6);
+        assertEq(caps.relativeCap(xbtcCollateralId),   1e18);
+        assertEq(caps.absoluteCap(xbtcMarketId),       10_000_000e6);
+        assertEq(caps.relativeCap(xbtcMarketId),       1e18);
+
+        // Dead-deposit seed.
+        assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
+
+        assertGe(vault.totalAssets(), 1e6);
+
+        // Both markets exist and are seeded: 1 USDC supplied for 0xdEaD, 0.9 USDC borrowed (90% utilization).
+        _assertMorphoMarketSeed(SPUSDC_USDC_MARKET_ID, spUsdcMarket);
+        _assertMorphoMarketSeed(XBTC_USDC_MARKET_ID,   xbtcMarket);
+    }
+
+    function test_XLAYER_morphoVaultV2AdapterConfig() external onChain(ChainIdUtils.XLayer()) {
+        IMorphoMarketV1AdapterLike adapter = IMorphoMarketV1AdapterLike(MORPHO_VAULT_USDC_ADAPTER);
+
+        assertEq(adapter.factory(),          XLAYER_MORPHO_MARKET_V1_ADAPTER_V2_FACTORY);
+        assertEq(adapter.parentVault(),      XLAYER_MORPHO_VAULT_USDC);
+        assertEq(adapter.morpho(),           XLAYER_MORPHO);
+        assertEq(adapter.asset(),            XLayer.USDC);
+        assertEq(adapter.adaptiveCurveIrm(), XLAYER_MORPHO_DEFAULT_IRM);
+
+        // No skim recipient, so nobody can skim.
+        assertEq(adapter.skimRecipient(), address(0));
+
+        // Nothing is allocated yet.
+        assertEq(adapter.marketIdsLength(), 0);
+
+        assertEq(adapter.abdicated(IMorphoMarketV1AdapterLike.abdicate.selector),         false);
+        assertEq(adapter.abdicated(IMorphoMarketV1AdapterLike.burnShares.selector),       false);
+        assertEq(adapter.abdicated(IMorphoMarketV1AdapterLike.increaseTimelock.selector), false);
+        assertEq(adapter.abdicated(IMorphoMarketV1AdapterLike.setSkimRecipient.selector), false);
+
+        // Per-selector timelocks.
+        assertEq(adapter.timelock(IMorphoMarketV1AdapterLike.abdicate.selector),         7 days);
+        assertEq(adapter.timelock(IMorphoMarketV1AdapterLike.increaseTimelock.selector), 7 days);
+        assertEq(adapter.timelock(IMorphoMarketV1AdapterLike.burnShares.selector),       3 days);
+        assertEq(adapter.timelock(IMorphoMarketV1AdapterLike.setSkimRecipient.selector), 3 days);
+    }
+
+    function _assertMorphoMarketSeed(bytes32 marketId, MarketParams memory expectedParams) internal view {
+        IMorpho morpho = IMorpho(XLAYER_MORPHO);
+
+        MarketParams memory params = morpho.idToMarketParams(Id.wrap(marketId));
+
+        assertEq(params.loanToken,       expectedParams.loanToken);
+        assertEq(params.collateralToken, expectedParams.collateralToken);
+        assertEq(params.oracle,          expectedParams.oracle);
+        assertEq(params.irm,             expectedParams.irm);
+        assertEq(params.lltv,            expectedParams.lltv);
+
+        assertEq(morpho.position(Id.wrap(marketId), address(0xdead)).supplyShares, 1e12);
+
+        assertEq(morpho.market(Id.wrap(marketId)).totalSupplyShares, 1e12);
+        assertEq(morpho.market(Id.wrap(marketId)).totalBorrowShares, 0.9e12);
+
+        assertGe(morpho.market(Id.wrap(marketId)).totalSupplyAssets, 1e6);
+        assertGe(morpho.market(Id.wrap(marketId)).totalBorrowAssets, 0.9e6);
     }
 
     /**********************************************************************************************/
@@ -1436,13 +1694,11 @@ contract SparkEthereum_20261119_SparklendTests is SparklendTests, Spell_20261119
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794235200;  // Nov-09-2026 02:40:00 PM +UTC
+        _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
-
-        _deployStandIns(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.XLayer()].domain);
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
@@ -1457,13 +1713,11 @@ contract SparkEthereum_20261119_SpellTests is SpellTests, Spell_20261119_Common 
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794235200;  // Nov-09-2026 02:40:00 PM +UTC
+        _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
-
-        _deployStandIns(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.XLayer()].domain);
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
@@ -1481,7 +1735,7 @@ contract SparkEthereum_20261119_SpellTests is SpellTests, Spell_20261119_Common 
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      48_995_094.205806286854722044e18);
-        assertEq(foundationBalanceBefore,      3_797_220.8122e18);
+        assertEq(foundationBalanceBefore,      3_247_220.8122e18);
         assertEq(assetFoundationBalanceBefore, 245_000e18);
 
         _executeAllPayloadsAndBridges();
