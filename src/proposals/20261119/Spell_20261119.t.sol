@@ -125,12 +125,6 @@ interface IPSM3Like {
 
 }
 
-interface IVaultV2FactoryLike {
-
-    function isVaultV2(address account) external view returns (bool);
-
-}
-
 abstract contract Spell_20261119_Common {
 
     using DomainHelpers for Domain;
@@ -236,7 +230,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(newController.hasRole(relayerRole, Ethereum.ALM_BACKSTOP_RELAYER_MULTISIG), false);
         assertEq(newController.hasRole(freezerRole, ctx.freezer),                            false);
 
-        _assertMigratedControllerConfig(newController, false);
+        _assertNewControllerConfig(newController, false);
 
         _executeAllPayloadsAndBridges();
 
@@ -252,7 +246,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(newController.cctpMaxFeeRate(), 0);
 
-        _assertMigratedControllerConfig(newController, true);
+        _assertNewControllerConfig(newController, true);
 
         // Every migrated value equals the one on the old controller.
         _assertSameControllerConfig(oldController, newController);
@@ -290,6 +284,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(oldLogs.length, 27);
 
+        // 27 old events, but CURVE_SUSDSUSDT and CURVE_WEETHWETHNG were set twice.
+        assertEq(_countEvents(newLogs, address(newController), MainnetController.MaxSlippageSet.selector), 25);
+
+
         for (uint256 i; i < oldLogs.length; ++i) {
             address pool = _toAddress(oldLogs[i].topics[1]);
 
@@ -299,7 +297,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
             assertEq(abi.decode(data, (uint256)),      oldController.maxSlippages(pool));
             assertEq(newController.maxSlippages(pool), oldController.maxSlippages(pool));
 
-            assertEq(newController.maxSlippages(pool) != 0, true);
+            assertTrue(newController.maxSlippages(pool) != 0);
         }
     }
 
@@ -311,6 +309,8 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         VmSafe.EthGetLogs[] memory oldLogs = _getEvents(block.chainid, address(oldController), MainnetController.MaxExchangeRateSet.selector);
 
         assertEq(oldLogs.length, 12);
+
+        assertEq(_countEvents(newLogs, address(newController), MainnetController.MaxExchangeRateSet.selector), 12);
 
         for (uint256 i; i < oldLogs.length; ++i) {
             address token = _toAddress(oldLogs[i].topics[1]);
@@ -334,12 +334,14 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(oldLogs.length, 5);
 
+        assertEq(_countEvents(newLogs, address(newController), MainnetController.UniswapV4TickLimitsSet.selector), 5);
+
         for (uint256 i; i < oldLogs.length; ++i) {
             bytes32 poolId = oldLogs[i].topics[1];
 
             ( int24 oldTickLower, int24 oldTickUpper, uint24 oldMaxTickSpacing ) = oldController.uniswapV4TickLimits(poolId);
 
-            assertEq(oldMaxTickSpacing != 0, true);
+            assertTrue(oldMaxTickSpacing != 0);
 
             {
                 ( uint256 count, bytes memory data ) = _findEvents(newLogs, address(newController), MainnetController.UniswapV4TickLimitsSet.selector, poolId);
@@ -365,6 +367,8 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(oldLogs.length, 5);
 
+        assertEq(_countEvents(newLogs, address(newController), MainnetController.MintRecipientSet.selector), 5);
+
         for (uint256 i; i < oldLogs.length; ++i) {
             uint32 domain = uint32(uint256(oldLogs[i].topics[1]));
 
@@ -385,6 +389,8 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         VmSafe.EthGetLogs[] memory oldLogs = _getEvents(block.chainid, address(oldController), MainnetController.LayerZeroRecipientSet.selector);
 
         assertEq(oldLogs.length, 2);
+
+        assertEq(_countEvents(newLogs, address(newController), MainnetController.LayerZeroRecipientSet.selector), 2);
 
         for (uint256 i; i < oldLogs.length; ++i) {
             uint32 endpointId = uint32(uint256(oldLogs[i].topics[1]));
@@ -465,9 +471,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
     /**********************************************************************************************/
 
     function test_ETHEREUM_sll_closeDeprecatedCctpRoutes() external onChain(ChainIdUtils.Ethereum()) {
+        MainnetController oldController = MainnetController(Ethereum.ALM_CONTROLLER);
         MainnetController newController = MainnetController(NEW_ALM_CONTROLLER);
 
-        bytes32 domainKey = MainnetController(Ethereum.ALM_CONTROLLER).LIMIT_USDC_TO_DOMAIN();
+        bytes32 domainKey = oldController.LIMIT_USDC_TO_DOMAIN();
 
         bytes32 avalancheKey = RateLimitHelpers.makeUint32Key(domainKey, CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
         bytes32 optimismKey  = RateLimitHelpers.makeUint32Key(domainKey, CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
@@ -478,6 +485,15 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         _assertRateLimit(Ethereum.ALM_RATE_LIMITS, unichainKey,  50_000_000e6,  uint256(25_000_000e6)  / 1 days);
 
         _assertUnlimitedRateLimit(Ethereum.ALM_RATE_LIMITS, newController.LIMIT_USDC_TO_CCTP());
+
+        // Before the upgrade the mint recipients live on the old controller only; the spell copies them over.
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY));
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),  SLLHelpers.addrToBytes32(Optimism.ALM_PROXY));
+        assertEq(oldController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),  SLLHelpers.addrToBytes32(Unichain.ALM_PROXY));
+
+        assertEq(newController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE), bytes32(0));
+        assertEq(newController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM),  bytes32(0));
+        assertEq(newController.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN),  bytes32(0));
 
         _executeAllPayloadsAndBridges();
 
@@ -509,19 +525,16 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
     /*** Item 2: Deprecate the Spark Liquidity Layer on OP Mainnet                              ***/
     /**********************************************************************************************/
 
-    function test_OPTIMISM_sll_deprecate() external onChain(ChainIdUtils.Optimism()) {
+    function test_OPTIMISM_sll_returnExcessLiquidity() external onChain(ChainIdUtils.Optimism()) {
+        ForeignController controller = ForeignController(Optimism.ALM_CONTROLLER);
+        IPSM3Like         psm3       = IPSM3Like(Optimism.PSM3);
+
         // The pinned PSM3 amounts follow the SSR oracle at the fork timestamp.
         _warpToForkBlock(ChainIdUtils.Optimism());
 
         // Prevent the other OP-stack payloads from running so their L2 SentMessage logs don't interfere with the
         // Optimism bridge relay.
         chainData[ChainIdUtils.Unichain()].payload = address(0);
-
-        IALMProxy         almProxy   = IALMProxy(Optimism.ALM_PROXY);
-        ForeignController controller = ForeignController(Optimism.ALM_CONTROLLER);
-        IPSM3Like         psm3       = IPSM3Like(Optimism.PSM3);
-
-        bytes32 controllerRole = almProxy.CONTROLLER();
 
         // Pre-configuration 1: the relayer withdraws the PSM3 position and returns the USDC to Ethereum before the
         // spell. USDS and sUSDS stay in the ALM Proxy for the spell to bridge.
@@ -554,13 +567,6 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(psm3.shares(Optimism.ALM_PROXY),              0);
         assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.035666343713915981e18);
 
-        _assertOpStackRateLimits(Optimism.ALM_RATE_LIMITS, controller, Optimism.USDC, Optimism.USDS, Optimism.SUSDS, false);
-
-        assertEq(almProxy.hasRole(controllerRole, Optimism.SPARK_EXECUTOR), false);
-        assertEq(almProxy.hasRole(controllerRole, Optimism.ALM_CONTROLLER), true);
-
-        _assertForeignControllerRoles(controller, Optimism.ALM_RELAYER_MULTISIG, Optimism.ALM_BACKSTOP_RELAYER_MULTISIG, Optimism.ALM_FREEZER_MULTISIG);
-
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
@@ -568,21 +574,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         chainData[ChainIdUtils.Optimism()].domain.selectFork();
 
-        RecordedLogs.init();
-
         _executeAllPayloadsAndBridges();
 
         // Optimism ALM proxy sent the tokens to the bridge (burned on L2)
         assertEq(IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY),  0);
         assertEq(IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY), 0);
-
-        _assertOpStackRateLimits(Optimism.ALM_RATE_LIMITS, controller, Optimism.USDC, Optimism.USDS, Optimism.SUSDS, true);
-
-        assertEq(almProxy.hasRole(controllerRole, Optimism.SPARK_EXECUTOR), false);
-        assertEq(almProxy.hasRole(controllerRole, Optimism.ALM_CONTROLLER), true);
-
-        // The relayer, backstop relayer and freezer roles are not changed; with every limit at zero they can move nothing.
-        _assertForeignControllerRoles(controller, Optimism.ALM_RELAYER_MULTISIG, Optimism.ALM_BACKSTOP_RELAYER_MULTISIG, Optimism.ALM_FREEZER_MULTISIG);
 
         // Relay L2->L1 OP bridge messages to Ethereum.
         OptimismBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.Optimism()].bridges[0], false);
@@ -595,23 +591,44 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY), ethSusdsBalanceBefore + optimismSusdsBalanceBefore);
     }
 
+    function test_OPTIMISM_sll_deprecate() external onChain(ChainIdUtils.Optimism()) {
+        IALMProxy         almProxy   = IALMProxy(Optimism.ALM_PROXY);
+        ForeignController controller = ForeignController(Optimism.ALM_CONTROLLER);
+
+        bytes32 controllerRole = almProxy.CONTROLLER();
+
+        _assertOpStackRateLimits(Optimism.ALM_RATE_LIMITS, controller, Optimism.USDC, Optimism.USDS, Optimism.SUSDS, false);
+
+        assertEq(almProxy.hasRole(controllerRole, Optimism.SPARK_EXECUTOR), false);
+        assertEq(almProxy.hasRole(controllerRole, Optimism.ALM_CONTROLLER), true);
+
+        _assertForeignControllerRoles(controller, Optimism.ALM_RELAYER_MULTISIG, Optimism.ALM_BACKSTOP_RELAYER_MULTISIG, Optimism.ALM_FREEZER_MULTISIG);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertOpStackRateLimits(Optimism.ALM_RATE_LIMITS, controller, Optimism.USDC, Optimism.USDS, Optimism.SUSDS, true);
+
+        assertEq(almProxy.hasRole(controllerRole, Optimism.SPARK_EXECUTOR), false);
+        assertEq(almProxy.hasRole(controllerRole, Optimism.ALM_CONTROLLER), true);
+
+        // The relayer, backstop relayer and freezer roles are not changed; with every limit at zero they can move nothing.
+        _assertForeignControllerRoles(controller, Optimism.ALM_RELAYER_MULTISIG, Optimism.ALM_BACKSTOP_RELAYER_MULTISIG, Optimism.ALM_FREEZER_MULTISIG);
+    }
+
     /**********************************************************************************************/
     /*** Item 3: Deprecate the Spark Liquidity Layer on Unichain                                ***/
     /**********************************************************************************************/
 
-    function test_UNICHAIN_sll_deprecate() external onChain(ChainIdUtils.Unichain()) {
+    function test_UNICHAIN_sll_returnExcessLiquidity() external onChain(ChainIdUtils.Unichain()) {
+        ForeignController controller = ForeignController(Unichain.ALM_CONTROLLER);
+        IPSM3Like         psm3       = IPSM3Like(Unichain.PSM3);
+
         // The pinned PSM3 amounts follow the SSR oracle at the fork timestamp.
         _warpToForkBlock(ChainIdUtils.Unichain());
 
         // Prevent the other OP-stack payloads from running so their L2 SentMessage logs don't interfere with the
         // Unichain bridge relay.
         chainData[ChainIdUtils.Optimism()].payload = address(0);
-
-        IALMProxy         almProxy   = IALMProxy(Unichain.ALM_PROXY);
-        ForeignController controller = ForeignController(Unichain.ALM_CONTROLLER);
-        IPSM3Like         psm3       = IPSM3Like(Unichain.PSM3);
-
-        bytes32 controllerRole = almProxy.CONTROLLER();
 
         // Pre-configuration 1: the relayer withdraws the PSM3 position and returns the USDC to Ethereum before the
         // spell. USDS and sUSDS stay in the ALM Proxy for the spell to bridge.
@@ -645,13 +662,6 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(psm3.shares(Unichain.ALM_PROXY),              0);
         assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.039935169166606327e18);
 
-        _assertOpStackRateLimits(Unichain.ALM_RATE_LIMITS, controller, Unichain.USDC, Unichain.USDS, Unichain.SUSDS, false);
-
-        assertEq(almProxy.hasRole(controllerRole, Unichain.SPARK_EXECUTOR), false);
-        assertEq(almProxy.hasRole(controllerRole, Unichain.ALM_CONTROLLER), true);
-
-        _assertForeignControllerRoles(controller, Unichain.ALM_RELAYER_MULTISIG, Unichain.ALM_BACKSTOP_RELAYER_MULTISIG, Unichain.ALM_FREEZER_MULTISIG);
-
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
         uint256 ethUsdsBalanceBefore  = IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY);
@@ -667,14 +677,6 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(IERC20(Unichain.USDS).balanceOf(Unichain.ALM_PROXY),  0);
         assertEq(IERC20(Unichain.SUSDS).balanceOf(Unichain.ALM_PROXY), 0);
 
-        _assertOpStackRateLimits(Unichain.ALM_RATE_LIMITS, controller, Unichain.USDC, Unichain.USDS, Unichain.SUSDS, true);
-
-        assertEq(almProxy.hasRole(controllerRole, Unichain.SPARK_EXECUTOR), false);
-        assertEq(almProxy.hasRole(controllerRole, Unichain.ALM_CONTROLLER), true);
-
-        // The relayer, backstop relayer and freezer roles are not changed; with every limit at zero they can move nothing.
-        _assertForeignControllerRoles(controller, Unichain.ALM_RELAYER_MULTISIG, Unichain.ALM_BACKSTOP_RELAYER_MULTISIG, Unichain.ALM_FREEZER_MULTISIG);
-
         // Relay L2->L1 OP bridge messages to Ethereum.
         OptimismBridgeTesting.relayMessagesToSource(chainData[ChainIdUtils.Unichain()].bridges[0], false);
 
@@ -684,6 +686,34 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.ALM_PROXY),  ethUsdsBalanceBefore  + unichainUsdsBalanceBefore);
         assertEq(IERC20(Ethereum.SUSDS).balanceOf(Ethereum.ALM_PROXY), ethSusdsBalanceBefore + unichainSusdsBalanceBefore);
+    }
+
+    function test_UNICHAIN_sll_deprecate() external onChain(ChainIdUtils.Unichain()) {
+        IALMProxy         almProxy   = IALMProxy(Unichain.ALM_PROXY);
+        ForeignController controller = ForeignController(Unichain.ALM_CONTROLLER);
+
+        bytes32 controllerRole = almProxy.CONTROLLER();
+
+        _assertOpStackRateLimits(Unichain.ALM_RATE_LIMITS, controller, Unichain.USDC, Unichain.USDS, Unichain.SUSDS, false);
+
+        assertEq(almProxy.hasRole(controllerRole, Unichain.SPARK_EXECUTOR), false);
+        assertEq(almProxy.hasRole(controllerRole, Unichain.ALM_CONTROLLER), true);
+
+        _assertForeignControllerRoles(controller, Unichain.ALM_RELAYER_MULTISIG, Unichain.ALM_BACKSTOP_RELAYER_MULTISIG, Unichain.ALM_FREEZER_MULTISIG);
+
+        _executeAllPayloadsAndBridges();
+
+        // Unichain ALM proxy sent the tokens to the bridge (burned on L2)
+        assertEq(IERC20(Unichain.USDS).balanceOf(Unichain.ALM_PROXY),  0);
+        assertEq(IERC20(Unichain.SUSDS).balanceOf(Unichain.ALM_PROXY), 0);
+
+        _assertOpStackRateLimits(Unichain.ALM_RATE_LIMITS, controller, Unichain.USDC, Unichain.USDS, Unichain.SUSDS, true);
+
+        assertEq(almProxy.hasRole(controllerRole, Unichain.SPARK_EXECUTOR), false);
+        assertEq(almProxy.hasRole(controllerRole, Unichain.ALM_CONTROLLER), true);
+
+        // The relayer, backstop relayer and freezer roles are not changed; with every limit at zero they can move nothing.
+        _assertForeignControllerRoles(controller, Unichain.ALM_RELAYER_MULTISIG, Unichain.ALM_BACKSTOP_RELAYER_MULTISIG, Unichain.ALM_FREEZER_MULTISIG);
     }
 
     /**********************************************************************************************/
@@ -727,6 +757,9 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         // USDC can still be moved into spUSDC for its holders.
         uint256 vaultBalanceBefore = usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
+        assertEq(vaultBalanceBefore,                  443_205.909611e6);
+        assertEq(usdc.balanceOf(Avalanche.ALM_PROXY), 100e6);
+
         vm.prank(Avalanche.ALM_RELAYER_MULTISIG);
         controller.transferAsset(Avalanche.USDC, Avalanche.SPARK_VAULT_V2_SPUSDC, 100e6);
 
@@ -735,12 +768,8 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
     }
 
     function test_AVALANCHE_sparkVaultV2_closeSpUsdc() external onChain(ChainIdUtils.Avalanche()) {
-        // The pinned totalAssets follows the VSR accrual at the fork timestamp.
-        _warpToForkBlock(ChainIdUtils.Avalanche());
-
-        ISparkVaultV2Like spUsdc     = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
-        ForeignController controller = ForeignController(Avalanche.ALM_CONTROLLER);
-        IERC20            usdc       = IERC20(Avalanche.USDC);
+        ISparkVaultV2Like spUsdc = ISparkVaultV2Like(Avalanche.SPARK_VAULT_V2_SPUSDC);
+        IERC20            usdc   = IERC20(Avalanche.USDC);
 
         address user = makeAddr("user");
 
@@ -749,31 +778,21 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(spUsdc.maxVsr(),     TEN_PCT_APY);
         assertEq(spUsdc.vsr(),        1.000000001182641576793209935e27);
 
-        assertEq(spUsdc.totalAssets(),                                444_032.302026e6);
-        assertEq(usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC),     443_205.909611e6);
-
-        // Pre-configuration 2: the setter fixes the rate at 0% and the relayer funds the vault for every holder.
+        // The setter fixes the rate at 0%.
         vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
         spUsdc.setVsr(1e27);
 
-        uint256 shortfall = spUsdc.totalAssets() - usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC);
-
-        deal(address(usdc), Avalanche.ALM_PROXY, shortfall);
-
-        vm.prank(Avalanche.ALM_RELAYER_MULTISIG);
-        controller.transferAsset(Avalanche.USDC, Avalanche.SPARK_VAULT_V2_SPUSDC, shortfall);
-
-        assertGe(usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC), spUsdc.totalAssets());
-
-        // Deposits are still open before the spell.
+        // A holder deposits while deposits are still open.
         deal(address(usdc), user, 1_000e6);
 
         vm.startPrank(user);
-        usdc.approve(Avalanche.SPARK_VAULT_V2_SPUSDC, 1_000e6);
+        usdc.approve(address(spUsdc), 1_000e6);
         uint256 shares = spUsdc.deposit(1_000e6, user);
         vm.stopPrank();
 
-        assertGt(shares, 0);
+        uint256 userAssets = spUsdc.assetsOf(user);
+
+        assertEq(userAssets, 1_000e6 - 1);
 
         _executeAllPayloadsAndBridges();
 
@@ -789,24 +808,25 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
         spUsdc.setVsr(1e27 + 1);
 
-        // Deposits are closed, withdrawals in full remain possible for every holder.
+        // Deposits are closed.
         deal(address(usdc), user, 1e6);
 
         vm.startPrank(user);
-        usdc.approve(Avalanche.SPARK_VAULT_V2_SPUSDC, 1e6);
+        usdc.approve(address(spUsdc), 1e6);
         vm.expectRevert("SparkVault/deposit-cap-exceeded");
         spUsdc.deposit(1e6, user);
-
-        skip(30 days);
-
-        uint256 assets = spUsdc.redeem(shares, user, user);
         vm.stopPrank();
 
-        assertApproxEqAbs(assets, 1_000e6, 1);
+        // At 0% the holder's assets do not grow, and the holder can still redeem in full.
+        skip(30 days);
 
-        assertEq(usdc.balanceOf(user), 1e6 + assets);
+        assertEq(spUsdc.assetsOf(user), userAssets);
 
-        assertGe(usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC), spUsdc.totalAssets());
+        vm.prank(user);
+        assertEq(spUsdc.redeem(shares, user, user), userAssets);
+
+        assertEq(spUsdc.balanceOf(user), 0);
+        assertEq(usdc.balanceOf(user),   1e6 + userAssets);
     }
 
     function test_AVALANCHE_governanceBridgeRetired() external onChain(ChainIdUtils.Avalanche()) {
@@ -825,6 +845,8 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(executor.gracePeriod(), 7 days);
 
         uint256 actionsSetCount = executor.actionsSetCount();
+
+        assertEq(actionsSetCount, 9);
 
         _executeAllPayloadsAndBridges();
 
@@ -873,7 +895,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         IControllerLike    controller = IControllerLike(XLayer.SPUSDC_PAU_CONTROLLER);
         IMorphoVaultV2Like vault      = IMorphoVaultV2Like(XLAYER_MORPHO_VAULT_USDC);
 
-        assertEq(IVaultV2FactoryLike(XLAYER_MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)), true);
+        assertEq(IMorphoVaultV2FactoryLike(XLAYER_MORPHO_VAULT_V2_FACTORY).isVaultV2(address(vault)), true);
 
         assertEq(vault.asset(), XLayer.USDC);
         assertEq(vault.owner(), XLayer.SPARK_EXECUTOR);
@@ -907,7 +929,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(controller.erc4626_getDepositRateLimitKey(address(vault), XLayer.USDC), depositKey);
         assertEq(controller.erc4626_getWithdrawRateLimitKey(address(vault)),             withdrawKey);
 
-        _assertRateLimit(XLayer.SPUSDC_PAU_RATELIMITS, depositKey, 5_000_000e6, uint256(25_000_000e6) / 1 days);
+        _assertRateLimit(XLayer.SPUSDC_PAU_RATELIMITS, depositKey, 15_000_000e6, uint256(10_000_000e6) / 1 days);
 
         _assertUnlimitedRateLimit(XLayer.SPUSDC_PAU_RATELIMITS, withdrawKey);
 
@@ -932,7 +954,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         uint256 vaultAssetsBefore = vault.totalAssets();
 
-        assertEq(rateLimits.getCurrentRateLimit(depositKey),  5_000_000e6);
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  15_000_000e6);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         assertEq(vault.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0);
@@ -940,7 +962,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         // The deposit limit is enforced.
         vm.expectRevert("RateLimits/rate-limit-exceeded");
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
-        agent.call(address(controller), abi.encodeCall(controller.erc4626_deposit, (address(vault), 5_000_000e6 + 1, 0)));
+        agent.call(address(controller), abi.encodeCall(controller.erc4626_deposit, (address(vault), 15_000_000e6 + 1, 0)));
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         agent.call(address(controller), abi.encodeCall(controller.erc4626_deposit, (address(vault), 1_000_000e6, 0)));
@@ -954,7 +976,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(usdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 4_000_000e6 + 1);
         assertEq(vault.totalAssets(),                         vaultAssetsBefore + 1_000_000e6);
 
-        assertEq(rateLimits.getCurrentRateLimit(depositKey),  4_000_000e6);
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  14_000_000e6);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         // The position can be withdrawn without a limit, and the deposit limit is restored.
@@ -966,7 +988,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertApproxEqAbs(vault.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0, 1e12);  // Rounding dust at most
 
-        assertEq(rateLimits.getCurrentRateLimit(depositKey),  5_000_000e6);
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  15_000_000e6);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
     }
 
@@ -1027,7 +1049,15 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
     /*** Helpers                                                                                ***/
     /**********************************************************************************************/
 
-    function _assertMigratedControllerConfig(MainnetController controller, bool migrated) internal view {
+    function _countEvents(VmSafe.Log[] memory logs, address emitter, bytes32 topic0)
+        internal pure returns (uint256 count)
+    {
+        for (uint256 i = 0; i < logs.length; ++i) {
+            if (logs[i].emitter == emitter && logs[i].topics[0] == topic0) count++;
+        }
+    }
+
+    function _assertNewControllerConfig(MainnetController controller, bool migrated) internal view {
         uint256 m = migrated ? 1 : 0;
 
         assertEq(controller.mintRecipients(CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE),    migrated ? SLLHelpers.addrToBytes32(Avalanche.ALM_PROXY) : bytes32(0));
@@ -1070,7 +1100,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(controller.maxSlippages(Ethereum.CURVE_PYUSDUSDS),   m * 0.998e18);
         assertEq(controller.maxSlippages(Ethereum.CURVE_SUSDSUSDT),   m * 0.9975e18);
         assertEq(controller.maxSlippages(Ethereum.CURVE_WEETHWETHNG), m * 0.9975e18);
-        assertEq(controller.maxSlippages(CURVE_USDC_RLUSD),           m * 0.999e18);
+        assertEq(controller.maxSlippages(Ethereum.CURVE_USDCRLUSD),   m * 0.999e18);
 
         assertEq(controller.maxSlippages(address(uint160(uint256(PYUSD_USDS_POOL_ID)))), m * 0.999e18);
         assertEq(controller.maxSlippages(address(uint160(uint256(USDT_USDS_POOL_ID)))),  m * 0.998e18);
@@ -1144,7 +1174,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         _assertSameMaxSlippage(oldController, newController, Ethereum.CURVE_PYUSDUSDS);
         _assertSameMaxSlippage(oldController, newController, Ethereum.CURVE_SUSDSUSDT);
         _assertSameMaxSlippage(oldController, newController, Ethereum.CURVE_WEETHWETHNG);
-        _assertSameMaxSlippage(oldController, newController, CURVE_USDC_RLUSD);
+        _assertSameMaxSlippage(oldController, newController, Ethereum.CURVE_USDCRLUSD);
 
         _assertSameMaxSlippage(oldController, newController, address(uint160(uint256(PYUSD_USDS_POOL_ID))));
         _assertSameMaxSlippage(oldController, newController, address(uint160(uint256(USDT_USDS_POOL_ID))));

@@ -51,8 +51,8 @@ contract SparkXLayer_20261119 {
 
         rateLimits.setRateLimitData(
             controller.erc4626_getDepositRateLimitKey(MORPHO_VAULT_USDC, XLayer.USDC),
-            5_000_000e6,
-            uint256(25_000_000e6) / 1 days
+            15_000_000e6,
+            uint256(10_000_000e6) / 1 days
         );
         rateLimits.setUnlimitedRateLimitData(controller.erc4626_getWithdrawRateLimitKey(MORPHO_VAULT_USDC));
 

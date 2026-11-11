@@ -31,7 +31,6 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
 
     address internal constant NEW_ALM_CONTROLLER = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
 
-    address internal constant CURVE_USDC_RLUSD         = 0xD001aE433f254283FeCE51d4ACcE8c53263aa186;
     address internal constant OLD_MORPHO_VAULT_V2_USDT = 0xc7CDcFDEfC64631ED6799C95e3b110cd42F2bD22;
 
     bytes32 internal constant OUSD_USDS_POOL_ID  = 0x710254704dfff19aee863a784a36823eb9c926cae8d3d425080d7c88c144a9c7;
@@ -40,8 +39,8 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
     bytes32 internal constant USDS_USDG_POOL_ID  = 0x28adc7179a8a83c3379955d59563c0fec33eadfa83946b447af289190ff5fcff;
     bytes32 internal constant USDT_USDS_POOL_ID  = 0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9;
 
-    uint32 internal constant LZ_ENDPOINT_ARBITRUM = 30110;
-    uint32 internal constant LZ_ENDPOINT_XLAYER   = 30274;
+    uint32 internal constant LZ_EID_ARBITRUM = 30110;
+    uint32 internal constant LZ_EID_XLAYER   = 30274;
 
     uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
@@ -94,7 +93,7 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
         _migrateMaxSlippage(Ethereum.CURVE_PYUSDUSDS);
         _migrateMaxSlippage(Ethereum.CURVE_SUSDSUSDT);
         _migrateMaxSlippage(Ethereum.CURVE_WEETHWETHNG);
-        _migrateMaxSlippage(CURVE_USDC_RLUSD);
+        _migrateMaxSlippage(Ethereum.CURVE_USDCRLUSD);
 
         _migrateMaxSlippage(address(uint160(uint256(PYUSD_USDS_POOL_ID))));
         _migrateMaxSlippage(address(uint160(uint256(USDT_USDS_POOL_ID))));
@@ -110,8 +109,8 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
         _migrateUniswapV4TickLimits(RLUSD_USDS_POOL_ID);
         _migrateUniswapV4TickLimits(OUSD_USDS_POOL_ID);
 
-        _migrateLayerZeroRecipient(LZ_ENDPOINT_ARBITRUM);
-        _migrateLayerZeroRecipient(LZ_ENDPOINT_XLAYER);
+        _migrateLayerZeroRecipient(LZ_EID_ARBITRUM);
+        _migrateLayerZeroRecipient(LZ_EID_XLAYER);
 
         _migrateOTC(Ethereum.BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
 
@@ -156,6 +155,8 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
         uint256 oldMaxSlippage = MainnetController(Ethereum.ALM_CONTROLLER).maxSlippages(pool);
 
         MainnetController(NEW_ALM_CONTROLLER).setMaxSlippage(pool, oldMaxSlippage);
+
+        require(oldMaxSlippage != 0, "Old max slippage is zero");
     }
 
     function _migrateUniswapV4TickLimits(bytes32 poolId) internal {
@@ -163,12 +164,16 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
             = MainnetController(Ethereum.ALM_CONTROLLER).uniswapV4TickLimits(poolId);
 
         MainnetController(NEW_ALM_CONTROLLER).setUniswapV4TickLimits(poolId, tickLower, tickUpper, maxTickSpacing);
+
+        require(maxTickSpacing != 0, "Max tick spacing is zero");
     }
 
     function _migrateLayerZeroRecipient(uint32 destinationEndpointId) internal {
         bytes32 oldRecipient = MainnetController(Ethereum.ALM_CONTROLLER).layerZeroRecipients(destinationEndpointId);
 
         MainnetController(NEW_ALM_CONTROLLER).setLayerZeroRecipient(destinationEndpointId, oldRecipient);
+
+        require(oldRecipient != bytes32(0), "Old recipient is zero");
     }
 
     function _migrateOTC(address exchange, address asset0, address asset1) internal {

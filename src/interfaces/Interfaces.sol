@@ -412,6 +412,8 @@ interface IMorphoVaultV2FactoryLike {
 
     function createVaultV2(address owner, address asset, bytes32 salt) external returns (address newVaultV2);
 
+    function isVaultV2(address account) external view returns (bool);
+
 }
 
 interface IMorphoMarketV1AdapterV2FactoryLike {
