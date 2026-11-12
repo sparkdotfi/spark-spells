@@ -206,6 +206,8 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
     mapping(uint256 chainId => uint256 timestamp) internal forkTimestamp;
 
+    mapping(address pool => uint256 count) internal _oldSlippageEventCount;
+
     constructor() {
         _spellId   = 20261119;
         _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
@@ -326,21 +328,28 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(oldLogs.length, 27);
 
-        // 27 old events, but CURVE_SUSDSUSDT and CURVE_WEETHWETHNG were set twice.
+        // 27 old events, but CURVE_SUSDSUSDT and CURVE_WEETHWETHNG were set twice, so 25 unique pools.
         assertEq(_countEvents(newLogs, address(newController), MainnetController.MaxSlippageSet.selector), 25);
-
 
         for (uint256 i; i < oldLogs.length; ++i) {
             address pool = _toAddress(oldLogs[i].topics[1]);
 
-            ( uint256 count, bytes memory data ) = _findEvents(newLogs, address(newController), MainnetController.MaxSlippageSet.selector, oldLogs[i].topics[1]);
+            bool isDuplicate = pool == Ethereum.CURVE_SUSDSUSDT || pool == Ethereum.CURVE_WEETHWETHNG;
+
+            // No pool other than the two duplicates was set more than once.
+            assertLe(++_oldSlippageEventCount[pool], isDuplicate ? 2 : 1);
+
+            ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.MaxSlippageSet.selector, oldLogs[i].topics[1]);
 
             assertEq(count,                            1);
-            assertEq(abi.decode(data, (uint256)),      oldController.maxSlippages(pool));
+            assertEq(abi.decode(log.data, (uint256)),  oldController.maxSlippages(pool));
             assertEq(newController.maxSlippages(pool), oldController.maxSlippages(pool));
 
             assertTrue(newController.maxSlippages(pool) != 0);
         }
+
+        assertEq(_oldSlippageEventCount[Ethereum.CURVE_SUSDSUSDT],   2);
+        assertEq(_oldSlippageEventCount[Ethereum.CURVE_WEETHWETHNG], 2);
     }
 
     function _assertMigratedExchangeRateEvents(
@@ -357,10 +366,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         for (uint256 i; i < oldLogs.length; ++i) {
             address token = _toAddress(oldLogs[i].topics[1]);
 
-            ( uint256 count, bytes memory data ) = _findEvents(newLogs, address(newController), MainnetController.MaxExchangeRateSet.selector, oldLogs[i].topics[1]);
+            ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.MaxExchangeRateSet.selector, oldLogs[i].topics[1]);
 
             assertEq(count,                                 1);
-            assertEq(abi.decode(data, (uint256)),           oldController.maxExchangeRates(token));
+            assertEq(abi.decode(log.data, (uint256)),       oldController.maxExchangeRates(token));
             assertEq(newController.maxExchangeRates(token), oldController.maxExchangeRates(token));
 
             assertTrue(newController.maxExchangeRates(token) != 0);
@@ -386,9 +395,9 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
             assertTrue(oldMaxTickSpacing != 0);
 
             {
-                ( uint256 count, bytes memory data ) = _findEvents(newLogs, address(newController), MainnetController.UniswapV4TickLimitsSet.selector, poolId);
+                ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.UniswapV4TickLimitsSet.selector, poolId);
 
-                ( int24 tickLower, int24 tickUpper, uint24 maxTickSpacing ) = abi.decode(data, (int24, int24, uint24));
+                ( int24 tickLower, int24 tickUpper, uint24 maxTickSpacing ) = abi.decode(log.data, (int24, int24, uint24));
 
                 assertEq(count,          1);
                 assertEq(tickLower,      oldTickLower);
@@ -414,9 +423,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         for (uint256 i; i < oldLogs.length; ++i) {
             uint32 domain = uint32(uint256(oldLogs[i].topics[1]));
 
-            ( uint256 count, ) = _findEvents(newLogs, address(newController), MainnetController.MintRecipientSet.selector, oldLogs[i].topics[1]);
+            ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.MintRecipientSet.selector, oldLogs[i].topics[1]);
 
             assertEq(count,                                1);
+            assertEq(log.topics[2],                        oldController.mintRecipients(domain));
             assertEq(newController.mintRecipients(domain), oldController.mintRecipients(domain));
 
             assertEq(newController.mintRecipients(domain) != bytes32(0), true);
@@ -437,10 +447,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         for (uint256 i; i < oldLogs.length; ++i) {
             uint32 endpointId = uint32(uint256(oldLogs[i].topics[1]));
 
-            ( uint256 count, bytes memory data ) = _findEvents(newLogs, address(newController), MainnetController.LayerZeroRecipientSet.selector, oldLogs[i].topics[1]);
+            ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.LayerZeroRecipientSet.selector, oldLogs[i].topics[1]);
 
             assertEq(count,                                         1);
-            assertEq(abi.decode(data, (bytes32)),                   oldController.layerZeroRecipients(endpointId));
+            assertEq(abi.decode(log.data, (bytes32)),               oldController.layerZeroRecipients(endpointId));
             assertEq(newController.layerZeroRecipients(endpointId), oldController.layerZeroRecipients(endpointId));
 
             assertTrue(newController.layerZeroRecipients(endpointId) != bytes32(0));
@@ -482,15 +492,18 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         ( address oldBuffer, uint256 oldRechargeRate18,,, ) = oldController.otcs(exchange);
 
         {
-            ( uint256 count, ) = _findEvents(newLogs, address(newController), MainnetController.OTCBufferSet.selector, exchangeTopic);
+            // All OTCBufferSet params are indexed: topics[2] is the old buffer, topics[3] the new one.
+            ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.OTCBufferSet.selector, exchangeTopic);
 
-            assertEq(count, 1);
+            assertEq(count,                     1);
+            assertEq(_toAddress(log.topics[2]), address(0));
+            assertEq(_toAddress(log.topics[3]), oldBuffer);
         }
 
         {
-            ( uint256 count, bytes memory data ) = _findEvents(newLogs, address(newController), MainnetController.OTCRechargeRateSet.selector, exchangeTopic);
+            ( uint256 count, VmSafe.Log memory log ) = _findEvents(newLogs, address(newController), MainnetController.OTCRechargeRateSet.selector, exchangeTopic);
 
-            ( , uint256 emittedRechargeRate18 ) = abi.decode(data, (uint256, uint256));
+            ( , uint256 emittedRechargeRate18 ) = abi.decode(log.data, (uint256, uint256));
 
             assertEq(count,                 1);
             assertEq(emittedRechargeRate18, oldRechargeRate18);
@@ -1657,7 +1670,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         bytes32             topic0,
         bytes32             topic1
     )
-        internal pure returns (uint256 count, bytes memory data)
+        internal pure returns (uint256 count, VmSafe.Log memory log)
     {
         for (uint256 i = 0; i < logs.length; ++i) {
             if (logs[i].emitter != emitter)   continue;
@@ -1665,7 +1678,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
             if (logs[i].topics[1] != topic1)  continue;
 
             count++;
-            data = logs[i].data;
+            log = logs[i];
         }
     }
 
