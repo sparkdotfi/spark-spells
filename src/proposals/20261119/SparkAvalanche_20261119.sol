@@ -34,6 +34,7 @@ contract SparkAvalanche_20261119 is SparkPayloadAvalanche {
         spUsdc.setVsrBounds(1e27, 1e27);
 
         // Close the USDC route to Ethereum and stop the ALM Proxy taking USDC from spUSDC.
+        rateLimits.setRateLimitData(controller.LIMIT_USDC_TO_CCTP(), 0, 0);
         rateLimits.setRateLimitData(
             RateLimitHelpers.makeUint32Key(controller.LIMIT_USDC_TO_DOMAIN(), CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
             0,

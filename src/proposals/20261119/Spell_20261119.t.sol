@@ -889,9 +889,9 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
         _assertRateLimit(Avalanche.ALM_RATE_LIMITS, domainKey, 0, 0);
         _assertRateLimit(Avalanche.ALM_RATE_LIMITS, takeKey,   0, 0);
+        _assertRateLimit(Avalanche.ALM_RATE_LIMITS, cctpKey,   0, 0);
 
         _assertUnlimitedRateLimit(Avalanche.ALM_RATE_LIMITS, transferKey);
-        _assertUnlimitedRateLimit(Avalanche.ALM_RATE_LIMITS, cctpKey);
 
         deal(address(usdc), Avalanche.ALM_PROXY, 100e6);
 
@@ -1466,23 +1466,35 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         ( address oldBuffer, uint256 oldRechargeRate18,,, ) = oldController.otcs(BINANCE_EXCHANGE);
         ( address newBuffer, uint256 newRechargeRate18,,, ) = newController.otcs(BINANCE_EXCHANGE);
 
+        assertTrue(oldBuffer != address(0));
+        assertTrue(oldRechargeRate18 != 0);
+
         assertEq(newBuffer,         oldBuffer);
         assertEq(newRechargeRate18, oldRechargeRate18);
+
+        assertTrue(oldController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDT));
+        assertTrue(oldController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC));
 
         assertEq(newController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDT), oldController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDT));
         assertEq(newController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC), oldController.otcWhitelistedAssets(BINANCE_EXCHANGE, Ethereum.USDC));
     }
 
     function _assertSameMaxExchangeRate(MainnetController oldController, MainnetController newController, address vault) internal view {
+        assertTrue(oldController.maxExchangeRates(vault) != 0);
+
         assertEq(newController.maxExchangeRates(vault), oldController.maxExchangeRates(vault));
     }
 
     function _assertSameMaxSlippage(MainnetController oldController, MainnetController newController, address pool) internal view {
+        assertTrue(oldController.maxSlippages(pool) != 0);
+
         assertEq(newController.maxSlippages(pool), oldController.maxSlippages(pool));
     }
 
     function _assertSameUniswapV4TickLimits(MainnetController oldController, MainnetController newController, bytes32 poolId) internal view {
         ( int24 oldTickLower, int24 oldTickUpper, uint24 oldMaxTickSpacing ) = oldController.uniswapV4TickLimits(poolId);
+
+        assertTrue(oldTickLower != 0 || oldTickUpper != 0 || oldMaxTickSpacing != 0);
 
         _assertUniswapV4TickLimits(newController, poolId, oldTickLower, oldTickUpper, oldMaxTickSpacing);
     }
@@ -1722,17 +1734,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         }
 
         if (integration.category == Category.CCTP_GENERAL) {
-            if (block.chainid != ChainIdUtils.Avalanche()) {
-                _assertRateLimit(rateLimits, integration.entryId, 0, 0);
-
-                return liveKeys;
-            }
-
-            // Stays unlimited on Avalanche: every per-domain key is zero.
-            _assertUnlimitedRateLimit(rateLimits, integration.entryId);
-
-            liveKeys    = new bytes32[](1);
-            liveKeys[0] = integration.entryId;
+            _assertRateLimit(rateLimits, integration.entryId, 0, 0);
 
             return liveKeys;
         }
