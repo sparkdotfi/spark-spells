@@ -100,52 +100,27 @@ interface IPSM3Like {
 
 }
 
-abstract contract Spell_20261119_Common {
-
-    using DomainHelpers for Domain;
-
-    Vm private constant VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
-
-    address internal constant NEW_ALM_CONTROLLER       = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
-    address internal constant XLAYER_MORPHO_VAULT_USDC = 0x3F2C1Abd139ECc99892034edCCBbcF5e1696a1bE;  // TODO deploy
-
-    address internal constant XLAYER_MORPHO_VAULT_V2_FACTORY = 0x63D6eAc0d16D57dd131D9023ADb060277d3237d7;
-
-    function _deployStandIns(Domain memory ethereum, Domain memory xlayer) internal {
-        xlayer.selectFork();
-
-        if (XLAYER_MORPHO_VAULT_USDC.code.length == 0) {
-            address vault = IMorphoVaultV2FactoryLike(XLAYER_MORPHO_VAULT_V2_FACTORY).createVaultV2(
-                XLayer.SPARK_EXECUTOR,
-                XLayer.USDC,
-                bytes32(0)
-            );
-
-            require(vault == XLAYER_MORPHO_VAULT_USDC, "UNEXPECTED STAND-IN VAULT ADDRESS");
-        }
-
-        ethereum.selectFork();
-    }
-
-}
-
-contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_20261119_Common {
+contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
     using DomainHelpers for Domain;
 
     bytes32 internal constant ERC4626_FACET_ID = "ERC4626_FACET";
 
+    address internal constant NEW_ALM_CONTROLLER       = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
+    address internal constant XLAYER_MORPHO_VAULT_USDC = 0xDb6C283f8026a2D1D69b90464011baFB0A1090F4;
+
+    address internal constant XLAYER_MORPHO_VAULT_V2_FACTORY = 0x63D6eAc0d16D57dd131D9023ADb060277d3237d7;
+
+
     mapping(uint256 chainId => uint256 timestamp) internal forkTimestamp;
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794235200;  // Nov-09-2026 02:40:00 PM +UTC
+        _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
-
-        _deployStandIns(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.XLayer()].domain);
 
         _recordForkTimestamps();
 
@@ -517,7 +492,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY),  0);
         assertEq(IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY), 0);
 
-        assertEq(psm3.shares(Optimism.ALM_PROXY), 2_404_434.857373491180842050e18);
+        assertEq(psm3.shares(Optimism.ALM_PROXY), 2_427_805.141415515847653705e18);
 
         vm.startPrank(Optimism.ALM_RELAYER_MULTISIG);
 
@@ -537,10 +512,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
         assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY), 0);
         assertEq(optimismUsdsBalanceBefore,                           1.518165e18);
-        assertEq(optimismSusdsBalanceBefore,                          1_342_240.2227999340820027e18);
+        assertEq(optimismSusdsBalanceBefore,                          1_357_285.762051717161395459e18);
 
         assertEq(psm3.shares(Optimism.ALM_PROXY),              0);
-        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.035666343713915981e18);
+        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.035805164163993401e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -632,10 +607,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(IERC20(Unichain.USDC).balanceOf(Unichain.ALM_PROXY), 0);
 
         assertEq(unichainUsdsBalanceBefore,  0.02e18);
-        assertEq(unichainSusdsBalanceBefore, 66_802.321075043559685732e18);
+        assertEq(unichainSusdsBalanceBefore, 66_891.930216457461245304e18);
 
         assertEq(psm3.shares(Unichain.ALM_PROXY),              0);
-        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.039935169166606327e18);
+        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.040086088670463747e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -732,7 +707,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         // USDC can still be moved into spUSDC for its holders.
         uint256 vaultBalanceBefore = usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
-        assertEq(vaultBalanceBefore,                  443_205.909611e6);
+        assertEq(vaultBalanceBefore,                  443_859.474741e6);
         assertEq(usdc.balanceOf(Avalanche.ALM_PROXY), 100e6);
 
         vm.prank(Avalanche.ALM_RELAYER_MULTISIG);
@@ -751,11 +726,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
         assertEq(spUsdc.depositCap(), 500_000_000e6);
         assertEq(spUsdc.minVsr(),     1e27);
         assertEq(spUsdc.maxVsr(),     TEN_PCT_APY);
-        assertEq(spUsdc.vsr(),        1.000000001182641576793209935e27);
-
-        // The setter fixes the rate at 0%.
-        vm.prank(Avalanche.ALM_PROXY_FREEZABLE);
-        spUsdc.setVsr(1e27);
+        assertEq(spUsdc.vsr(),        1e27);  // The setter already fixed the rate at 0% on-chain.
 
         // A holder deposits while deposits are still open.
         deal(address(usdc), user, 1_000e6);
@@ -1432,17 +1403,17 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests, Spell_2026
 
 }
 
-contract SparkEthereum_20261119_SparklendTests is SparklendTests, Spell_20261119_Common {
+contract SparkEthereum_20261119_SparklendTests is SparklendTests {
+
+    address internal constant NEW_ALM_CONTROLLER = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794235200;  // Nov-09-2026 02:40:00 PM +UTC
+        _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
-
-        _deployStandIns(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.XLayer()].domain);
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
@@ -1450,20 +1421,20 @@ contract SparkEthereum_20261119_SparklendTests is SparklendTests, Spell_20261119
 
 }
 
-contract SparkEthereum_20261119_SpellTests is SpellTests, Spell_20261119_Common {
+contract SparkEthereum_20261119_SpellTests is SpellTests {
+
+    address internal constant NEW_ALM_CONTROLLER = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
 
     uint256 internal constant SPARK_FOUNDATION_GRANT_AMOUNT       = 865_000e18;
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794235200;  // Nov-09-2026 02:40:00 PM +UTC
+        _blockDate = 1794423600;  // Nov-11-2026 07:00:00 PM +UTC
     }
 
     function setUp() public override {
         super.setUp();
-
-        _deployStandIns(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.XLayer()].domain);
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
@@ -1481,7 +1452,7 @@ contract SparkEthereum_20261119_SpellTests is SpellTests, Spell_20261119_Common 
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      48_995_094.205806286854722044e18);
-        assertEq(foundationBalanceBefore,      3_797_220.8122e18);
+        assertEq(foundationBalanceBefore,      3_247_220.8122e18);
         assertEq(assetFoundationBalanceBefore, 245_000e18);
 
         _executeAllPayloadsAndBridges();

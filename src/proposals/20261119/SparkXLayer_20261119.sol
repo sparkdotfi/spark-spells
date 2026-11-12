@@ -34,10 +34,7 @@ contract SparkXLayer_20261119 {
 
     bytes32 internal constant ERC4626_FACET_ID = "ERC4626_FACET";
 
-    // PLACEHOLDER: the Spark-curated Morpho USDC vault on X-Layer is not deployed yet. Replace with the deployed
-    //              address before review. Until then the tests create a bare Morpho VaultV2 at this address
-    //              (VaultV2Factory.createVaultV2(XLayer.SPARK_EXECUTOR, XLayer.USDC, bytes32(0))).
-    address internal constant MORPHO_VAULT_USDC = 0x3F2C1Abd139ECc99892034edCCBbcF5e1696a1bE;
+    address internal constant MORPHO_VAULT_USDC = 0xDb6C283f8026a2D1D69b90464011baFB0A1090F4;
 
     function execute() external {
         IControllerLike controller = IControllerLike(XLayer.SPUSDC_PAU_CONTROLLER);
