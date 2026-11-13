@@ -1009,6 +1009,16 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         assertEq(config.facet,        XLayer.ERC4626_FACET);
         assertEq(config.wires.length, 9);
 
+        _assertWire(config.wires[0], "setMaxExchangeRate(address,uint256,uint256)");
+        _assertWire(config.wires[1], "deposit(address,uint256,uint256)");
+        _assertWire(config.wires[2], "withdraw(address,uint256,uint256)");
+        _assertWire(config.wires[3], "redeem(address,uint256,uint256)");
+        _assertWire(config.wires[4], "EXCHANGE_RATE_PRECISION()");
+        _assertWire(config.wires[5], "getMaxExchangeRate(address)");
+        _assertWire(config.wires[6], "getDepositRateLimitKey(address,address)");
+        _assertWire(config.wires[7], "getWithdrawRateLimitKey(address)");
+        _assertWire(config.wires[8], "VERSION()");
+
         assertEq(controller.erc4626_getDepositRateLimitKey(address(vault), XLayer.USDC), depositKey);
         assertEq(controller.erc4626_getWithdrawRateLimitKey(address(vault)),             withdrawKey);
 
@@ -1033,9 +1043,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         bytes32 depositKey  = controller.erc4626_getDepositRateLimitKey(address(vault), XLayer.USDC);
         bytes32 withdrawKey = controller.erc4626_getWithdrawRateLimitKey(address(vault));
 
-        deal(address(usdc), XLayer.SPUSDC_PAU_ALM_PROXY, 5_000_000e6 + 1);
+        deal(address(usdc), XLayer.SPUSDC_PAU_ALM_PROXY, 15_000_000e6 + 1);
 
         uint256 vaultAssetsBefore = vault.totalAssets();
+
+        assertEq(vaultAssetsBefore, 1e6);
 
         assertEq(rateLimits.getCurrentRateLimit(depositKey),  15_000_000e6);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
@@ -1048,28 +1060,28 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         agent.call(address(controller), abi.encodeCall(controller.erc4626_deposit, (address(vault), 15_000_000e6 + 1, 0)));
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
-        agent.call(address(controller), abi.encodeCall(controller.erc4626_deposit, (address(vault), 1_000_000e6, 0)));
+        agent.call(address(controller), abi.encodeCall(controller.erc4626_deposit, (address(vault), 15_000_000e6, 0)));
 
         uint256 shares = vault.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY);
 
         assertGt(shares, 0);
 
-        assertApproxEqAbs(vault.convertToAssets(shares), 1_000_000e6, 1);
+        assertApproxEqAbs(vault.convertToAssets(shares), 15_000_000e6, 1);
 
-        assertEq(usdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 4_000_000e6 + 1);
-        assertEq(vault.totalAssets(),                         vaultAssetsBefore + 1_000_000e6);
+        assertEq(usdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 1);
+        assertEq(vault.totalAssets(),                         vaultAssetsBefore + 15_000_000e6);
 
-        assertEq(rateLimits.getCurrentRateLimit(depositKey),  14_000_000e6);
+        assertEq(rateLimits.getCurrentRateLimit(depositKey),  0);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
         // The position can be withdrawn without a limit, and the deposit limit is restored.
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
-        agent.call(address(controller), abi.encodeCall(controller.erc4626_withdraw, (address(vault), 1_000_000e6, type(uint256).max)));
+        agent.call(address(controller), abi.encodeCall(controller.erc4626_withdraw, (address(vault), 15_000_000e6, type(uint256).max)));
 
-        assertEq(usdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 5_000_000e6 + 1);
+        assertEq(usdc.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 15_000_000e6 + 1);
         assertEq(vault.totalAssets(),                         vaultAssetsBefore);
 
-        assertApproxEqAbs(vault.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0, 1e12);  // Rounding dust at most
+        assertEq(vault.balanceOf(XLayer.SPUSDC_PAU_ALM_PROXY), 0);
 
         assertEq(rateLimits.getCurrentRateLimit(depositKey),  15_000_000e6);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
@@ -1139,6 +1151,10 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         assertEq(vault.timelock(IMorphoVaultV2ConfigLike.setManagementFeeRecipient.selector),  3 days);
         assertEq(vault.timelock(IMorphoVaultV2Like.setIsAllocator.selector),                   0);
         assertEq(vault.timelock(IMorphoVaultV2Like.setForceDeallocatePenalty.selector),        0);
+
+        // decreaseTimelock is not asserted: it has no timelock of its own. Lowering a function's
+        // timelock waits for that function's current timelock, and increaseTimelock reverts for
+        // the decreaseTimelock selector, so its slot is always 0.
 
         assertEq(vault.adapterRegistry(), XLAYER_MORPHO_VAULT_V2_ADAPTER_REGISTRY);
 
@@ -1262,6 +1278,58 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         assertEq(adapter.timelock(IMorphoMarketV1AdapterLike.setSkimRecipient.selector), 3 days);
     }
 
+    function test_XLAYER_morphoVaultV2UIListingRequirements() external onChain(ChainIdUtils.XLayer()) {
+        IMorphoVaultV2Like vault = IMorphoVaultV2Like(XLAYER_MORPHO_VAULT_USDC);
+
+        IMorphoMarketV1AdapterV2FactoryLike adapterFactory = IMorphoMarketV1AdapterV2FactoryLike(XLAYER_MORPHO_MARKET_V1_ADAPTER_V2_FACTORY);
+
+        // Verify min timelock requirements are met according to the Morpho documentation.
+        // https://docs.morpho.org/get-started/resources/app-ecosystem#vault-v2-timelock-requirements
+
+        assertGe(vault.timelock(IMorphoVaultV2Like.increaseTimelock.selector),    7 days);
+        assertGe(vault.timelock(IMorphoVaultV2Like.abdicate.selector),            7 days);
+        assertGe(vault.timelock(IMorphoVaultV2Like.removeAdapter.selector),       7 days);
+        assertGe(vault.timelock(IMorphoVaultV2Like.addAdapter.selector),          7 days);
+        assertGe(vault.timelock(IMorphoVaultV2Like.increaseRelativeCap.selector), 3 days);
+        assertGe(vault.timelock(IMorphoVaultV2Like.increaseAbsoluteCap.selector), 3 days);
+
+        // NOTE: Does not meet the 3 day requirement. The curator set it to 0, matching the current config of
+        //       Ethereum.MORPHO_VAULT_V2_USDT.
+        assertEq(vault.timelock(IMorphoVaultV2Like.setForceDeallocatePenalty.selector), 0);
+
+        IMorphoMarketV1AdapterLike adapter = IMorphoMarketV1AdapterLike(vault.adapters(0));
+
+        assertGe(adapter.timelock(IMorphoMarketV1AdapterLike.burnShares.selector), 3 days);
+
+        // Check critical gates are abdicated.
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setAdapterRegistry.selector),   true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setReceiveSharesGate.selector), true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setSendSharesGate.selector),    true);
+        assertEq(vault.abdicated(IMorphoVaultV2Like.setReceiveAssetsGate.selector), true);
+
+        // Check adapter registry is set to the official registry.
+        assertEq(vault.adapterRegistry(), XLAYER_MORPHO_VAULT_V2_ADAPTER_REGISTRY);
+
+        // Check dead deposit is completed.
+        assertEq(IERC20(address(vault)).balanceOf(address(0xdead)), 1e18);
+
+        assertGe(vault.totalAssets(), 1e6);
+
+        // Check adapter is added for the official registry.
+        assertEq(adapterFactory.isMorphoMarketV1AdapterV2(vault.adapters(0)), true);
+
+        // NOTE: No liquidity adapter is set, so deposits stay idle until the allocator allocates them.
+        assertEq(vault.liquidityAdapter(),     address(0));
+        assertEq(vault.liquidityData().length, 0);
+
+        // Vault name and symbol are set.
+        assertEq(vault.name(),   "Spark Blue Chip USDC");
+        assertEq(vault.symbol(), "sparkUSDCbc");
+
+        // Check max rate is set.
+        assertTrue(vault.maxRate() != 0);
+    }
+
     /**********************************************************************************************/
     /*** Generic E2E overrides for the deprecated domains                                       ***/
     /**********************************************************************************************/
@@ -1318,6 +1386,21 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
     /**********************************************************************************************/
     /*** Helpers                                                                                ***/
     /**********************************************************************************************/
+
+    // Each wire maps the controller's `erc4626_`-prefixed call selector to the facet's own selector, and the controller
+    // dispatches that call selector to the ERC4626 facet.
+    function _assertWire(IControllerLike.Wire memory wire, string memory facetSignature) internal view {
+        bytes4 callSelector     = bytes4(keccak256(bytes(string.concat("erc4626_", facetSignature))));
+        bytes4 delegateSelector = bytes4(keccak256(bytes(facetSignature)));
+
+        assertEq(wire.callSelector,     callSelector);
+        assertEq(wire.delegateSelector, delegateSelector);
+
+        IControllerLike.Dispatch memory dispatch = IControllerLike(XLayer.SPUSDC_PAU_CONTROLLER).getDispatch(callSelector);
+
+        assertEq(dispatch.facet,            XLayer.ERC4626_FACET);
+        assertEq(dispatch.delegateSelector, delegateSelector);
+    }
 
     function _countEvents(VmSafe.Log[] memory logs, address emitter, bytes32 topic0)
         internal pure returns (uint256 count)
