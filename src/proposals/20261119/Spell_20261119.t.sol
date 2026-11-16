@@ -40,6 +40,7 @@ import { SpellTests }               from "src/test-harness/SpellTests.sol";
 
 import {
     IMorphoMarketV1AdapterV2FactoryLike,
+    IMorphoOracleFactoryLike,
     IMorphoVaultV2FactoryLike,
     IMorphoVaultV2Like,
     ISparkVaultV2Like
@@ -182,6 +183,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
     // Morpho contracts on X-Layer.
     address internal constant XLAYER_MORPHO                              = 0xeb00C490E888286357dC5B0a35D37D9260D11Ab5;
+    address internal constant XLAYER_MORPHO_CHAINLINK_ORACLE_FACTORY     = 0x625Eb26d759ef8077202d4a5A63098B4B28616Db;
     address internal constant XLAYER_MORPHO_DEFAULT_IRM                  = 0x5688FF1aBC4089cB69dC0F56727E696A49D77E24;  // AdaptiveCurveIrm
     address internal constant XLAYER_MORPHO_MARKET_V1_ADAPTER_V2_FACTORY = 0xDD0FC0c74bd89A9C6623202473E75CbF472b33A4;
     address internal constant XLAYER_MORPHO_VAULT_V2_ADAPTER_REGISTRY    = 0xe9F2A824Eb33B97D0F7b3266A569d71342104829;
@@ -1087,6 +1089,12 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         assertEq(rateLimits.getCurrentRateLimit(depositKey),  0);
         assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
 
+        skip(1 hours);
+
+        assertApproxEqAbs(rateLimits.getCurrentRateLimit(depositKey), uint256(10_000_000e6) / 24, 10_000);
+
+        assertEq(rateLimits.getCurrentRateLimit(withdrawKey), type(uint256).max);
+
         // The position can be withdrawn without a limit, and the deposit limit is restored.
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         agent.call(address(controller), abi.encodeCall(controller.erc4626_withdraw, (address(vault), 15_000_000e6, type(uint256).max)));
@@ -1190,6 +1198,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(vault.maxRate(), 2e18 / uint256(365 days));  // 200% APR cap
         assertEq(vault.maxRate(), 63_419_583_967);
+
+        IMorphoOracleFactoryLike oracleFactory = IMorphoOracleFactoryLike(XLAYER_MORPHO_CHAINLINK_ORACLE_FACTORY);
+
+        assertEq(oracleFactory.isMorphoChainlinkOracleV2(SPUSDC_USDC_ORACLE), true);
+        assertEq(oracleFactory.isMorphoChainlinkOracleV2(XBTC_USDC_ORACLE),   true);
 
         MarketParams memory spUsdcMarket = MarketParams({
             loanToken:       XLayer.USDC,
