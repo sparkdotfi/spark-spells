@@ -34,6 +34,7 @@ interface ITokenBridgeLike {
  * @notice Spark Liquidity Layer - Deprecate the Spark Liquidity Layer on Unichain.
  * Forum:  https://forum.skyeco.com/t/november-19-2026-proposed-changes-to-spark-for-upcoming-spell/28390
  * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x4ca8fbf47c4679aa74d3cd6681c89ced9383e9f923b7dc6f33c94f7f8f0cee5b
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x38093a3ead044a60511d1451ae04d0768e65b4ac32e19069c4d78335b64df61d
  */
 contract SparkUnichain_20261119 is SparkPayloadUnichain {
 

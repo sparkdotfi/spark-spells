@@ -19,6 +19,7 @@ import { SparkPayloadAvalanche } from "../../SparkPayloadAvalanche.sol";
  * @notice Spark Savings and Spark Liquidity Layer - Deprecate Avalanche.
  * Forum:  https://forum.skyeco.com/t/november-19-2026-proposed-changes-to-spark-for-upcoming-spell/28390
  * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0xf1426e0ea2fcab571a5d59e650b24a88f56c041efe8ddc31d22a9d354dd57f97
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x38093a3ead044a60511d1451ae04d0768e65b4ac32e19069c4d78335b64df61d
  */
 contract SparkAvalanche_20261119 is SparkPayloadAvalanche {
 

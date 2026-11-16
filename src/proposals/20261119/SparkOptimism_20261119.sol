@@ -34,6 +34,7 @@ interface ITokenBridgeLike {
  * @notice Spark Liquidity Layer - Deprecate the Spark Liquidity Layer on OP Mainnet.
  * Forum:  https://forum.skyeco.com/t/november-19-2026-proposed-changes-to-spark-for-upcoming-spell/28390
  * Vote:   https://snapshot.org/#/s:sparkfi.eth/proposal/0x61efe7dcaadc2baf6b0dde519ceb3e360f7ac864c888004108d97012843246ed
+ *         https://snapshot.org/#/s:sparkfi.eth/proposal/0x38093a3ead044a60511d1451ae04d0768e65b4ac32e19069c4d78335b64df61d
  */
 contract SparkOptimism_20261119 is SparkPayloadOptimism {
 
