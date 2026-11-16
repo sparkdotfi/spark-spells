@@ -212,7 +212,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794579033;  // Nov-13-2026 02:10:33 PM +UTC
+        _blockDate = 1794850433;  // Nov-16-2026 05:33:53 PM +UTC
     }
 
     function setUp() public override {
@@ -222,6 +222,12 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Avalanche()].payload = 0xD711DbfD937a45e2C89CA0D4781cfa5BAb32e752;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x0703EBA65Ff30c245f739087B4c5280e9e4dBD50;
+        chainData[ChainIdUtils.Optimism()].payload  = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Unichain()].payload  = 0xe9eaE48Ed66C63fD4D12e315BC7d31Aacd89a909;
+        chainData[ChainIdUtils.XLayer()].payload    = 0xb4F633365A1906cE65eBE241673B5ca1c8825aCF;
     }
 
     function _recordForkTimestamps() internal {
@@ -700,11 +706,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
         // Pre-configuration 1: the relayer withdraws the PSM3 position and returns the USDC to Ethereum before the
         // spell. USDS and sUSDS stay in the ALM Proxy for the spell to bridge.
-        assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY),  0);
+        assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY),  18_020e6);
         assertEq(IERC20(Optimism.USDS).balanceOf(Optimism.ALM_PROXY),  0);
         assertEq(IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY), 0);
 
-        assertEq(psm3.shares(Optimism.ALM_PROXY), 2_446_922.980204736103060289e18);
+        assertEq(psm3.shares(Optimism.ALM_PROXY), 2_388_977.665872307898038207e18);
 
         vm.startPrank(Optimism.ALM_RELAYER_MULTISIG);
 
@@ -723,11 +729,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         uint256 optimismSusdsBalanceBefore = IERC20(Optimism.SUSDS).balanceOf(Optimism.ALM_PROXY);
 
         assertEq(IERC20(Optimism.USDC).balanceOf(Optimism.ALM_PROXY), 0);
-        assertEq(optimismUsdsBalanceBefore,                           1.518165e18);
-        assertEq(optimismSusdsBalanceBefore,                          1_378_931.571061872781980055e18);
+        assertEq(optimismUsdsBalanceBefore,                           1.530424e18);
+        assertEq(optimismSusdsBalanceBefore,                          1_321_260.433297828545993027e18);
 
         assertEq(psm3.shares(Optimism.ALM_PROXY),              0);
-        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.035920493072026582e18);
+        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.036122431743002562e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -820,11 +826,11 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(IERC20(Unichain.USDC).balanceOf(Unichain.ALM_PROXY), 0);
 
-        assertEq(unichainUsdsBalanceBefore,  0.02e18);
-        assertEq(unichainSusdsBalanceBefore, 67_423.930275813069423577e18);
+        assertEq(unichainUsdsBalanceBefore,  0.15e18);
+        assertEq(unichainSusdsBalanceBefore, 76_559.076346379609869389e18);
 
         assertEq(psm3.shares(Unichain.ALM_PROXY),              0);
-        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.040211043411819405e18);
+        assertEq(psm3.convertToAssetValue(psm3.totalShares()), 1.040453118211224469e18);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
@@ -917,7 +923,7 @@ contract SparkEthereum_20261119_SLLTests is SparkLiquidityLayerTests {
         // USDC can still be moved into spUSDC for its holders.
         uint256 vaultBalanceBefore = usdc.balanceOf(Avalanche.SPARK_VAULT_V2_SPUSDC);
 
-        assertEq(vaultBalanceBefore,                  248_659.357771e6);
+        assertEq(vaultBalanceBefore,                  126_171.626136e6);
         assertEq(usdc.balanceOf(Avalanche.ALM_PROXY), 100e6);
 
         vm.prank(Avalanche.ALM_RELAYER_MULTISIG);
@@ -1895,7 +1901,7 @@ contract SparkEthereum_20261119_SparklendTests is SparklendTests {
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794579033;  // Nov-13-2026 02:10:33 PM +UTC
+        _blockDate = 1794850433;  // Nov-16-2026 05:33:53 PM +UTC
     }
 
     function setUp() public override {
@@ -1903,6 +1909,12 @@ contract SparkEthereum_20261119_SparklendTests is SparklendTests {
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Avalanche()].payload = 0xD711DbfD937a45e2C89CA0D4781cfa5BAb32e752;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x0703EBA65Ff30c245f739087B4c5280e9e4dBD50;
+        chainData[ChainIdUtils.Optimism()].payload  = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Unichain()].payload  = 0xe9eaE48Ed66C63fD4D12e315BC7d31Aacd89a909;
+        chainData[ChainIdUtils.XLayer()].payload    = 0xb4F633365A1906cE65eBE241673B5ca1c8825aCF;
     }
 
 }
@@ -1916,7 +1928,7 @@ contract SparkEthereum_20261119_SpellTests is SpellTests {
 
     constructor() {
         _spellId   = 20261119;
-        _blockDate = 1794579033;  // Nov-13-2026 02:10:33 PM +UTC
+        _blockDate = 1794850433;  // Nov-16-2026 05:33:53 PM +UTC
     }
 
     function setUp() public override {
@@ -1924,6 +1936,12 @@ contract SparkEthereum_20261119_SpellTests is SpellTests {
 
         chainData[ChainIdUtils.Ethereum()].prevController = Ethereum.ALM_CONTROLLER;
         chainData[ChainIdUtils.Ethereum()].newController  = NEW_ALM_CONTROLLER;
+
+        chainData[ChainIdUtils.Avalanche()].payload = 0xD711DbfD937a45e2C89CA0D4781cfa5BAb32e752;
+        chainData[ChainIdUtils.Ethereum()].payload  = 0x0703EBA65Ff30c245f739087B4c5280e9e4dBD50;
+        chainData[ChainIdUtils.Optimism()].payload  = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        chainData[ChainIdUtils.Unichain()].payload  = 0xe9eaE48Ed66C63fD4D12e315BC7d31Aacd89a909;
+        chainData[ChainIdUtils.XLayer()].payload    = 0xb4F633365A1906cE65eBE241673B5ca1c8825aCF;
     }
 
     /**********************************************************************************************/
@@ -1938,7 +1956,7 @@ contract SparkEthereum_20261119_SpellTests is SpellTests {
         uint256 assetFoundationBalanceBefore = usds.balanceOf(Ethereum.SPARK_ASSET_FOUNDATION_MULTISIG);
 
         assertEq(sparkProxyBalanceBefore,      48_995_094.205806286854722044e18);
-        assertEq(foundationBalanceBefore,      3_247_220.8122e18);
+        assertEq(foundationBalanceBefore,      3_237_220.8122e18);
         assertEq(assetFoundationBalanceBefore, 245_000e18);
 
         _executeAllPayloadsAndBridges();

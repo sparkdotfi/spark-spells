@@ -46,10 +46,10 @@ contract SparkEthereum_20261119 is SparkPayloadEthereum {
     uint256 internal constant SPARK_ASSET_FOUNDATION_GRANT_AMOUNT = 45_000e18;
 
     constructor() {
-        // PAYLOAD_AVALANCHE = address(0);
-        // PAYLOAD_OPTIMISM  = address(0);
-        // PAYLOAD_UNICHAIN  = address(0);
-        // PAYLOAD_XLAYER    = address(0);
+        PAYLOAD_AVALANCHE = 0xD711DbfD937a45e2C89CA0D4781cfa5BAb32e752;
+        PAYLOAD_OPTIMISM  = 0x709096f46e0C53bB4ABf41051Ad1709d438A5234;
+        PAYLOAD_UNICHAIN  = 0xe9eaE48Ed66C63fD4D12e315BC7d31Aacd89a909;
+        PAYLOAD_XLAYER    = 0xb4F633365A1906cE65eBE241673B5ca1c8825aCF;
     }
 
     function _postExecute() internal override {
