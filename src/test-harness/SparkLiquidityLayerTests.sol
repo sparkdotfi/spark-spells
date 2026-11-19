@@ -3620,16 +3620,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // The 2026-11-19 spell zeroes the Ethereum USDC routes to OP Mainnet, Unichain and Avalanche.
+        // The 2026-12-03 spell moves spUSDT onto its own PAU: it zeroes the spUSDT take and USDT transfer keys and the
+        // USDT0 LayerZero routes to Arbitrum and X Layer on the Spark Liquidity Layer.
+        // NOTE: The 2026-11-19 spell (closing the USDC routes to OP Mainnet, Unichain and Avalanche) has not executed at
+        //       the 2026-12-03 `_blockDate`; fold its closures into the pre-execution catalog once it executes.
         newIntegrations = new SLLIntegration[](integrations.length - 3);
 
         uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             if (
-                _isEqual(integrations[i].label, "CCTP-AVALANCHE") ||
-                _isEqual(integrations[i].label, "CCTP-OPTIMISM")  ||
-                _isEqual(integrations[i].label, "CCTP-UNICHAIN")
+                _isEqual(integrations[i].label, "SPARK_VAULT_V2-SPUSDT")             ||
+                _isEqual(integrations[i].label, "LAYERZERO_TRANSFER-USDT0_ARBITRUM") ||
+                _isEqual(integrations[i].label, "LAYERZERO_TRANSFER-USDT0_XLAYER")
             ) continue;
 
             newIntegrations[index++] = integrations[i];
@@ -3649,13 +3652,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsArbitrumOne(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        // The 2026-12-03 spell moves spUSDT onto its own PAU: it zeroes the spUSDT take and USDT0 transfer keys and the
+        // USDT0 LayerZero route to Ethereum on the Spark Liquidity Layer.
+        newIntegrations = new SLLIntegration[](integrations.length - 2);
+
+        uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
-        }
+            if (
+                _isEqual(integrations[i].label, "SPARK_VAULT_V2-SPUSDT") ||
+                _isEqual(integrations[i].label, "LAYERZERO_TRANSFER-USDT0_ETHEREUM")
+            ) continue;
 
-        return newIntegrations;
+            newIntegrations[index++] = integrations[i];
+        }
     }
 
     function _getPostExecutionIntegrationsAvalanche(
