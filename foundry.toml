@@ -6,7 +6,7 @@ fs_permissions = [
     { access = "read", path = "./out" },
     { access = "write", path = "./reports" }
 ]
-solc = "0.8.25"
+solc = "0.8.34"
 optimizer = true
 ffi = true
 evm_version = "cancun"
