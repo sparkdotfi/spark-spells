@@ -7,7 +7,6 @@ import { IRateLimits as IPAURateLimits } from "diamond-pau/src/interfaces/IRateL
 import { IController }                   from "diamond-pau/src/interfaces/IController.sol";
 
 import { ILayerZeroController } from "diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
-import { ISwapAssetController } from "diamond-pau/src/facets/swap-asset/ISwapAssetController.sol";
 
 import { IERC20 }   from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
@@ -22,7 +21,7 @@ import { RateLimitHelpers }                 from "spark-alm-controller/src/RateL
 
 import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
-interface IPAUControllerLike is IController, ILayerZeroController, ISwapAssetController {}
+interface IPAUControllerLike is IController, ILayerZeroController {}
 
 interface ISparkVaultLike {
 
@@ -59,11 +58,9 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
     // PLACEHOLDER: Ethereum spUSDT PAU (Pre-deployed contracts 1), from spark-address-registry at handover.
     address internal constant SPUSDT_PAU_ALM_PROXY  = 0x2026120300000000000000000000000000000002;
     address internal constant SPUSDT_PAU_CONTROLLER = 0x2026120300000000000000000000000000000001;
-    address internal constant SPUSDT_PAU_RATELIMITS = 0x2026120300000000000000000000000000000003;
 
     // PLACEHOLDER: Spark Liquidity Layer PAU controller (Pre-deployed contracts 2), from spark-address-registry at handover.
     address internal constant SLL_PAU_CONTROLLER = 0x2026120300000000000000000000000000000004;
-    address internal constant SLL_PAU_RATELIMITS = 0x2026120300000000000000000000000000000005;
 
     // PLACEHOLDER: Spark Vaults Administered Agent on Ethereum (Pre-deployed contracts 4), from spark-address-registry at handover.
     address internal constant SPARK_ADMINISTERED_AGENT = 0x2026120300000000000000000000000000000006;
@@ -78,21 +75,21 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         ILegacyRateLimits legacyRateLimits = ILegacyRateLimits(Ethereum.ALM_RATE_LIMITS);
 
         IPAUControllerLike spUsdtPauController = IPAUControllerLike(SPUSDT_PAU_CONTROLLER);
-        IPAURateLimits     spUsdtPauRateLimits = IPAURateLimits(SPUSDT_PAU_RATELIMITS);
 
         IPAUControllerLike sllPAUController = IPAUControllerLike(SLL_PAU_CONTROLLER);
-        IPAURateLimits     sllPAURateLimits = IPAURateLimits(SLL_PAU_RATELIMITS);
 
         ISparkVaultLike spUsdt = ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
         // 1. Move spUSDT onto its own Diamond PAU and back it with sUSDS.
 
-        // 1.1 Register the SwapAsset and LayerZero facets on the Spark Beacon.
+        // Grant the SLL PAU controller CONTROLLER role on Legacy ALMProxy.
+        ILegacyALMProxy(Ethereum.ALM_PROXY).grantRole(ILegacyALMProxy(Ethereum.ALM_PROXY).CONTROLLER(), SLL_PAU_CONTROLLER);
+
+        // Register the SwapAsset and LayerZero facets on the Spark Beacon.
         BeaconConfig.setSwapAssetIntegration(Ethereum.SPARK_BEACON, Ethereum.SWAP_ASSET_FACET);
         BeaconConfig.setLayerZeroIntegration(Ethereum.SPARK_BEACON, Ethereum.LAYERZERO_FACET);
 
-        // 1.2 Enable the integrations: LayerZero and SwapAsset on the spUSDT PAU (from the Spark Beacon),
-        //     SwapAsset on the swap controller (from the Sky Beacon).
+        // Enable the integrations: LayerZero and SwapAsset on the spUSDT PAU amd SwapAsset on the SLL PAU.
         bytes32[] memory spUsdtPauIntegrationIds = new bytes32[](2);
         spUsdtPauIntegrationIds[0] = BeaconConfig.LAYER_ZERO_INTEGRATION;
         spUsdtPauIntegrationIds[1] = BeaconConfig.SWAP_ASSET_INTEGRATION;
@@ -104,39 +101,18 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
 
         sllPAUController.updateIntegrations(sllPauIntegrationIds);
 
-        // 1.3 Move TAKER and SETTER on spUSDT.
+        // Move TAKER and SETTER on spUSDT.
         spUsdt.grantRole(spUsdt.TAKER_ROLE(),  SPUSDT_PAU_ALM_PROXY);
         spUsdt.revokeRole(spUsdt.TAKER_ROLE(), Ethereum.ALM_PROXY);
 
         spUsdt.grantRole(spUsdt.SETTER_ROLE(),  SPARK_ADMINISTERED_AGENT);
         spUsdt.revokeRole(spUsdt.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
 
-        // 1.4 spUSDT PAU LayerZero limits and recipients.
-        spUsdtPauRateLimits.setRateLimitData(
-            spUsdtPauController.layerZero_getTransferRateLimitKey(
-                Ethereum.USDT_OFT,
-                PEER_ARBITRUM,
-                LZ_EID_ARBITRUM,
-                Ethereum.USDT
-            ),
-            5_000_000e6,
-            uint256(50_000_000e6) / 1 days
-        );
-        spUsdtPauRateLimits.setRateLimitData(
-            spUsdtPauController.layerZero_getTransferRateLimitKey(
-                Ethereum.USDT_OFT,
-                PEER_XLAYER,
-                LZ_EID_XLAYER,
-                Ethereum.USDT
-            ),
-            5_000_000e6,
-            uint256(100_000_000e6) / 1 days
-        );
-
+        // spUSDT PAU LayerZero recipients.
         spUsdtPauController.layerZero_setRecipient(LZ_EID_ARBITRUM, bytes32(uint256(uint160(ARBITRUM_SPUSDT_PAU_ALM_PROXY))));
         spUsdtPauController.layerZero_setRecipient(LZ_EID_XLAYER,   bytes32(uint256(uint160(XLayer.ALM_PROXY))));
 
-        // 1.5 Zero the moved Spark Liquidity Layer keys.
+        // Zero the moved Spark Liquidity Layer keys.
         legacyRateLimits.setRateLimitData(
             RateLimitHelpers.makeAddressKey(legacyController.LIMIT_SPARK_VAULT_TAKE(), Ethereum.SPARK_VAULT_V2_SPUSDT),
             0,
@@ -158,33 +134,7 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
             0
         );
 
-        // 1.6 SLL PAU controller on the Spark Liquidity Layer.
-        ILegacyALMProxy(Ethereum.ALM_PROXY).grantRole(ILegacyALMProxy(Ethereum.ALM_PROXY).CONTROLLER(), SLL_PAU_CONTROLLER);
-
-        sllPAURateLimits.setRateLimitData(
-            sllPAUController.swapAsset_getInitiateSwapRateLimitKey(Ethereum.USDS, SPUSDT_PAU_ALM_PROXY, SPUSDT_PAU_CONTROLLER, Ethereum.USDT),
-            100_000_000e18,
-            uint256(500_000_000e18) / 1 days
-        );
-        sllPAURateLimits.setRateLimitData(
-            sllPAUController.swapAsset_getInitiateSwapRateLimitKey(Ethereum.USDT, SPUSDT_PAU_ALM_PROXY, SPUSDT_PAU_CONTROLLER, Ethereum.USDS),
-            100_000_000e6,
-            uint256(500_000_000e6) / 1 days
-        );
-
-        // 1.7 Swap limits on the spUSDT PAU.
-        spUsdtPauRateLimits.setRateLimitData(
-            spUsdtPauController.swapAsset_getCompleteSwapRateLimitKey(Ethereum.USDT, Ethereum.ALM_PROXY, Ethereum.USDS),
-            100_000_000e6,
-            uint256(1_000_000_000e6) / 1 days
-        );
-        spUsdtPauRateLimits.setRateLimitData(
-            spUsdtPauController.swapAsset_getCompleteSwapRateLimitKey(Ethereum.USDS, Ethereum.ALM_PROXY, Ethereum.USDT),
-            100_000_000e18,
-            uint256(1_000_000_000e18) / 1 days
-        );
-
-        // 1.8 Transfer sUSDS backing to the spUSDT PAU.
+        // Transfer sUSDS backing to the spUSDT PAU.
         _transferAssetFromAlmProxy(
             Ethereum.SUSDS,
             SPUSDT_PAU_ALM_PROXY,
