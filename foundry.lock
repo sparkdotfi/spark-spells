@@ -5,6 +5,12 @@
   "lib/core": {
     "rev": "a7b6bbdcd917ad4fe4e4607b26b8cf7a5ff3fa81"
   },
+  "lib/diamond-pau": {
+    "tag": {
+      "name": "v1.16.0",
+      "rev": "b0b7efd0d56f83b4543381750283fb77c718d3e5"
+    }
+  },
   "lib/erc20-helpers": {
     "rev": "3c66d2b38ae12f5c0f81068fdb6a59f4079c799a"
   },

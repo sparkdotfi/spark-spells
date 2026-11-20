@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.34;
 
 import { Base } from "spark-address-registry/Base.sol";
 

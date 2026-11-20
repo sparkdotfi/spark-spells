@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.34;
 
 import { XLayer } from "spark-address-registry/XLayer.sol";
 
@@ -18,7 +18,8 @@ interface ISparkVaultLike {
 /**
  * @title  December 3, 2026 Spark XLayer Proposal
  * @author Phoenix Labs
- * @notice Spark Savings - Point spUSDT's LayerZero route to Ethereum at the Ethereum spUSDT PAU and move SETTER to the Spark Vaults Administered Agent.
+ * @notice Spark Savings:
+ *         - Point spUSDT's LayerZero route to Ethereum at the Ethereum spUSDT PAU and move SETTER to the Spark Vaults Administered Agent.
  * Forum:  TBD (forum post planned for 2026-11-20)
  * Vote:   TBD
  */
@@ -30,7 +31,7 @@ contract SparkXLayer_20261203 {
     address internal constant ETHEREUM_SPUSDT_PAU_ALM_PROXY = 0x2026120300000000000000000000000000000002;
 
     // PLACEHOLDER: Spark Vaults Administered Agent on X Layer (Pre-deployed contracts 6), from spark-address-registry at handover.
-    address internal constant SPARK_VAULTS_ADMINISTERED_AGENT = 0x2026120300000000000000000000000000000021;
+    address internal constant SPARK_ADMINISTERED_AGENT = 0x2026120300000000000000000000000000000021;
 
     function execute() external {
         ISparkVaultLike spUsdt = ISparkVaultLike(XLayer.SPARK_VAULT_V2_SPUSDT);
@@ -44,7 +45,7 @@ contract SparkXLayer_20261203 {
         );
 
         // 3.2 Move SETTER on spUSDT.
-        spUsdt.grantRole(spUsdt.SETTER_ROLE(),  SPARK_VAULTS_ADMINISTERED_AGENT);
+        spUsdt.grantRole(spUsdt.SETTER_ROLE(),  SPARK_ADMINISTERED_AGENT);
         spUsdt.revokeRole(spUsdt.SETTER_ROLE(), XLayer.ALM_PROXY_FREEZABLE);
     }
 
