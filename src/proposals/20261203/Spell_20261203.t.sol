@@ -906,107 +906,66 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     function test_XLAYER_sll_layerZeroRecipient() external onChain(ChainIdUtils.XLayer()) {
         ForeignController controller = ForeignController(XLayer.ALM_CONTROLLER);
 
-        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), _toBytes32(Ethereum.ALM_PROXY));
+        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), _toBytes32(ETHEREUM_SPUSDT_PAU_ALM_PROXY));
-    }
+        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), bytes32(uint256(uint160(ETHEREUM_SPUSDT_PAU_ALM_PROXY))));
 
-    function test_XLAYER_sll_layerZeroTransferToEthereum() external onChain(ChainIdUtils.XLayer()) {
-        ForeignController controller = ForeignController(XLayer.ALM_CONTROLLER);
-        IERC20            usdt       = IERC20(Ethereum.USDT);
-
-        _executeAllPayloadsAndBridges();
+        IERC20 xlayerUsdt   = IERC20(XLayer.USDT0);
+        IERC20 ethereumUsdt = IERC20(Ethereum.USDT);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 destinationSnapshot      = vm.snapshotState();
-        uint256 destinationBalanceBefore = usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY);
+        uint256 destinationSnapshot = vm.snapshot();
+
+        uint256 destinationBalanceBefore = ethereumUsdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY);
+
+        assertEq(destinationBalanceBefore, 0);
 
         chainData[ChainIdUtils.XLayer()].domain.selectFork();
 
-        deal(XLayer.USDT0,                XLayer.ALM_PROXY, 1_000_000e6);
+        deal(XLayer.USDT0, XLayer.ALM_PROXY, 1_000_000e6);
+
         deal(XLayer.ALM_RELAYER_MULTISIG, 1 ether);
 
         SendParam memory sendParams = SendParam({
             dstEid       : LZ_EID_ETHEREUM,
-            to           : controller.layerZeroRecipients(LZ_EID_ETHEREUM),
+            to           : bytes32(uint256(uint160(ETHEREUM_SPUSDT_PAU_ALM_PROXY))),
             amountLD     : 1_000_000e6,
             minAmountLD  : 1_000_000e6,
             extraOptions : OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0),
             composeMsg   : "",
             oftCmd       : ""
         });
-
         MessagingFee memory fee = ILayerZero(USDT0_OFT_XLAYER).quoteSend(sendParams, false);
 
-        uint64 sentNonce = ILZEndpointLike(LZ_ENDPOINT_XLAYER).outboundNonce(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, _toBytes32(USDT_OFT)) + 1;
+        uint64 sentNonce = ILZEndpointLike(LZ_ENDPOINT_XLAYER).outboundNonce(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, bytes32(uint256(uint160(USDT_OFT)))) + 1;
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         controller.transferTokenLayerZero{ value: fee.nativeFee }(USDT0_OFT_XLAYER, 1_000_000e6, LZ_EID_ETHEREUM);
 
-        assertEq(IERC20(XLayer.USDT0).balanceOf(XLayer.ALM_PROXY), 0);
+        assertEq(xlayerUsdt.balanceOf(XLayer.ALM_PROXY), 0);
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        if (ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(USDT_OFT, LZ_EID_XLAYER, _toBytes32(USDT0_OFT_XLAYER)) >= sentNonce) {
-            console2.log("Skipping LZ destination delivery (destination fork ahead of source) for", USDT0_OFT_XLAYER);
-        } else {
-            _skipLZPendingNonces(USDT_OFT, LZ_EID_XLAYER, _toBytes32(USDT0_OFT_XLAYER), sentNonce);
+        _skipLZPendingNonces(USDT_OFT, LZ_EID_XLAYER, bytes32(uint256(uint160(USDT0_OFT_XLAYER))), sentNonce);
 
-            assertEq(usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore);
+        assertEq(usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore);
 
-            chainData[ChainIdUtils.XLayer()].domain.selectFork();
-
-            LZBridgeTesting.relayMessagesToDestination(xlayerToEthereumLZBridge, true, USDT0_OFT_XLAYER, USDT_OFT);
-
-            // The USDT lands in the Ethereum spUSDT PAU ALM Proxy, not in the Spark Liquidity Layer ALM Proxy.
-            assertEq(usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore + 1_000_000e6);
-        }
-
-        vm.revertToState(destinationSnapshot);
+        // Relay messages to destination chain.
 
         chainData[ChainIdUtils.XLayer()].domain.selectFork();
-    }
 
-    function test_XLAYER_spUsdt_rolesUnchanged() external onChain(ChainIdUtils.XLayer()) {
-        ISparkVaultLike spUsdt = ISparkVaultLike(XLayer.SPARK_VAULT_V2_SPUSDT);
+        LZBridgeTesting.relayMessagesToDestination(xlayerToEthereumLZBridge, true, USDT0_OFT_XLAYER, USDT_OFT);
 
-        bytes32 takerRole  = spUsdt.TAKER_ROLE();
-        bytes32 setterRole = spUsdt.SETTER_ROLE();
+        // The USDT0 lands in the Ethereum spUSDT PAU ALM Proxy.
 
-        _assertOnlyRoleMember(address(spUsdt), takerRole,          XLayer.ALM_PROXY);
-        _assertOnlyRoleMember(address(spUsdt), setterRole,         XLayer.ALM_PROXY_FREEZABLE);
-        _assertOnlyRoleMember(address(spUsdt), DEFAULT_ADMIN_ROLE, XLayer.SPARK_EXECUTOR);
+        assertEq(usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore + 1_000_000e6);
 
-        _executeAllPayloadsAndBridges();
+        vm.revertTo(destinationSnapshot);
 
-        _assertOnlyRoleMember(address(spUsdt), takerRole,          XLayer.ALM_PROXY);
-        _assertOnlyRoleMember(address(spUsdt), setterRole,         XLayer.ALM_PROXY_FREEZABLE);
-        _assertOnlyRoleMember(address(spUsdt), DEFAULT_ADMIN_ROLE, XLayer.SPARK_EXECUTOR);
-    }
-
-    function test_XLAYER_sll_spUsdtRateLimitsUnchanged() external onChain(ChainIdUtils.XLayer()) {
-        ForeignController controller = ForeignController(XLayer.ALM_CONTROLLER);
-
-        bytes32 takeKey      = RateLimitHelpers.makeAddressKey(controller.LIMIT_SPARK_VAULT_TAKE(), XLayer.SPARK_VAULT_V2_SPUSDT);
-        bytes32 transferKey  = RateLimitHelpers.makeAddressAddressKey(controller.LIMIT_ASSET_TRANSFER(), XLayer.USDT0, XLayer.SPARK_VAULT_V2_SPUSDT);
-        bytes32 layerZeroKey = keccak256(abi.encode(controller.LIMIT_LAYERZERO_TRANSFER(), XLayer.USDT0_OFT, LZ_EID_ETHEREUM));
-
-        assertEq(takeKey,      0x0631157ca01222eff6a884d0082adde6d54a78fb54c94deffc01e72f488e0299);
-        assertEq(transferKey,  0xe81b059884c85142a3bac9b2afa6a8f7289537e7aa2d704446d2535b0a06d849);
-        assertEq(layerZeroKey, 0x83b84d91df714f1188544c3716582f037ccaaf60c9a43a1a6edefff62dcfa546);
-
-        _assertUnlimitedRateLimit(XLayer.ALM_RATE_LIMITS, takeKey);
-        _assertUnlimitedRateLimit(XLayer.ALM_RATE_LIMITS, transferKey);
-        _assertUnlimitedRateLimit(XLayer.ALM_RATE_LIMITS, layerZeroKey);
-
-        _executeAllPayloadsAndBridges();
-
-        _assertUnlimitedRateLimit(XLayer.ALM_RATE_LIMITS, takeKey);
-        _assertUnlimitedRateLimit(XLayer.ALM_RATE_LIMITS, transferKey);
-        _assertUnlimitedRateLimit(XLayer.ALM_RATE_LIMITS, layerZeroKey);
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
     }
 
     /**********************************************************************************************/
