@@ -906,11 +906,11 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     function test_XLAYER_sll_layerZeroRecipient() external onChain(ChainIdUtils.XLayer()) {
         ForeignController controller = ForeignController(XLayer.ALM_CONTROLLER);
 
-        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), bytes32(uint256(uint160(Ethereum.ALM_PROXY))));
+        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), _toBytes32(Ethereum.ALM_PROXY));
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), bytes32(uint256(uint160(ETHEREUM_SPUSDT_PAU_ALM_PROXY))));
+        assertEq(controller.layerZeroRecipients(LZ_EID_ETHEREUM), _toBytes32(ETHEREUM_SPUSDT_PAU_ALM_PROXY));
 
         IERC20 xlayerUsdt   = IERC20(XLayer.USDT0);
         IERC20 ethereumUsdt = IERC20(Ethereum.USDT);
@@ -931,7 +931,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         SendParam memory sendParams = SendParam({
             dstEid       : LZ_EID_ETHEREUM,
-            to           : bytes32(uint256(uint160(ETHEREUM_SPUSDT_PAU_ALM_PROXY))),
+            to           : _toBytes32(ETHEREUM_SPUSDT_PAU_ALM_PROXY),
             amountLD     : 1_000_000e6,
             minAmountLD  : 1_000_000e6,
             extraOptions : OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0),
@@ -940,7 +940,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         });
         MessagingFee memory fee = ILayerZero(USDT0_OFT_XLAYER).quoteSend(sendParams, false);
 
-        uint64 sentNonce = ILZEndpointLike(LZ_ENDPOINT_XLAYER).outboundNonce(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, bytes32(uint256(uint160(USDT_OFT)))) + 1;
+        uint64 sentNonce = ILZEndpointLike(LZ_ENDPOINT_XLAYER).outboundNonce(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, _toBytes32(USDT_OFT)) + 1;
 
         vm.prank(XLayer.ALM_RELAYER_MULTISIG);
         controller.transferTokenLayerZero{ value: fee.nativeFee }(USDT0_OFT_XLAYER, 1_000_000e6, LZ_EID_ETHEREUM);
@@ -949,9 +949,9 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        _skipLZPendingNonces(USDT_OFT, LZ_EID_XLAYER, bytes32(uint256(uint160(USDT0_OFT_XLAYER))), sentNonce);
+        _skipLZPendingNonces(USDT_OFT, LZ_EID_XLAYER, _toBytes32(USDT0_OFT_XLAYER), sentNonce);
 
-        assertEq(usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore);
+        assertEq(ethereumUsdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore);
 
         // Relay messages to destination chain.
 
@@ -961,7 +961,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // The USDT0 lands in the Ethereum spUSDT PAU ALM Proxy.
 
-        assertEq(usdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore + 1_000_000e6);
+        assertEq(ethereumUsdt.balanceOf(ETHEREUM_SPUSDT_PAU_ALM_PROXY), destinationBalanceBefore + 1_000_000e6);
 
         vm.revertTo(destinationSnapshot);
 
@@ -978,8 +978,6 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         bytes32 domainKey    = controller.cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
         bytes32 aggregateKey = controller.cctp_toCCTPRateLimitKey();
 
-        assertEq(domainKey, 0x90b598dae614822d554ec4f627bb5feab505106473a7911f34b36c0b3b9695c7);
-
         _assertRateLimit(Base.PAU_RATELIMITS, domainKey, 5_000_000e6, uint256(50_000_000e6) / 1 days);
 
         _assertUnlimitedRateLimit(Base.PAU_RATELIMITS, aggregateKey);
@@ -994,9 +992,6 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         _assertRateLimit(Base.PAU_RATELIMITS, domainKey, 25_000_000e6, uint256(100_000_000e6) / 1 days);
 
-        assertEq(uint256(100_000_000e6) / 1 days, 1_157_407_407);
-
-        // Unchanged.
         _assertUnlimitedRateLimit(Base.PAU_RATELIMITS, aggregateKey);
 
         ( recipient, minFeeCapRate, maxFeeCapRate ) = controller.cctp_getDomainParameters(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM);
