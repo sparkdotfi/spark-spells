@@ -3016,6 +3016,12 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             }
 
             _swapUSDCToUSDSAndBurn(1_000_000e6, legacyMainnetController);
+
+            // Every message of this leg has been relayed, so drop the recorded logs. Otherwise they accumulate across
+            // all legs and the spell execution, and re-encoding them exceeds the EVM memory limit (MemoryLimitOOG).
+            chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+            _clearLogs();
         }
     }
 

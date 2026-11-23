@@ -139,8 +139,6 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
             IERC4626(Ethereum.SUSDS).convertToShares(spUsdt.assetsOutstanding() * 1e12)
         );
 
-        // 4. Claim SparkLend reserves: executed by `SparkPayloadEthereum.execute()` after `_postExecute`.
-
         // 5. Transfer USDS to the buyback executor to fund SPK buybacks.
         IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, USDS_SPK_BUYBACK_AMOUNT);
 
