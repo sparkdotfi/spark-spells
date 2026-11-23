@@ -52,3 +52,6 @@
 [submodule "lib/diamond-pau"]
 	path = lib/diamond-pau
 	url = https://github.com/sky-ecosystem/diamond-pau
+[submodule "lib/spark-deployments"]
+	path = lib/spark-deployments
+	url = https://github.com/sparkdotfi/spark-deployments.git
