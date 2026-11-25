@@ -3590,18 +3590,37 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }
 
         if (block.chainid == ChainIdUtils.Ethereum()) {
-            return _getPreExecutionIntegrationsMainnet();
+            return _removeClosedCctpRoutes(_getPreExecutionIntegrationsMainnet());
         }
 
-        if (block.chainid == ChainIdUtils.Optimism()) {
-            return _getPreExecutionIntegrationsBasicPsm3(Optimism.PSM3, Optimism.USDC, Optimism.USDS, Optimism.SUSDS);
-        }
-
-        if (block.chainid == ChainIdUtils.Unichain()) {
-            return _getPreExecutionIntegrationsBasicPsm3(Unichain.PSM3, Unichain.USDC, Unichain.USDS, Unichain.SUSDS);
+        // The 2026-11-19 spell deprecated the Spark Liquidity Layer on OP Mainnet and Unichain, zeroing every rate limit.
+        if (
+            block.chainid == ChainIdUtils.Optimism() ||
+            block.chainid == ChainIdUtils.Unichain()
+        ) {
+            return new SLLIntegration[](0);
         }
 
         revert("Invalid chainId");
+    }
+
+    // The 2026-11-19 spell zeroed the Ethereum USDC routes to OP Mainnet, Unichain and Avalanche.
+    function _removeClosedCctpRoutes(SLLIntegration[] memory integrations)
+        internal pure returns (SLLIntegration[] memory newIntegrations)
+    {
+        newIntegrations = new SLLIntegration[](integrations.length - 3);
+
+        uint256 index;
+
+        for (uint256 i = 0; i < integrations.length; ++i) {
+            if (
+                _isEqual(integrations[i].label, "CCTP-AVALANCHE") ||
+                _isEqual(integrations[i].label, "CCTP-OPTIMISM")  ||
+                _isEqual(integrations[i].label, "CCTP-UNICHAIN")
+            ) continue;
+
+            newIntegrations[index++] = integrations[i];
+        }
     }
 
     function _getPostExecutionIntegrationsNoChange(SLLIntegration[] memory integrations)
