@@ -1,58 +1,58 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.34;
 
-import { StdAssertions } from "forge-std/StdAssertions.sol";
-import { Vm }            from "forge-std/Vm.sol";
-import { console2 }      from "forge-std/console2.sol";
+import { StdAssertions } from "../../../lib/forge-std/src/StdAssertions.sol";
+import { Vm }            from "../../../lib/forge-std/src/Vm.sol";
+import { console2 }      from "../../../lib/forge-std/src/console2.sol";
 
-import { IERC20 }                   from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 }                 from "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import { IAccessControl }           from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
-import { IAccessControlEnumerable } from "openzeppelin-contracts/contracts/access/extensions/IAccessControlEnumerable.sol";
+import { IERC20 }                   from "../../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 }                 from "../../../lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import { IAccessControl }           from "../../../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import { IAccessControlEnumerable } from "../../../lib/openzeppelin-contracts/contracts/access/extensions/IAccessControlEnumerable.sol";
 
-import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { OptionsBuilder } from "../../../lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
-import { BeaconConfig } from "diamond-pau/src/libraries/BeaconConfig.sol";
+import { BeaconConfig } from "../../../lib/diamond-pau/src/libraries/BeaconConfig.sol";
 
-import { IController }             from "diamond-pau/src/interfaces/IController.sol";
-import { IEnumerableIntegrations } from "diamond-pau/src/interfaces/IEnumerableIntegrations.sol";
+import { IController }             from "../../../lib/diamond-pau/src/interfaces/IController.sol";
+import { IEnumerableIntegrations } from "../../../lib/diamond-pau/src/interfaces/IEnumerableIntegrations.sol";
 
-import { IERC4626Controller }       from "diamond-pau/src/facets/erc4626/IERC4626Controller.sol";
-import { ILayerZeroController }     from "diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
-import { ILayerZeroFacet }          from "diamond-pau/src/facets/layer-zero/ILayerZeroFacet.sol";
-import { ISparkVaultController }    from "diamond-pau/src/facets/spark-vault/ISparkVaultController.sol";
-import { ISwapAssetController }     from "diamond-pau/src/facets/swap-asset/ISwapAssetController.sol";
-import { ISwapAssetFacet }          from "diamond-pau/src/facets/swap-asset/ISwapAssetFacet.sol";
-import { ITransferAssetController } from "diamond-pau/src/facets/transfer-asset/ITransferAssetController.sol";
+import { IERC4626Controller }       from "../../../lib/diamond-pau/src/facets/erc4626/IERC4626Controller.sol";
+import { ILayerZeroController }     from "../../../lib/diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
+import { ILayerZeroFacet }          from "../../../lib/diamond-pau/src/facets/layer-zero/ILayerZeroFacet.sol";
+import { ISparkVaultController }    from "../../../lib/diamond-pau/src/facets/spark-vault/ISparkVaultController.sol";
+import { ISwapAssetController }     from "../../../lib/diamond-pau/src/facets/swap-asset/ISwapAssetController.sol";
+import { ISwapAssetFacet }          from "../../../lib/diamond-pau/src/facets/swap-asset/ISwapAssetFacet.sol";
+import { ITransferAssetController } from "../../../lib/diamond-pau/src/facets/transfer-asset/ITransferAssetController.sol";
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
-import { Base }     from "spark-address-registry/Base.sol";
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { XLayer }   from "spark-address-registry/XLayer.sol";
+import { Arbitrum } from "../../../lib/spark-address-registry/src/Arbitrum.sol";
+import { Base }     from "../../../lib/spark-address-registry/src/Base.sol";
+import { Ethereum } from "../../../lib/spark-address-registry/src/Ethereum.sol";
+import { XLayer }   from "../../../lib/spark-address-registry/src/XLayer.sol";
 
-import { ArbitrumSparkSpUSDTPayload } from "spark-deployments/deployments/20261117-arbitrum-spark-spUSDT/ArbitrumSparkSpUSDTPayload.sol";
+import { ArbitrumSparkSpUSDTPayload } from "../../../lib/spark-deployments/src/deployments/20261117-arbitrum-spark-spUSDT/ArbitrumSparkSpUSDTPayload.sol";
 
-import { IALMProxy }                           from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { IRateLimits }                         from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { ILayerZero, MessagingFee, SendParam } from "spark-alm-controller/src/interfaces/ILayerZero.sol";
-import { ForeignController }                   from "spark-alm-controller/src/ForeignController.sol";
-import { MainnetController }                   from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers }                    from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IALMProxy }                           from "../../../lib/spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits }                         from "../../../lib/spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { ILayerZero, MessagingFee, SendParam } from "../../../lib/spark-alm-controller/src/interfaces/ILayerZero.sol";
+import { ForeignController }                   from "../../../lib/spark-alm-controller/src/ForeignController.sol";
+import { MainnetController }                   from "../../../lib/spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }                    from "../../../lib/spark-alm-controller/src/RateLimitHelpers.sol";
 
-import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
-import { LZForwarder }   from "xchain-helpers/forwarders/LZForwarder.sol";
+import { CCTPForwarder } from "../../../lib/xchain-helpers/src/forwarders/CCTPForwarder.sol";
+import { LZForwarder }   from "../../../lib/xchain-helpers/src/forwarders/LZForwarder.sol";
 
-import { Bridge, BridgeType }    from "xchain-helpers/testing/Bridge.sol";
-import { Domain, DomainHelpers } from "xchain-helpers/testing/Domain.sol";
-import { LZBridgeTesting }       from "xchain-helpers/testing/bridges/LZBridgeTesting.sol";
+import { Bridge, BridgeType }    from "../../../lib/xchain-helpers/src/testing/Bridge.sol";
+import { Domain, DomainHelpers } from "../../../lib/xchain-helpers/src/testing/Domain.sol";
+import { LZBridgeTesting }       from "../../../lib/xchain-helpers/src/testing/bridges/LZBridgeTesting.sol";
 
-import { ChainIdUtils } from "src/libraries/ChainIdUtils.sol";
+import { ChainIdUtils } from "../../libraries/ChainIdUtils.sol";
 
-import { SparklendTests }           from "src/test-harness/SparklendTests.sol";
-import { SparkLiquidityLayerTests } from "src/test-harness/SparkLiquidityLayerTests.sol";
-import { SpellTests }               from "src/test-harness/SpellTests.sol";
+import { SparklendTests }           from "../../test-harness/SparklendTests.sol";
+import { SparkLiquidityLayerTests } from "../../test-harness/SparkLiquidityLayerTests.sol";
+import { SpellTests }               from "../../test-harness/SpellTests.sol";
 
-import { ISparkVaultV2Like } from "src/interfaces/Interfaces.sol";
+import { ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
 
 interface IAdministeredAgentLike {
 
@@ -207,7 +207,8 @@ abstract contract SpUsdtDeployments is StdAssertions {
     bytes32 internal constant ALLOCATOR_ROLE     = keccak256("ALLOCATOR_ROLE");
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    address internal constant SKY_BEACON = 0x829dC2b7E94B1954F0764E573f2E0d45Afa28199;
+    address internal constant SKY_BEACON           = 0x829dC2b7E94B1954F0764E573f2E0d45Afa28199;
+    address internal constant SKY_PAS_CONFIGURATOR = 0xb7E61Df6CAb0A51E9A5dab1A7DD3f942dDe5b929;
 
     // Sky Ethereum PAS.
     address internal constant SKY_PAS_BEAM_STATE   = 0x1A1879E66547F90bfF87D45A5b0335950E019E02;
@@ -386,9 +387,21 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     function test_ETHEREUM_sllPau_deploymentConfig() external onChain(ChainIdUtils.Ethereum()) {
         _assertEthereumSllPauDeploymentConfig();
 
+        // Deployment payload authorizes only the Spark Proxy as the default admin on the SLL PAU.
+        _assertOnlyRoleMember(eth_sllPau_accessControls,      DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY);
+        _assertOnlyRoleMember(address(eth_sllPau_rateLimits), DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY);
+
         _executeAllPayloadsAndBridges();
 
         _assertEthereumSllPauDeploymentConfig();
+
+        // The spell authorizes the Sky PAS Configurator as a second admin on the SLL PAU.
+        address[] memory admins = new address[](2);
+        admins[0] = Ethereum.SPARK_PROXY;
+        admins[1] = SKY_PAS_CONFIGURATOR;
+
+        _assertRoleMembers(eth_sllPau_accessControls,      DEFAULT_ADMIN_ROLE, admins);
+        _assertRoleMembers(address(eth_sllPau_rateLimits), DEFAULT_ADMIN_ROLE, admins);
     }
 
     function test_ETHEREUM_administeredAgents_deploymentConfig() external onChain(ChainIdUtils.Ethereum()) {
@@ -470,7 +483,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         uint256 vaultBalance = eth_usdt.balanceOf(Ethereum.SPARK_VAULT_V2_SPUSDT);
         uint256 pauBalance   = eth_usdt.balanceOf(eth_spUSDTPAU_almProxy);
 
-        assertEq(vaultBalance, 50_599_360.713104e6);
+        assertEq(vaultBalance, 78_360_404.171593e6);
         assertEq(pauBalance,   0);
 
         _callAsAgent(
@@ -497,7 +510,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         );
 
         vm.prank(Ethereum.ALM_PROXY_FREEZABLE);
-        eth_spUsdt.setVsr(maxVsr );
+        eth_spUsdt.setVsr(maxVsr);
 
         assertEq(eth_spUsdt.vsr(), 1.000000001319814647332759691e27);
 
@@ -587,13 +600,13 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     function test_ETHEREUM_spUsdtPau_susdsBacking() external onChain(ChainIdUtils.Ethereum()) {
         uint256 assetsOutstanding = eth_spUsdt.assetsOutstanding();
 
-        assertEq(assetsOutstanding, 251_733_540.667095e6);
+        assertEq(assetsOutstanding, 195_883_296.524670e6);
 
         uint256 expectedShares = eth_susds.convertToShares(assetsOutstanding * 1e12);
         uint256 sllShares      = eth_susds.balanceOf(Ethereum.ALM_PROXY);
 
-        assertEq(expectedShares,                              225_395_490.431514946117282037e18);
-        assertEq(sllShares,                                   529_337_328.926854696446482965e18);
+        assertEq(expectedShares,                              175_280_305.459397030094905085e18);
+        assertEq(sllShares,                                   432_321_228.979400369803077195e18);
         assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 0);
 
         _executeAllPayloadsAndBridges();
@@ -611,7 +624,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         uint256 sharesBefore = eth_susds.balanceOf(eth_spUSDTPAU_almProxy);
 
-        assertEq(sharesBefore,                               225_395_490.431514946117282037e18);
+        assertEq(sharesBefore,                               175_280_305.459397030094905085e18);
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0);
 
         // Withdraw 1,000,000 USDS from sUSDS
@@ -649,6 +662,9 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_sllPau_controller.integrations().length,                                0);
         assertEq(eth_sllPau_controller.getConfig(BeaconConfig.SWAP_ASSET_INTEGRATION).facet, address(0));
 
+        assertEq(IAccessControlEnumerable(eth_sllPau_accessControls).hasRole(DEFAULT_ADMIN_ROLE,      SKY_PAS_CONFIGURATOR), false);
+        assertEq(IAccessControlEnumerable(address(eth_sllPau_rateLimits)).hasRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR), false);
+
         // Pre-requirement 9: the SwapAsset integration comes from the Sky Beacon
         _assertIntegration(SKY_BEACON, BeaconConfig.buildSwapAssetIntegration(Ethereum.SWAP_ASSET_FACET));
 
@@ -662,6 +678,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_sllPau_controller.integrations().length, 1);
 
         _assertIntegrationEnabled(address(eth_sllPau_controller), BeaconConfig.buildSwapAssetIntegration(Ethereum.SWAP_ASSET_FACET));
+
+        // The Sky PAS Configurator is authorized on the SLL PAU.
+        assertEq(IAccessControlEnumerable(eth_sllPau_accessControls).hasRole(DEFAULT_ADMIN_ROLE,      SKY_PAS_CONFIGURATOR), true);
+        assertEq(IAccessControlEnumerable(address(eth_sllPau_rateLimits)).hasRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR), true);
     }
 
     function test_ETHEREUM_sllPau_swap() external onChain(ChainIdUtils.Ethereum()) {
@@ -675,10 +695,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0);
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_000e6);
 
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       100_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)),       100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)),       10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
 
         assertEq(eth_usds.allowance(Ethereum.ALM_PROXY, eth_spUSDTPAU_almProxy), 0);
 
@@ -697,10 +717,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 0);
 
         // Each side consumed its own limit; the opposite direction was already at its maximum.
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       99_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)),       100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 99_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       9_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)),       10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 9_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
 
         assertEq(eth_usds.allowance(Ethereum.ALM_PROXY, eth_spUSDTPAU_almProxy), 0);
 
@@ -719,10 +739,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_000e6);
 
         // Each side consumed its own limit and recharged the opposite direction by the same amount.
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       100_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)),       99_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 99_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)),       9_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 9_000_000e18);
 
         assertEq(eth_usdt.allowance(Ethereum.ALM_PROXY, eth_spUSDTPAU_almProxy), 0);
     }
@@ -1215,10 +1235,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         _warpToForkBlock(ChainIdUtils.Ethereum());
 
         assertEq(eth_usdt.balanceOf(user),                1_000_000e6);
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 50_599_360.713104e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 78_360_404.171593e6);
 
-        assertEq(eth_spUsdt.totalAssets(),   302_332_901.380199e6);
-        assertEq(eth_spUsdt.totalSupply(),   291_476_338.503053e6);
+        assertEq(eth_spUsdt.totalAssets(),   274_243_700.696263e6);
+        assertEq(eth_spUsdt.totalSupply(),   264_213_496.973803e6);
         assertEq(eth_spUsdt.balanceOf(user), 0);
 
         vm.startPrank(user);
@@ -1227,12 +1247,12 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         vm.stopPrank();
 
         assertEq(eth_usdt.balanceOf(user),                0);
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 51_599_360.713104e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 79_360_404.171593e6);
 
-        assertEq(eth_spUsdt.totalAssets(), 303_332_901.380198e6);
-        assertEq(eth_spUsdt.totalSupply(), 292_440_429.202981e6);
+        assertEq(eth_spUsdt.totalAssets(), 275_243_700.696262e6);
+        assertEq(eth_spUsdt.totalSupply(), 265_176_922.920517e6);
 
-        assertEq(eth_spUsdt.balanceOf(user), 964_090.699928e6);
+        assertEq(eth_spUsdt.balanceOf(user), 963_425.946714e6);
 
         // Step 2: User deposits 1_000_000e6 USDT0 to the Arbitrum spUSDT vault
 
@@ -1240,10 +1260,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         _warpToForkBlock(ChainIdUtils.ArbitrumOne());
 
         assertEq(arb_usdt0.balanceOf(user),                1_000_000e6);
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 1_053_182.977823e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 1_058_239.025688e6);
 
-        assertEq(arb_spUsdt.totalAssets(),   1_054_572.604870e6);
-        assertEq(arb_spUsdt.totalSupply(),   1_042_378.177040e6);
+        assertEq(arb_spUsdt.totalAssets(),   1_060_356.738931e6);
+        assertEq(arb_spUsdt.totalSupply(),   1_047_372.751360e6);
         assertEq(arb_spUsdt.balanceOf(user), 0);
 
         vm.startPrank(user);
@@ -1252,21 +1272,21 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         vm.stopPrank();
 
         assertEq(arb_usdt0.balanceOf(user),                0);
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 2_053_182.977823e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 2_058_239.025688e6);
 
-        assertEq(arb_spUsdt.totalAssets(), 2_054_572.604870e6);
-        assertEq(arb_spUsdt.totalSupply(), 2_030_814.793187e6);
+        assertEq(arb_spUsdt.totalAssets(), 2_060_356.738930e6);
+        assertEq(arb_spUsdt.totalSupply(), 2_035_127.827463e6);
 
-        assertEq(arb_spUsdt.balanceOf(user), 988_436.616147e6);
+        assertEq(arb_spUsdt.balanceOf(user), 987_755.076103e6);
 
         // Step 3: Ethereum Spark Vaults agent (planner agent) takes 1_000_000e6 USDT out of the Ethereum spUSDT vault
 
         mainnet.selectFork();
         _warpToForkBlock(ChainIdUtils.Ethereum());
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_sparkVault_takeKey()), type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_sparkVault_takeKey()), 10_000_000e6);
 
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    51_599_360.713104e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    79_360_404.171593e6);
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 100e6);
 
         vm.prank(Ethereum.PLANNER_WALLET);
@@ -1281,23 +1301,23 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
             )
         );
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_sparkVault_takeKey()), type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_sparkVault_takeKey()), 9_000_000e6);
 
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    50_599_360.713104e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    78_360_404.171593e6);
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_100e6);
 
         // Taking moves idle liquidity out, it does not change the vault's accounting.
-        assertEq(eth_spUsdt.totalAssets(), 303_332_901.380198e6);
-        assertEq(eth_spUsdt.totalSupply(), 292_440_429.202981e6);
+        assertEq(eth_spUsdt.totalAssets(), 275_243_700.696262e6);
+        assertEq(eth_spUsdt.totalSupply(), 265_176_922.920517e6);
 
         // Step 4: Arbitrum Spark Vaults agent (planner agent) takes 1_000_000e6 USDT0 out of the Arbitrum spUSDT vault
 
         arbitrum.selectFork();
         _warpToForkBlock(ChainIdUtils.ArbitrumOne());
 
-        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_sparkVault_takeKey()), type(uint256).max);
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_sparkVault_takeKey()), 10_000_000e6);
 
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    2_053_182.977823e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    2_058_239.025688e6);
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
 
         vm.prank(Arbitrum.PLANNER_WALLET);
@@ -1312,21 +1332,21 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
             )
         );
 
-        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_sparkVault_takeKey()), type(uint256).max);
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_sparkVault_takeKey()), 9_000_000e6);
 
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    1_053_182.977823e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    1_058_239.025688e6);
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_000e6);
 
-        assertEq(arb_spUsdt.totalAssets(), 2_054_572.604870e6);
-        assertEq(arb_spUsdt.totalSupply(), 2_030_814.793187e6);
+        assertEq(arb_spUsdt.totalAssets(), 2_060_356.738930e6);
+        assertEq(arb_spUsdt.totalSupply(), 2_035_127.827463e6);
 
         // Step 5: Arbitrum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT0 to the Ethereum spUSDT PAU using
         //         LayerZeroFacet
 
-        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_layerZero_transferKey()), type(uint256).max);
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_layerZero_transferKey()), 5_000_000e6);
 
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_000e6);
-        assertEq(arb_usdt0.totalSupply(),                     899_127_877.736082e6);
+        assertEq(arb_usdt0.totalSupply(),                     1_107_018_091.141814e6);
 
         ( , ILayerZeroFacet.MessagingFee memory fee ) = arb_spUSDTPAU_controller
             .layerZero_quoteTransfer(Arbitrum.USDT_OFT, 1_000_000e6, LZ_EID_ETHEREUM);
@@ -1345,11 +1365,11 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
             )
         );
 
-        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_layerZero_transferKey()), type(uint256).max);
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_layerZero_transferKey()), 4_000_000e6);
 
         // USDT0 is burned on Arbitrum.
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
-        assertEq(arb_usdt0.totalSupply(),                     898_127_877.736082e6);
+        assertEq(arb_usdt0.totalSupply(),                     1_106_018_091.141814e6);
 
         // Step 6: Relay the message to Ethereum
 
@@ -1357,7 +1377,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         _warpToForkBlock(ChainIdUtils.Ethereum());
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_100e6);
-        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_576_500_417.256819e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_714_743_802.362019e6);
 
         // The message can only be delivered if the Ethereum fork is not ahead of the Arbitrum fork.
         assertLt(ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(Ethereum.USDT_OFT, LZ_EID_ARBITRUM, _toBytes32(Arbitrum.USDT_OFT)), sentNonce);
@@ -1370,16 +1390,16 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // USDT is released from the OFT adapter on Ethereum.
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_100e6);
-        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_575_500_417.256819e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_713_743_802.362019e6);
 
         // Step 7: SLL agent (planner agent) initiates a swap on the SLL PAU of 2_000_000e18 USDS for 2_000_000e6 USDT,
         //         completed by the spUSDT PAU using SwapAssetFacet
 
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_100e6);
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0);
@@ -1402,11 +1422,11 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         );
 
         // The reverse direction keys increase, already at max so they stay at max.
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 98_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 8_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 98_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 8_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 100e6);
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 2_000_000e18);
@@ -1420,7 +1440,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // The spUSDT PAU already holds the sUSDS backing transferred by the spell.
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  2_000_000e18);
-        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 225_395_490.431514946117282037e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 175_280_305.459397030094905085e18);
 
         vm.prank(Ethereum.PLANNER_WALLET);
         IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
@@ -1431,7 +1451,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
                     address(eth_spUSDTPAU_controller),
                     abi.encodeCall(
                         IERC4626Controller.erc4626_deposit,
-                        (Ethereum.SUSDS, 2_000_000e18, 1_790_746.595262720224995762e18)
+                        (Ethereum.SUSDS, 2_000_000e18, 1_789_640.143587453041701836e18)
                     )
                 )
             )
@@ -1441,9 +1461,9 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
 
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  0);
-        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 225_395_490.431514946117282037e18 + 1_790_746.595262720224995762e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 175_280_305.459397030094905085e18 + 1_789_640.143587453041701836e18);
 
-        assertEq(eth_susds.convertToAssets(1_790_746.595262720224995762e18), 1_999_999.999999999999999999e18);  // Rounding
+        assertEq(eth_susds.convertToAssets(1_789_640.143587453041701836e18), 1_999_999.999999999999999999e18);  // Rounding
 
         // Step 9: Skip 1 day on Ethereum and Arbitrum to let sUSDS and both spUSDT vaults accrue yield. A fork switch
         //         does not keep a fork's warped timestamp, so each chain's timestamp is re-applied on every switch.
@@ -1459,17 +1479,17 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         uint256 arbTimestamp = block.timestamp;
 
-        assertEq(arb_spUsdt.convertToAssets(988_436.616147e6), 1_000_114.038487e6);  // Interest owed to the user on Arbitrum
+        assertEq(arb_spUsdt.convertToAssets(987_755.076103e6), 1_000_114.038486e6);  // Interest owed to the user on Arbitrum
 
         mainnet.selectFork();
         vm.warp(ethTimestamp);
 
-        assertEq(eth_susds.convertToAssets(1_790_746.595262720224995762e18), 2_000_204.370905504494858259e18);  // Interest accrued
-        assertEq(eth_spUsdt.convertToAssets(964_090.699928e6),               1_000_114.038486e6);               // Interest owed to the user on Ethereum
+        assertEq(eth_susds.convertToAssets(1_789_640.143587453041701836e18), 2_000_204.370905504494858258e18);  // Interest accrued
+        assertEq(eth_spUsdt.convertToAssets(963_425.946714e6),               1_000_114.038486e6);               // Interest owed to the user on Ethereum
 
         // Rate limits fully recharged
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       100_000_000e18);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       10_000_000e18);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
 
         // Step 10: Ethereum Spark Vaults agent (planner agent) redeems the sUSDS for 2_000_000e18 USDS + interest using
         //          ERC4626Facet
@@ -1478,7 +1498,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
 
         assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  0);
-        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 225_395_490.431514946117282037e18 + 1_790_746.595262720224995762e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 175_280_305.459397030094905085e18 + 1_789_640.143587453041701836e18);
 
         vm.prank(Ethereum.PLANNER_WALLET);
         IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
@@ -1489,7 +1509,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
                     address(eth_spUSDTPAU_controller),
                     abi.encodeCall(
                         IERC4626Controller.erc4626_redeem,
-                        (Ethereum.SUSDS, 1_790_746.595262720224995762e18, 2_000_204.370905504494858259e18)
+                        (Ethereum.SUSDS, 1_789_640.143587453041701836e18, 2_000_204.370905504494858258e18)
                     )
                 )
             )
@@ -1498,20 +1518,20 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_depositKey()),  type(uint256).max);
         assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
 
-        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  2_000_204.370905504494858259e18);
-        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 225_395_490.431514946117282037e18);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  2_000_204.370905504494858258e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 175_280_305.459397030094905085e18);
 
         // Step 11: SLL agent (planner agent) initiates a swap on the SLL PAU of USDT + interest for the USDS + interest,
         //          completed by the spUSDT PAU using SwapAssetFacet
 
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 100e6);
-        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 2_000_204.370905504494858259e18);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 2_000_204.370905504494858258e18);
         assertEq(eth_usdt.balanceOf(Ethereum.ALM_PROXY),     4_000_000e6);
         assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),     0);
 
@@ -1533,24 +1553,24 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         );
 
         // The reverse direction keys increase, already at max so they stay at max.
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 100_000_000e18);
-        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 97_999_795.629095e6);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 7_999_795.629095e6);
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 100_000_000e6);
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 97_999_795.629095e18);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 7_999_795.629095e18);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_304.370905e6);
-        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0.000000504494858259e18);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0.000000504494858258e18);
         assertEq(eth_usdt.balanceOf(Ethereum.ALM_PROXY),     1_999_795.629095e6);
         assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),     2_000_204.370905e18);
 
         // Step 12: Ethereum Spark Vaults agent (planner agent) transfers 1_000_000e6 USDT + interest to the Ethereum
         //          spUSDT vault using TransferAssetFacet
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_transferAsset_transferKey()), type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_transferAsset_transferKey()), 10_000_000e6);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_304.370905e6);
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    50_599_360.713104e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    78_360_404.171593e6);
 
         vm.prank(Ethereum.PLANNER_WALLET);
         IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
@@ -1567,10 +1587,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
             )
         );
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_transferAsset_transferKey()), type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_transferAsset_transferKey()), 10_000_000e6 - 1_000_114.038486e6);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_190.332419e6);
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    51_599_474.751590e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    79_360_518.210079e6);
 
         // Step 13: Ethereum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT + interest to the Arbitrum
         //          spUSDT PAU using LayerZeroFacet
@@ -1578,7 +1598,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_ARBITRUM)), 5_000_000e6);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_190.332419e6);
-        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_575_500_417.256819e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_713_743_802.362019e6);
 
         ( , fee ) = eth_spUSDTPAU_controller.layerZero_quoteTransfer(Ethereum.USDT_OFT, 1_000_114.038487e6, LZ_EID_ARBITRUM);
 
@@ -1603,7 +1623,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // USDT is locked in the OFT adapter on Ethereum.
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 76.293932e6);
-        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_576_500_531.295306e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_714_743_916.400506e6);
 
         // Step 14: Relay the message to Arbitrum
 
@@ -1611,7 +1631,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         vm.warp(arbTimestamp);
 
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
-        assertEq(arb_usdt0.totalSupply(),                     898_127_877.736082e6);
+        assertEq(arb_usdt0.totalSupply(),                     1_106_018_091.141814e6);
 
         // The message can only be delivered if the Arbitrum fork is not ahead of the Ethereum fork.
         assertLt(ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(Arbitrum.USDT_OFT, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)), sentNonce);
@@ -1624,15 +1644,15 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // USDT0 is minted on Arbitrum.
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_114.038487e6);
-        assertEq(arb_usdt0.totalSupply(),                     899_127_991.774569e6);
+        assertEq(arb_usdt0.totalSupply(),                     1_107_018_205.180301e6);
 
         // Step 15: Arbitrum Spark Vaults agent (planner agent) transfers 1_000_000e6 USDT0 + interest to the Arbitrum
         //          spUSDT vault using TransferAssetFacet
 
-        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_transferAsset_transferKey()), type(uint256).max);
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_transferAsset_transferKey()), 10_000_000e6);
 
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_114.038487e6);
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    1_053_182.977823e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    1_058_239.025688e6);
 
         vm.prank(Arbitrum.PLANNER_WALLET);
         IAdministeredAgentLike(ARBITRUM_PLANNER_ADMINISTERED_AGENT).call(
@@ -1649,10 +1669,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
             )
         );
 
-        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_transferAsset_transferKey()), type(uint256).max);
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_transferAsset_transferKey()), 10_000_000e6 - 1_000_114.038487e6);
 
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    2_053_297.016310e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    2_058_353.064175e6);
 
         // Step 16: User redeems their Ethereum spUSDT deposit and receives the 1_000_000e6 USDT + interest
 
@@ -1660,20 +1680,20 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         vm.warp(ethTimestamp);
 
         assertEq(eth_usdt.balanceOf(user),                0);
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 51_599_474.751590e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 79_360_518.210079e6);
 
-        assertEq(eth_spUsdt.totalAssets(),   303_367_493.005435e6);
-        assertEq(eth_spUsdt.totalSupply(),   292_440_429.202981e6);
-        assertEq(eth_spUsdt.balanceOf(user), 964_090.699928e6);
+        assertEq(eth_spUsdt.totalAssets(),   275_275_089.071542e6);
+        assertEq(eth_spUsdt.totalSupply(),   265_176_922.920517e6);
+        assertEq(eth_spUsdt.balanceOf(user), 963_425.946714e6);
 
         vm.prank(user);
-        eth_spUsdt.redeem(964_090.699928e6, user, user);
+        eth_spUsdt.redeem(963_425.946714e6, user, user);
 
         assertEq(eth_usdt.balanceOf(user),                1_000_114.038486e6);
-        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 50_599_360.713104e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 78_360_404.171593e6);
 
-        assertEq(eth_spUsdt.totalAssets(),   302_367_378.966948e6);
-        assertEq(eth_spUsdt.totalSupply(),   291_476_338.503053e6);
+        assertEq(eth_spUsdt.totalAssets(),   274_274_975.033055e6);
+        assertEq(eth_spUsdt.totalSupply(),   264_213_496.973803e6);
         assertEq(eth_spUsdt.balanceOf(user), 0);
 
         // Step 17: User redeems their Arbitrum spUSDT deposit and receives the 1_000_000e6 USDT0 + interest
@@ -1682,20 +1702,20 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         vm.warp(arbTimestamp);
 
         assertEq(arb_usdt0.balanceOf(user),                0);
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 2_053_297.016310e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 2_058_353.064175e6);
 
-        assertEq(arb_spUsdt.totalAssets(),   2_054_806.905222e6);
-        assertEq(arb_spUsdt.totalSupply(),   2_030_814.793187e6);
-        assertEq(arb_spUsdt.balanceOf(user), 988_436.616147e6);
+        assertEq(arb_spUsdt.totalAssets(),   2_060_591.698896e6);
+        assertEq(arb_spUsdt.totalSupply(),   2_035_127.827463e6);
+        assertEq(arb_spUsdt.balanceOf(user), 987_755.076103e6);
 
         vm.prank(user);
-        arb_spUsdt.redeem(988_436.616147e6, user, user);
+        arb_spUsdt.redeem(987_755.076103e6, user, user);
 
-        assertEq(arb_usdt0.balanceOf(user),                1_000_114.038487e6);
-        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 1_053_182.977823e6);
+        assertEq(arb_usdt0.balanceOf(user),                1_000_114.038486e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 1_058_239.025689e6);
 
-        assertEq(arb_spUsdt.totalAssets(),   1_054_692.866735e6);
-        assertEq(arb_spUsdt.totalSupply(),   1_042_378.177040e6);
+        assertEq(arb_spUsdt.totalAssets(),   1_060_477.660409e6);
+        assertEq(arb_spUsdt.totalSupply(),   1_047_372.751360e6);
         assertEq(arb_spUsdt.balanceOf(user), 0);
 
         // The unused buffer and the USDS swap dust on Ethereum, nothing on Arbitrum.
@@ -1704,7 +1724,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         mainnet.selectFork();
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 76.293932e6);              // Remaining dust from the buffer deal of 100e6
-        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0.000000504494858259e18);  // Remaining USDS swap dust
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0.000000504494858258e18);  // Remaining USDS swap dust
     }
 
     /**********************************************************************************************/
@@ -1773,17 +1793,13 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // Roles
 
-        // DEFAULT_ADMIN_ROLE: the Spark Proxy, joined by the Sky PAS Configurator in 7.3 (test_ETHEREUM_sllPau_grantPASConfigurator).
-        assertEq(IAccessControlEnumerable(eth_sllPau_accessControls).hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY),      true);
-        assertEq(IAccessControlEnumerable(address(eth_sllPau_rateLimits)).hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY), true);
-
         _assertOnlyRoleMember(address(eth_sllPau_rateLimits), eth_sllPau_rateLimits.CONTROLLER(), address(eth_sllPau_controller));
         _assertOnlyRoleMember(eth_sllPau_accessControls,      ALLOCATOR_ROLE,                     Ethereum.SLL_ADMINISTERED_AGENT);
 
         // Rate limits
 
-        _assertRateLimit(address(eth_sllPau_rateLimits), _ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT), 100_000_000e18, uint256(500_000_000e18) / 1 days);
-        _assertRateLimit(address(eth_sllPau_rateLimits), _ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS), 100_000_000e6,  uint256(500_000_000e6)  / 1 days);
+        _assertRateLimit(address(eth_sllPau_rateLimits), _ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT), 10_000_000e18, uint256(200_000_000e18) / 1 days);
+        _assertRateLimit(address(eth_sllPau_rateLimits), _ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS), 10_000_000e6,  uint256(200_000_000e6)  / 1 days);
     }
 
     function _assertEthereumAgents() internal view {
@@ -1889,9 +1905,26 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
             RateLimitHelpers.makeAddressKey(keccak256("LIMIT_SPARK_VAULT_TAKE"), Arbitrum.SPARK_VAULT_V2_SPUSDT)
         );
 
-        _assertUnlimitedRateLimit(address(arb_spUSDTPAU_rateLimits), arb_spUSDTPAU_controller.sparkVault_getTakeRateLimitKey(Arbitrum.SPARK_VAULT_V2_SPUSDT));
-        _assertUnlimitedRateLimit(address(arb_spUSDTPAU_rateLimits), _arbSpUsdt_transferAsset_transferKey());
-        _assertUnlimitedRateLimit(address(arb_spUSDTPAU_rateLimits), _arbSpUsdt_layerZero_transferKey());
+        _assertRateLimit(
+            address(arb_spUSDTPAU_rateLimits),
+            arb_spUSDTPAU_controller.sparkVault_getTakeRateLimitKey(Arbitrum.SPARK_VAULT_V2_SPUSDT),
+            10_000_000e6,
+            uint256(200_000_000e6) / 1 days
+        );
+
+        _assertRateLimit(
+            address(arb_spUSDTPAU_rateLimits),
+            _arbSpUsdt_transferAsset_transferKey(),
+            10_000_000e6,
+            uint256(200_000_000e6) / 1 days
+        );
+    
+        _assertRateLimit(
+            address(arb_spUSDTPAU_rateLimits),
+            _arbSpUsdt_layerZero_transferKey(),
+            5_000_000e6,
+            uint256(25_000_000e6) / 1 days
+        );
 
         // LayerZero recipient: the Ethereum spUSDT PAU.
 
@@ -1957,6 +1990,14 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     function _assertOnlyRoleMember(address target, bytes32 role, address account) internal view {
         assertEq(IAccessControlEnumerable(target).getRoleMemberCount(role), 1);
         assertEq(IAccessControlEnumerable(target).getRoleMember(role, 0),   account);
+    }
+
+    function _assertRoleMembers(address target, bytes32 role, address[] memory accounts) internal view {
+        assertEq(IAccessControlEnumerable(target).getRoleMemberCount(role), accounts.length);
+
+        for (uint256 i; i < accounts.length; ++i) {
+            assertEq(IAccessControlEnumerable(target).getRoleMember(role, i), accounts[i]);
+        }
     }
 
     // The facets' pure key getters, so the keys can be read before the spell enables the integrations.
@@ -2140,7 +2181,7 @@ contract SparkEthereum_20261203_SpellTests is SpellTests, SpUsdtDeployments {
         uint256 sparkProxyBalanceBefore  = usds.balanceOf(Ethereum.SPARK_PROXY);
         uint256 opsMultisigBalanceBefore = usds.balanceOf(Ethereum.ALM_OPS_MULTISIG);
 
-        assertEq(sparkProxyBalanceBefore,  48_995_094.205806286854722044e18);
+        assertEq(sparkProxyBalanceBefore,  52_273_193.205806286854722044e18);
         assertEq(opsMultisigBalanceBefore, 552_142.342558330054342171e18);
 
         _executeAllPayloadsAndBridges();
