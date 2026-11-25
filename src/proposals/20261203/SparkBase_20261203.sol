@@ -26,7 +26,7 @@ interface IRateLimitsLike {
  * @title  December 3, 2026 Spark Base Proposal
  * @author Phoenix Labs
  * @notice Spark Liquidity Layer - Raise the CCTP V2 rate limit for USDC sent from Base to Ethereum.
- * Forum:  TBD (forum post planned for 2026-11-20)
+ * Forum:  https://forum.skyeco.com/t/december-3-2026-proposed-changes-to-spark-for-upcoming-spell/28472
  * Vote:   TBD
  */
 contract SparkBase_20261203 is SparkPayloadBase {

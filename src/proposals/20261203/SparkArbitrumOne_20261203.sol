@@ -25,7 +25,7 @@ interface ISparkVaultLike {
  * @title  December 3, 2026 Spark Arbitrum One Proposal
  * @author Phoenix Labs
  * @notice Spark Savings - Move spUSDT onto its own Diamond PAU and send its USDT0 back to the Ethereum spUSDT PAU.
- * Forum:  TBD (forum post planned for 2026-11-20)
+ * Forum:  https://forum.skyeco.com/t/december-3-2026-proposed-changes-to-spark-for-upcoming-spell/28472
  * Vote:   TBD
  */
 contract SparkArbitrumOne_20261203 is SparkPayloadArbitrumOne {
@@ -34,10 +34,10 @@ contract SparkArbitrumOne_20261203 is SparkPayloadArbitrumOne {
 
     // TODO: Move to spark-address-registry once deployed.
     // Arbitrum spUSDT PAU ALMProxy (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
-    address internal constant SPUSDT_PAU_ALM_PROXY = 0xf30dAD25A887a99D01606F117610072F2050ccAD;
+    address internal constant SPUSDT_PAU_ALM_PROXY = 0x6172A812bd36a7C21733bFc99991250E81768aaf;
 
     // Spark Vaults Administered Agent on Arbitrum (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
-    address internal constant SPARK_ADMINISTERED_AGENT = 0x5aAFd16909280c551128b5246D039005D38dE6Bb;
+    address internal constant SPARK_ADMINISTERED_AGENT = 0x01F45C14E8A56560b84a8CcB422ca75379224951;
 
     function execute() external {
         ForeignController legacyController = ForeignController(Arbitrum.ALM_CONTROLLER);

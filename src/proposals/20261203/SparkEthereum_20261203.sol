@@ -47,7 +47,7 @@ interface ISparkVaultLike {
  *         - Transfer USDS to the buyback executor to fund SPK buybacks.
  *         Spark Liquidity Layer:
  *         - Add a Diamond PAU controller to the Spark Liquidity Layer ALM Proxy, carrying SwapAssetFacet.
- * Forum:  TBD (forum post planned for 2026-11-20)
+ * Forum:  https://forum.skyeco.com/t/december-3-2026-proposed-changes-to-spark-for-upcoming-spell/28472
  * Vote:   TBD
  */
 contract SparkEthereum_20261203 is SparkPayloadEthereum {
@@ -55,18 +55,8 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
     uint32 internal constant LZ_EID_ARBITRUM = 30110;
     uint32 internal constant LZ_EID_XLAYER   = 30274;
 
-    // Ethereum spUSDT PAU (Pre-deployed contracts 1), created by EthereumSparkSpUSDTPayload.
-    address internal constant SPUSDT_PAU_ALM_PROXY  = 0x2ceF3e65858EE6706FAd66550876412d08342BC8;
-    address internal constant SPUSDT_PAU_CONTROLLER = 0xBaA8B6E49a8d0B6D2E8D0F57c0CA9647ce28C236;
-
-    // Spark Liquidity Layer PAU controller (Pre-deployed contracts 2), created by EthereumSparkSpUSDTPayload.
-    address internal constant SLL_PAU_CONTROLLER = 0x650044537F5d4aab322796426939214096c9445f;
-
-    // Spark Vaults Administered Agent on Ethereum (Pre-deployed contracts 4), created by EthereumSparkSpUSDTPayload.
-    address internal constant SPARK_ADMINISTERED_AGENT = 0xfE4b2fD27e8232a79485ba8bA8DBFcD9A88f0738;
-
     // Arbitrum spUSDT PAU ALMProxy (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
-    address internal constant ARBITRUM_SPUSDT_PAU_ALM_PROXY = 0xf30dAD25A887a99D01606F117610072F2050ccAD;
+    address internal constant ARBITRUM_SPUSDT_PAU_ALM_PROXY = 0x6172A812bd36a7C21733bFc99991250E81768aaf;
 
     uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 2_681_519e18;
 
@@ -80,9 +70,9 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         MainnetController legacyController = MainnetController(Ethereum.ALM_CONTROLLER);
         ILegacyRateLimits legacyRateLimits = ILegacyRateLimits(Ethereum.ALM_RATE_LIMITS);
 
-        IPAUControllerLike spUsdtPauController = IPAUControllerLike(SPUSDT_PAU_CONTROLLER);
+        IPAUControllerLike spUsdtPauController = IPAUControllerLike(Ethereum.SPUSDT_PAU_CONTROLLER);
 
-        IPAUControllerLike sllPAUController = IPAUControllerLike(SLL_PAU_CONTROLLER);
+        IPAUControllerLike sllPAUController = IPAUControllerLike(Ethereum.SLL_PAU_CONTROLLER);
 
         ISparkVaultLike spUsdt = ISparkVaultLike(Ethereum.SPARK_VAULT_V2_SPUSDT);
 
@@ -100,10 +90,10 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         spUsdtPauController.updateIntegrations(spUsdtPauIntegrationIds);
 
         // 1.3 Move TAKER and SETTER on spUSDT.
-        spUsdt.grantRole(spUsdt.TAKER_ROLE(),  SPUSDT_PAU_ALM_PROXY);
+        spUsdt.grantRole(spUsdt.TAKER_ROLE(),  Ethereum.SPUSDT_PAU_ALM_PROXY);
         spUsdt.revokeRole(spUsdt.TAKER_ROLE(), Ethereum.ALM_PROXY);
 
-        spUsdt.grantRole(spUsdt.SETTER_ROLE(),  SPARK_ADMINISTERED_AGENT);
+        spUsdt.grantRole(spUsdt.SETTER_ROLE(),  Ethereum.SPARK_ADMINISTERED_AGENT);
         spUsdt.revokeRole(spUsdt.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
 
         // 1.4 spUSDT PAU LayerZero recipients.
@@ -135,7 +125,7 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         // 1.6 Transfer sUSDS backing to the spUSDT PAU.
         _transferAssetFromAlmProxy(
             Ethereum.SUSDS,
-            SPUSDT_PAU_ALM_PROXY,
+            Ethereum.SPUSDT_PAU_ALM_PROXY,
             IERC4626(Ethereum.SUSDS).convertToShares(spUsdt.assetsOutstanding() * 1e12)
         );
 
@@ -151,7 +141,7 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         sllPAUController.updateIntegrations(sllPauIntegrationIds);
 
         // 7.2 Grant the SLL PAU controller CONTROLLER on the Spark Liquidity Layer ALM Proxy.
-        ILegacyALMProxy(Ethereum.ALM_PROXY).grantRole(ILegacyALMProxy(Ethereum.ALM_PROXY).CONTROLLER(), SLL_PAU_CONTROLLER);
+        ILegacyALMProxy(Ethereum.ALM_PROXY).grantRole(ILegacyALMProxy(Ethereum.ALM_PROXY).CONTROLLER(), Ethereum.SLL_PAU_CONTROLLER);
     }
 
 }
