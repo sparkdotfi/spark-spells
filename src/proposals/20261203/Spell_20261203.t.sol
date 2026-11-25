@@ -7,6 +7,7 @@ import { console2 }      from "forge-std/console2.sol";
 
 import { IERC20 }                   from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 }                 from "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import { IAccessControl }           from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import { IAccessControlEnumerable } from "openzeppelin-contracts/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 import { OptionsBuilder } from "lib/xchain-helpers/lib/devtools/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
@@ -77,6 +78,42 @@ interface IAdministeredAgentLike {
 
 }
 
+interface IBeamStateLike {
+
+    function addCBeam(address cBeam) external;
+
+    function addController(address controller) external;
+
+    function addInitControllerActions(bytes calldata data, address controller) external returns (bytes32 key);
+
+    function addRateLimits(address rateLimits) external;
+
+    function cBeams(address cBeam) external view returns (uint256);
+
+    function controllers(address controller) external view returns (uint256);
+
+    function controllersCBeams(address controller, address cBeam) external view returns (uint256);
+
+    function getHop(address rateLimits) external view returns (uint256);
+
+    function getMaxChange(address rateLimits) external view returns (uint256);
+
+    function isControllerActionEnabled(bytes32 key, address controller) external view returns (bool);
+
+    function rateLimits(address rateLimits) external view returns (uint256);
+
+    function rateLimitsCBeams(address rateLimits, address cBeam) external view returns (uint256);
+
+    function setCBeamForController(address controller, address cBeam) external;
+
+    function setCBeamForRateLimits(address rateLimits, address cBeam) external;
+
+    function stopped() external view returns (bool);
+
+    function wards(address usr) external view returns (uint256);
+
+}
+
 interface ICCTPControllerLike {
 
     function cctp_getDomainParameters(uint32 destinationDomain)
@@ -89,6 +126,22 @@ interface ICCTPControllerLike {
     function cctp_toCCTPRateLimitKey() external view returns (bytes32);
 
     function cctp_transfer(uint256 usdcAmount, uint32 destinationDomain, uint64 feeCapRate) external;
+
+}
+
+interface IConfiguratorLike {
+
+    event CallControllerAction(address indexed controller, bytes data);
+
+    event SetRateLimit(address indexed rateLimits, bytes32 indexed key, uint256 maxAmount, uint256 slope);
+
+    function beamState() external view returns (address);
+
+    function callControllerAction(address controller, bytes calldata data) external returns (bytes memory);
+
+    function setRateLimit(address rateLimits, bytes32 key, uint256 maxAmount, uint256 slope) external;
+
+    function zzz(address rateLimits, bytes32 key) external view returns (uint256);
 
 }
 
@@ -156,6 +209,14 @@ abstract contract SpUsdtDeployments is StdAssertions {
 
     address internal constant SKY_BEACON = 0x829dC2b7E94B1954F0764E573f2E0d45Afa28199;
 
+    // Sky Ethereum PAS.
+    address internal constant SKY_PAS_BEAM_STATE   = 0x1A1879E66547F90bfF87D45A5b0335950E019E02;
+    address internal constant SKY_PAS_CBEAM        = 0x492aae70E59551768BAF3c7159d3f951B6ed76Fe;  // Spark Operator Multisig
+    address internal constant SKY_PAS_CONFIGURATOR = 0xb7E61Df6CAb0A51E9A5dab1A7DD3f942dDe5b929;
+
+    uint256 internal constant SKY_PAS_HOP        = 16 hours;
+    uint256 internal constant SKY_PAS_MAX_CHANGE = 1.2e18;
+
     // Deployment payloads, at the CREATE2 addresses of their Deploy scripts in spark-deployments.
     address internal constant ETHEREUM_SPUSDT_DEPLOYMENT_PAYLOAD = 0x6f84bCF414F3b9f31DF9d43bc7d5CFa00DeB3bFd;
     address internal constant ARBITRUM_SPUSDT_DEPLOYMENT_PAYLOAD = 0xc4B764A880405B06c4dF4343Cb95604E740C13C9;
@@ -175,6 +236,19 @@ abstract contract SpUsdtDeployments is StdAssertions {
         // Pre-requirement 9: the Sky Core spell registers SwapAssetFacet on the Sky Beacon before the Spark payload.
         _vm.prank(Ethereum.PAUSE_PROXY);
         BeaconConfig.setSwapAssetIntegration(SKY_BEACON, Ethereum.SWAP_ASSET_FACET);
+
+        // Pre-requirement 10: the Sky Core spell registers the SLL PAU in the Sky PAS BeamState, with the Spark Operator Multisig as its cBEAM.
+        bytes32[] memory swapAssetIds = new bytes32[](1);
+        swapAssetIds[0] = BeaconConfig.SWAP_ASSET_INTEGRATION;
+
+        _vm.startPrank(Ethereum.PAUSE_PROXY);
+        IBeamStateLike(SKY_PAS_BEAM_STATE).addRateLimits(Ethereum.SLL_PAU_RATELIMITS);
+        IBeamStateLike(SKY_PAS_BEAM_STATE).addController(Ethereum.SLL_PAU_CONTROLLER);
+        IBeamStateLike(SKY_PAS_BEAM_STATE).addCBeam(SKY_PAS_CBEAM);
+        IBeamStateLike(SKY_PAS_BEAM_STATE).setCBeamForRateLimits(Ethereum.SLL_PAU_RATELIMITS, SKY_PAS_CBEAM);
+        IBeamStateLike(SKY_PAS_BEAM_STATE).setCBeamForController(Ethereum.SLL_PAU_CONTROLLER, SKY_PAS_CBEAM);
+        IBeamStateLike(SKY_PAS_BEAM_STATE).addInitControllerActions(abi.encodeCall(IController.removeIntegrations, (swapAssetIds)), Ethereum.SLL_PAU_CONTROLLER);
+        _vm.stopPrank();
 
         // Arbitrum: spUSDT PAU and Administered Agents, on the Spark Beacon of the already executed Beacon payload.
 
@@ -651,6 +725,183 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 99_000_000e18);
 
         assertEq(eth_usdt.allowance(Ethereum.ALM_PROXY, eth_spUSDTPAU_almProxy), 0);
+    }
+
+    function test_ETHEREUM_sllPau_grantPASConfigurator() external onChain(ChainIdUtils.Ethereum()) {
+        IAccessControlEnumerable accessControls = IAccessControlEnumerable(eth_sllPau_accessControls);
+        IAccessControlEnumerable rateLimits     = IAccessControlEnumerable(address(eth_sllPau_rateLimits));
+
+        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),            1);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY), true);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR), false);
+
+        assertEq(rateLimits.getRoleMemberCount(DEFAULT_ADMIN_ROLE),            1);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR), false);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(accessControls.getRoleMemberCount(DEFAULT_ADMIN_ROLE),            2);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY), true);
+        assertEq(accessControls.hasRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR), true);
+
+        assertEq(rateLimits.getRoleMemberCount(DEFAULT_ADMIN_ROLE),            2);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY), true);
+        assertEq(rateLimits.hasRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR), true);
+    }
+
+    function test_ETHEREUM_pasConfigurator_state() external onChain(ChainIdUtils.Ethereum()) {
+        IBeamStateLike beamState = IBeamStateLike(SKY_PAS_BEAM_STATE);
+
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = BeaconConfig.SWAP_ASSET_INTEGRATION;
+
+        assertEq(IConfiguratorLike(SKY_PAS_CONFIGURATOR).beamState(), SKY_PAS_BEAM_STATE);
+
+        assertEq(beamState.stopped(),                   false);
+        assertEq(beamState.wards(Ethereum.PAUSE_PROXY), 1);
+
+        // Pre-requirement 10: the SLL PAU is registered with the Spark Operator Multisig as its cBEAM,
+        // and removing the SwapAsset integration is its only pre-approved controller action.
+        assertEq(beamState.rateLimits(address(eth_sllPau_rateLimits)),  1);
+        assertEq(beamState.controllers(address(eth_sllPau_controller)), 1);
+        assertEq(beamState.cBeams(SKY_PAS_CBEAM),                       1);
+
+        assertEq(beamState.rateLimitsCBeams(address(eth_sllPau_rateLimits), SKY_PAS_CBEAM),  1);
+        assertEq(beamState.controllersCBeams(address(eth_sllPau_controller), SKY_PAS_CBEAM), 1);
+
+        assertEq(beamState.isControllerActionEnabled(keccak256(abi.encodeCall(eth_sllPau_controller.removeIntegrations, (ids))), address(eth_sllPau_controller)), true);
+        assertEq(beamState.isControllerActionEnabled(keccak256(abi.encodeCall(eth_sllPau_controller.updateIntegrations, (ids))), address(eth_sllPau_controller)), false);
+
+        // The BeamState defaults apply to the SLL PAU rate limits.
+        assertEq(beamState.getHop(address(eth_sllPau_rateLimits)),       SKY_PAS_HOP);
+        assertEq(beamState.getMaxChange(address(eth_sllPau_rateLimits)), SKY_PAS_MAX_CHANGE);
+    }
+
+    function test_ETHEREUM_pasConfigurator_setRateLimit() external onChain(ChainIdUtils.Ethereum()) {
+        IConfiguratorLike configurator = IConfiguratorLike(SKY_PAS_CONFIGURATOR);
+
+        address rateLimits = address(eth_sllPau_rateLimits);
+        bytes32 key        = _ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT);
+
+        // The Sky PAS Configurator is not admin on the SLL PAU RateLimits yet, so the rate limits reject it.
+        vm.expectRevert(abi.encodeWithSelector(
+            IAccessControl.AccessControlUnauthorizedAccount.selector,
+            SKY_PAS_CONFIGURATOR,
+            DEFAULT_ADMIN_ROLE
+        ));
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
+
+        _executeAllPayloadsAndBridges();
+
+        _assertRateLimit(rateLimits, key, 10_000_000e18, uint256(200_000_000e18) / 1 days);
+
+        // Only the cBEAM can go through the Configurator.
+        vm.expectRevert("Configurator/not-authorized-ratelimits-cBeam");
+        configurator.setRateLimit(rateLimits, key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
+
+        // The cBEAM can only set rate limits for keys that are already set.
+        vm.expectRevert("Configurator/exceeds-max-amount");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, keccak256("NEW_KEY"), 1, 0);
+
+        assertEq(configurator.zzz(rateLimits, key), 0);
+
+        // Decreases apply immediately and do not consume the hop.
+        vm.expectEmit(SKY_PAS_CONFIGURATOR);
+        emit IConfiguratorLike.SetRateLimit(rateLimits, key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, 5_000_000e18, uint256(100_000_000e18) / 1 days);
+
+        IRateLimits.RateLimitData memory data = eth_sllPau_rateLimits.getRateLimitData(key);
+
+        assertEq(data.maxAmount, 5_000_000e18);
+        assertEq(data.slope,     uint256(100_000_000e18) / 1 days);
+
+        assertEq(configurator.zzz(rateLimits, key), 0);
+
+        // Increases are capped at maxChange (1.2x) of the current values.
+        uint256 maxAmountCeiling = 5_000_000e18 * SKY_PAS_MAX_CHANGE / 1e18;
+        uint256 slopeCeiling     = uint256(100_000_000e18) / 1 days * SKY_PAS_MAX_CHANGE / 1e18;
+
+        vm.expectRevert("Configurator/exceeds-max-amount");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, maxAmountCeiling + 1, slopeCeiling);
+
+        vm.expectRevert("Configurator/exceeds-max-slope");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, maxAmountCeiling, slopeCeiling + 1);
+
+        // The first increase is allowed right away (the hop timer starts at 0).
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, maxAmountCeiling, slopeCeiling);
+
+        _assertRateLimit(rateLimits, key, 6_000_000e18, slopeCeiling);
+
+        assertEq(configurator.zzz(rateLimits, key), block.timestamp);
+
+        // The next increase has to wait for the hop.
+        vm.expectRevert("Configurator/increment-too-soon");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, maxAmountCeiling + 1, slopeCeiling);
+
+        skip(SKY_PAS_HOP - 1);
+
+        vm.expectRevert("Configurator/increment-too-soon");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, maxAmountCeiling + 1, slopeCeiling);
+
+        skip(1);
+
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.setRateLimit(rateLimits, key, maxAmountCeiling + 1, slopeCeiling);
+
+        _assertRateLimit(rateLimits, key, 6_000_000e18 + 1, slopeCeiling);
+
+        assertEq(configurator.zzz(rateLimits, key), block.timestamp);
+    }
+
+    function test_ETHEREUM_pasConfigurator_callControllerAction() external onChain(ChainIdUtils.Ethereum()) {
+        IConfiguratorLike configurator = IConfiguratorLike(SKY_PAS_CONFIGURATOR);
+
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = BeaconConfig.SWAP_ASSET_INTEGRATION;
+
+        // The only pre-approved action is removing the SwapAsset integration from the SLL PAU controller (emergency stop).
+        bytes memory removeSwapAsset = abi.encodeCall(eth_sllPau_controller.removeIntegrations, (ids));
+
+        // The Sky PAS Configurator is not admin on the SLL PAU AccessControls yet, so the controller rejects it.
+        vm.expectRevert("Configurator/call-failed");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.callControllerAction(address(eth_sllPau_controller), removeSwapAsset);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(eth_sllPau_controller.integrations().length, 1);
+
+        _assertIntegrationEnabled(address(eth_sllPau_controller), BeaconConfig.buildSwapAssetIntegration(Ethereum.SWAP_ASSET_FACET));
+
+        assertEq(eth_sllPau_controller.getDispatch(ISwapAssetController.swapAsset_initiateSwap.selector).facet, Ethereum.SWAP_ASSET_FACET);
+
+        // Only the cBEAM can call the controller action.
+        vm.expectRevert("Configurator/not-authorized-controller-cBeam");
+        configurator.callControllerAction(address(eth_sllPau_controller), removeSwapAsset);
+
+        // Only the pre-approved action can be called by the cBEAM.
+        vm.expectRevert("Configurator/not-valid-data");
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.callControllerAction(address(eth_sllPau_controller), abi.encodeCall(eth_sllPau_controller.updateIntegrations, (ids)));
+
+        vm.expectEmit(SKY_PAS_CONFIGURATOR);
+        emit IConfiguratorLike.CallControllerAction(address(eth_sllPau_controller), removeSwapAsset);
+        vm.prank(SKY_PAS_CBEAM);
+        configurator.callControllerAction(address(eth_sllPau_controller), removeSwapAsset);
+
+        assertEq(eth_sllPau_controller.integrations().length,                                                   0);
+        assertEq(eth_sllPau_controller.getConfig(BeaconConfig.SWAP_ASSET_INTEGRATION).facet,                    address(0));
+        assertEq(eth_sllPau_controller.getConfig(BeaconConfig.SWAP_ASSET_INTEGRATION).wires.length,             0);
+        assertEq(eth_sllPau_controller.getDispatch(ISwapAssetController.swapAsset_initiateSwap.selector).facet, address(0));
     }
 
     /**********************************************************************************************/
@@ -1522,8 +1773,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         // Roles
 
-        _assertOnlyRoleMember(eth_sllPau_accessControls,      DEFAULT_ADMIN_ROLE,                 Ethereum.SPARK_PROXY);
-        _assertOnlyRoleMember(address(eth_sllPau_rateLimits), DEFAULT_ADMIN_ROLE,                 Ethereum.SPARK_PROXY);
+        // DEFAULT_ADMIN_ROLE: the Spark Proxy, joined by the Sky PAS Configurator in 7.3 (test_ETHEREUM_sllPau_grantPASConfigurator).
+        assertEq(IAccessControlEnumerable(eth_sllPau_accessControls).hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY),      true);
+        assertEq(IAccessControlEnumerable(address(eth_sllPau_rateLimits)).hasRole(DEFAULT_ADMIN_ROLE, Ethereum.SPARK_PROXY), true);
+
         _assertOnlyRoleMember(address(eth_sllPau_rateLimits), eth_sllPau_rateLimits.CONTROLLER(), address(eth_sllPau_controller));
         _assertOnlyRoleMember(eth_sllPau_accessControls,      ALLOCATOR_ROLE,                     Ethereum.SLL_ADMINISTERED_AGENT);
 
