@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.34;
 
-import { Base } from "spark-address-registry/Base.sol";
+import { Base } from "../../../lib/spark-address-registry/src/Base.sol";
 
-import { CCTPForwarder } from "xchain-helpers/forwarders/CCTPForwarder.sol";
+import { CCTPForwarder } from "../../../lib/xchain-helpers/src/forwarders/CCTPForwarder.sol";
 
 import { SparkPayloadBase } from "../../SparkPayloadBase.sol";
 

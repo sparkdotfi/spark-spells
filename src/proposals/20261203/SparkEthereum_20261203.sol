@@ -1,24 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.34;
 
-import { BeaconConfig } from "diamond-pau/src/libraries/BeaconConfig.sol";
+import { BeaconConfig } from "../../../lib/diamond-pau/src/libraries/BeaconConfig.sol";
 
-import { IController } from "diamond-pau/src/interfaces/IController.sol";
+import { IController } from "../../../lib/diamond-pau/src/interfaces/IController.sol";
 
-import { ILayerZeroController } from "diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
+import { ILayerZeroController } from "../../../lib/diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
 
-import { IERC20 }   from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 } from "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import { IERC20 }   from "../../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "../../../lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { XLayer }   from "spark-address-registry/XLayer.sol";
+import { Ethereum } from "../../../lib/spark-address-registry/src/Ethereum.sol";
+import { XLayer }   from "../../../lib/spark-address-registry/src/XLayer.sol";
 
-import { IALMProxy as ILegacyALMProxy }     from "spark-alm-controller/src/interfaces/IALMProxy.sol";
-import { IRateLimits as ILegacyRateLimits } from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { MainnetController }                from "spark-alm-controller/src/MainnetController.sol";
-import { RateLimitHelpers }                 from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IALMProxy as ILegacyALMProxy }     from "../../../lib/spark-alm-controller/src/interfaces/IALMProxy.sol";
+import { IRateLimits as ILegacyRateLimits } from "../../../lib/spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { MainnetController }                from "../../../lib/spark-alm-controller/src/MainnetController.sol";
+import { RateLimitHelpers }                 from "../../../lib/spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
+
+interface IAccessControlsLike {
+
+    function grantRole(bytes32 role, address account) external;
+
+}
 
 interface IPAUControllerLike is IController, ILayerZeroController {}
 
@@ -52,11 +58,15 @@ interface ISparkVaultLike {
  */
 contract SparkEthereum_20261203 is SparkPayloadEthereum {
 
+    bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
+
     uint32 internal constant LZ_EID_ARBITRUM = 30110;
     uint32 internal constant LZ_EID_XLAYER   = 30274;
 
     // Arbitrum spUSDT PAU ALMProxy (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
     address internal constant ARBITRUM_SPUSDT_PAU_ALM_PROXY = 0x6172A812bd36a7C21733bFc99991250E81768aaf;
+
+    address internal constant SKY_PAS_CONFIGURATOR = 0xb7E61Df6CAb0A51E9A5dab1A7DD3f942dDe5b929;
 
     uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 2_681_519e18;
 
@@ -142,6 +152,10 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
 
         // 7.2 Grant the SLL PAU controller CONTROLLER on the Spark Liquidity Layer ALM Proxy.
         ILegacyALMProxy(Ethereum.ALM_PROXY).grantRole(ILegacyALMProxy(Ethereum.ALM_PROXY).CONTROLLER(), Ethereum.SLL_PAU_CONTROLLER);
+
+        // 7.3 Authorize the Sky PAS Configurator on the SLL PAU.
+        IAccessControlsLike(Ethereum.SLL_PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR);
+        IAccessControlsLike(Ethereum.SLL_PAU_RATELIMITS).grantRole(DEFAULT_ADMIN_ROLE,      SKY_PAS_CONFIGURATOR);
     }
 
 }

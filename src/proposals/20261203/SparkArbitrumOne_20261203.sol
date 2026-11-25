@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.34;
 
-import { Arbitrum } from "spark-address-registry/Arbitrum.sol";
+import { Arbitrum } from "../../../lib/spark-address-registry/src/Arbitrum.sol";
 
-import { IRateLimits }       from "spark-alm-controller/src/interfaces/IRateLimits.sol";
-import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
-import { RateLimitHelpers }  from "spark-alm-controller/src/RateLimitHelpers.sol";
+import { IRateLimits }       from "../../../lib/spark-alm-controller/src/interfaces/IRateLimits.sol";
+import { ForeignController } from "../../../lib/spark-alm-controller/src/ForeignController.sol";
+import { RateLimitHelpers }  from "../../../lib/spark-alm-controller/src/RateLimitHelpers.sol";
 
 import { SparkPayloadArbitrumOne } from "../../SparkPayloadArbitrumOne.sol";
+
+interface IAdministeredAgent {
+
+    function addActor(address account) external;
+
+    function removeActor(address account) external;
+
+}
 
 interface ISparkVaultLike {
 
@@ -36,8 +44,9 @@ contract SparkArbitrumOne_20261203 is SparkPayloadArbitrumOne {
     // Arbitrum spUSDT PAU ALMProxy (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
     address internal constant SPUSDT_PAU_ALM_PROXY = 0x6172A812bd36a7C21733bFc99991250E81768aaf;
 
-    // Spark Vaults Administered Agent on Arbitrum (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
-    address internal constant SPARK_ADMINISTERED_AGENT = 0x01F45C14E8A56560b84a8CcB422ca75379224951;
+    // Planner and Spark Administered Agent on Arbitrum (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
+    address internal constant SPARK_ADMINISTERED_AGENT   = 0x01F45C14E8A56560b84a8CcB422ca75379224951;
+    address internal constant PLANNER_ADMINISTERED_AGENT = 0xB56d9D463661DF1325A16a56cF273881eCD6AA22;
 
     function execute() external {
         ForeignController legacyController = ForeignController(Arbitrum.ALM_CONTROLLER);
@@ -70,6 +79,15 @@ contract SparkArbitrumOne_20261203 is SparkPayloadArbitrumOne {
             0,
             0
         );
+
+        // 2.3 Make the Arbitrum Spark Planner Administered Agent the only actor on the existing Arbitrum PAU Administered Agent.
+
+        IAdministeredAgent pauAdministeredAgent = IAdministeredAgent(Arbitrum.PAU_ADMINISTERED_AGENT);
+
+        pauAdministeredAgent.addActor(PLANNER_ADMINISTERED_AGENT);
+
+        pauAdministeredAgent.removeActor(Arbitrum.ALM_RELAYER_MULTISIG);
+        pauAdministeredAgent.removeActor(Arbitrum.PLANNER_WALLET);
     }
 
 }

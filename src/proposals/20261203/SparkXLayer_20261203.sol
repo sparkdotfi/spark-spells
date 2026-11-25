@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.34;
 
-import { Ethereum } from "spark-address-registry/Ethereum.sol";
-import { XLayer }   from "spark-address-registry/XLayer.sol";
+import { Ethereum } from "../../../lib/spark-address-registry/src/Ethereum.sol";
+import { XLayer }   from "../../../lib/spark-address-registry/src/XLayer.sol";
 
-import { ForeignController } from "spark-alm-controller/src/ForeignController.sol";
+import { ForeignController } from "../../../lib/spark-alm-controller/src/ForeignController.sol";
 
 /**
  * @title  December 3, 2026 Spark XLayer Proposal
