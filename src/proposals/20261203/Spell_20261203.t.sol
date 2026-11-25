@@ -306,6 +306,9 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         bytes32 transferKey;
     }
 
+    // TODO: Replace with Ethereum.ALM_CONTROLLER once spark-address-registry points it at MainnetController v1.11.0.
+    address internal constant ETHEREUM_ALM_CONTROLLER = 0xc953972Cd006d1f12686fd7185c6D443b15900Cd;
+
     // X Layer -> Ethereum LayerZero bridge for Item 3 (the harness only wires Ethereum -> X Layer).
     Bridge internal xlayerToEthereumLZBridge;
 
@@ -324,7 +327,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     IEnumerableIntegrations internal eth_sparkBeacon = IEnumerableIntegrations(Ethereum.SPARK_BEACON);
 
     IALMProxy         internal eth_legacy_almProxy      = IALMProxy(Ethereum.ALM_PROXY);
-    MainnetController internal eth_legacy_controller    = MainnetController(Ethereum.ALM_CONTROLLER);
+    MainnetController internal eth_legacy_controller    = MainnetController(ETHEREUM_ALM_CONTROLLER);
     ForeignController internal arb_legacy_controller    = ForeignController(Arbitrum.ALM_CONTROLLER);
     ForeignController internal xlayer_legacy_controller = ForeignController(XLayer.ALM_CONTROLLER);
 
@@ -354,6 +357,10 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         super.setUp();
 
         _recordForkTimestamps();
+
+        // The registry still names MainnetController v1.10.0, which the November 19, 2026 spell replaced.
+        chainData[ChainIdUtils.Ethereum()].prevController = ETHEREUM_ALM_CONTROLLER;
+        chainData[ChainIdUtils.Ethereum()].newController  = ETHEREUM_ALM_CONTROLLER;
 
         _runPreDeploymentPayloads(chainData[ChainIdUtils.Ethereum()].domain, chainData[ChainIdUtils.ArbitrumOne()].domain);
 
@@ -654,7 +661,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
     function test_ETHEREUM_sllPau_onboarding() external onChain(ChainIdUtils.Ethereum()) {
         bytes32 controllerRole = eth_legacy_almProxy.CONTROLLER();
 
-        assertEq(eth_legacy_almProxy.hasRole(controllerRole, Ethereum.ALM_CONTROLLER),        true);
+        assertEq(eth_legacy_almProxy.hasRole(controllerRole, ETHEREUM_ALM_CONTROLLER),        true);
         assertEq(eth_legacy_almProxy.hasRole(controllerRole, address(eth_sllPau_controller)), false);
         assertEq(eth_legacy_almProxy.hasRole(controllerRole, Ethereum.SPARK_PROXY),           false);
 
@@ -669,7 +676,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
 
         _executeAllPayloadsAndBridges();
 
-        assertEq(eth_legacy_almProxy.hasRole(controllerRole, Ethereum.ALM_CONTROLLER),        true);
+        assertEq(eth_legacy_almProxy.hasRole(controllerRole, ETHEREUM_ALM_CONTROLLER),        true);
         assertEq(eth_legacy_almProxy.hasRole(controllerRole, address(eth_sllPau_controller)), true);
         assertEq(eth_legacy_almProxy.hasRole(controllerRole, Ethereum.SPARK_PROXY),           false);
 
