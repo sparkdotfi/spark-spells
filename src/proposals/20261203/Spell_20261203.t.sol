@@ -61,6 +61,8 @@ interface IAdministeredAgentLike {
 
     function call(address target, bytes memory data) external payable returns (bytes memory result);
 
+    function getActor(uint256 index) external view returns (address);
+
     function getIsActor(address account) external view returns (bool);
 
     function getIsAdmin(address account) external view returns (bool);
@@ -661,6 +663,19 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests, SpUsdtDepl
         _executeAllPayloadsAndBridges();
 
         _assertArbitrumSpUsdtPauDeploymentConfig();
+    }
+
+    function test_ARBITRUM_pauAdministeredAgent_actors() external onChain(ChainIdUtils.ArbitrumOne()) {
+        IAdministeredAgentLike pauAdministeredAgent = IAdministeredAgentLike(Arbitrum.PAU_ADMINISTERED_AGENT);
+
+        assertEq(pauAdministeredAgent.actorCount(), 2);
+        assertEq(pauAdministeredAgent.getActor(0),  Arbitrum.ALM_RELAYER_MULTISIG);
+        assertEq(pauAdministeredAgent.getActor(1),  Arbitrum.PLANNER_WALLET);
+
+        _executeAllPayloadsAndBridges();
+
+        assertEq(pauAdministeredAgent.actorCount(), 1);
+        assertEq(pauAdministeredAgent.getActor(0),  ARBITRUM_PLANNER_ADMINISTERED_AGENT);
     }
 
     function test_ARBITRUM_spUsdt_roles() external onChain(ChainIdUtils.ArbitrumOne()) {
