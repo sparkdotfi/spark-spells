@@ -77,6 +77,8 @@ interface IAdministeredAgentLike {
 
     function call(address target, bytes memory data) external payable returns (bytes memory result);
 
+    function getIsActor(address account) external view returns (bool);
+
 }
 
 interface ILZEndpointExtended {
@@ -153,6 +155,9 @@ interface IPAUControllerLike {
 abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     using SafeERC20 for IERC20;
+
+    // TODO: Replace with Arbitrum.PLANNER_ADMINISTERED_AGENT once the spark-address-registry submodule is updated.
+    address internal constant ARBITRUM_SPARK_PLANNER_AGENT = 0xB56d9D463661DF1325A16a56cF273881eCD6AA22;
 
     enum Category {
         AAVE,
@@ -2475,12 +2480,15 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint32 domainCctpId;
         Bridge storage bridge = chainData[domainId].bridges[1];
 
+        // MainnetController v1.11.0 sends USDC over CCTP V2, so relay over the CCTP V2 bridge.
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc   = IERC20(Arbitrum.USDC);
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE;
+            bridge       = chainData[domainId].bridges[3];
         } else if (domainId == ChainIdUtils.Base()) {
             domainUsdc   = IERC20(Base.USDC);
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
+            bridge       = chainData[domainId].bridges[2];
         } else if (domainId == ChainIdUtils.Optimism()) {
             domainUsdc   = IERC20(Optimism.USDC);
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
@@ -2539,7 +2547,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
-        CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
+        CCTPV2BridgeTesting.relayMessagesToDestination(bridge, true);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
     }
@@ -2741,11 +2749,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             IPAUControllerLike(controller).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM)
         );
 
-        vm.prank(ctx.allocator);
-        IAdministeredAgentLike(ctx.administeredAgent).call(
-            controller,
-            abi.encodeCall(IPAUControllerLike.cctp_transfer, (usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0))
-        );
+        bytes memory transferData
+            = abi.encodeCall(IPAUControllerLike.cctp_transfer, (usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0));
+
+        // The 2026-12-03 spell makes the Arbitrum Spark Planner Administered Agent the only actor on the Arbitrum PAU
+        // Administered Agent, so the allocator goes through it once the spell has executed.
+        if (IAdministeredAgentLike(ctx.administeredAgent).getIsActor(ctx.allocator)) {
+            vm.prank(ctx.allocator);
+            IAdministeredAgentLike(ctx.administeredAgent).call(controller, transferData);
+        } else {
+            vm.prank(ctx.allocator);
+            IAdministeredAgentLike(ARBITRUM_SPARK_PLANNER_AGENT).call(
+                ctx.administeredAgent,
+                abi.encodeCall(IAdministeredAgentLike.call, (controller, transferData))
+            );
+        }
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance - usdcAmount);
 
@@ -2991,6 +3009,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 allChains[i] == ChainIdUtils.Gnosis()   ||
                 allChains[i] == ChainIdUtils.XLayer()   ||
                 allChains[i] == ChainIdUtils.Robinhood()
+            ) continue;
+
+            // The 2026-11-19 spell closed the USDC routes to and from OP Mainnet, Unichain and Avalanche.
+            if (
+                allChains[i] == ChainIdUtils.Optimism() ||
+                allChains[i] == ChainIdUtils.Unichain() ||
+                allChains[i] == ChainIdUtils.Avalanche()
             ) continue;
 
             uint256 domainChainId = chainData[allChains[i]].domain.chain.chainId;
