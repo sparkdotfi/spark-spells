@@ -208,7 +208,6 @@ abstract contract SpUsdtDeployments is StdAssertions {
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
     address internal constant SKY_BEACON           = 0x829dC2b7E94B1954F0764E573f2E0d45Afa28199;
-    address internal constant SKY_PAS_CONFIGURATOR = 0xb7E61Df6CAb0A51E9A5dab1A7DD3f942dDe5b929;
 
     // Sky Ethereum PAS.
     address internal constant SKY_PAS_BEAM_STATE   = 0x1A1879E66547F90bfF87D45A5b0335950E019E02;
