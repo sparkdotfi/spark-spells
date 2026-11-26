@@ -894,6 +894,8 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_ARBITRUM_spUsdt_roles() external onChain(ChainIdUtils.ArbitrumOne()) {
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
+
         bytes32 takerRole  = arb_spUsdt.TAKER_ROLE();
         bytes32 setterRole = arb_spUsdt.SETTER_ROLE();
 
@@ -908,6 +910,8 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
 
         _executeAllPayloadsAndBridges();
+
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
 
         _assertOnlyRoleMember(address(arb_spUsdt), takerRole,          arb_spUSDTPAU_almProxy);
         _assertOnlyRoleMember(address(arb_spUsdt), setterRole,         Arbitrum.SPARK_ADMINISTERED_AGENT);
