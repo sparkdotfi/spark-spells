@@ -155,7 +155,7 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
 
         // 7.3 Authorize the Sky PAS Configurator on the SLL PAU.
         IAccessControlsLike(Ethereum.SLL_PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR);
-        IAccessControlsLike(Ethereum.SLL_PAU_RATELIMITS).grantRole(DEFAULT_ADMIN_ROLE,      SKY_PAS_CONFIGURATOR);
+        IAccessControlsLike(Ethereum.SLL_PAU_RATE_LIMITS).grantRole(DEFAULT_ADMIN_ROLE,     SKY_PAS_CONFIGURATOR);
     }
 
 }

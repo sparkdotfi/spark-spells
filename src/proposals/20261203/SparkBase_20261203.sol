@@ -33,7 +33,7 @@ contract SparkBase_20261203 is SparkPayloadBase {
 
     function execute() external {
         // 6. Raise the CCTP V2 rate limit for USDC sent from Base to Ethereum.
-        IRateLimitsLike(Base.PAU_RATELIMITS).setRateLimitData(
+        IRateLimitsLike(Base.PAU_RATE_LIMITS).setRateLimitData(
             IControllerLike(Base.PAU_CONTROLLER).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM),
             25_000_000e6,
             uint256(100_000_000e6) / 1 days
