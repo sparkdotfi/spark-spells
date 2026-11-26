@@ -53,7 +53,9 @@ import { SparklendTests }           from "../../test-harness/SparklendTests.sol"
 import { SparkLiquidityLayerTests } from "../../test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "../../test-harness/SpellTests.sol";
 
-import { IALMProxyFreezableLike, ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
+import { IALMProxyFreezableLike, IStarGuardLike, ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
+
+import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
 interface IAdministeredAgentLike {
 
@@ -438,6 +440,9 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertEq(vaultBalance, 81_751_150.829624e6);
         assertEq(pauBalance,   0);
 
+        // TAKER_ROLE vm.expectRevert for the Ethereum.ALM_PROXY is not asserted because the path is checked
+        // in the below test where it reverts in the zero rate limit before the TAKER_ROLE ACL can be hit.
+
         _callAsAgent(
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SPARK_ADMINISTERED_AGENT,
@@ -547,6 +552,22 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(Ethereum.ALM_RATE_LIMITS, transferKey, 0, 0);
         _assertRateLimit(Ethereum.ALM_RATE_LIMITS, arbitrumKey, 0, 0);
         _assertRateLimit(Ethereum.ALM_RATE_LIMITS, xlayerKey,   0, 0);
+
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        eth_legacy_controller.takeFromSparkVault(Ethereum.SPARK_VAULT_V2_SPUSDT, 1e6);
+
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        eth_legacy_controller.transferAsset(Ethereum.USDT, Ethereum.SPARK_VAULT_V2_SPUSDT, 1e6);
+
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        eth_legacy_controller.transferTokenLayerZero(Ethereum.USDT_OFT, 1e6, LZ_EID_ARBITRUM);
+
+        vm.expectRevert("RateLimits/zero-maxAmount");
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        eth_legacy_controller.transferTokenLayerZero(Ethereum.USDT_OFT, 1e6, LZ_EID_XLAYER);
     }
 
     function test_ETHEREUM_spUsdtPau_susdsBacking() external onChain(ChainIdUtils.Ethereum()) {
@@ -878,6 +899,62 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertEq(eth_sllPau_controller.getConfig(BeaconConfig.SWAP_ASSET_INTEGRATION).facet,                    address(0));
         assertEq(eth_sllPau_controller.getConfig(BeaconConfig.SWAP_ASSET_INTEGRATION).wires.length,             0);
         assertEq(eth_sllPau_controller.getDispatch(ISwapAssetController.swapAsset_initiateSwap.selector).facet, address(0));
+    }
+
+    function test_ETHEREUM_payloadExecution() external onChain(ChainIdUtils.Ethereum()) {
+        uint256 assetsOutstanding = eth_spUsdt.assetsOutstanding();
+        uint256 sllSusdsShares    = eth_susds.balanceOf(Ethereum.ALM_PROXY);
+
+        assertEq(assetsOutstanding, 193_040_238.777523e6);
+        assertEq(sllSusdsShares,    431_418_904.772977443647355485e18);
+
+        // Prank as the ALM Relayer Multisig and redeem all of the SLL's sUSDS shares.
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        MainnetController(Ethereum.ALM_CONTROLLER).redeemERC4626(Ethereum.SUSDS, sllSusdsShares, 0);
+
+        assertEq(eth_susds.balanceOf(Ethereum.ALM_PROXY), 0);
+
+        // Execute the mainnet payload and expect it to revert because there is no sUSDS shares.
+        address payloadAddress = chainData[ChainIdUtils.Ethereum()].payload;
+
+        uint256 bytecodeSize = payloadAddress.code.length;
+
+        bytes32 bytecodeHash;
+
+        assembly {
+            let ptr := mload(0x40)
+
+            extcodecopy(payloadAddress, ptr, 0, bytecodeSize)
+            bytecodeHash := keccak256(ptr, bytecodeSize)
+        }
+
+        vm.prank(Ethereum.PAUSE_PROXY);
+        IStarGuardLike(Ethereum.SPARK_STAR_GUARD).plot({
+            addr_ : payloadAddress,
+            tag_  : bytecodeHash
+        });
+
+        vm.mockCall(
+            payloadAddress,
+            abi.encodeWithSelector(SparkPayloadEthereum.isExecutable.selector),
+            abi.encode(true)
+        );
+
+        vm.expectRevert(abi.encode("SubProxy/delegatecall-error"));
+        IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
+
+        // Prank as the ALM Relayer Multisig and deposit all USDS into sUSDS.
+        vm.startPrank(Ethereum.ALM_RELAYER_MULTISIG);
+        MainnetController(Ethereum.ALM_CONTROLLER).depositERC4626(Ethereum.SUSDS, eth_usds.balanceOf(Ethereum.ALM_PROXY), 0);
+        vm.stopPrank();
+
+        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),  0);
+        assertEq(eth_susds.balanceOf(Ethereum.ALM_PROXY), 431_418_904.772977443647355484e18);
+
+        // Execute the mainnet payload it succeeds.
+        address payload = IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
+
+        assertEq(payload, payloadAddress);
     }
 
     /**********************************************************************************************/
