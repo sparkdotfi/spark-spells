@@ -4,6 +4,9 @@ pragma solidity ^0.8.34;
 import { BeaconConfig } from "../../../lib/diamond-pau/src/libraries/BeaconConfig.sol";
 
 import { IController } from "../../../lib/diamond-pau/src/interfaces/IController.sol";
+import { IRateLimits } from "../../../lib/diamond-pau/src/interfaces/IRateLimits.sol";
+
+import { ILayerZeroFacet } from "../../../lib/diamond-pau/src/facets/layer-zero/ILayerZeroFacet.sol";
 
 import { ILayerZeroController } from "../../../lib/diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
 
@@ -70,6 +73,8 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
 
     uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 2_681_519e18;
 
+    bytes32 internal constant LZ_PEER_XLAYER = bytes32(uint256(uint160(XLayer.USDT0_OFT)));
+
     constructor() {
         // PAYLOAD_ARBITRUM = ;
         // PAYLOAD_BASE     = ;
@@ -81,6 +86,7 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         ILegacyRateLimits legacyRateLimits = ILegacyRateLimits(Ethereum.ALM_RATE_LIMITS);
 
         IPAUControllerLike spUsdtPauController = IPAUControllerLike(Ethereum.SPUSDT_PAU_CONTROLLER);
+        IRateLimits        spUsdtPauRateLimits = IRateLimits(Ethereum.SPUSDT_PAU_RATE_LIMITS);
 
         IPAUControllerLike sllPAUController = IPAUControllerLike(Ethereum.SLL_PAU_CONTROLLER);
 
@@ -156,6 +162,18 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         // 7.3 Authorize the Sky PAS Configurator on the SLL PAU.
         IAccessControlsLike(Ethereum.SLL_PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR);
         IAccessControlsLike(Ethereum.SLL_PAU_RATE_LIMITS).grantRole(DEFAULT_ADMIN_ROLE,     SKY_PAS_CONFIGURATOR);
+
+        // Set LayerZero route Ethereum → X Layer ratelimit.
+        spUsdtPauRateLimits.setRateLimitData(
+            ILayerZeroFacet(Ethereum.LAYERZERO_FACET).getTransferRateLimitKey(
+                Ethereum.USDT_OFT,
+                LZ_PEER_XLAYER,
+                LZ_EID_XLAYER,
+                Ethereum.USDT
+            ),
+            10_000_000e6,
+            uint256(100_000_000e6) / 1 days
+        );
     }
 
 }

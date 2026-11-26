@@ -327,9 +327,13 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
     function test_ETHEREUM_spUsdtPau_deploymentConfig() external onChain(ChainIdUtils.Ethereum()) {
         _assertEthereumSpUsdtPauDeploymentConfig();
 
+        _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER), 5_000_000e6, uint256(25_000_000e6) / 1 days);
+
         _executeAllPayloadsAndBridges();
 
         _assertEthereumSpUsdtPauDeploymentConfig();
+
+        _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER), 10_000_000e6, uint256(100_000_000e6) / 1 days);
     }
 
     function test_ETHEREUM_sllPau_deploymentConfig() external onChain(ChainIdUtils.Ethereum()) {
@@ -1790,7 +1794,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         mainnet.selectFork();
         vm.warp(ethTimestamp);
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER)), 5_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER)), 10_000_000e6);
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_144.583762e6);
         assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_718_462_566.394738e6);
@@ -1814,7 +1818,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
             )
         );
 
-        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER)), 5_000_000e6 - 1_000_080.986298e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER)), 10_000_000e6 - 1_000_080.986298e6);
 
         // USDT is locked in the OFT adapter on Ethereum.
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 63.597464e6);
@@ -1976,7 +1980,6 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_transferAsset_transferKey(), 10_000_000e6, uint256(200_000_000e6) / 1 days);
 
         _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_layerZero_transferKey(LZ_EID_ARBITRUM), 5_000_000e6, uint256(25_000_000e6) / 1 days);
-        _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER),   5_000_000e6, uint256(25_000_000e6) / 1 days);
 
         _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS), 10_000_000e6,  uint256(200_000_000e6)  / 1 days);
         _assertRateLimit(address(eth_spUSDTPAU_rateLimits), _ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT), 10_000_000e18, uint256(200_000_000e18) / 1 days);
@@ -2128,7 +2131,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
             10_000_000e6,
             uint256(200_000_000e6) / 1 days
         );
-    
+
         _assertRateLimit(
             address(arb_spUSDTPAU_rateLimits),
             _arbSpUsdt_layerZero_transferKey(),
