@@ -550,6 +550,8 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
     }
 
     function test_ETHEREUM_spUsdtPau_susdsBacking() external onChain(ChainIdUtils.Ethereum()) {
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
         uint256 assetsOutstanding = eth_spUsdt.assetsOutstanding();
 
         assertEq(assetsOutstanding, 193_040_238.777523e6);
@@ -562,6 +564,8 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 0);
 
         _executeAllPayloadsAndBridges();
+
+        _warpToForkBlock(ChainIdUtils.Ethereum());
 
         assertEq(eth_susds.balanceOf(Ethereum.ALM_PROXY),     sllShares - expectedShares);
         assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), expectedShares);
@@ -1044,7 +1048,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         chainData[ChainIdUtils.Ethereum()].domain.selectFork();
 
-        uint256 destinationSnapshot = vm.snapshot();
+        uint256 destinationSnapshot = vm.snapshotState();
 
         uint256 destinationBalanceBefore = eth_usdt.balanceOf(eth_spUSDTPAU_almProxy);
 
@@ -1090,7 +1094,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), destinationBalanceBefore + 1_000_000e6);
 
-        vm.revertTo(destinationSnapshot);
+        vm.revertToState(destinationSnapshot);
 
         chainData[ChainIdUtils.XLayer()].domain.selectFork();
     }

@@ -13,6 +13,7 @@ import { ILayerZeroController } from "../../../lib/diamond-pau/src/facets/layer-
 import { IERC20 }   from "../../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "../../../lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
+import { Arbitrum } from "../../../lib/spark-address-registry/src/Arbitrum.sol";
 import { Ethereum } from "../../../lib/spark-address-registry/src/Ethereum.sol";
 import { XLayer }   from "../../../lib/spark-address-registry/src/XLayer.sol";
 
@@ -66,9 +67,6 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
     uint32 internal constant LZ_EID_ARBITRUM = 30110;
     uint32 internal constant LZ_EID_XLAYER   = 30274;
 
-    // Arbitrum spUSDT PAU ALMProxy (Pre-deployed contracts 5), created by ArbitrumSparkSpUSDTPayload.
-    address internal constant ARBITRUM_SPUSDT_PAU_ALM_PROXY = 0x6172A812bd36a7C21733bFc99991250E81768aaf;
-
     address internal constant SKY_PAS_CONFIGURATOR = 0xb7E61Df6CAb0A51E9A5dab1A7DD3f942dDe5b929;
 
     uint256 internal constant USDS_SPK_BUYBACK_AMOUNT = 2_681_519e18;
@@ -113,7 +111,7 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         spUsdt.revokeRole(spUsdt.SETTER_ROLE(), Ethereum.ALM_PROXY_FREEZABLE);
 
         // 1.4 spUSDT PAU LayerZero recipients.
-        spUsdtPauController.layerZero_setRecipient(LZ_EID_ARBITRUM, bytes32(uint256(uint160(ARBITRUM_SPUSDT_PAU_ALM_PROXY))));
+        spUsdtPauController.layerZero_setRecipient(LZ_EID_ARBITRUM, bytes32(uint256(uint160(Arbitrum.SPUSDT_PAU_ALM_PROXY))));
         spUsdtPauController.layerZero_setRecipient(LZ_EID_XLAYER,   bytes32(uint256(uint160(XLayer.ALM_PROXY))));
 
         // 1.5 Zero the moved Spark Liquidity Layer keys.

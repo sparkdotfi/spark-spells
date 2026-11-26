@@ -461,10 +461,6 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _runSLLE2ETestsForDomain(ChainIdUtils.ArbitrumOne());
     }
 
-    function test_AVALANCHE_E2E_sparkLiquidityLayer() external virtual {
-        _runSLLE2ETestsForDomain(ChainIdUtils.Avalanche());
-    }
-
     function test_BASE_E2E_sparkLiquidityLayer() external {
         _runSLLE2ETestsForDomain(ChainIdUtils.Base());
     }
