@@ -1009,7 +1009,13 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         uint256 maxVsr = arb_spUsdt.maxVsr();
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "AccessControlUnauthorizedAccount(address,bytes32)",
+                Arbitrum.ALM_PROXY_FREEZABLE,
+                arb_spUsdt.SETTER_ROLE()
+            )
+        );
         vm.prank(Arbitrum.ALM_PROXY_FREEZABLE);
         arb_spUsdt.setVsr(maxVsr);
 
