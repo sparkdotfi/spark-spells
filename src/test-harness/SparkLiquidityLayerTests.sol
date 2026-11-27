@@ -3056,15 +3056,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.arbShares    = _spUsdtE2EDeposit(ChainIdUtils.ArbitrumOne(), v);
         v.xlayerShares = _spUsdtE2EDeposit(ChainIdUtils.XLayer(),      v);
 
-        // Steps 5 and 6: The Ethereum and Arbitrum Spark Vaults agents (planner agent) take 1_000_000e6 out of the
-        //                spUSDT vaults using SparkVaultFacet.
+        // Steps 5: The Ethereum Spark Vaults agents (planner agent) take 1_000_000e6 out of the
+        //          spUSDT vaults using SparkVaultFacet.
 
         _spUsdtE2ETake(ChainIdUtils.Ethereum(),    v);
+
+        // Steps 6 to 8: The Arbitrum Spark Vaults agent (planner agent) take 1_000_000e6 out of the spUSDT vault
+        //               and bridges 1_000_000e6 USDT0 to the Ethereum spUSDT PAU using LayerZeroFacet and the
+        //               message is relayed to Ethereum.
+
         _spUsdtE2ETake(ChainIdUtils.ArbitrumOne(), v);
-
-        // Steps 7 and 8: The Arbitrum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT0 to the Ethereum
-        //                spUSDT PAU using LayerZeroFacet and the message is relayed to Ethereum.
-
         _spUsdtE2EBridgeToEthereum(ChainIdUtils.ArbitrumOne(), v);
 
         // Steps 9 to 11: The X Layer SLL relayer (ALM Relayer Multisig) takes 1_000_000e6 USDT0 out of the X Layer
@@ -3214,7 +3215,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             vm.prank(ctx.relayer);
             IALMProxyFreezableLike(XLayer.ALM_PROXY_FREEZABLE).doCall(ctx.vault, data);
         } else {
-            _callAsAgent(ctx.plannerAgent, ctx.agent, ctx.vault, data, 0);
+            _callAsAgent(ctx.relayer, ctx.plannerAgent, ctx.agent, ctx.vault, data, 0);
         }
 
         assertEq(ISparkVaultV2Like(ctx.vault).vsr(), THREE_PCT_VSR);
@@ -3269,6 +3270,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ForeignController(ctx.controller).takeFromSparkVault(ctx.vault, v.depositAmount);
         } else {
             _callAsAgent(
+                ctx.relayer,
                 ctx.plannerAgent,
                 ctx.agent,
                 ctx.controller,
@@ -3399,6 +3401,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             .layerZero_quoteTransfer(ctx.oft, amount, destinationEndpointId);
 
         _callAsAgent(
+            ctx.relayer,
             ctx.plannerAgent,
             ctx.agent,
             ctx.controller,
@@ -3418,6 +3421,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256 pauAssetIn  = IERC20(assetIn).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY);
 
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SLL_ADMINISTERED_AGENT,
             Ethereum.SLL_PAU_CONTROLLER,
@@ -3469,6 +3473,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         v.susdsShares = IERC4626(Ethereum.SUSDS).previewDeposit(usdsAmount);
 
         _callAsAgent(
+            ctx.relayer,
             ctx.plannerAgent,
             ctx.agent,
             ctx.controller,
@@ -3514,6 +3519,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         assertGt(v.usdsRedeemed, v.swapAmount * 1e12);  // Interest accrued
 
         _callAsAgent(
+            ctx.relayer,
             ctx.plannerAgent,
             ctx.agent,
             ctx.controller,
@@ -3544,6 +3550,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             ForeignController(ctx.controller).transferAsset(ctx.asset, ctx.vault, amount);
         } else {
             _callAsAgent(
+                ctx.relayer,
                 ctx.plannerAgent,
                 ctx.agent,
                 ctx.controller,
@@ -4821,15 +4828,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _callAsAgent(
+        address        relayer,
         address        plannerAgent,
         address        agent,
         address        target,
         bytes   memory data,
         uint256        value
     ) internal returns (bytes memory) {
-        vm.deal(Ethereum.ALM_RELAYER_MULTISIG, value);
+        vm.deal(relayer, value);
 
-        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        vm.prank(relayer);
         return IAdministeredAgentLike(plannerAgent).call{ value: value }(
             agent,
             abi.encodeCall(IAdministeredAgentLike.call, (target, data))

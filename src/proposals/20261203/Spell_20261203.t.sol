@@ -432,6 +432,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         // in the below test where it reverts in the zero rate limit before the TAKER_ROLE ACL can be hit.
 
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SPARK_ADMINISTERED_AGENT,
             address(eth_spUSDTPAU_controller),
@@ -460,6 +461,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertEq(eth_spUsdt.vsr(), 1.000000001319814647332759691e27);
 
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SPARK_ADMINISTERED_AGENT,
             Ethereum.SPARK_VAULT_V2_SPUSDT,
@@ -594,6 +596,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         // Withdraw 1,000,000 USDS from sUSDS
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SPARK_ADMINISTERED_AGENT,
             address(eth_spUSDTPAU_controller),
@@ -606,6 +609,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         // Deposit the USDS back into sUSDS
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SPARK_ADMINISTERED_AGENT,
             address(eth_spUSDTPAU_controller),
@@ -669,6 +673,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         // The Spark Liquidity Layer swaps 1,000,000 USDS for 1,000,000 USDT from the spUSDT PAU.
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SLL_ADMINISTERED_AGENT,
             address(eth_sllPau_controller),
@@ -691,6 +696,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
 
         // The Spark Liquidity Layer swaps the 1,000,000 USDT back for 1,000,000 USDS from the spUSDT PAU.
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             Ethereum.PLANNER_ADMINISTERED_AGENT,
             Ethereum.SLL_ADMINISTERED_AGENT,
             address(eth_sllPau_controller),
@@ -1020,6 +1026,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         arb_spUsdt.setVsr(maxVsr);
 
         _callAsAgent(
+            Arbitrum.ALM_RELAYER_MULTISIG,
             Arbitrum.PLANNER_ADMINISTERED_AGENT,
             Arbitrum.SPARK_ADMINISTERED_AGENT,
             Arbitrum.SPARK_VAULT_V2_SPUSDT,
@@ -1038,6 +1045,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertGe(vaultBalance, 1_000_000e6);
 
         _callAsAgent(
+            Arbitrum.ALM_RELAYER_MULTISIG,
             Arbitrum.PLANNER_ADMINISTERED_AGENT,
             Arbitrum.SPARK_ADMINISTERED_AGENT,
             address(arb_spUSDTPAU_controller),
@@ -1049,6 +1057,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy),         1_000_000e6);
 
         _callAsAgent(
+            Arbitrum.ALM_RELAYER_MULTISIG,
             Arbitrum.PLANNER_ADMINISTERED_AGENT,
             Arbitrum.SPARK_ADMINISTERED_AGENT,
             address(arb_spUSDTPAU_controller),
@@ -1580,6 +1589,7 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         uint64 sentNonce = ILZEndpointLike(LZ_ENDPOINT).outboundNonce(p.oft, p.destinationEndpointId, _toBytes32(p.destinationOft)) + 1;
 
         _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
             p.plannerAgent,
             p.agent,
             p.controller,
