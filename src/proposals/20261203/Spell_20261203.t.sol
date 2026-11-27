@@ -45,6 +45,7 @@ import { LZForwarder }   from "../../../lib/xchain-helpers/src/forwarders/LZForw
 import { Bridge, BridgeType }    from "../../../lib/xchain-helpers/src/testing/Bridge.sol";
 import { Domain, DomainHelpers } from "../../../lib/xchain-helpers/src/testing/Domain.sol";
 import { LZBridgeTesting }       from "../../../lib/xchain-helpers/src/testing/bridges/LZBridgeTesting.sol";
+import { RecordedLogs }          from "../../../lib/xchain-helpers/src/testing/utils/RecordedLogs.sol";
 
 import { ChainIdUtils } from "../../libraries/ChainIdUtils.sol";
 
@@ -52,7 +53,7 @@ import { SparklendTests }           from "../../test-harness/SparklendTests.sol"
 import { SparkLiquidityLayerTests } from "../../test-harness/SparkLiquidityLayerTests.sol";
 import { SpellTests }               from "../../test-harness/SpellTests.sol";
 
-import { IStarGuardLike, ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
+import { IALMProxyFreezableLike, IStarGuardLike, ISparkVaultV2Like } from "../../interfaces/Interfaces.sol";
 
 import { SparkPayloadEthereum } from "../../SparkPayloadEthereum.sol";
 
@@ -170,6 +171,14 @@ interface IPAUFactoryLike {
 interface ISparkVaultLike is ISparkVaultV2Like {
 
     function assetsOutstanding() external view returns (uint256);
+
+    function convertToAssets(uint256 shares) external view returns (uint256);
+
+}
+
+interface IUSDTLike {
+
+    function approve(address spender, uint256 amount) external;
 
 }
 
@@ -1240,6 +1249,829 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         _executeAllPayloadsAndBridges();
 
         _runSpUsdtPauE2E();
+    }
+
+    function test_E2E_spUsdtPau_ethereumArbitrumXLayerFullFlow_monolith() external {
+        Domain memory mainnet  = chainData[ChainIdUtils.Ethereum()].domain;
+        Domain memory arbitrum = chainData[ChainIdUtils.ArbitrumOne()].domain;
+        Domain memory xlayer   = chainData[ChainIdUtils.XLayer()].domain;
+
+        address user = makeAddr("user");
+
+        // Execute the spell: onboards LayerZero and SwapAsset, moves TAKER to the spUSDT PAUs, adds the SLL PAU
+        // controller to the SLL ALMProxy and transfers the sUSDS backing to the Ethereum spUSDT PAU.
+
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        _executeAllPayloadsAndBridges();
+
+        mainnet.selectFork();
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        // The SLL ALMProxy needs idle USDS and USDT to complete the swaps.
+        deal(Ethereum.USDS, Ethereum.ALM_PROXY, 3_000_000e18);
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, 3_000_000e6);
+
+        deal(Ethereum.USDT, user, 1_000_000e6);
+
+        vm.deal(Ethereum.ALM_RELAYER_MULTISIG, 1 ether);  // For LayerZero fees
+
+        arbitrum.selectFork();
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
+
+        deal(Arbitrum.USDT0, user, 1_000_000e6);
+
+        vm.deal(Arbitrum.ALM_RELAYER_MULTISIG, 1 ether);  // For LayerZero fees
+
+        // Discard stale Ethereum -> Arbitrum packets so only this flow's messages are relayed.
+        _drainLZPendingPackets(ChainIdUtils.ArbitrumOne());
+
+        xlayer.selectFork();
+        _warpToForkBlock(ChainIdUtils.XLayer());
+
+        deal(XLayer.USDT0, user, 1_000_000e6);
+
+        vm.deal(XLayer.ALM_RELAYER_MULTISIG, 1 ether);  // For LayerZero fees
+
+        // Discard stale Ethereum -> X Layer packets so only this flow's messages are relayed.
+        _drainLZPendingPackets(ChainIdUtils.XLayer());
+
+        // Step 1: Spark Vaults agents (planner agent) set the Ethereum and Arbitrum spUSDT VSR to 3% and the X Layer SLL
+        //         relayer (ALM Relayer Multisig) sets the X Layer spUSDT VSR to 3% using the ALMProxyFreezable, below
+        //         the sUSDS rate so the strategy covers what the users are owed.
+
+        mainnet.selectFork();
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        assertEq(eth_spUsdt.vsr(), 1.000000001319814647332759691e27);  // 4.25% APY
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (address(eth_spUsdt), abi.encodeCall(ISparkVaultV2Like.setVsr, (THREE_PCT_VSR)))
+            )
+        );
+
+        assertEq(eth_spUsdt.vsr(), THREE_PCT_VSR);
+
+        arbitrum.selectFork();
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
+
+        assertEq(arb_spUsdt.vsr(), 1.000000001319814647332759691e27);  // 4.25% APY
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Arbitrum.PLANNER_ADMINISTERED_AGENT).call(
+            Arbitrum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (address(arb_spUsdt), abi.encodeCall(ISparkVaultV2Like.setVsr, (THREE_PCT_VSR)))
+            )
+        );
+
+        assertEq(arb_spUsdt.vsr(), THREE_PCT_VSR);
+
+        xlayer.selectFork();
+        _warpToForkBlock(ChainIdUtils.XLayer());
+
+        assertEq(xlayer_spUsdt.vsr(), 1.000000001319814647332759691e27);  // 4.25% APY
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        IALMProxyFreezableLike(XLayer.ALM_PROXY_FREEZABLE).doCall(
+            address(xlayer_spUsdt),
+            abi.encodeCall(ISparkVaultV2Like.setVsr, (THREE_PCT_VSR))
+        );
+
+        assertEq(xlayer_spUsdt.vsr(), THREE_PCT_VSR);
+
+        // Step 2: User deposits 1_000_000e6 USDT to the Ethereum spUSDT vault
+
+        mainnet.selectFork();
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        assertEq(eth_usdt.balanceOf(user),                1_000_000e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 81_751_150.829624e6);
+
+        assertEq(eth_spUsdt.totalAssets(),   274_791_389.607147e6);
+        assertEq(eth_spUsdt.totalSupply(),   264_727_444.217203e6);
+        assertEq(eth_spUsdt.balanceOf(user), 0);
+
+        vm.startPrank(user);
+        IUSDTLike(Ethereum.USDT).approve(address(eth_spUsdt), 1_000_000e6);
+        eth_spUsdt.deposit(1_000_000e6, user);
+        vm.stopPrank();
+
+        assertEq(eth_usdt.balanceOf(user),                0);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 82_751_150.829624e6);
+
+        assertEq(eth_spUsdt.totalAssets(), 275_791_389.607147e6);
+        assertEq(eth_spUsdt.totalSupply(), 265_690_820.269835e6);
+
+        assertEq(eth_spUsdt.balanceOf(user), 963_376.052632e6);
+
+        // Step 3: User deposits 1_000_000e6 USDT0 to the Arbitrum spUSDT vault
+
+        arbitrum.selectFork();
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
+
+        assertEq(arb_usdt0.balanceOf(user),                1_000_000e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 1_058_239.025688e6);
+
+        assertEq(arb_spUsdt.totalAssets(),   1_060_411.644530e6);
+        assertEq(arb_spUsdt.totalSupply(),   1_047_372.751360e6);
+        assertEq(arb_spUsdt.balanceOf(user), 0);
+
+        vm.startPrank(user);
+        IUSDTLike(Arbitrum.USDT0).approve(address(arb_spUsdt), 1_000_000e6);
+        arb_spUsdt.deposit(1_000_000e6, user);
+        vm.stopPrank();
+
+        assertEq(arb_usdt0.balanceOf(user),                0);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 2_058_239.025688e6);
+
+        assertEq(arb_spUsdt.totalAssets(), 2_060_411.644530e6);
+        assertEq(arb_spUsdt.totalSupply(), 2_035_076.683849e6);
+
+        assertEq(arb_spUsdt.balanceOf(user), 987_703.932489e6);
+
+        // Step 4: User deposits 1_000_000e6 USDT0 to the X Layer spUSDT vault
+
+        xlayer.selectFork();
+        _warpToForkBlock(ChainIdUtils.XLayer());
+
+        assertEq(xlayer_usdt0.balanceOf(user),                   1_000_000e6);
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 4_762_342.392302e6);
+
+        assertEq(xlayer_spUsdt.totalAssets(),   4_762_686.744768e6);
+        assertEq(xlayer_spUsdt.totalSupply(),   4_706_288.281059e6);
+        assertEq(xlayer_spUsdt.balanceOf(user), 0);
+
+        vm.startPrank(user);
+        IUSDTLike(XLayer.USDT0).approve(address(xlayer_spUsdt), 1_000_000e6);
+        xlayer_spUsdt.deposit(1_000_000e6, user);
+        vm.stopPrank();
+
+        assertEq(xlayer_usdt0.balanceOf(user),                   0);
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 5_762_342.392302e6);
+
+        assertEq(xlayer_spUsdt.totalAssets(), 5_762_686.744767e6);
+        assertEq(xlayer_spUsdt.totalSupply(), 5_694_446.548286e6);
+
+        assertEq(xlayer_spUsdt.balanceOf(user), 988_158.267227e6);
+
+        // Step 5: Ethereum Spark Vaults agent (planner agent) takes 1_000_000e6 USDT out of the Ethereum spUSDT vault
+
+        mainnet.selectFork();
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_sparkVault_takeKey()), 10_000_000e6);
+
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    82_751_150.829624e6);
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 0);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_spUSDTPAU_controller),
+                    abi.encodeCall(ISparkVaultController.sparkVault_take, (address(eth_spUsdt), 1_000_000e6))
+                )
+            )
+        );
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_sparkVault_takeKey()), 9_000_000e6);
+
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    81_751_150.829624e6);
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_000e6);
+
+        // Taking moves idle liquidity out, it does not change the vault's accounting.
+        assertEq(eth_spUsdt.totalAssets(), 275_791_389.607147e6);
+        assertEq(eth_spUsdt.totalSupply(), 265_690_820.269835e6);
+
+        // Step 6: Arbitrum Spark Vaults agent (planner agent) takes 1_000_000e6 USDT0 out of the Arbitrum spUSDT vault
+
+        arbitrum.selectFork();
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
+
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_sparkVault_takeKey()), 10_000_000e6);
+
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    2_058_239.025688e6);
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Arbitrum.PLANNER_ADMINISTERED_AGENT).call(
+            Arbitrum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(arb_spUSDTPAU_controller),
+                    abi.encodeCall(ISparkVaultController.sparkVault_take, (address(arb_spUsdt), 1_000_000e6))
+                )
+            )
+        );
+
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_sparkVault_takeKey()), 9_000_000e6);
+
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    1_058_239.025688e6);
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_000e6);
+
+        assertEq(arb_spUsdt.totalAssets(), 2_060_411.644530e6);
+        assertEq(arb_spUsdt.totalSupply(), 2_035_076.683849e6);
+
+        // Step 7: Arbitrum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT0 to the Ethereum spUSDT PAU using
+        //         LayerZeroFacet
+
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_layerZero_transferKey()), 5_000_000e6);
+
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_000e6);
+        assertEq(arb_usdt0.totalSupply(),                     1_102_839_331.550136e6);
+
+        ( , ILayerZeroFacet.MessagingFee memory fee ) = arb_spUSDTPAU_controller
+            .layerZero_quoteTransfer(Arbitrum.USDT_OFT, 1_000_000e6, LZ_EID_ETHEREUM);
+
+        uint64 sentNonce = ILZEndpointLike(LZ_ENDPOINT).outboundNonce(Arbitrum.USDT_OFT, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)) + 1;
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Arbitrum.PLANNER_ADMINISTERED_AGENT).call{ value: fee.nativeFee }(
+            Arbitrum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(arb_spUSDTPAU_controller),
+                    abi.encodeCall(ILayerZeroController.layerZero_transfer, (Arbitrum.USDT_OFT, 1_000_000e6, LZ_EID_ETHEREUM))
+                )
+            )
+        );
+
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_layerZero_transferKey()), 4_000_000e6);
+
+        // USDT0 is burned on Arbitrum.
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
+        assertEq(arb_usdt0.totalSupply(),                     1_101_839_331.550136e6);
+
+        // Step 8: Relay the message to Ethereum
+
+        mainnet.selectFork();
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_000e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_719_462_485.408440e6);
+
+        // The message can only be delivered if the Ethereum fork is not ahead of the Arbitrum fork.
+        assertLt(ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(Ethereum.USDT_OFT, LZ_EID_ARBITRUM, _toBytes32(Arbitrum.USDT_OFT)), sentNonce);
+
+        _skipLZPendingNonces(Ethereum.USDT_OFT, LZ_EID_ARBITRUM, _toBytes32(Arbitrum.USDT_OFT), sentNonce);
+
+        LZBridgeTesting.relayMessagesToSource(_getLZBridge(ChainIdUtils.ArbitrumOne()), true, Arbitrum.USDT_OFT, Ethereum.USDT_OFT);
+
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        // USDT is released from the OFT adapter on Ethereum.
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_000e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_718_462_485.408440e6);
+
+        // Step 9: X Layer SLL relayer (ALM Relayer Multisig) takes 1_000_000e6 USDT0 out of the X Layer spUSDT vault
+        //         using the ForeignController
+
+        xlayer.selectFork();
+        _warpToForkBlock(ChainIdUtils.XLayer());
+
+        assertEq(xlayer_legacy_rateLimits.getCurrentRateLimit(_xlayerSll_sparkVault_takeKey()), type(uint256).max);
+
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 5_762_342.392302e6);
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY),       2_828.911808e6);
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        xlayer_legacy_controller.takeFromSparkVault(address(xlayer_spUsdt), 1_000_000e6);
+
+        assertEq(xlayer_legacy_rateLimits.getCurrentRateLimit(_xlayerSll_sparkVault_takeKey()), type(uint256).max);
+
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 4_762_342.392302e6);
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY),       1_002_828.911808e6);
+
+        // Taking moves idle liquidity out, it does not change the vault's accounting.
+        assertEq(xlayer_spUsdt.totalAssets(), 5_762_686.744767e6);
+        assertEq(xlayer_spUsdt.totalSupply(), 5_694_446.548286e6);
+
+        // Step 10: X Layer SLL relayer (ALM Relayer Multisig) bridges 1_000_000e6 USDT0 to the Ethereum spUSDT PAU
+        //          using the ForeignController
+
+        // The Arbitrum -> Ethereum packet is already relayed, discard it so only this flow's X Layer message is relayed.
+        _drainLZPendingPacketsToSource(ChainIdUtils.XLayer());
+
+        assertEq(xlayer_legacy_rateLimits.getCurrentRateLimit(_xlayerSll_layerZero_transferKey()), type(uint256).max);
+
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY), 1_002_828.911808e6);
+        assertEq(xlayer_usdt0.totalSupply(),               142_568_626.357877e6);
+
+        uint256 xlayerFee = _xlayerSll_layerZero_quoteTransfer(1_000_000e6);
+
+        sentNonce = ILZEndpointLike(LZ_ENDPOINT).outboundNonce(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)) + 1;
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        xlayer_legacy_controller.transferTokenLayerZero{ value: xlayerFee }(USDT0_OFT_XLAYER, 1_000_000e6, LZ_EID_ETHEREUM);
+
+        assertEq(xlayer_legacy_rateLimits.getCurrentRateLimit(_xlayerSll_layerZero_transferKey()), type(uint256).max);
+
+        // USDT0 is burned on X Layer.
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY), 2_828.911808e6);
+        assertEq(xlayer_usdt0.totalSupply(),               141_568_626.357877e6);
+
+        // Step 11: Relay the message to Ethereum
+
+        mainnet.selectFork();
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_000e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_718_462_485.408440e6);
+
+        // The message can only be delivered if the Ethereum fork is not ahead of the X Layer fork.
+        assertLt(ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(Ethereum.USDT_OFT, LZ_EID_XLAYER, _toBytes32(USDT0_OFT_XLAYER)), sentNonce);
+
+        _skipLZPendingNonces(Ethereum.USDT_OFT, LZ_EID_XLAYER, _toBytes32(USDT0_OFT_XLAYER), sentNonce);
+
+        LZBridgeTesting.relayMessagesToSource(_getLZBridge(ChainIdUtils.XLayer()), true, USDT0_OFT_XLAYER, Ethereum.USDT_OFT);
+
+        _warpToForkBlock(ChainIdUtils.Ethereum());
+
+        // USDT is released from the OFT adapter on Ethereum.
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 3_000_000e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_717_462_485.408440e6);
+
+        // Step 12: SLL agent (planner agent) initiates a swap on the SLL PAU of 3_000_000e18 USDS for 3_000_000e6 USDT,
+        //          completed by the spUSDT PAU using SwapAssetFacet
+
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 3_000_000e6);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0);
+        assertEq(eth_usdt.balanceOf(Ethereum.ALM_PROXY),     3_000_000e6);
+        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),     3_000_000e18);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SLL_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_sllPau_controller),
+                    abi.encodeCall(
+                        ISwapAssetController.swapAsset_initiateSwap,
+                        (address(eth_spUSDTPAU_controller), Ethereum.USDS, Ethereum.USDT, 3_000_000e18)
+                    )
+                )
+            )
+        );
+
+        // The reverse direction keys increase, already at max so they stay at max.
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 7_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 7_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 0);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 3_000_000e18);
+        assertEq(eth_usdt.balanceOf(Ethereum.ALM_PROXY),     6_000_000e6);
+        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),     0);
+
+        // Step 13: Ethereum Spark Vaults agent (planner agent) deposits 3_000_000e18 USDS to sUSDS using ERC4626Facet
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_depositKey()),  type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
+
+        // The spUSDT PAU already holds the sUSDS backing transferred by the spell.
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  3_000_000e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 172_728_264.360389296369614933e18);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_spUSDTPAU_controller),
+                    abi.encodeCall(
+                        IERC4626Controller.erc4626_deposit,
+                        (Ethereum.SUSDS, 3_000_000e18, 2_684_335.640914591022095658e18)
+                    )
+                )
+            )
+        );
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_depositKey()),  type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
+
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  0);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 172_728_264.360389296369614933e18 + 2_684_335.640914591022095658e18);
+
+        assertEq(eth_susds.convertToAssets(2_684_335.640914591022095658e18), 3_000_000e18 - 1);  // Rounding
+
+        // Step 14: Skip 1 day on Ethereum, Arbitrum and X Layer to let sUSDS and all spUSDT vaults accrue yield. A fork
+        //          switch does not keep a fork's warped timestamp, so each chain's timestamp is re-applied on every
+        //          switch.
+
+        skip(1 days);
+
+        uint256 ethTimestamp = block.timestamp;
+
+        arbitrum.selectFork();
+        _warpToForkBlock(ChainIdUtils.ArbitrumOne());
+
+        skip(1 days);
+
+        uint256 arbTimestamp = block.timestamp;
+
+        assertEq(arb_spUsdt.convertToAssets(987_703.932489e6), 1_000_080.986298e6);  // Interest owed to the user on Arbitrum
+
+        xlayer.selectFork();
+        _warpToForkBlock(ChainIdUtils.XLayer());
+
+        skip(1 days);
+
+        uint256 xlayerTimestamp = block.timestamp;
+
+        assertEq(xlayer_spUsdt.convertToAssets(988_158.267227e6), 1_000_080.986298e6);  // Interest owed to the user on X Layer
+
+        mainnet.selectFork();
+        vm.warp(ethTimestamp);
+
+        assertEq(eth_susds.convertToAssets(2_684_335.640914591022095658e18), 3_000_306.556358256742287388e18);  // Interest accrued
+        assertEq(eth_spUsdt.convertToAssets(963_376.052632e6),               1_000_080.986298e6);               // Interest owed to the user on Ethereum
+
+        // Rate limits fully recharged
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)),       10_000_000e18);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+
+        // Step 15: Ethereum Spark Vaults agent (planner agent) redeems the sUSDS for 3_000_000e18 USDS + interest using
+        //          ERC4626Facet
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_depositKey()),  type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
+
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  0);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 172_728_264.360389296369614933e18 + 2_684_335.640914591022095658e18);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_spUSDTPAU_controller),
+                    abi.encodeCall(
+                        IERC4626Controller.erc4626_redeem,
+                        (Ethereum.SUSDS, 2_684_335.640914591022095658e18, 3_000_306.556358256742287388e18)
+                    )
+                )
+            )
+        );
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_depositKey()),  type(uint256).max);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_susds_withdrawKey()), type(uint256).max);
+
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy),  3_000_306.556358256742287388e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 172_728_264.360389296369614933e18);
+
+        // Step 16: SLL agent (planner agent) initiates a swap on the SLL PAU of USDT + interest for the USDS + interest,
+        //          completed by the spUSDT PAU using SwapAssetFacet
+
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 0);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 3_000_306.556358256742287388e18);
+        assertEq(eth_usdt.balanceOf(Ethereum.ALM_PROXY),     6_000_000e6);
+        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),     0);
+
+        // The SLL sends USDT, so the spUSDT PAU sends amountOut * 1e12 USDS, the USDS dust below 1e12 stays in the
+        // spUSDT ALMProxy.
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SLL_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_sllPau_controller),
+                    abi.encodeCall(
+                        ISwapAssetController.swapAsset_initiateSwap,
+                        (address(eth_spUSDTPAU_controller), Ethereum.USDT, Ethereum.USDS, 3_000_306.556358e6)
+                    )
+                )
+            )
+        );
+
+        // The reverse direction keys increase, already at max so they stay at max.
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDS, Ethereum.USDT)), 10_000_000e18);
+        assertEq(eth_sllPau_rateLimits.getCurrentRateLimit(_ethSll_swapAsset_initiateKey(Ethereum.USDT, Ethereum.USDS)), 6_999_693.443642e6);
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDT, Ethereum.USDS)), 10_000_000e6);
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_swapAsset_completeKey(Ethereum.USDS, Ethereum.USDT)), 6_999_693.443642e18);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 3_000_306.556358e6);
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0.000000256742287388e18);
+        assertEq(eth_usdt.balanceOf(Ethereum.ALM_PROXY),     2_999_693.443642e6);
+        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),     3_000_306.556358e18);
+
+        // Step 17: Ethereum Spark Vaults agent (planner agent) transfers 1_000_000e6 USDT + interest to the Ethereum
+        //          spUSDT vault using TransferAssetFacet
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_transferAsset_transferKey()), 10_000_000e6);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 3_000_306.556358e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    81_751_150.829624e6);
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_spUSDTPAU_controller),
+                    abi.encodeCall(
+                        ITransferAssetController.transferAsset_transfer,
+                        (Ethereum.USDT, address(eth_spUsdt), 1_000_080.986298e6)  // Interest owed to the user on Ethereum
+                    )
+                )
+            )
+        );
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_transferAsset_transferKey()), 10_000_000e6 - 1_000_080.986298e6);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_225.570060e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)),    82_751_231.815922e6);
+
+        // Step 18: Ethereum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT + interest to the Arbitrum
+        //          spUSDT PAU using LayerZeroFacet
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_ARBITRUM)), 5_000_000e6);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 2_000_225.570060e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_717_462_485.408440e6);
+
+        ( , fee ) = eth_spUSDTPAU_controller.layerZero_quoteTransfer(Ethereum.USDT_OFT, 1_000_080.986298e6, LZ_EID_ARBITRUM);
+
+        sentNonce = ILZEndpointLike(LZ_ENDPOINT).outboundNonce(Ethereum.USDT_OFT, LZ_EID_ARBITRUM, _toBytes32(Arbitrum.USDT_OFT)) + 1;
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call{ value: fee.nativeFee }(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_spUSDTPAU_controller),
+                    abi.encodeCall(
+                        ILayerZeroController.layerZero_transfer,
+                        (Ethereum.USDT_OFT, 1_000_080.986298e6, LZ_EID_ARBITRUM)  // Interest owed to the user on Arbitrum
+                    )
+                )
+            )
+        );
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_ARBITRUM)), 5_000_000e6 - 1_000_080.986298e6);
+
+        // USDT is locked in the OFT adapter on Ethereum.
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_144.583762e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_718_462_566.394738e6);
+
+        // Step 19: Relay the message to Arbitrum
+
+        arbitrum.selectFork();
+        vm.warp(arbTimestamp);
+
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
+        assertEq(arb_usdt0.totalSupply(),                     1_101_839_331.550136e6);
+
+        // The message can only be delivered if the Arbitrum fork is not ahead of the Ethereum fork.
+        assertLt(ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(Arbitrum.USDT_OFT, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)), sentNonce);
+
+        _skipLZPendingNonces(Arbitrum.USDT_OFT, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT), sentNonce);
+
+        LZBridgeTesting.relayMessagesToDestination(_getLZBridge(ChainIdUtils.ArbitrumOne()), true, Ethereum.USDT_OFT, Arbitrum.USDT_OFT);
+
+        vm.warp(arbTimestamp);
+
+        // USDT0 is minted on Arbitrum.
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_080.986298e6);
+        assertEq(arb_usdt0.totalSupply(),                     1_102_839_412.536434e6);
+
+        // Step 20: Arbitrum Spark Vaults agent (planner agent) transfers 1_000_000e6 USDT0 + interest to the Arbitrum
+        //          spUSDT vault using TransferAssetFacet
+
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_transferAsset_transferKey()), 10_000_000e6);
+
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 1_000_080.986298e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    1_058_239.025688e6);
+
+        vm.prank(Arbitrum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Arbitrum.PLANNER_ADMINISTERED_AGENT).call(
+            Arbitrum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(arb_spUSDTPAU_controller),
+                    abi.encodeCall(
+                        ITransferAssetController.transferAsset_transfer,
+                        (Arbitrum.USDT0, address(arb_spUsdt), 1_000_080.986298e6)  // Interest owed to the user on Arbitrum
+                    )
+                )
+            )
+        );
+
+        assertEq(arb_spUSDTPAU_rateLimits.getCurrentRateLimit(_arbSpUsdt_transferAsset_transferKey()), 10_000_000e6 - 1_000_080.986298e6);
+
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)),    2_058_320.011986e6);
+
+        // Step 21: Ethereum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT + interest to the X Layer
+        //          SLL ALMProxy using LayerZeroFacet
+
+        mainnet.selectFork();
+        vm.warp(ethTimestamp);
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER)), 10_000_000e6);
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 1_000_144.583762e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_718_462_566.394738e6);
+
+        ( , fee ) = eth_spUSDTPAU_controller.layerZero_quoteTransfer(Ethereum.USDT_OFT, 1_000_080.986298e6, LZ_EID_XLAYER);
+
+        sentNonce = ILZEndpointLike(LZ_ENDPOINT).outboundNonce(Ethereum.USDT_OFT, LZ_EID_XLAYER, _toBytes32(USDT0_OFT_XLAYER)) + 1;
+
+        vm.prank(Ethereum.ALM_RELAYER_MULTISIG);
+        IAdministeredAgentLike(Ethereum.PLANNER_ADMINISTERED_AGENT).call{ value: fee.nativeFee }(
+            Ethereum.SPARK_ADMINISTERED_AGENT,
+            abi.encodeCall(
+                IAdministeredAgentLike.call,
+                (
+                    address(eth_spUSDTPAU_controller),
+                    abi.encodeCall(
+                        ILayerZeroController.layerZero_transfer,
+                        (Ethereum.USDT_OFT, 1_000_080.986298e6, LZ_EID_XLAYER)  // Interest owed to the user on X Layer
+                    )
+                )
+            )
+        );
+
+        assertEq(eth_spUSDTPAU_rateLimits.getCurrentRateLimit(_ethSpUsdt_layerZero_transferKey(LZ_EID_XLAYER)), 10_000_000e6 - 1_000_080.986298e6);
+
+        // USDT is locked in the OFT adapter on Ethereum.
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 63.597464e6);
+        assertEq(eth_usdt.balanceOf(Ethereum.USDT_OFT),      3_719_462_647.381036e6);
+
+        // Step 22: Relay the message to X Layer
+
+        xlayer.selectFork();
+        vm.warp(xlayerTimestamp);
+
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY), 2_828.911808e6);
+        assertEq(xlayer_usdt0.totalSupply(),               141_568_626.357877e6);
+
+        // The message can only be delivered if the X Layer fork is not ahead of the Ethereum fork.
+        assertLt(ILZEndpointLike(LZ_ENDPOINT).lazyInboundNonce(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)), sentNonce);
+
+        _skipLZPendingNonces(USDT0_OFT_XLAYER, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT), sentNonce);
+
+        LZBridgeTesting.relayMessagesToDestination(_getLZBridge(ChainIdUtils.XLayer()), true, Ethereum.USDT_OFT, USDT0_OFT_XLAYER);
+
+        vm.warp(xlayerTimestamp);
+
+        // USDT0 is minted on X Layer.
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY), 1_002_909.898106e6);
+        assertEq(xlayer_usdt0.totalSupply(),               142_568_707.344175e6);
+
+        // Step 23: X Layer SLL relayer (ALM Relayer Multisig) transfers 1_000_000e6 USDT0 + interest to the X Layer
+        //          spUSDT vault using the ForeignController
+
+        assertEq(xlayer_legacy_rateLimits.getCurrentRateLimit(_xlayerSll_transferAsset_transferKey()), type(uint256).max);
+
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY),       1_002_909.898106e6);
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 4_762_342.392302e6);
+
+        vm.prank(XLayer.ALM_RELAYER_MULTISIG);
+        xlayer_legacy_controller.transferAsset(XLayer.USDT0, address(xlayer_spUsdt), 1_000_080.986298e6);  // Interest owed to the user on X Layer
+
+        assertEq(xlayer_legacy_rateLimits.getCurrentRateLimit(_xlayerSll_transferAsset_transferKey()), type(uint256).max);
+
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY),       2_828.911808e6);
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 5_762_423.378600e6);
+
+        // Step 24: User redeems their Ethereum spUSDT deposit and receives the 1_000_000e6 USDT + interest
+
+        mainnet.selectFork();
+        vm.warp(ethTimestamp);
+
+        assertEq(eth_usdt.balanceOf(user),                0);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 82_751_231.815922e6);
+
+        assertEq(eth_spUsdt.totalAssets(),   275_813_724.931102e6);
+        assertEq(eth_spUsdt.totalSupply(),   265_690_820.269835e6);
+        assertEq(eth_spUsdt.balanceOf(user), 963_376.052632e6);
+
+        vm.prank(user);
+        eth_spUsdt.redeem(963_376.052632e6, user, user);
+
+        assertEq(eth_usdt.balanceOf(user),                1_000_080.986298e6);
+        assertEq(eth_usdt.balanceOf(address(eth_spUsdt)), 81_751_150.829624e6);
+
+        assertEq(eth_spUsdt.totalAssets(),   274_813_643.944803e6);
+        assertEq(eth_spUsdt.totalSupply(),   264_727_444.217203e6);
+        assertEq(eth_spUsdt.balanceOf(user), 0);
+
+        // Step 25: User redeems their Arbitrum spUSDT deposit and receives the 1_000_000e6 USDT0 + interest
+
+        arbitrum.selectFork();
+        vm.warp(arbTimestamp);
+
+        assertEq(arb_usdt0.balanceOf(user),                0);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 2_058_320.011986e6);
+
+        assertEq(arb_spUsdt.totalAssets(),   2_060_578.509643e6);
+        assertEq(arb_spUsdt.totalSupply(),   2_035_076.683849e6);
+        assertEq(arb_spUsdt.balanceOf(user), 987_703.932489e6);
+
+        vm.prank(user);
+        arb_spUsdt.redeem(987_703.932489e6, user, user);
+
+        assertEq(arb_usdt0.balanceOf(user),                1_000_080.986298e6);
+        assertEq(arb_usdt0.balanceOf(address(arb_spUsdt)), 1_058_239.025688e6);
+
+        assertEq(arb_spUsdt.totalAssets(),   1_060_497.523344e6);
+        assertEq(arb_spUsdt.totalSupply(),   1_047_372.751360e6);
+        assertEq(arb_spUsdt.balanceOf(user), 0);
+
+        // Step 26: User redeems their X Layer spUSDT deposit and receives the 1_000_000e6 USDT0 + interest
+
+        xlayer.selectFork();
+        vm.warp(xlayerTimestamp);
+
+        assertEq(xlayer_usdt0.balanceOf(user),                   0);
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 5_762_423.378600e6);
+
+        assertEq(xlayer_spUsdt.totalAssets(),   5_763_153.443439e6);
+        assertEq(xlayer_spUsdt.totalSupply(),   5_694_446.548286e6);
+        assertEq(xlayer_spUsdt.balanceOf(user), 988_158.267227e6);
+
+        vm.prank(user);
+        xlayer_spUsdt.redeem(988_158.267227e6, user, user);
+
+        assertEq(xlayer_usdt0.balanceOf(user),                   1_000_080.986298e6);
+        assertEq(xlayer_usdt0.balanceOf(address(xlayer_spUsdt)), 4_762_342.392302e6);
+
+        assertEq(xlayer_spUsdt.totalAssets(),   4_763_072.457141e6);
+        assertEq(xlayer_spUsdt.totalSupply(),   4_706_288.281059e6);
+        assertEq(xlayer_spUsdt.balanceOf(user), 0);
+
+        // The sUSDS yield above the spUSDT VSR and the USDS swap dust on Ethereum, nothing on Arbitrum, and the X Layer
+        // SLL ALMProxy is back to its pre-flow balance.
+        assertEq(xlayer_usdt0.balanceOf(XLayer.ALM_PROXY), 2_828.911808e6);
+
+        arbitrum.selectFork();
+
+        assertEq(arb_usdt0.balanceOf(arb_spUSDTPAU_almProxy), 0);
+
+        mainnet.selectFork();
+
+        assertEq(eth_usdt.balanceOf(eth_spUSDTPAU_almProxy), 63.597464e6);              // sUSDS yield above the spUSDT VSR
+        assertEq(eth_usds.balanceOf(eth_spUSDTPAU_almProxy), 0.000000256742287388e18);  // Remaining USDS swap dust
+    }
+
+    function _xlayerSll_sparkVault_takeKey() internal view returns (bytes32) {
+        return RateLimitHelpers.makeAddressKey(xlayer_legacy_controller.LIMIT_SPARK_VAULT_TAKE(), XLayer.SPARK_VAULT_V2_SPUSDT);
+    }
+
+    function _xlayerSll_transferAsset_transferKey() internal view returns (bytes32) {
+        return RateLimitHelpers.makeAddressAddressKey(xlayer_legacy_controller.LIMIT_ASSET_TRANSFER(), XLayer.USDT0, XLayer.SPARK_VAULT_V2_SPUSDT);
+    }
+
+    function _xlayerSll_layerZero_transferKey() internal view returns (bytes32) {
+        return keccak256(abi.encode(xlayer_legacy_controller.LIMIT_LAYERZERO_TRANSFER(), USDT0_OFT_XLAYER, LZ_EID_ETHEREUM));
+    }
+
+    // The X Layer legacy controller has no quote function, so the fee is quoted from the OFT with the controller's
+    // send parameters.
+    function _xlayerSll_layerZero_quoteTransfer(uint256 amount) internal view returns (uint256) {
+        SendParam memory sendParams = SendParam({
+            dstEid       : LZ_EID_ETHEREUM,
+            to           : xlayer_legacy_controller.layerZeroRecipients(LZ_EID_ETHEREUM),
+            amountLD     : amount,
+            minAmountLD  : 0,
+            extraOptions : OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0),
+            composeMsg   : "",
+            oftCmd       : ""
+        });
+
+        return ILayerZero(USDT0_OFT_XLAYER).quoteSend(sendParams, false).nativeFee;
     }
 
     /**********************************************************************************************/
