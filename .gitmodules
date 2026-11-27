@@ -49,3 +49,9 @@
 [submodule "lib/core"]
 	path = lib/core
 	url = https://github.com/symbioticfi/core
+[submodule "lib/diamond-pau"]
+	path = lib/diamond-pau
+	url = https://github.com/sky-ecosystem/diamond-pau
+[submodule "lib/sky-pau-registry"]
+	path = lib/sky-pau-registry
+	url = https://github.com/sky-ecosystem/sky-pau-registry.git

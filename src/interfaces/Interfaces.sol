@@ -95,6 +95,8 @@ interface ISparkVaultV2Like {
 
     function chi() external view returns (uint192);
 
+    function convertToAssets(uint256 shares) external view returns (uint256);
+
     function decimals() external view returns (uint8);
 
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);

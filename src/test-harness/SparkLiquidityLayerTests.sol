@@ -6,6 +6,13 @@ import { IERC4626 } from "forge-std/interfaces/IERC4626.sol";
 import { VmSafe }   from "forge-std/Vm.sol";
 import { console2 } from "forge-std/console2.sol";
 
+import { IERC4626Controller }       from "diamond-pau/src/facets/erc4626/IERC4626Controller.sol";
+import { ILayerZeroController }     from "diamond-pau/src/facets/layer-zero/ILayerZeroController.sol";
+import { ILayerZeroFacet }          from "diamond-pau/src/facets/layer-zero/ILayerZeroFacet.sol";
+import { ISparkVaultController }    from "diamond-pau/src/facets/spark-vault/ISparkVaultController.sol";
+import { ISwapAssetController }     from "diamond-pau/src/facets/swap-asset/ISwapAssetController.sol";
+import { ITransferAssetController } from "diamond-pau/src/facets/transfer-asset/ITransferAssetController.sol";
+
 import { IMetaMorpho, MarketParams, Id } from "metamorpho/interfaces/IMetaMorpho.sol";
 
 import { MarketParamsLib } from "morpho-blue/src/libraries/MarketParamsLib.sol";
@@ -58,6 +65,7 @@ import { MorphoHelpers } from "../libraries/MorphoHelpers.sol";
 import { SLLHelpers }    from "../libraries/SLLHelpers.sol";
 
 import {
+    IALMProxyFreezableLike,
     IATokenLike,
     ICurvePoolLike,
     IERC20Like,
@@ -274,6 +282,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         address administeredAgent;
         address allocator;
         address revoker;
+        address plannerAgent;
     }
 
     struct SparkLiquidityLayerContext {
@@ -294,6 +303,50 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         uint256                    transferAmount;
         uint256                    userVaultAmount;
         uint256                    tolerance;
+    }
+
+    struct SpUsdtContext {
+        bool        legacy;
+        address     controller;
+        address     proxy;
+        IRateLimits rateLimits;
+        address     plannerAgent;
+        address     agent;
+        address     relayer;
+        address     vault;
+        address     asset;
+        address     oft;
+        uint32      endpointId;
+    }
+
+    struct SpUsdtPauE2EVars {
+        address user;
+        uint256 depositAmount;
+        uint256 swapAmount;
+        uint256 ethShares;
+        uint256 arbShares;
+        uint256 xlayerShares;
+        uint256 ethOwed;
+        uint256 arbOwed;
+        uint256 xlayerOwed;
+        uint256 ethPauUsdt;
+        uint256 ethPauUsds;
+        uint256 arbPauUsdt0;
+        uint256 xlayerProxyUsdt0;
+        uint256 susdsShares;
+        uint256 usdsRedeemed;
+        uint256 usdtSwapped;
+    }
+
+    struct SpUsdtSwapRateLimits {
+        bytes32 initiateKey;
+        bytes32 reverseInitiateKey;
+        bytes32 completeKey;
+        bytes32 reverseCompleteKey;
+        uint256 initiateLimit;
+        uint256 reverseInitiateLimit;
+        uint256 completeLimit;
+        uint256 reverseCompleteLimit;
     }
 
     struct TransferAssetE2ETestParams {
@@ -402,11 +455,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
     // > bc -l <<< 'scale=27; e( l(1.1)/(60 * 60 * 24 * 365) )'
     //   1.000000003022265980097387650
-    uint256 internal constant TEN_PCT_APY = 1.000000003022265980097387650e27;
+    uint256 internal constant TEN_PCT_APY   = 1.000000003022265980097387650e27;
+    // > bc -l <<< 'scale=27; e( l(1.03)/(60 * 60 * 24 * 365) )'
+    //   1.000000000937303470807876290
+    uint256 internal constant THREE_PCT_VSR = 1.000000000937303470807876290e27;
 
     // Latest mainnet timestamp seen by the cross-chain E2E steps. Switching forks can move the
     // mainnet clock backwards (#91), which underflows `block.timestamp - lastUpdated` in RateLimits.
     uint256 internal _lastMainnetTimestamp;
+
+    mapping(uint256 chainId => uint256 timestamp) internal _spUsdtPauE2ETimestamp;
 
     /**********************************************************************************************/
     /*** Tests                                                                                  ***/
@@ -418,6 +476,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _executeAllPayloadsAndBridges();
 
         _runE2ESLLCrossChainTestForAllDomains({ isPostExecution: true });
+    }
+
+    function test_E2E_spUsdtPau_ethereumArbitrumXLayerFullFlow() external virtual {
+        _runSpUsdtPauE2E();
     }
 
     function test_ETHEREUM_E2E_sparkLiquidityLayer() external onChain(ChainIdUtils.Ethereum()) {
@@ -460,20 +522,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         _runSLLE2ETestsForDomain(ChainIdUtils.ArbitrumOne());
     }
 
-    function test_AVALANCHE_E2E_sparkLiquidityLayer() external virtual {
-        _runSLLE2ETestsForDomain(ChainIdUtils.Avalanche());
-    }
-
     function test_BASE_E2E_sparkLiquidityLayer() external {
         _runSLLE2ETestsForDomain(ChainIdUtils.Base());
-    }
-
-    function test_OPTIMISM_E2E_sparkLiquidityLayer() external virtual {
-        _runSLLE2ETestsForDomain(ChainIdUtils.Optimism());
-    }
-
-    function test_UNICHAIN_E2E_sparkLiquidityLayer() external virtual {
-        _runSLLE2ETestsForDomain(ChainIdUtils.Unichain());
     }
 
     /**********************************************************************************************/
@@ -1884,6 +1934,11 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         RecordedLogs.ingestAndFilterLogs(bridge, true, PACKET_SENT_TOPIC, bridge.sourceCrossChainMessenger);
     }
 
+    function _drainLZPendingPacketsToSource(uint256 destinationChainId) internal {
+        Bridge storage bridge = _getLZBridge(destinationChainId);
+        RecordedLogs.ingestAndFilterLogs(bridge, false, PACKET_SENT_TOPIC, bridge.destinationCrossChainMessenger);
+    }
+
     function _skipLZPendingNonces(
         address oapp,
         uint32  srcEid,
@@ -2432,6 +2487,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         return limitBefore + amount > maxAmount ? maxAmount : limitBefore + amount;
     }
 
+    function _decreasedRateLimit(uint256 limitBefore, uint256 amount) internal pure returns (uint256) {
+        return limitBefore == type(uint256).max ? type(uint256).max : limitBefore - amount;
+    }
+
     function _mintUSDSAndSwapToUSDC(uint256 usdcAmount, address controller)
         internal onChain(ChainIdUtils.Ethereum())
     {
@@ -2473,23 +2532,16 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         IERC20 domainUsdc;
         uint32 domainCctpId;
-        Bridge storage bridge = chainData[domainId].bridges[1];
+        Bridge storage bridge;
 
         if (domainId == ChainIdUtils.ArbitrumOne()) {
             domainUsdc   = IERC20(Arbitrum.USDC);
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE;
+            bridge       = chainData[domainId].bridges[3];
         } else if (domainId == ChainIdUtils.Base()) {
             domainUsdc   = IERC20(Base.USDC);
             domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_BASE;
-        } else if (domainId == ChainIdUtils.Optimism()) {
-            domainUsdc   = IERC20(Optimism.USDC);
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM;
-        } else if (domainId == ChainIdUtils.Unichain()) {
-            domainUsdc   = IERC20(Unichain.USDC);
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN;
-        } else if (domainId == ChainIdUtils.Avalanche()) {
-            domainUsdc   = IERC20(Avalanche.USDC);
-            domainCctpId = CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE;
+            bridge       = chainData[domainId].bridges[2];
         } else {
             revert("SLL/unknown domain");
         }
@@ -2539,7 +2591,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         // FIXME: this is a workaround for the storage/fork issue (https://github.com/foundry-rs/foundry/issues/10296), switch back to _relayMessageOverBridges() when fixed
         //_relayMessageOverBridges();
-        CCTPBridgeTesting.relayMessagesToDestination(bridge, true);
+        CCTPV2BridgeTesting.relayMessagesToDestination(bridge, true);
 
         assertEq(domainUsdc.balanceOf(domainAlmProxy), domainUsdcProxyBalance + usdcAmount);
     }
@@ -2703,6 +2755,10 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _bridgeUSDCToMainnet_pau(uint256 usdcAmount, uint256 domainId, address controller) internal {
+        _bridgeUSDCToMainnet_pau(usdcAmount, domainId, controller, false);
+    }
+
+    function _bridgeUSDCToMainnet_pau(uint256 usdcAmount, uint256 domainId, address controller, bool isPostExecution) internal {
         require(usdcAmount != 0, "SLL/_bridgeUSDCToMainnet_pau/usdcAmount must be greater than 0");
 
         IERC20 domainUsdc;
@@ -2722,7 +2778,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         IERC20 usdc = IERC20(Ethereum.USDC);
 
-        SLLPAUContext memory ctx = _getSLLPAUContext(domainId);
+        SLLPAUContext memory ctx = _getSLLPAUContext(domainId, isPostExecution);
 
         address domainAlmProxy = IPAUControllerLike(controller).proxy();
 
@@ -2741,8 +2797,8 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             IPAUControllerLike(controller).cctp_getToDomainRateLimitKey(CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM)
         );
 
-        vm.prank(ctx.allocator);
-        IAdministeredAgentLike(ctx.administeredAgent).call(
+        _callAsPAUAllocator(
+            ctx,
             controller,
             abi.encodeCall(IPAUControllerLike.cctp_transfer, (usdcAmount, CCTPForwarder.DOMAIN_ID_CIRCLE_ETHEREUM, 0))
         );
@@ -2974,6 +3030,570 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         }));
     }
 
+    // spUSDT PAU E2E Steps
+
+    function _runSpUsdtPauE2E() internal {
+        SpUsdtPauE2EVars memory v;
+
+        v.user          = makeAddr("user");
+        v.depositAmount = 1_000_000e6;
+        v.swapAmount    = 3_000_000e6;
+
+        _spUsdtE2ESetUp(v);
+
+        // Step 1: The Spark Vaults agents (planner agent) set the Ethereum and Arbitrum spUSDT VSR to 3% and the X Layer
+        //         SLL relayer (ALM Relayer Multisig) sets the X Layer spUSDT VSR to 3% using the ALMProxyFreezable,
+        //         below the sUSDS rate so the strategy covers what the users are owed.
+
+        _spUsdtE2ESetVsr(ChainIdUtils.Ethereum());
+        _spUsdtE2ESetVsr(ChainIdUtils.ArbitrumOne());
+        _spUsdtE2ESetVsr(ChainIdUtils.XLayer());
+
+        // Steps 2 to 4: The user deposits 1_000_000e6 USDT to the Ethereum spUSDT vault and 1_000_000e6 USDT0 to the
+        //               Arbitrum and X Layer spUSDT vaults.
+
+        v.ethShares    = _spUsdtE2EDeposit(ChainIdUtils.Ethereum(),    v);
+        v.arbShares    = _spUsdtE2EDeposit(ChainIdUtils.ArbitrumOne(), v);
+        v.xlayerShares = _spUsdtE2EDeposit(ChainIdUtils.XLayer(),      v);
+
+        // Steps 5: The Ethereum Spark Vaults agents (planner agent) take 1_000_000e6 out of the
+        //          spUSDT vaults using SparkVaultFacet.
+
+        _spUsdtE2ETake(ChainIdUtils.Ethereum(),    v);
+
+        // Steps 6 to 8: The Arbitrum Spark Vaults agent (planner agent) take 1_000_000e6 out of the spUSDT vault
+        //               and bridges 1_000_000e6 USDT0 to the Ethereum spUSDT PAU using LayerZeroFacet and the
+        //               message is relayed to Ethereum.
+
+        _spUsdtE2ETake(ChainIdUtils.ArbitrumOne(), v);
+        _spUsdtE2EBridgeToEthereum(ChainIdUtils.ArbitrumOne(), v);
+
+        // Steps 9 to 11: The X Layer SLL relayer (ALM Relayer Multisig) takes 1_000_000e6 USDT0 out of the X Layer
+        //                spUSDT vault and bridges it to the Ethereum spUSDT PAU using the ForeignController, and the
+        //                message is relayed to Ethereum.
+
+        _spUsdtE2ETake(ChainIdUtils.XLayer(), v);
+        _spUsdtE2EBridgeToEthereum(ChainIdUtils.XLayer(), v);
+
+        // Step 12: The SLL agent (planner agent) initiates a swap on the SLL PAU of 3_000_000e18 USDS for 3_000_000e6
+        //          USDT, completed by the spUSDT PAU using SwapAssetFacet.
+
+        _spUsdtE2ESwap(Ethereum.USDS, Ethereum.USDT, v.swapAmount * 1e12, v.swapAmount);
+
+        // Step 13: The Ethereum Spark Vaults agent (planner agent) deposits 3_000_000e18 USDS to sUSDS using
+        //          ERC4626Facet.
+
+        _spUsdtE2EDepositSusds(v);
+
+        // Step 14: Skip 1 day on Ethereum, Arbitrum and X Layer to let sUSDS and all spUSDT vaults accrue yield.
+
+        v.ethOwed    = _spUsdtE2ESkipOneDay(ChainIdUtils.Ethereum(),    v.ethShares,    v.depositAmount);
+        v.arbOwed    = _spUsdtE2ESkipOneDay(ChainIdUtils.ArbitrumOne(), v.arbShares,    v.depositAmount);
+        v.xlayerOwed = _spUsdtE2ESkipOneDay(ChainIdUtils.XLayer(),      v.xlayerShares, v.depositAmount);
+
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        _spUsdtE2EAssertSwapRateLimitsRecharged();
+
+        // Step 15: The Ethereum Spark Vaults agent (planner agent) redeems the sUSDS for 3_000_000e18 USDS + interest
+        //          using ERC4626Facet.
+
+        _spUsdtE2ERedeemSusds(v);
+
+        // Step 16: The SLL agent (planner agent) initiates a swap on the SLL PAU of USDT + interest for the USDS +
+        //          interest, completed by the spUSDT PAU using SwapAssetFacet. The SLL sends USDT, so the spUSDT PAU
+        //          sends amountOut * 1e12 USDS, the USDS dust below 1e12 stays in the spUSDT ALMProxy.
+
+        v.usdtSwapped = v.usdsRedeemed / 1e12;
+
+        _spUsdtE2ESwap(Ethereum.USDT, Ethereum.USDS, v.usdtSwapped, v.usdtSwapped * 1e12);
+
+        // The sUSDS yield covers what the three vaults owe the user.
+        assertGe(v.usdtSwapped, v.ethOwed + v.arbOwed + v.xlayerOwed);
+
+        // Step 17: The Ethereum Spark Vaults agent (planner agent) transfers 1_000_000e6 USDT + interest to the
+        //          Ethereum spUSDT vault using TransferAssetFacet.
+
+        _spUsdtE2ETransferToVault(ChainIdUtils.Ethereum(), v.ethOwed);
+
+        // Steps 18 and 19: The Ethereum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT + interest to the
+        //                  Arbitrum spUSDT PAU using LayerZeroFacet and the message is relayed to Arbitrum.
+
+        _spUsdtE2EBridgeFromEthereum(ChainIdUtils.ArbitrumOne(), v.arbOwed);
+
+        // Step 20: The Arbitrum Spark Vaults agent (planner agent) transfers 1_000_000e6 USDT0 + interest to the
+        //          Arbitrum spUSDT vault using TransferAssetFacet.
+
+        _spUsdtE2ETransferToVault(ChainIdUtils.ArbitrumOne(), v.arbOwed);
+
+        // Steps 21 and 22: The Ethereum Spark Vaults agent (planner agent) bridges 1_000_000e6 USDT + interest to the
+        //                  X Layer SLL ALMProxy using LayerZeroFacet and the message is relayed to X Layer.
+
+        _spUsdtE2EBridgeFromEthereum(ChainIdUtils.XLayer(), v.xlayerOwed);
+
+        // Step 23: The X Layer SLL relayer (ALM Relayer Multisig) transfers 1_000_000e6 USDT0 + interest to the X Layer
+        //          spUSDT vault using the ForeignController.
+
+        _spUsdtE2ETransferToVault(ChainIdUtils.XLayer(), v.xlayerOwed);
+
+        // Steps 24 to 26: The user redeems their spUSDT deposits and receives 1_000_000e6 USDT + interest on Ethereum
+        //                 and 1_000_000e6 USDT0 + interest on Arbitrum and X Layer.
+
+        _spUsdtE2ERedeem(ChainIdUtils.Ethereum(),    v.ethShares,    v.ethOwed,    v);
+        _spUsdtE2ERedeem(ChainIdUtils.ArbitrumOne(), v.arbShares,    v.arbOwed,    v);
+        _spUsdtE2ERedeem(ChainIdUtils.XLayer(),      v.xlayerShares, v.xlayerOwed, v);
+
+        // The sUSDS yield above the spUSDT VSR and the USDS swap dust stay in the Ethereum spUSDT PAU, the Arbitrum
+        // spUSDT PAU and the X Layer SLL ALMProxy are back to their pre-flow balances.
+
+        assertEq(IERC20(XLayer.USDT0).balanceOf(XLayer.ALM_PROXY), v.xlayerProxyUsdt0);
+
+        _spUsdtE2ESelectFork(ChainIdUtils.ArbitrumOne());
+
+        assertEq(IERC20(Arbitrum.USDT0).balanceOf(Arbitrum.SPUSDT_PAU_ALM_PROXY), v.arbPauUsdt0);
+
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        assertEq(IERC20(Ethereum.USDT).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY), v.ethPauUsdt + v.usdtSwapped - v.ethOwed - v.arbOwed - v.xlayerOwed);
+        assertEq(IERC20(Ethereum.USDS).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY), v.ethPauUsds + v.usdsRedeemed - v.usdtSwapped * 1e12);
+    }
+
+    function _spUsdtE2ESetUp(SpUsdtPauE2EVars memory v) internal {
+        // Each chain's clock is taken here and re-applied on every fork switch, see `_spUsdtE2ESelectFork`.
+
+        chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+        _spUsdtPauE2ETimestamp[ChainIdUtils.Ethereum()] = block.timestamp;
+
+        // The SLL ALMProxy needs idle USDS and USDT to complete the swaps.
+        deal(Ethereum.USDS, Ethereum.ALM_PROXY, v.swapAmount * 1e12);
+        deal(Ethereum.USDT, Ethereum.ALM_PROXY, v.swapAmount);
+
+        deal(Ethereum.USDT, v.user, v.depositAmount);
+
+        v.ethPauUsdt = IERC20(Ethereum.USDT).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY);
+        v.ethPauUsds = IERC20(Ethereum.USDS).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY);
+
+        chainData[ChainIdUtils.ArbitrumOne()].domain.selectFork();
+
+        _spUsdtPauE2ETimestamp[ChainIdUtils.ArbitrumOne()] = block.timestamp;
+
+        deal(Arbitrum.USDT0, v.user, v.depositAmount);
+
+        v.arbPauUsdt0 = IERC20(Arbitrum.USDT0).balanceOf(Arbitrum.SPUSDT_PAU_ALM_PROXY);
+
+        // Discard stale Ethereum -> Arbitrum packets so only this flow's messages are relayed.
+        _drainLZPendingPackets(ChainIdUtils.ArbitrumOne());
+
+        chainData[ChainIdUtils.XLayer()].domain.selectFork();
+
+        _spUsdtPauE2ETimestamp[ChainIdUtils.XLayer()] = block.timestamp;
+
+        deal(XLayer.USDT0, v.user, v.depositAmount);
+
+        v.xlayerProxyUsdt0 = IERC20(XLayer.USDT0).balanceOf(XLayer.ALM_PROXY);
+
+        // Discard stale Ethereum -> X Layer packets so only this flow's messages are relayed.
+        _drainLZPendingPackets(ChainIdUtils.XLayer());
+    }
+
+    function _spUsdtE2ESelectFork(uint256 chainId) internal {
+        chainData[chainId].domain.selectFork();
+
+        vm.warp(_spUsdtPauE2ETimestamp[chainId]);
+    }
+
+    function _spUsdtE2ESetVsr(uint256 chainId) internal {
+        _spUsdtE2ESelectFork(chainId);
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(chainId);
+
+        bytes memory data = abi.encodeCall(ISparkVaultV2Like.setVsr, (THREE_PCT_VSR));
+
+        if (chainId == ChainIdUtils.XLayer()) {
+            // SETTER stays with the ALMProxyFreezable on X Layer.
+            vm.prank(ctx.relayer);
+            IALMProxyFreezableLike(XLayer.ALM_PROXY_FREEZABLE).doCall(ctx.vault, data);
+        } else {
+            _callAsAgent(ctx.relayer, ctx.plannerAgent, ctx.agent, ctx.vault, data, 0);
+        }
+
+        assertEq(ISparkVaultV2Like(ctx.vault).vsr(), THREE_PCT_VSR);
+    }
+
+    function _spUsdtE2EDeposit(uint256 chainId, SpUsdtPauE2EVars memory v) internal returns (uint256 shares) {
+        _spUsdtE2ESelectFork(chainId);
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(chainId);
+
+        ISparkVaultV2Like vault = ISparkVaultV2Like(ctx.vault);
+        IERC20            asset = IERC20(ctx.asset);
+
+        uint256 vaultBalance = asset.balanceOf(ctx.vault);
+        uint256 totalAssets  = vault.totalAssets();
+        uint256 totalSupply  = vault.totalSupply();
+
+        assertEq(asset.balanceOf(v.user), v.depositAmount);
+        assertEq(vault.balanceOf(v.user), 0);
+
+        vm.startPrank(v.user);
+        asset.forceApprove(ctx.vault, v.depositAmount);
+        shares = vault.deposit(v.depositAmount, v.user);
+        vm.stopPrank();
+
+        assertEq(asset.balanceOf(v.user),    0);
+        assertEq(asset.balanceOf(ctx.vault), vaultBalance + v.depositAmount);
+
+        assertApproxEqAbs(vault.totalAssets(), totalAssets + v.depositAmount, 1);  // Rounding
+        assertEq(vault.totalSupply(), totalSupply + shares);
+
+        assertEq(vault.balanceOf(v.user), shares);
+
+        assertApproxEqAbs(vault.convertToAssets(shares), v.depositAmount, 1);  // Rounding
+    }
+
+    function _spUsdtE2ETake(uint256 chainId, SpUsdtPauE2EVars memory v) internal {
+        _spUsdtE2ESelectFork(chainId);
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(chainId);
+
+        bytes32 takeKey = _getSpUsdtTakeRateLimitKey(ctx);
+
+        uint256 takeLimit    = ctx.rateLimits.getCurrentRateLimit(takeKey);
+        uint256 vaultBalance = IERC20(ctx.asset).balanceOf(ctx.vault);
+        uint256 proxyBalance = IERC20(ctx.asset).balanceOf(ctx.proxy);
+        uint256 totalAssets  = ISparkVaultV2Like(ctx.vault).totalAssets();
+        uint256 totalSupply  = ISparkVaultV2Like(ctx.vault).totalSupply();
+
+        if (ctx.legacy) {
+            vm.prank(ctx.relayer);
+            ForeignController(ctx.controller).takeFromSparkVault(ctx.vault, v.depositAmount);
+        } else {
+            _callAsAgent(
+                ctx.relayer,
+                ctx.plannerAgent,
+                ctx.agent,
+                ctx.controller,
+                abi.encodeCall(ISparkVaultController.sparkVault_take, (ctx.vault, v.depositAmount)),
+                0
+            );
+        }
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(takeKey), _decreasedRateLimit(takeLimit, v.depositAmount));
+
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.vault), vaultBalance - v.depositAmount);
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.proxy), proxyBalance + v.depositAmount);
+
+        // Taking moves idle liquidity out, it does not change the vault's accounting.
+        assertEq(ISparkVaultV2Like(ctx.vault).totalAssets(), totalAssets);
+        assertEq(ISparkVaultV2Like(ctx.vault).totalSupply(), totalSupply);
+    }
+
+    function _spUsdtE2EBridgeToEthereum(uint256 chainId, SpUsdtPauE2EVars memory v) internal {
+        _spUsdtE2ESelectFork(chainId);
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(chainId);
+
+        // Discard the packets to Ethereum sent before this step so only this flow's message is relayed.
+        _drainLZPendingPacketsToSource(chainId);
+
+        bytes32 transferKey = _getSpUsdtLayerZeroTransferRateLimitKey(ctx, Ethereum.USDT_OFT, LZ_EID_ETHEREUM);
+
+        uint256 transferLimit = ctx.rateLimits.getCurrentRateLimit(transferKey);
+        uint256 proxyBalance  = IERC20(ctx.asset).balanceOf(ctx.proxy);
+        uint256 totalSupply   = IERC20(ctx.asset).totalSupply();
+
+        uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(ctx.oft, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)) + 1;
+
+        _spUsdtE2ELayerZeroTransfer(ctx, LZ_EID_ETHEREUM, v.depositAmount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), _decreasedRateLimit(transferLimit, v.depositAmount));
+
+        // USDT0 is burned on the source chain.
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.proxy), proxyBalance - v.depositAmount);
+        assertEq(IERC20(ctx.asset).totalSupply(),        totalSupply  - v.depositAmount);
+
+        _spUsdtE2ERelayToEthereum(ctx, chainId, sentNonce, v.depositAmount);
+    }
+
+    function _spUsdtE2ERelayToEthereum(SpUsdtContext memory ctx, uint256 chainId, uint64 sentNonce, uint256 amount) internal {
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        IERC20 usdt = IERC20(Ethereum.USDT);
+
+        uint256 proxyBalance   = usdt.balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY);
+        uint256 adapterBalance = usdt.balanceOf(Ethereum.USDT_OFT);
+
+        // The message can only be delivered if the Ethereum fork is not ahead of the source fork.
+        assertLt(ILZEndpointExtended(LZ_ENDPOINT).lazyInboundNonce(Ethereum.USDT_OFT, ctx.endpointId, _toBytes32(ctx.oft)), sentNonce);
+
+        _skipLZPendingNonces(Ethereum.USDT_OFT, ctx.endpointId, _toBytes32(ctx.oft), sentNonce);
+
+        LZBridgeTesting.relayMessagesToSource(_getLZBridge(chainId), true, ctx.oft, Ethereum.USDT_OFT);
+
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        // USDT is released from the OFT adapter on Ethereum.
+        assertEq(usdt.balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY), proxyBalance   + amount);
+        assertEq(usdt.balanceOf(Ethereum.USDT_OFT),             adapterBalance - amount);
+    }
+
+    function _spUsdtE2EBridgeFromEthereum(uint256 chainId, uint256 amount) internal {
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        SpUsdtContext memory ctx         = _getSpUsdtContext(ChainIdUtils.Ethereum());
+        SpUsdtContext memory destination = _getSpUsdtContext(chainId);
+
+        bytes32 transferKey = _getSpUsdtLayerZeroTransferRateLimitKey(ctx, destination.oft, destination.endpointId);
+
+        uint256 transferLimit  = ctx.rateLimits.getCurrentRateLimit(transferKey);
+        uint256 proxyBalance   = IERC20(ctx.asset).balanceOf(ctx.proxy);
+        uint256 adapterBalance = IERC20(ctx.asset).balanceOf(ctx.oft);
+
+        uint64 sentNonce = ILZEndpointExtended(LZ_ENDPOINT).outboundNonce(ctx.oft, destination.endpointId, _toBytes32(destination.oft)) + 1;
+
+        _spUsdtE2ELayerZeroTransfer(ctx, destination.endpointId, amount);
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), _decreasedRateLimit(transferLimit, amount));
+
+        // USDT is locked in the OFT adapter on Ethereum.
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.proxy), proxyBalance   - amount);
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.oft),   adapterBalance + amount);
+
+        _spUsdtE2ERelayFromEthereum(destination, chainId, sentNonce, amount);
+    }
+
+    function _spUsdtE2ERelayFromEthereum(SpUsdtContext memory ctx, uint256 chainId, uint64 sentNonce, uint256 amount) internal {
+        _spUsdtE2ESelectFork(chainId);
+
+        IERC20 usdt0 = IERC20(ctx.asset);
+
+        uint256 proxyBalance = usdt0.balanceOf(ctx.proxy);
+        uint256 totalSupply  = usdt0.totalSupply();
+
+        // The message can only be delivered if the destination fork is not ahead of the Ethereum fork.
+        assertLt(ILZEndpointExtended(LZ_ENDPOINT).lazyInboundNonce(ctx.oft, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT)), sentNonce);
+
+        _skipLZPendingNonces(ctx.oft, LZ_EID_ETHEREUM, _toBytes32(Ethereum.USDT_OFT), sentNonce);
+
+        LZBridgeTesting.relayMessagesToDestination(_getLZBridge(chainId), true, Ethereum.USDT_OFT, ctx.oft);
+
+        _spUsdtE2ESelectFork(chainId);
+
+        // USDT0 is minted on the destination chain.
+        assertEq(usdt0.balanceOf(ctx.proxy), proxyBalance + amount);
+        assertEq(usdt0.totalSupply(),        totalSupply  + amount);
+    }
+
+    function _spUsdtE2ELayerZeroTransfer(SpUsdtContext memory ctx, uint32 destinationEndpointId, uint256 amount) internal {
+        if (ctx.legacy) {
+            uint256 nativeFee = _quoteLegacyLayerZeroTransfer(ctx.controller, ctx.oft, amount, destinationEndpointId);
+
+            vm.deal(ctx.relayer, nativeFee);
+
+            vm.prank(ctx.relayer);
+            ForeignController(ctx.controller).transferTokenLayerZero{ value: nativeFee }(ctx.oft, amount, destinationEndpointId);
+
+            return;
+        }
+
+        ( , ILayerZeroFacet.MessagingFee memory fee ) = ILayerZeroController(ctx.controller)
+            .layerZero_quoteTransfer(ctx.oft, amount, destinationEndpointId);
+
+        _callAsAgent(
+            ctx.relayer,
+            ctx.plannerAgent,
+            ctx.agent,
+            ctx.controller,
+            abi.encodeCall(ILayerZeroController.layerZero_transfer, (ctx.oft, amount, destinationEndpointId)),
+            fee.nativeFee
+        );
+    }
+
+    function _spUsdtE2ESwap(address assetOut, address assetIn, uint256 amountOut, uint256 amountIn) internal {
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        SpUsdtSwapRateLimits memory limits = _getSpUsdtSwapRateLimits(assetOut, assetIn);
+
+        uint256 sllAssetOut = IERC20(assetOut).balanceOf(Ethereum.ALM_PROXY);
+        uint256 sllAssetIn  = IERC20(assetIn).balanceOf(Ethereum.ALM_PROXY);
+        uint256 pauAssetOut = IERC20(assetOut).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY);
+        uint256 pauAssetIn  = IERC20(assetIn).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY);
+
+        _callAsAgent(
+            Ethereum.ALM_RELAYER_MULTISIG,
+            Ethereum.PLANNER_ADMINISTERED_AGENT,
+            Ethereum.SLL_ADMINISTERED_AGENT,
+            Ethereum.SLL_PAU_CONTROLLER,
+            abi.encodeCall(
+                ISwapAssetController.swapAsset_initiateSwap,
+                (Ethereum.SPUSDT_PAU_CONTROLLER, assetOut, assetIn, amountOut)
+            ),
+            0
+        );
+
+        _assertSpUsdtSwapRateLimits(limits, amountOut, amountIn);
+
+        assertEq(IERC20(assetOut).balanceOf(Ethereum.ALM_PROXY),            sllAssetOut - amountOut);
+        assertEq(IERC20(assetIn).balanceOf(Ethereum.ALM_PROXY),             sllAssetIn  + amountIn);
+        assertEq(IERC20(assetOut).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY), pauAssetOut + amountOut);
+        assertEq(IERC20(assetIn).balanceOf(Ethereum.SPUSDT_PAU_ALM_PROXY),  pauAssetIn  - amountIn);
+    }
+
+    function _assertSpUsdtSwapRateLimits(SpUsdtSwapRateLimits memory limits, uint256 amountOut, uint256 amountIn) internal view {
+        IRateLimits sllRateLimits = IRateLimits(Ethereum.SLL_PAU_RATE_LIMITS);
+        IRateLimits pauRateLimits = IRateLimits(Ethereum.SPUSDT_PAU_RATE_LIMITS);
+
+        assertEq(sllRateLimits.getCurrentRateLimit(limits.initiateKey),        _decreasedRateLimit(limits.initiateLimit, amountOut));
+        assertEq(sllRateLimits.getCurrentRateLimit(limits.reverseInitiateKey), _increasedRateLimit(sllRateLimits, limits.reverseInitiateKey, limits.reverseInitiateLimit, amountIn));
+        assertEq(pauRateLimits.getCurrentRateLimit(limits.completeKey),        _decreasedRateLimit(limits.completeLimit, amountIn));
+        assertEq(pauRateLimits.getCurrentRateLimit(limits.reverseCompleteKey), _increasedRateLimit(pauRateLimits, limits.reverseCompleteKey, limits.reverseCompleteLimit, amountOut));
+    }
+
+    function _spUsdtE2EAssertSwapRateLimitsRecharged() internal view {
+        SpUsdtSwapRateLimits memory limits = _getSpUsdtSwapRateLimits(Ethereum.USDS, Ethereum.USDT);
+
+        assertEq(limits.initiateLimit, IRateLimits(Ethereum.SLL_PAU_RATE_LIMITS).getRateLimitData(limits.initiateKey).maxAmount);
+        assertEq(limits.completeLimit, IRateLimits(Ethereum.SPUSDT_PAU_RATE_LIMITS).getRateLimitData(limits.completeKey).maxAmount);
+    }
+
+    function _spUsdtE2EDepositSusds(SpUsdtPauE2EVars memory v) internal {
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(ChainIdUtils.Ethereum());
+
+        uint256 usdsAmount = v.swapAmount * 1e12;
+
+        bytes32 depositKey = IERC4626Controller(ctx.controller).erc4626_getDepositRateLimitKey(Ethereum.SUSDS, Ethereum.USDS);
+
+        uint256 depositLimit = ctx.rateLimits.getCurrentRateLimit(depositKey);
+        uint256 usdsBalance  = IERC20(Ethereum.USDS).balanceOf(ctx.proxy);
+        uint256 susdsBalance = IERC4626(Ethereum.SUSDS).balanceOf(ctx.proxy);  // The spUSDT PAU already holds the sUSDS backing.
+
+        v.susdsShares = IERC4626(Ethereum.SUSDS).previewDeposit(usdsAmount);
+
+        _callAsAgent(
+            ctx.relayer,
+            ctx.plannerAgent,
+            ctx.agent,
+            ctx.controller,
+            abi.encodeCall(IERC4626Controller.erc4626_deposit, (Ethereum.SUSDS, usdsAmount, v.susdsShares)),
+            0
+        );
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey), _decreasedRateLimit(depositLimit, usdsAmount));
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(ctx.proxy),    usdsBalance  - usdsAmount);
+        assertEq(IERC4626(Ethereum.SUSDS).balanceOf(ctx.proxy), susdsBalance + v.susdsShares);
+
+        assertApproxEqAbs(IERC4626(Ethereum.SUSDS).convertToAssets(v.susdsShares), usdsAmount, 1);  // Rounding
+    }
+
+    function _spUsdtE2ESkipOneDay(uint256 chainId, uint256 shares, uint256 depositAmount) internal returns (uint256 owed) {
+        _spUsdtE2ESelectFork(chainId);
+
+        skip(1 days);
+
+        _spUsdtPauE2ETimestamp[chainId] = block.timestamp;
+
+        owed = ISparkVaultV2Like(_getSpUsdtContext(chainId).vault).convertToAssets(shares);
+
+        assertGt(owed, depositAmount);  // Interest owed to the user
+    }
+
+    function _spUsdtE2ERedeemSusds(SpUsdtPauE2EVars memory v) internal {
+        _spUsdtE2ESelectFork(ChainIdUtils.Ethereum());
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(ChainIdUtils.Ethereum());
+
+        bytes32 depositKey  = IERC4626Controller(ctx.controller).erc4626_getDepositRateLimitKey(Ethereum.SUSDS, Ethereum.USDS);
+        bytes32 withdrawKey = IERC4626Controller(ctx.controller).erc4626_getWithdrawRateLimitKey(Ethereum.SUSDS);
+
+        uint256 depositLimit  = ctx.rateLimits.getCurrentRateLimit(depositKey);
+        uint256 withdrawLimit = ctx.rateLimits.getCurrentRateLimit(withdrawKey);
+        uint256 usdsBalance   = IERC20(Ethereum.USDS).balanceOf(ctx.proxy);
+        uint256 susdsBalance  = IERC4626(Ethereum.SUSDS).balanceOf(ctx.proxy);
+
+        v.usdsRedeemed = IERC4626(Ethereum.SUSDS).previewRedeem(v.susdsShares);
+
+        assertGt(v.usdsRedeemed, v.swapAmount * 1e12);  // Interest accrued
+
+        _callAsAgent(
+            ctx.relayer,
+            ctx.plannerAgent,
+            ctx.agent,
+            ctx.controller,
+            abi.encodeCall(IERC4626Controller.erc4626_redeem, (Ethereum.SUSDS, v.susdsShares, v.usdsRedeemed)),
+            0
+        );
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(withdrawKey), _decreasedRateLimit(withdrawLimit, v.usdsRedeemed));
+        assertEq(ctx.rateLimits.getCurrentRateLimit(depositKey),  _increasedRateLimit(ctx.rateLimits, depositKey, depositLimit, v.usdsRedeemed));
+
+        assertEq(IERC20(Ethereum.USDS).balanceOf(ctx.proxy),    usdsBalance  + v.usdsRedeemed);
+        assertEq(IERC4626(Ethereum.SUSDS).balanceOf(ctx.proxy), susdsBalance - v.susdsShares);
+    }
+
+    function _spUsdtE2ETransferToVault(uint256 chainId, uint256 amount) internal {
+        _spUsdtE2ESelectFork(chainId);
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(chainId);
+
+        bytes32 transferKey = _getSpUsdtTransferRateLimitKey(ctx);
+
+        uint256 transferLimit = ctx.rateLimits.getCurrentRateLimit(transferKey);
+        uint256 proxyBalance  = IERC20(ctx.asset).balanceOf(ctx.proxy);
+        uint256 vaultBalance  = IERC20(ctx.asset).balanceOf(ctx.vault);
+
+        if (ctx.legacy) {
+            vm.prank(ctx.relayer);
+            ForeignController(ctx.controller).transferAsset(ctx.asset, ctx.vault, amount);
+        } else {
+            _callAsAgent(
+                ctx.relayer,
+                ctx.plannerAgent,
+                ctx.agent,
+                ctx.controller,
+                abi.encodeCall(ITransferAssetController.transferAsset_transfer, (ctx.asset, ctx.vault, amount)),
+                0
+            );
+        }
+
+        assertEq(ctx.rateLimits.getCurrentRateLimit(transferKey), _decreasedRateLimit(transferLimit, amount));
+
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.proxy), proxyBalance - amount);
+        assertEq(IERC20(ctx.asset).balanceOf(ctx.vault), vaultBalance + amount);
+    }
+
+    function _spUsdtE2ERedeem(uint256 chainId, uint256 shares, uint256 owed, SpUsdtPauE2EVars memory v) internal {
+        _spUsdtE2ESelectFork(chainId);
+
+        SpUsdtContext memory ctx = _getSpUsdtContext(chainId);
+
+        ISparkVaultV2Like vault = ISparkVaultV2Like(ctx.vault);
+        IERC20            asset = IERC20(ctx.asset);
+
+        uint256 vaultBalance = asset.balanceOf(ctx.vault);
+        uint256 totalAssets  = vault.totalAssets();
+        uint256 totalSupply  = vault.totalSupply();
+
+        assertEq(asset.balanceOf(v.user), 0);
+        assertEq(vault.balanceOf(v.user), shares);
+
+        assertEq(vault.convertToAssets(shares), owed);
+
+        vm.prank(v.user);
+        vault.redeem(shares, v.user, v.user);
+
+        assertEq(asset.balanceOf(v.user),    owed);
+        assertEq(asset.balanceOf(ctx.vault), vaultBalance - owed);
+
+        assertApproxEqAbs(vault.totalAssets(), totalAssets - owed, 1);  // Rounding
+        assertEq(vault.totalSupply(), totalSupply - shares);
+
+        assertEq(vault.balanceOf(v.user), 0);
+    }
+
     /**********************************************************************************************/
     /*** Test runners                                                                           ***/
     /**********************************************************************************************/
@@ -2987,10 +3607,13 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
 
         for (uint256 i = 0; i < allChains.length; ++i) {
             if (
-                allChains[i] == ChainIdUtils.Ethereum() ||
-                allChains[i] == ChainIdUtils.Gnosis()   ||
-                allChains[i] == ChainIdUtils.XLayer()   ||
-                allChains[i] == ChainIdUtils.Robinhood()
+                allChains[i] == ChainIdUtils.Ethereum()  ||
+                allChains[i] == ChainIdUtils.Gnosis()    ||
+                allChains[i] == ChainIdUtils.XLayer()    ||
+                allChains[i] == ChainIdUtils.Robinhood() ||
+                allChains[i] == ChainIdUtils.Optimism()  ||
+                allChains[i] == ChainIdUtils.Unichain()  ||
+                allChains[i] == ChainIdUtils.Avalanche()
             ) continue;
 
             uint256 domainChainId = chainData[allChains[i]].domain.chain.chainId;
@@ -3007,15 +3630,21 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
                 domainChainId == ChainIdUtils.ArbitrumOne() ||
                 (isPostExecution && domainChainId == ChainIdUtils.Base())
             ) {
-                address pauController = _getSLLPAUContext(domainChainId).controller;
+                address pauController = _getSLLPAUContext(domainChainId, isPostExecution).controller;
 
                 _bridgeUSDCToMainnet(500_000e6,     domainChainId, legacyDomainController);
-                _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController);
+                _bridgeUSDCToMainnet_pau(500_000e6, domainChainId, pauController, isPostExecution);
             } else {
                 _bridgeUSDCToMainnet(1_000_000e6, domainChainId, legacyDomainController);
             }
 
             _swapUSDCToUSDSAndBurn(1_000_000e6, legacyMainnetController);
+
+            // Every message of this leg has been relayed, so drop the recorded logs. Otherwise they accumulate across
+            // all legs and the spell execution, and re-encoding them exceeds the EVM memory limit (MemoryLimitOOG).
+            chainData[ChainIdUtils.Ethereum()].domain.selectFork();
+
+            _clearLogs();
         }
     }
 
@@ -3372,7 +4001,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getPreExecutionIntegrationsMainnet() internal view returns (SLLIntegration[] memory integrations) {
-        integrations = new SLLIntegration[](50);
+        integrations = new SLLIntegration[](47);
 
         integrations[0] = _createAaveIntegration("AAVE-DAI_SPTOKEN",   SparkLend.DAI_SPTOKEN);
         integrations[1] = _createAaveIntegration("AAVE-PYUSD_SPTOKEN", SparkLend.PYUSD_SPTOKEN);
@@ -3386,23 +4015,19 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
         integrations[8] = _createCctpGeneralIntegration("CCTP_GENERAL");
 
         integrations[9]  = _createCctpIntegration("CCTP-ARBITRUM_ONE", CCTPForwarder.DOMAIN_ID_CIRCLE_ARBITRUM_ONE);
-        integrations[10] = _createCctpIntegration("CCTP-AVALANCHE",    CCTPForwarder.DOMAIN_ID_CIRCLE_AVALANCHE);
-        integrations[11] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
-        integrations[12] = _createCctpIntegration("CCTP-OPTIMISM",     CCTPForwarder.DOMAIN_ID_CIRCLE_OPTIMISM);
-        integrations[13] = _createCctpIntegration("CCTP-UNICHAIN",     CCTPForwarder.DOMAIN_ID_CIRCLE_UNICHAIN);
+        integrations[10] = _createCctpIntegration("CCTP-BASE",         CCTPForwarder.DOMAIN_ID_CIRCLE_BASE);
 
-        integrations[14] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
+        integrations[11] = _createCoreIntegration("CORE-USDS", Ethereum.USDS);
 
-        integrations[15] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",       MORPHO_USDC_BC);
-        integrations[16] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
-        integrations[17] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
-        integrations[18] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
-        integrations[19] = _createERC4626Integration("ERC4626-SENTORA_RLUSD",        SENTORA_RLUSD_VAULT);
+        integrations[12] = _createERC4626Integration("ERC4626-MORPHO_USDC_BC",       MORPHO_USDC_BC);
+        integrations[13] = _createERC4626Integration("ERC4626-SUSDS",                Ethereum.SUSDS);
+        integrations[14] = _createERC4626Integration("ERC4626-ARKIS-USDC",           Ethereum.ARKIS_VAULT);
+        integrations[15] = _createERC4626Integration("ERC4626-MORPHO_VAULT_V2_USDT", NEW_MORPHO_VAULT_V2_USDT);
+        integrations[16] = _createERC4626Integration("ERC4626-SENTORA_RLUSD",        SENTORA_RLUSD_VAULT);
 
-        integrations[20] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
+        integrations[17] = _createFarmIntegration("FARM-USDS_SPK_FARM", USDS_SPK_FARM);
 
-        // Onboarded in the 2026-07-02 spell (live on-chain, so part of the pre-execution state).
-        integrations[21] = _createLayerZeroTransferIntegration({
+        integrations[18] = _createLayerZeroTransferIntegration({
             label                 : "LAYERZERO_TRANSFER-USDT0_ARBITRUM",
             oftAddress            : USDT_OFT,
             destinationEndpointId : LZ_EID_ARBITRUM,
@@ -3414,8 +4039,7 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             sourceEndpointId      : LZ_EID_ETHEREUM
         });
 
-        // Onboarded in the 2026-07-16 spell (live on-chain, so part of the pre-execution state).
-        integrations[22] = _createLayerZeroTransferIntegration({
+        integrations[19] = _createLayerZeroTransferIntegration({
             label                 : "LAYERZERO_TRANSFER-USDT0_XLAYER",
             oftAddress            : USDT_OFT,
             destinationEndpointId : LZ_EID_XLAYER,
@@ -3427,45 +4051,45 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
             sourceEndpointId      : LZ_EID_ETHEREUM
         });
 
-        integrations[23] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
+        integrations[20] = _createPsmIntegration("PSM-USDS", Ethereum.PSM);
 
-        integrations[24] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
-        integrations[25] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
-        integrations[26] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
+        integrations[21] = _createTransferAssetIntegration("REWARDS_TRANSFER-MORPHO_TOKEN", MORPHO_TOKEN,  SPARK_MULTISIG);
+        integrations[22] = _createTransferAssetIntegration("REWARDS_TRANSFER-SYRUP",        SYRUP,         SPARK_MULTISIG);
+        integrations[23] = _createTransferAssetIntegration("ANCHORAGE_TRANSFER-USDC",       Ethereum.USDC, ANCHORAGE);
 
-        integrations[27] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
-        integrations[28] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
-        integrations[29] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
-        integrations[30] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
+        integrations[24] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPETH",   Ethereum.SPARK_VAULT_V2_SPETH);
+        integrations[25] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDC",  Ethereum.SPARK_VAULT_V2_SPUSDC);
+        integrations[26] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPUSDT",  Ethereum.SPARK_VAULT_V2_SPUSDT);
+        integrations[27] = _createSparkVaultV2Integration("SPARK_VAULT_V2-SPPYUSD", Ethereum.SPARK_VAULT_V2_SPPYUSD);
 
-        integrations[31] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
-        integrations[32] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
+        integrations[28] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-PYUSD_USDS", PYUSD_USDS_POOL_ID);
+        integrations[29] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDT_USDS",  USDT_USDS_POOL_ID);
 
-        integrations[33] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 2_000_000e18);
-        integrations[34] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  2_000_000e18);
+        integrations[30] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-PYUSD_USDS", PYUSD_USDS_POOL_ID, 2_000_000e18);
+        integrations[31] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDT_USDS",  USDT_USDS_POOL_ID,  2_000_000e18);
 
-        integrations[35] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDC_PYUSD",     Ethereum.USDC,  PAXOS_USDC_PYUSD);
-        integrations[36] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDC",     Ethereum.PYUSD, PAXOS_PYUSD_USDC);
-        integrations[37] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",     Ethereum.PYUSD, PAXOS_PYUSD_USDG);
-        integrations[38] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",     Ethereum.USDG,  PAXOS_USDG_PYUSD);
-        integrations[39] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_ROBINHOOD", Ethereum.USDG, PAXOS_USDG_ROBINHOOD);
+        integrations[32] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDC_PYUSD",     Ethereum.USDC,  PAXOS_USDC_PYUSD);
+        integrations[33] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDC",     Ethereum.PYUSD, PAXOS_PYUSD_USDC);
+        integrations[34] = _createTransferAssetIntegration("PAXOS_TRANSFER-PYUSD_USDG",     Ethereum.PYUSD, PAXOS_PYUSD_USDG);
+        integrations[35] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_PYUSD",     Ethereum.USDG,  PAXOS_USDG_PYUSD);
+        integrations[36] = _createTransferAssetIntegration("PAXOS_TRANSFER-USDG_ROBINHOOD", Ethereum.USDG, PAXOS_USDG_ROBINHOOD);
 
-        integrations[40] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
+        integrations[37] = _createOTCIntegration("OTC-BINANCE", BINANCE_EXCHANGE, Ethereum.USDT, Ethereum.USDC);
 
-        integrations[41] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDS_USDG",  USDS_USDG_POOL_ID);
-        integrations[42] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
+        integrations[38] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-USDS_USDG",  USDS_USDG_POOL_ID);
+        integrations[39] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-RLUSD_USDS", RLUSD_USDS_POOL_ID);
 
-        integrations[43] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDS_USDG",  USDS_USDG_POOL_ID,  2_000_000e18);
-        integrations[44] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
+        integrations[40] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-USDS_USDG",  USDS_USDG_POOL_ID,  2_000_000e18);
+        integrations[41] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-RLUSD_USDS", RLUSD_USDS_POOL_ID, 2_000_000e18);
 
-        integrations[45] = _createCurveSwapIntegration("CURVE_SWAP-USDCRLUSD", CURVE_USDC_RLUSD);
+        integrations[42] = _createCurveSwapIntegration("CURVE_SWAP-USDCRLUSD", CURVE_USDC_RLUSD);
 
-        integrations[46] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
-        integrations[47] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
+        integrations[43] = _createTransferAssetIntegration("BRIDGE_TRANSFER-USDC_OUSD", Ethereum.USDC, Ethereum.BRIDGE_USDC_DEPOSIT);
+        integrations[44] = _createTransferAssetIntegration("BRIDGE_TRANSFER-OUSD_USDC", Ethereum.OUSD, Ethereum.BRIDGE_OUSD_DEPOSIT);
 
-        integrations[48] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
+        integrations[45] = _createUniswapV4LpIntegration("UNISWAP_V4_LP-OUSD_USDS", OUSD_USDS_POOL_ID);
 
-        integrations[49] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-OUSD_USDS", OUSD_USDS_POOL_ID, 2_000_000e18);
+        integrations[46] = _createUniswapV4SwapIntegration("UNISWAP_V4_SWAP-OUSD_USDS", OUSD_USDS_POOL_ID, 2_000_000e18);
     }
 
     function _getPreExecutionIntegrationsBasicPsm3(
@@ -3620,16 +4244,17 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsMainnet(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        // The 2026-11-19 spell zeroes the Ethereum USDC routes to OP Mainnet, Unichain and Avalanche.
+        // The 2026-12-03 spell moves spUSDT onto its own PAU: it zeroes the spUSDT take and USDT transfer keys and the
+        // USDT0 LayerZero routes to Arbitrum and X Layer on the Spark Liquidity Layer.
         newIntegrations = new SLLIntegration[](integrations.length - 3);
 
         uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
             if (
-                _isEqual(integrations[i].label, "CCTP-AVALANCHE") ||
-                _isEqual(integrations[i].label, "CCTP-OPTIMISM")  ||
-                _isEqual(integrations[i].label, "CCTP-UNICHAIN")
+                _isEqual(integrations[i].label, "SPARK_VAULT_V2-SPUSDT")             ||
+                _isEqual(integrations[i].label, "LAYERZERO_TRANSFER-USDT0_ARBITRUM") ||
+                _isEqual(integrations[i].label, "LAYERZERO_TRANSFER-USDT0_XLAYER")
             ) continue;
 
             newIntegrations[index++] = integrations[i];
@@ -3649,13 +4274,20 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     function _getPostExecutionIntegrationsArbitrumOne(
         SLLIntegration[] memory integrations
     ) internal view returns (SLLIntegration[] memory newIntegrations) {
-        newIntegrations = new SLLIntegration[](integrations.length);
+        // The 2026-12-03 spell moves spUSDT onto its own PAU: it zeroes the spUSDT take and USDT0 transfer keys and the
+        // USDT0 LayerZero route to Ethereum on the Spark Liquidity Layer.
+        newIntegrations = new SLLIntegration[](integrations.length - 2);
+
+        uint256 index;
 
         for (uint256 i = 0; i < integrations.length; ++i) {
-            newIntegrations[i] = integrations[i];
-        }
+            if (
+                _isEqual(integrations[i].label, "SPARK_VAULT_V2-SPUSDT") ||
+                _isEqual(integrations[i].label, "LAYERZERO_TRANSFER-USDT0_ETHEREUM")
+            ) continue;
 
-        return newIntegrations;
+            newIntegrations[index++] = integrations[i];
+        }
     }
 
     function _getPostExecutionIntegrationsAvalanche(
@@ -4050,23 +4682,170 @@ abstract contract SparkLiquidityLayerTests is SpellRunner {
     }
 
     function _getSLLPAUContext(uint256 chainId) internal view returns (SLLPAUContext memory ctx) {
+        return _getSLLPAUContext(chainId, false);
+    }
+
+    function _getSLLPAUContext(uint256 chainId, bool isPostExecution) internal view returns (SLLPAUContext memory ctx) {
         if (chainId == ChainIdUtils.ArbitrumOne()) {
+            // The 2026-12-03 spell makes the Spark Planner Administered Agent the only actor on the PAU Administered
+            // Agent; the Planner hot wallet is the actor on the Spark Planner Administered Agent.
             return SLLPAUContext({
                 controller        : Arbitrum.PAU_CONTROLLER,
                 administeredAgent : Arbitrum.PAU_ADMINISTERED_AGENT,
-                allocator         : Arbitrum.ALM_RELAYER_MULTISIG,
-                revoker           : Arbitrum.ALM_FREEZER_MULTISIG
+                allocator         : isPostExecution ? Arbitrum.PLANNER_WALLET : Arbitrum.ALM_RELAYER_MULTISIG,
+                revoker           : Arbitrum.ALM_FREEZER_MULTISIG,
+                plannerAgent      : isPostExecution ? Arbitrum.PLANNER_ADMINISTERED_AGENT : address(0)
             });
         } else if (chainId == ChainIdUtils.Base()) {
             return SLLPAUContext({
                 controller        : Base.PAU_CONTROLLER,
                 administeredAgent : Base.PAU_ADMINISTERED_AGENT,
                 allocator         : Base.ALM_RELAYER_MULTISIG,
-                revoker           : Base.ALM_FREEZER_MULTISIG
+                revoker           : Base.ALM_FREEZER_MULTISIG,
+                plannerAgent      : address(0)
             });
         }
 
         revert("SLL/executing on unknown chain");
+    }
+
+    function _callAsPAUAllocator(SLLPAUContext memory ctx, address target, bytes memory data) internal returns (bytes memory) {
+        vm.prank(ctx.allocator);
+
+        if (ctx.plannerAgent == address(0)) {
+            return IAdministeredAgentLike(ctx.administeredAgent).call(target, data);
+        }
+
+        return IAdministeredAgentLike(ctx.plannerAgent).call(
+            ctx.administeredAgent,
+            abi.encodeCall(IAdministeredAgentLike.call, (target, data))
+        );
+    }
+
+    function _getSpUsdtContext(uint256 chainId) internal pure returns (SpUsdtContext memory ctx) {
+        if (chainId == ChainIdUtils.Ethereum()) {
+            return SpUsdtContext({
+                legacy       : false,
+                controller   : Ethereum.SPUSDT_PAU_CONTROLLER,
+                proxy        : Ethereum.SPUSDT_PAU_ALM_PROXY,
+                rateLimits   : IRateLimits(Ethereum.SPUSDT_PAU_RATE_LIMITS),
+                plannerAgent : Ethereum.PLANNER_ADMINISTERED_AGENT,
+                agent        : Ethereum.SPARK_ADMINISTERED_AGENT,
+                relayer      : Ethereum.ALM_RELAYER_MULTISIG,
+                vault        : Ethereum.SPARK_VAULT_V2_SPUSDT,
+                asset        : Ethereum.USDT,
+                oft          : Ethereum.USDT_OFT,
+                endpointId   : LZ_EID_ETHEREUM
+            });
+        } else if (chainId == ChainIdUtils.ArbitrumOne()) {
+            return SpUsdtContext({
+                legacy       : false,
+                controller   : Arbitrum.SPUSDT_PAU_CONTROLLER,
+                proxy        : Arbitrum.SPUSDT_PAU_ALM_PROXY,
+                rateLimits   : IRateLimits(Arbitrum.SPUSDT_PAU_RATE_LIMITS),
+                plannerAgent : Arbitrum.PLANNER_ADMINISTERED_AGENT,
+                agent        : Arbitrum.SPARK_ADMINISTERED_AGENT,
+                relayer      : Arbitrum.ALM_RELAYER_MULTISIG,
+                vault        : Arbitrum.SPARK_VAULT_V2_SPUSDT,
+                asset        : Arbitrum.USDT0,
+                oft          : Arbitrum.USDT_OFT,
+                endpointId   : LZ_EID_ARBITRUM
+            });
+        } else if (chainId == ChainIdUtils.XLayer()) {
+            return SpUsdtContext({
+                legacy       : true,
+                controller   : XLayer.ALM_CONTROLLER,
+                proxy        : XLayer.ALM_PROXY,
+                rateLimits   : IRateLimits(XLayer.ALM_RATE_LIMITS),
+                plannerAgent : address(0),
+                agent        : address(0),
+                relayer      : XLayer.ALM_RELAYER_MULTISIG,
+                vault        : XLayer.SPARK_VAULT_V2_SPUSDT,
+                asset        : XLayer.USDT0,
+                oft          : XLayer.USDT0_OFT,
+                endpointId   : LZ_EID_XLAYER
+            });
+        }
+
+        revert("SLL/unknown spUSDT chain");
+    }
+
+    function _getSpUsdtTakeRateLimitKey(SpUsdtContext memory ctx) internal view returns (bytes32) {
+        if (ctx.legacy) {
+            return RateLimitHelpers.makeAddressKey(ForeignController(ctx.controller).LIMIT_SPARK_VAULT_TAKE(), ctx.vault);
+        }
+
+        return ISparkVaultController(ctx.controller).sparkVault_getTakeRateLimitKey(ctx.vault);
+    }
+
+    function _getSpUsdtTransferRateLimitKey(SpUsdtContext memory ctx) internal view returns (bytes32) {
+        if (ctx.legacy) {
+            return RateLimitHelpers.makeAddressAddressKey(ForeignController(ctx.controller).LIMIT_ASSET_TRANSFER(), ctx.asset, ctx.vault);
+        }
+
+        return ITransferAssetController(ctx.controller).transferAsset_getTransferRateLimitKey(ctx.asset, ctx.vault);
+    }
+
+    function _getSpUsdtLayerZeroTransferRateLimitKey(SpUsdtContext memory ctx, address destinationOft, uint32 destinationEndpointId)
+        internal view returns (bytes32)
+    {
+        if (ctx.legacy) {
+            return keccak256(abi.encode(ForeignController(ctx.controller).LIMIT_LAYERZERO_TRANSFER(), ctx.oft, destinationEndpointId));
+        }
+
+        return ILayerZeroController(ctx.controller).layerZero_getTransferRateLimitKey(ctx.oft, _toBytes32(destinationOft), destinationEndpointId, ctx.asset);
+    }
+
+    function _getSpUsdtSwapRateLimits(address assetOut, address assetIn) internal view returns (SpUsdtSwapRateLimits memory limits) {
+        ISwapAssetController sllController = ISwapAssetController(Ethereum.SLL_PAU_CONTROLLER);
+        ISwapAssetController pauController = ISwapAssetController(Ethereum.SPUSDT_PAU_CONTROLLER);
+
+        limits.initiateKey        = sllController.swapAsset_getInitiateSwapRateLimitKey(assetOut, Ethereum.SPUSDT_PAU_ALM_PROXY, Ethereum.SPUSDT_PAU_CONTROLLER, assetIn);
+        limits.reverseInitiateKey = sllController.swapAsset_getInitiateSwapRateLimitKey(assetIn,  Ethereum.SPUSDT_PAU_ALM_PROXY, Ethereum.SPUSDT_PAU_CONTROLLER, assetOut);
+        limits.completeKey        = pauController.swapAsset_getCompleteSwapRateLimitKey(assetIn,  Ethereum.ALM_PROXY, assetOut);
+        limits.reverseCompleteKey = pauController.swapAsset_getCompleteSwapRateLimitKey(assetOut, Ethereum.ALM_PROXY, assetIn);
+
+        limits.initiateLimit        = IRateLimits(Ethereum.SLL_PAU_RATE_LIMITS).getCurrentRateLimit(limits.initiateKey);
+        limits.reverseInitiateLimit = IRateLimits(Ethereum.SLL_PAU_RATE_LIMITS).getCurrentRateLimit(limits.reverseInitiateKey);
+        limits.completeLimit        = IRateLimits(Ethereum.SPUSDT_PAU_RATE_LIMITS).getCurrentRateLimit(limits.completeKey);
+        limits.reverseCompleteLimit = IRateLimits(Ethereum.SPUSDT_PAU_RATE_LIMITS).getCurrentRateLimit(limits.reverseCompleteKey);
+    }
+
+    function _quoteLegacyLayerZeroTransfer(address controller, address oft, uint256 amount, uint32 destinationEndpointId)
+        internal view returns (uint256 nativeFee)
+    {
+        SendParam memory sendParams = SendParam({
+            dstEid       : destinationEndpointId,
+            to           : ForeignController(controller).layerZeroRecipients(destinationEndpointId),
+            amountLD     : amount,
+            minAmountLD  : amount,
+            extraOptions : OptionsBuilder.newOptions().addExecutorLzReceiveOption(200_000, 0),
+            composeMsg   : "",
+            oftCmd       : ""
+        });
+
+        return ILayerZero(oft).quoteSend(sendParams, false).nativeFee;
+    }
+
+    function _callAsAgent(
+        address        relayer,
+        address        plannerAgent,
+        address        agent,
+        address        target,
+        bytes   memory data,
+        uint256        value
+    ) internal returns (bytes memory) {
+        vm.deal(relayer, value);
+
+        vm.prank(relayer);
+        return IAdministeredAgentLike(plannerAgent).call{ value: value }(
+            agent,
+            abi.encodeCall(IAdministeredAgentLike.call, (target, data))
+        );
+    }
+
+    function _toBytes32(address account) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(account)));
     }
 
     // TODO: MDL, seems like unnecessary overload bloat.
