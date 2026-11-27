@@ -936,13 +936,17 @@ contract SparkEthereum_20261203_SLLTests is SparkLiquidityLayerTests {
         MainnetController(Ethereum.ALM_CONTROLLER).depositERC4626(Ethereum.SUSDS, eth_usds.balanceOf(Ethereum.ALM_PROXY), 0);
         vm.stopPrank();
 
-        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),  0);
-        assertEq(eth_susds.balanceOf(Ethereum.ALM_PROXY), 431_418_904.772977443647355484e18);
+        assertEq(eth_usds.balanceOf(Ethereum.ALM_PROXY),      0);
+        assertEq(eth_susds.balanceOf(Ethereum.ALM_PROXY),     431_418_904.772977443647355484e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 0);
 
         // Execute the mainnet payload it succeeds.
         address payload = IStarGuardLike(Ethereum.SPARK_STAR_GUARD).exec();
 
         assertEq(payload, payloadAddress);
+
+        assertEq(eth_susds.balanceOf(Ethereum.ALM_PROXY),     258_690_640.412588147277740551e18);
+        assertEq(eth_susds.balanceOf(eth_spUSDTPAU_almProxy), 172_728_264.360389296369614933e18);
     }
 
     /**********************************************************************************************/

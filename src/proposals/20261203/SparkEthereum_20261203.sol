@@ -143,6 +143,18 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
             IERC4626(Ethereum.SUSDS).convertToShares(spUsdt.assetsOutstanding() * 1e12)
         );
 
+        // 1.7 Set LayerZero route Ethereum → X Layer ratelimit.
+        spUsdtPauRateLimits.setRateLimitData(
+            ILayerZeroFacet(Ethereum.LAYERZERO_FACET).getTransferRateLimitKey(
+                Ethereum.USDT_OFT,
+                LZ_PEER_XLAYER,
+                LZ_EID_XLAYER,
+                Ethereum.USDT
+            ),
+            10_000_000e6,
+            uint256(100_000_000e6) / 1 days
+        );
+
         // 5. Transfer USDS to the buyback executor to fund SPK buybacks.
         IERC20(Ethereum.USDS).transfer(Ethereum.ALM_OPS_MULTISIG, USDS_SPK_BUYBACK_AMOUNT);
 
@@ -160,18 +172,6 @@ contract SparkEthereum_20261203 is SparkPayloadEthereum {
         // 7.3 Authorize the Sky PAS Configurator on the SLL PAU.
         IAccessControlsLike(Ethereum.SLL_PAU_ACCESS_CONTROLS).grantRole(DEFAULT_ADMIN_ROLE, SKY_PAS_CONFIGURATOR);
         IAccessControlsLike(Ethereum.SLL_PAU_RATE_LIMITS).grantRole(DEFAULT_ADMIN_ROLE,     SKY_PAS_CONFIGURATOR);
-
-        // Set LayerZero route Ethereum → X Layer ratelimit.
-        spUsdtPauRateLimits.setRateLimitData(
-            ILayerZeroFacet(Ethereum.LAYERZERO_FACET).getTransferRateLimitKey(
-                Ethereum.USDT_OFT,
-                LZ_PEER_XLAYER,
-                LZ_EID_XLAYER,
-                Ethereum.USDT
-            ),
-            10_000_000e6,
-            uint256(100_000_000e6) / 1 days
-        );
     }
 
 }
